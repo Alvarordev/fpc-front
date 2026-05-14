@@ -47,7 +47,7 @@ export function AppSidebar() {
         {role !== "VOLUNTEER" && (
           <div className="px-2 pt-2">
             <Button
-              render={<Link to="/inscripcion" />}
+              render={<Link to="/enrolamiento" />}
               className="w-full justify-center gap-2 rounded-md bg-red-600 text-white hover:bg-red-700"
               size="sm"
             >

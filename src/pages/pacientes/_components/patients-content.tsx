@@ -44,7 +44,7 @@ export function PatientsContent() {
         <Button
           size="sm"
           className="gap-1.5 shrink-0"
-          onClick={() => navigate("/inscripcion")}
+          onClick={() => navigate("/enrolamiento")}
         >
           <UserPlus className="size-4" />
           Nuevo paciente

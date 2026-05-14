@@ -63,6 +63,7 @@ export const pathTitles: Record<string, string> = {
   "/": "Dashboard",
   "/pacientes": "Pacientes",
   "/inscripcion": "Inscripción",
+  "/enrolamiento": "Enrolamiento",
   "/agenda": "Mi Agenda",
   "/disponibilidad": "Disponibilidad",
   "/voluntarios": "Voluntarios",
