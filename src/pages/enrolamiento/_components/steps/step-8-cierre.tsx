@@ -1,11 +1,11 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Clock, ClipboardCheck } from "lucide-react"
-import { patientsApi } from "@/lib/api"
+import { patientsApi, agentsApi } from "@/lib/api"
 import { useAuthStore } from "@/store/auth-store"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
@@ -19,8 +19,24 @@ export function Step8Cierre() {
   const meta = draft.enrollmentMetadata
   const now = new Date().toTimeString().slice(0,5)
 
+  // Resolve agentId: if user is ADMIN, use first agent; if AGENT, find by userId
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents"],
+    queryFn: () => agentsApi.list(),
+    staleTime: 60 * 1000,
+  })
+
   const mutation = useMutation({
     mutationFn: async () => {
+      let agentId: string | undefined
+
+      if (user?.role === "AGENT") {
+        const agent = agents.find(a => a.userId === user.id)
+        agentId = agent?.id
+      } else if (user?.role === "ADMIN") {
+        agentId = agents[0]?.id
+      }
+
       const payload: FullEnrollmentRequest = {
         patientId: draft.patientId,
         patientData: draft.patientData.fullName ? draft.patientData : undefined,
@@ -41,7 +57,7 @@ export function Step8Cierre() {
           isOncologicalPatient: meta.isOncologicalPatient,
           programEntryPoint: null,
           surveyAccepted: meta.surveyAccepted,
-          agentId: user?.id,
+          agentId,
           affiliationType: (meta.affiliationType as any) || "PATIENT",
         },
       }
