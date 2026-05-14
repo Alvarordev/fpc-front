@@ -1,14 +1,27 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "@/components/app-layout";
-
-const HomePage = () => <div className="p-8">Home</div>;
+import { AuthGuard, GuestGuard } from "@/components/auth-guard";
+import { LoginPage } from "@/pages/login/page";
+import { DashboardPage } from "@/pages/dashboard/page";
 
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    element: (
+      <GuestGuard>
+        <LoginPage />
+      </GuestGuard>
+    ),
+  },
+  {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <AuthGuard>
+        <AppLayout />
+      </AuthGuard>
+    ),
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, element: <DashboardPage /> },
     ],
   },
 ]);
