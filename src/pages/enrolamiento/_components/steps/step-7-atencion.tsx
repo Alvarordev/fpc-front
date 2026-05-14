@@ -1,11 +1,16 @@
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Activity, Stethoscope, HeartPulse } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Activity, Stethoscope, HeartPulse, Building2, Plus } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
-import type { CancerStage } from "@/types"
+import { healthCentersApi } from "@/lib/api"
+import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
+import type { CancerStage, HealthCenter } from "@/types"
 
 const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"; const sc="w-full bg-card border"
 const stageLabels:Record<CancerStage,string>={STAGE_1:"Etapa 1",STAGE_2:"Etapa 2",STAGE_3:"Etapa 3",STAGE_4:"Etapa 4",UNKNOWN:"Desconocida"}
@@ -16,6 +21,16 @@ export function Step7Atencion() {
   const seguro = draft.insurance.insuranceType; const tieneSeguroReal = seguro && seguro !== "NONE"
   const esSignos = categoriaClinica === "signos"; const esDx = categoriaClinica === "diagnostico"
   const label = esSignos ? "Signos y Síntomas" : "Diagnóstico de Cáncer"
+
+  const [newHospitalOpen, setNewHospitalOpen] = useState(false)
+
+  const { data: healthCenters = [] } = useQuery<HealthCenter[]>({
+    queryKey: ["healthCenters"],
+    queryFn: () => healthCentersApi.list(),
+    staleTime: 60 * 1000,
+  })
+
+  const activeCenters = healthCenters.filter(c => c.isActive)
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
@@ -46,11 +61,35 @@ export function Step7Atencion() {
           <div className="flex flex-col gap-2"><Label className={fl}>Síntoma que llevó al chequeo</Label><Input value={dx.symptomLeadingToCheckup??""} onChange={e=>updateDraft({diagnosis:{...dx,symptomLeadingToCheckup:e.target.value||null}})} placeholder="Ej: Bulto en el seno" className="bg-card border" /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>¿Tiene informe médico?</Label>
             <Select value={dx.hasMedicalReport?"Sí":"No"} onValueChange={v=>updateDraft({diagnosis:{...dx,hasMedicalReport:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+          {/* Hospital de diagnóstico */}
+          <div className="flex flex-col gap-2"><Label className={fl}>Centro de salud</Label>
+            <div className="flex gap-2">
+              <Select value={dx.healthCenterId??""} onValueChange={v=>updateDraft({diagnosis:{...dx,healthCenterId:v||null}})}>
+                <SelectTrigger className="flex-1 bg-card border"><SelectValue placeholder="Seleccionar centro de salud..." /></SelectTrigger>
+                <SelectContent>{activeCenters.map(c=><SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setNewHospitalOpen(true)}>
+                <Building2 className="size-3.5" /><Plus className="size-3" />
+              </Button>
+            </div>
+          </div>
         </section>
         <section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Tratamiento" />
           <div className="flex flex-col gap-2"><Label className={fl}>Tipo de tratamiento</Label><Input value={tx.treatmentType} onChange={e=>updateDraft({treatment:{...tx,treatmentType:e.target.value}})} placeholder="Ej: Quimioterapia" className="bg-card border" /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Frecuencia</Label><Input value={tx.treatmentFrequency??""} onChange={e=>updateDraft({treatment:{...tx,treatmentFrequency:e.target.value||null}})} placeholder="Ej: Cada 3 semanas" className="bg-card border" /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio</Label><Input type="date" value={tx.startDate??""} onChange={e=>updateDraft({treatment:{...tx,startDate:e.target.value||null}})} className="bg-card border max-w-60" /></div>
+          {/* Hospital de tratamiento */}
+          <div className="flex flex-col gap-2"><Label className={fl}>Centro de salud del tratamiento</Label>
+            <div className="flex gap-2">
+              <Select value={tx.healthCenterId??""} onValueChange={v=>updateDraft({treatment:{...tx,healthCenterId:v||null}})}>
+                <SelectTrigger className="flex-1 bg-card border"><SelectValue placeholder="Seleccionar centro de salud..." /></SelectTrigger>
+                <SelectContent>{activeCenters.map(c=><SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setNewHospitalOpen(true)}>
+                <Building2 className="size-3.5" /><Plus className="size-3" />
+              </Button>
+            </div>
+          </div>
         </section>
       </div>}
 
@@ -63,6 +102,8 @@ export function Step7Atencion() {
           {!sis.canAffiliate&&<div className="flex flex-col gap-2"><Label className={fl}>Motivo por el que no puede afiliarse</Label><Input value={sis.cantAffiliateReason??""} onChange={e=>updateDraft({sisAffiliation:{...sis,cantAffiliateReason:e.target.value||null}})} placeholder="Motivo..." className="bg-card border" /></div>}
         </section>
       </div>}
+
+      <CreateHealthCenterDialog open={newHospitalOpen} onOpenChange={setNewHospitalOpen} />
 
       <StepNav currentStep={7} onPrev={prevStep} />
     </form>
