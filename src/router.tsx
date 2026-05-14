@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
-import { AppLayout } from "@/components/app-layout";
 import { AuthGuard, GuestGuard } from "@/components/auth-guard";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { LoginPage } from "@/pages/login/page";
 import { DashboardPage } from "@/pages/dashboard/page";
 
@@ -17,7 +17,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: (
       <AuthGuard>
-        <AppLayout />
+        <DashboardLayout />
       </AuthGuard>
     ),
     children: [
