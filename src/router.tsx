@@ -7,6 +7,7 @@ import PatientsPage from "@/pages/pacientes/page";
 import PatientDetailPage from "@/pages/pacientes/[id]/page";
 import VolunteersPage from "@/pages/voluntarios/page";
 import UsersPage from "@/pages/usuarios/page";
+import HealthCentersPage from "@/pages/hospitales/page";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: "pacientes/:id", element: <PatientDetailPage /> },
       { path: "voluntarios", element: <VolunteersPage /> },
       { path: "usuarios", element: <UsersPage /> },
+      { path: "hospitales", element: <HealthCentersPage /> },
     ],
   },
 ]);
