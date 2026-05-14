@@ -1,49 +1,37 @@
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
 import { STEP_LABELS, TOTAL_STEPS } from "../_store/enrollment-store";
 
-interface EnrollmentStepperProps {
-  currentStep: number;
-}
+interface Props { currentStep: number }
 
-export function EnrollmentStepper({ currentStep }: EnrollmentStepperProps) {
+export function EnrollmentStepper({ currentStep }: Props) {
   return (
-    <div className="flex items-center gap-2">
+    <nav className="flex items-start gap-0">
       {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((step) => {
+        const isDone = step < currentStep;
         const isActive = step === currentStep;
-        const isCompleted = step < currentStep;
-
         return (
-          <div key={step} className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex size-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                isCompleted && "bg-primary text-primary-foreground",
-                isActive && "bg-primary text-primary-foreground ring-2 ring-primary/30",
-                !isActive && !isCompleted && "bg-muted text-muted-foreground",
-              )}
-            >
-              {isCompleted ? <Check className="size-3.5" /> : step}
+          <div key={step} className="flex items-start">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="relative flex items-center justify-center">
+                {isActive && <span className="absolute size-5 animate-ping rounded-full bg-primary/30" />}
+                <div className={cn("rounded-full transition-all duration-300",
+                  isDone && "size-2.5 bg-primary",
+                  isActive && "size-3.5 bg-primary ring-4 ring-primary/20",
+                  !isDone && !isActive && "size-2.5 bg-border")}
+                />
+              </div>
+              <span className={cn("hidden text-[10px] font-semibold tracking-wide transition-colors md:block",
+                isActive ? "text-foreground" : "text-muted-foreground/60")}>
+                {STEP_LABELS[step]}
+              </span>
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium hidden sm:inline",
-                isActive ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {STEP_LABELS[step]}
-            </span>
             {step < TOTAL_STEPS && (
-              <div
-                className={cn(
-                  "h-px w-4 sm:w-6",
-                  step < currentStep ? "bg-primary/50" : "bg-border",
-                )}
-              />
+              <div className={cn("mx-1 mt-1 h-px w-6 md:w-10 transition-colors duration-300",
+                step < currentStep ? "bg-primary" : "bg-border/60")} />
             )}
           </div>
         );
       })}
-    </div>
+    </nav>
   );
 }

@@ -1,113 +1,63 @@
-import { useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { patientsApi } from "@/lib/api";
-import { useAuthStore } from "@/store/auth-store";
-import { useEnrollmentStore, TOTAL_STEPS } from "../_store/enrollment-store";
+import { useEnrollmentStore, Q27_BRANCH_MAP } from "../_store/enrollment-store";
+import type { Q27Branch } from "../_store/enrollment-store";
 import { EnrollmentStepper } from "./enrollment-stepper";
+import { EnrollmentAside } from "./enrollment-aside";
+import { EnrollmentRejection } from "./enrollment-rejection";
 import { Step1Inicio } from "./steps/step-1-inicio";
-import { Step2Paciente } from "./steps/step-2-paciente";
-import { Step3Demograficos } from "./steps/step-3-demograficos";
-import { Step4Seguro } from "./steps/step-4-seguro";
-import { Step5Diagnostico } from "./steps/step-5-diagnostico";
-import { Step6Cierre } from "./steps/step-6-cierre";
-import { toast } from "sonner";
-import type { FullEnrollmentRequest } from "@/types";
+import { Step2Consent } from "./steps/step-2-consent";
+import { Step3Identificacion } from "./steps/step-3-identificacion";
+import { Step4Consentimiento } from "./steps/step-4-consentimiento";
+import { Step5Datos } from "./steps/step-5-datos";
+import { Step6Categoria } from "./steps/step-6-categoria";
+import { Step7Atencion } from "./steps/step-7-atencion";
+import { Step8Cierre } from "./steps/step-8-cierre";
+import { resolveAsideContent } from "../_utils/aside-resolver";
 
 function CurrentStep({ step }: { step: number }) {
   switch (step) {
     case 1: return <Step1Inicio />;
-    case 2: return <Step2Paciente />;
-    case 3: return <Step3Demograficos />;
-    case 4: return <Step4Seguro />;
-    case 5: return <Step5Diagnostico />;
-    case 6: return <Step6Cierre />;
+    case 2: return <Step2Consent />;
+    case 3: return <Step3Identificacion />;
+    case 4: return <Step4Consentimiento />;
+    case 5: return <Step5Datos />;
+    case 6: return <Step6Categoria />;
+    case 7: return <Step7Atencion />;
+    case 8: return <Step8Cierre />;
     default: return <Step1Inicio />;
   }
 }
 
 export function EnrollmentShell() {
-  const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
-  const { currentStep, draft, nextStep, prevStep, setSubmitting, isSubmitting, reset } =
-    useEnrollmentStore();
+  const {
+    currentStep, rejectionReason, formData, resetEnrollment,
+    prevStep, clearRejection,
+  } = useEnrollmentStore();
 
-  const isLastStep = currentStep === TOTAL_STEPS;
+  const partial = formData;
+  const categoria = partial.q27_categoria ?? "";
+  const branch = (Q27_BRANCH_MAP[categoria] ?? null) as Q27Branch | null;
+  const asideContent = resolveAsideContent(currentStep, branch);
 
-  const enrollMutation = useMutation({
-    mutationFn: (data: FullEnrollmentRequest) => patientsApi.enroll(data),
-    onSuccess: () => {
-      toast.success("Paciente enrolado correctamente");
-      reset();
-      navigate("/pacientes");
-    },
-    onError: (err: Error) => {
-      toast.error("Error al enrolar", { description: err.message });
-      setSubmitting(false);
-    },
-  });
-
-  async function handleSubmit() {
-    setSubmitting(true);
-
-    const payload: FullEnrollmentRequest = {
-      patientId: draft.patientId,
-      patientData: draft.patientData.fullName ? draft.patientData : undefined,
-      details: draft.details,
-      insurance: draft.insurance.insuranceType ? draft.insurance : undefined,
-      symptomReport: draft.symptomReport.hasDiscomfort !== undefined ? draft.symptomReport : null,
-      diagnosis: draft.diagnosis.diagnosis ? draft.diagnosis : undefined,
-      treatment: draft.treatment.treatmentType ? draft.treatment : undefined,
-      medicalAppointments: draft.medicalAppointments.length > 0 ? draft.medicalAppointments : null,
-      sisAffiliation: draft.sisAffiliation.canAffiliate !== undefined ? draft.sisAffiliation : null,
-      companions: draft.companions.length > 0 ? draft.companions : null,
-      enrollmentMetadata: {
-        ...draft.enrollmentMetadata,
-        agentId: user?.id,
-        startTime: new Date().toISOString(),
-        affiliationType: "PATIENT",
-      },
-    };
-
-    await enrollMutation.mutateAsync(payload);
-  }
-
-  const isPending = isSubmitting || enrollMutation.isPending;
+  const handleRejectionBack = () => { clearRejection(); prevStep(); };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-center border-b border-border/50 bg-background px-6 py-4">
         <EnrollmentStepper currentStep={currentStep} />
       </div>
-
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl px-4 py-6 md:px-8 md:py-10">
-            <CurrentStep step={currentStep} />
-
-            <div className="flex items-center justify-between mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={currentStep === 1 ? () => navigate("/pacientes") : prevStep}
-              >
-                <ArrowLeft className="size-3.5 mr-1" />
-                {currentStep === 1 ? "Cancelar" : "Anterior"}
-              </Button>
-
-              {isLastStep ? (
-                <Button size="sm" onClick={handleSubmit} disabled={isPending}>
-                  <Check className="size-3.5 mr-1" />
-                  {isPending ? "Enrolando..." : "Completar enrolamiento"}
-                </Button>
-              ) : (
-                <Button size="sm" onClick={nextStep}>
-                  Siguiente
-                  <ArrowRight className="size-3.5 ml-1" />
-                </Button>
-              )}
-            </div>
+          <div className="mx-auto max-w-2xl px-8 py-10">
+            {rejectionReason ? (
+              <EnrollmentRejection reason={rejectionReason} onReset={resetEnrollment} onBack={handleRejectionBack} />
+            ) : (
+              <CurrentStep step={currentStep} />
+            )}
+          </div>
+        </div>
+        <div className="hidden w-80 shrink-0 overflow-y-auto border-l border-border/50 bg-muted/30 lg:block xl:w-96">
+          <div className="px-6 py-8">
+            <EnrollmentAside content={asideContent} onReset={resetEnrollment} />
           </div>
         </div>
       </div>
