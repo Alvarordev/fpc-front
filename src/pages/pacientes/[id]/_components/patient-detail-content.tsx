@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { usePatient } from "../_hooks/use-patient";
 import { OverviewSection } from "./overview-section";
+import { SeguimientoTab } from "./seguimiento-tab";
+import { PsicoTab } from "./psico-tab";
 import type { PatientStatus } from "@/types";
 
 const statusLabels: Record<PatientStatus, string> = {
@@ -118,15 +120,11 @@ export function PatientDetailContent() {
         </TabsContent>
 
         <TabsContent value="seguimiento">
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            Seguimiento — próximamente
-          </div>
+          <SeguimientoTab pacienteId={patient.id} />
         </TabsContent>
 
         <TabsContent value="psicooncologia">
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            Psicooncología — próximamente
-          </div>
+          <PsicoTab pacienteId={patient.id} />
         </TabsContent>
       </Tabs>
     </div>
