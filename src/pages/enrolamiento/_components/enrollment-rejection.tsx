@@ -13,10 +13,6 @@ const CONTENT: Record<RejectionReason, { title: string; label: string; message: 
     label: "Consentimiento rechazado", title: "Consentimiento informado no aceptado",
     message: "El paciente no ha aceptado el consentimiento informado. Al no contar con su autorización verbal, no podemos concretar la inscripción ni realizar los servicios correspondientes al Programa SEPA.",
   },
-  q27_privado: {
-    label: "Seguro privado detectado", title: "Paciente no elegible para el programa",
-    message: "El Programa SEPA está dirigido exclusivamente a población vulnerable sin seguro privado de salud. Las personas afiliadas a un seguro privado no pueden inscribirse.\n\nSe le enviará a su WhatsApp el contacto de su aseguradora y el enlace del canal de prevención de la Fundación Peruana de Cáncer.",
-  },
 };
 
 export function EnrollmentRejection({ reason, onReset, onBack }: Props) {

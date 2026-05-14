@@ -1,5 +1,4 @@
-import { useEnrollmentStore, Q27_BRANCH_MAP } from "../_store/enrollment-store";
-import type { Q27Branch } from "../_store/enrollment-store";
+import { useEnrollmentStore } from "../_store/enrollment-store";
 import { EnrollmentStepper } from "./enrollment-stepper";
 import { EnrollmentAside } from "./enrollment-aside";
 import { EnrollmentRejection } from "./enrollment-rejection";
@@ -28,17 +27,10 @@ function CurrentStep({ step }: { step: number }) {
 }
 
 export function EnrollmentShell() {
-  const {
-    currentStep, rejectionReason, formData, resetEnrollment,
-    prevStep, clearRejection,
-  } = useEnrollmentStore();
+  const { currentStep, rejectionReason, resetEnrollment, prevStep, clearRejection } =
+    useEnrollmentStore();
 
-  const partial = formData;
-  const categoria = partial.q27_categoria ?? "";
-  const branch = (Q27_BRANCH_MAP[categoria] ?? null) as Q27Branch | null;
-  const asideContent = resolveAsideContent(currentStep, branch);
-
-  const handleRejectionBack = () => { clearRejection(); prevStep(); };
+  const asideContent = resolveAsideContent(currentStep);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -49,7 +41,11 @@ export function EnrollmentShell() {
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-2xl px-8 py-10">
             {rejectionReason ? (
-              <EnrollmentRejection reason={rejectionReason} onReset={resetEnrollment} onBack={handleRejectionBack} />
+              <EnrollmentRejection
+                reason={rejectionReason}
+                onReset={resetEnrollment}
+                onBack={() => { clearRejection(); prevStep(); }}
+              />
             ) : (
               <CurrentStep step={currentStep} />
             )}

@@ -1,23 +1,70 @@
-import { useForm, Controller } from "react-hook-form"; import { Label } from "@/components/ui/label"; import { Input } from "@/components/ui/input"; import { Textarea } from "@/components/ui/textarea"
+import { useEnrollmentStore } from "../../_store/enrollment-store"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Activity, Stethoscope, HeartPulse } from "lucide-react"
-import { useEnrollmentStore, Q27_BRANCH_MAP, BRANCH_LABELS } from "../../_store/enrollment-store"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
-const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70";const sc="w-full bg-card border";const EPS=["PACIFICO SEGUROS","RIMAC SEGUROS","MAPFRE SEGUROS","POSITIVA SEGUROS","SANITAS","ONCOSALUD","Otros"];const CANCER=["Mama","Cervicouterino","Pulmón","Próstata","Colon / Recto","Leucemia","Linfoma","Estómago","Piel","Tiroides","Hígado","Páncreas","Ovario","Otros"];const SIT=["En tratamiento","Pendiente inicio","Suspendido","Finalizado"]
-function F({l,c,e}:{l:string;c:React.ReactNode;e?:string}){return<div className="flex flex-col gap-2"><Label className={fl}>{l}</Label>{c}{e&&<p className="text-destructive text-xs">{e}</p>}</div>}
-function YN({n,ctrl}:{n:string;ctrl:any}){return<Controller name={n} control={ctrl} render={({field}:any)=>(<Select value={field.value||""} onValueChange={field.onChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select>)} />}
-function TF({n,ctrl,ph,multi}:{n:string;ctrl:any;ph?:string;multi?:boolean}){return<Controller name={n} control={ctrl} render={({field}:any)=>multi?<Textarea placeholder={ph} value={field.value||""} onChange={e=>field.onChange(e.target.value)} className="bg-card border" />:<Input placeholder={ph} value={field.value||""} onChange={e=>field.onChange(e.target.value)} className="bg-card border" />} />}
-function BSignos({ctrl}:{ctrl:any}){return<div className="flex flex-col gap-8"><section className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Signos y Síntomas" /><div className="grid grid-cols-2 gap-4"><F l="¿Ha presentado malestar?" c={<YN n="q28_malestares" ctrl={ctrl} />} /><F l="¿Solicitó consulta médica?" c={<YN n="q31_solicitoConsulta" ctrl={ctrl} />} /></div><F l="¿Qué signos o síntomas presentó?" c={<TF n="q30_signosSintomas" ctrl={ctrl} ph="Describa..." multi />} /><F l="Comentarios" c={<TF n="q29_comentarios_ss" ctrl={ctrl} ph="Comentarios..." multi />} /></section></div>}
-function BSignosEPS({ctrl}:{ctrl:any}){return<div className="flex flex-col gap-8"><section className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Datos del Seguro EPS" /><F l="EPS del paciente" c={<Controller name="q43_eps" control={ctrl} render={({field}:any)=>(<Select value={field.value||""} onValueChange={field.onChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar EPS..." /></SelectTrigger><SelectContent>{EPS.map(e=><SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select>)} />} /><F l="¿Qué signos o síntomas presentó?" c={<TF n="q44_signosSintomas_eps" ctrl={ctrl} ph="Describa..." multi />} /><F l="¿Le brindaron diagnóstico?" c={<TF n="q51_diagnostico_eps" ctrl={ctrl} ph="Diagnóstico" />} /><F l="¿Recibe tratamiento?" c={<YN n="q53_tieneTratamiento_eps" ctrl={ctrl} />} /></section></div>}
-function BSignosNS({ctrl}:{ctrl:any}){return<div className="flex flex-col gap-8"><section className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Signos y Síntomas" /><F l="¿Cuándo podría afiliarse al SIS?" c={<TF n="q55_cuandoAfiliarseSis_ns" ctrl={ctrl} ph="Fecha o periodo" />} /><F l="Motivo de no afiliarse" c={<TF n="q57_motivoNoAfiliarseSis_ns" ctrl={ctrl} ph="Detalle" multi />} /><F l="¿Ha presentado malestar?" c={<YN n="q58_malestares_ns" ctrl={ctrl} />} /><F l="¿Qué signos o síntomas?" c={<TF n="q59_signosSintomas_ns" ctrl={ctrl} ph="Describa..." multi />} /></section></div>}
-function BDx({branch,ctrl}:{branch:string;ctrl:any}){const p=branch==="dx_eps"?"de":branch==="dx_noseguro"?"dn":"ds";return<div className="flex flex-col gap-8"><section className="flex flex-col gap-5"><SectionHeader icon={Stethoscope} title="Diagnóstico Oncológico" /><div className="grid grid-cols-2 gap-4"><F l="Tipo de cáncer" c={<Controller name={`q_tipoCancer_${p}`} control={ctrl} render={({field}:any)=>(<Select value={field.value||""} onValueChange={field.onChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{CANCER.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>)} />} /><F l="Estadio" c={<TF n={`q_estadio_${p}`} ctrl={ctrl} ph="1, 2, 3, 4 o desconoce" />} /></div><F l="Síntoma que llevó al chequeo" c={<TF n={`q_sintomaChequeo_${p}`} ctrl={ctrl} ph="Motivo" multi />} /><div className="grid grid-cols-2 gap-4"><F l="Fecha de diagnóstico" c={<TF n={`q_fechaDx_${p}`} ctrl={ctrl} ph="Fecha" />} /><F l="Tiempo de espera" c={<TF n={`q_tiempoEsperaDx_${p}`} ctrl={ctrl} ph="Ej: 6 semanas" />} /></div><F l="¿Recibe tratamiento?" c={<YN n={`q_recibeTratamiento_${p}`} ctrl={ctrl} />} /><div className="grid grid-cols-2 gap-4"><F l="Tipo de tratamiento" c={<TF n={`q_tipoTratamiento_${p}`} ctrl={ctrl} ph="Ej: Quimio" />} /><F l="Situación" c={<Controller name={`q_situacionTratamiento_${p}`} control={ctrl} render={({field}:any)=>(<Select value={field.value||""} onValueChange={field.onChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{SIT.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)} />} /></div></section><section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Servicios de Apoyo" /><F l="¿Desea soporte emocional (psicooncología)?" c={<YN n={`q_psico_${p}`} ctrl={ctrl} />} /></section></div>}
-function BPsico({ctrl}:{ctrl:any}){return<div className="flex flex-col gap-8"><section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Situación Emocional" /><F l="Termómetro emocional (1-10)" c={<TF n="q130_medicacion_p" ctrl={ctrl} ph="Ej: 7" />} /><F l="¿Llamada o videollamada?" c={<TF n="q131_comentariosEmo_p" ctrl={ctrl} ph="Preferencia" multi />} /></section></div>}
-function BFPC({ctrl}:{ctrl:any}){return<div className="flex flex-col gap-8"><section className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Servicio Requerido" /><F l="Servicio FPC requerido" c={<TF n="q123_servicioFPC" ctrl={ctrl} ph="Describa..." multi />} /><F l="¿Familiares para charlas?" c={<YN n="q124_charlasEduc" ctrl={ctrl} />} /></section></div>}
-function BOtros({ctrl}:{ctrl:any}){return<div className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Descripción de la Consulta" /><F l="Motivo" c={<TF n="q_otros_descripcion" ctrl={ctrl} ph="Describa..." multi />} /><F l="Acciones tomadas" c={<TF n="q_otros_acciones" ctrl={ctrl} ph="Acciones..." multi />} /></div>}
+import type { CancerStage } from "@/types"
 
-export function Step7Atencion(){const{formData,saveStepData,nextStep,prevStep}=useEnrollmentStore();const p=formData;const cat=p.q27_categoria??"";const branch=Q27_BRANCH_MAP[cat];const bl=branch?BRANCH_LABELS[branch]:cat;const{control,handleSubmit}=useForm({defaultValues:p as Record<string,string>})
-return<form onSubmit={handleSubmit(v=>{saveStepData(v as any);nextStep()})} className="flex flex-col gap-8">
-<StepHeader step={7} title="Atención Especializada" description={`Rama activa: ${bl}`} />
-<div className="bg-card rounded-xl px-4 py-3"><p className="text-muted-foreground/60 text-[10px] font-bold tracking-widest uppercase">Categoría seleccionada</p><p className="text-foreground mt-0.5 text-sm font-semibold">{bl}</p></div>
-{branch==="signos_seguro"?<BSignos ctrl={control} />:branch==="signos_eps"?<BSignosEPS ctrl={control} />:branch==="signos_noseguro"?<BSignosNS ctrl={control} />:branch==="dx_seguro"||branch==="dx_eps"||branch==="dx_noseguro"?<BDx branch={branch} ctrl={control} />:branch==="psico"?<BPsico ctrl={control} />:branch==="fpc"?<BFPC ctrl={control} />:<BOtros ctrl={control} />}
-<StepNav currentStep={7} onPrev={prevStep} /></form>}
+const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"; const sc="w-full bg-card border"
+const stageLabels:Record<CancerStage,string>={STAGE_1:"Etapa 1",STAGE_2:"Etapa 2",STAGE_3:"Etapa 3",STAGE_4:"Etapa 4",UNKNOWN:"Desconocida"}
+
+export function Step7Atencion() {
+  const { draft, updateDraft, nextStep, prevStep, categoriaClinica } = useEnrollmentStore()
+  const sr = draft.symptomReport; const dx = draft.diagnosis; const tx = draft.treatment; const sis = draft.sisAffiliation
+  const seguro = draft.insurance.insuranceType; const tieneSeguroReal = seguro && seguro !== "NONE"
+  const esSignos = categoriaClinica === "signos"; const esDx = categoriaClinica === "diagnostico"
+  const label = esSignos ? "Signos y Síntomas" : "Diagnóstico de Cáncer"
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
+      <StepHeader step={7} title="Atención Especializada" description={`Rama activa: ${label}${!tieneSeguroReal ? " · Sin seguro" : ""}`} />
+      <div className="bg-card rounded-xl px-4 py-3"><p className="text-muted-foreground/60 text-[10px] font-bold tracking-widest uppercase">Categoría</p><p className="text-foreground mt-0.5 text-sm font-semibold">{label} · {tieneSeguroReal ? "Con seguro" : "Sin seguro"}</p></div>
+
+      {/* SIGNOS Y SÍNTOMAS */}
+      {esSignos && <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Signos y Síntomas" />
+          <div className="flex flex-col gap-2"><Label className={fl}>¿Presenta malestar o dolor?</Label>
+            <Select value={sr.hasDiscomfort?"Sí":"No"} onValueChange={v=>updateDraft({symptomReport:{...sr,hasDiscomfort:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Signos y síntomas</Label><Textarea value={sr.signsAndSymptoms??""} onChange={e=>updateDraft({symptomReport:{...sr,signsAndSymptoms:e.target.value||null}})} placeholder="Describa los signos o síntomas..." className="bg-card border min-h-20" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>¿Solicitó o asistió a consulta médica?</Label>
+            <Select value={sr.hasSoughtMedicalConsultation?"Sí":"No"} onValueChange={v=>updateDraft({symptomReport:{...sr,hasSoughtMedicalConsultation:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Especialidad consultada</Label><Input value={sr.specialty??""} onChange={e=>updateDraft({symptomReport:{...sr,specialty:e.target.value||null}})} placeholder="Ej: Oncología" className="bg-card border" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Indicaciones recibidas</Label><Input value={sr.indicationsReceived??""} onChange={e=>updateDraft({symptomReport:{...sr,indicationsReceived:e.target.value||null}})} placeholder="Indicaciones de la consulta" className="bg-card border" /></div>
+        </section>
+      </div>}
+
+      {/* DIAGNÓSTICO */}
+      {esDx && <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-5"><SectionHeader icon={Stethoscope} title="Diagnóstico Oncológico" />
+          <div className="flex flex-col gap-2"><Label className={fl}>Tipo de cáncer <span className="text-destructive">*</span></Label><Input value={dx.diagnosis} onChange={e=>updateDraft({diagnosis:{...dx,diagnosis:e.target.value}})} placeholder="Ej: Cáncer de mama" className="bg-card border" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Estadio del cáncer</Label>
+            <Select value={dx.cancerStage??""} onValueChange={v=>updateDraft({diagnosis:{...dx,cancerStage:(v as CancerStage)||null}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(stageLabels).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Fecha de diagnóstico</Label><Input type="date" value={dx.diagnosisDate??""} onChange={e=>updateDraft({diagnosis:{...dx,diagnosisDate:e.target.value||null}})} className="bg-card border max-w-60" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Especialidad que diagnosticó</Label><Input value={dx.diagnosisSpecialty??""} onChange={e=>updateDraft({diagnosis:{...dx,diagnosisSpecialty:e.target.value||null}})} placeholder="Ej: Oncología" className="bg-card border" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Síntoma que llevó al chequeo</Label><Input value={dx.symptomLeadingToCheckup??""} onChange={e=>updateDraft({diagnosis:{...dx,symptomLeadingToCheckup:e.target.value||null}})} placeholder="Ej: Bulto en el seno" className="bg-card border" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>¿Tiene informe médico?</Label>
+            <Select value={dx.hasMedicalReport?"Sí":"No"} onValueChange={v=>updateDraft({diagnosis:{...dx,hasMedicalReport:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+        </section>
+        <section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Tratamiento" />
+          <div className="flex flex-col gap-2"><Label className={fl}>Tipo de tratamiento</Label><Input value={tx.treatmentType} onChange={e=>updateDraft({treatment:{...tx,treatmentType:e.target.value}})} placeholder="Ej: Quimioterapia" className="bg-card border" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Frecuencia</Label><Input value={tx.treatmentFrequency??""} onChange={e=>updateDraft({treatment:{...tx,treatmentFrequency:e.target.value||null}})} placeholder="Ej: Cada 3 semanas" className="bg-card border" /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio</Label><Input type="date" value={tx.startDate??""} onChange={e=>updateDraft({treatment:{...tx,startDate:e.target.value||null}})} className="bg-card border max-w-60" /></div>
+        </section>
+      </div>}
+
+      {/* SIN SEGURO → SIS */}
+      {!tieneSeguroReal && <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Afiliación SIS" />
+          <div className="flex flex-col gap-2"><Label className={fl}>¿Puede afiliarse al SIS?</Label>
+            <Select value={sis.canAffiliate?"Sí":"No"} onValueChange={v=>updateDraft({sisAffiliation:{...sis,canAffiliate:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+          {sis.canAffiliate&&<div className="flex flex-col gap-2"><Label className={fl}>Fecha esperada de afiliación</Label><Input type="date" value={sis.expectedDate??""} onChange={e=>updateDraft({sisAffiliation:{...sis,expectedDate:e.target.value||null}})} className="bg-card border max-w-60" /></div>}
+          {!sis.canAffiliate&&<div className="flex flex-col gap-2"><Label className={fl}>Motivo por el que no puede afiliarse</Label><Input value={sis.cantAffiliateReason??""} onChange={e=>updateDraft({sisAffiliation:{...sis,cantAffiliateReason:e.target.value||null}})} placeholder="Motivo..." className="bg-card border" /></div>}
+        </section>
+      </div>}
+
+      <StepNav currentStep={7} onPrev={prevStep} />
+    </form>
+  )
+}
