@@ -5,7 +5,7 @@ import type { Patient, PatientStatus } from "@/types";
 
 const statusLabels: Record<PatientStatus, string> = {
   PROSPECT: "Prospecto",
-  ENROLLED: "Matriculado",
+  ENROLLED: "Enrolado",
   ACTIVE: "Activo",
   INACTIVE: "Inactivo",
 };

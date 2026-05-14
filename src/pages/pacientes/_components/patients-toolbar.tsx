@@ -13,14 +13,14 @@ interface PatientsToolbarProps {
 
 const statuses: { value: PatientStatus; label: string }[] = [
   { value: "PROSPECT", label: "Prospecto" },
-  { value: "ENROLLED", label: "Matriculado" },
+  { value: "ENROLLED", label: "Enrolado" },
   { value: "ACTIVE", label: "Activo" },
   { value: "INACTIVE", label: "Inactivo" },
 ];
 
 const statusLabels: Record<PatientStatus, string> = {
   PROSPECT: "Prospecto",
-  ENROLLED: "Matriculado",
+  ENROLLED: "Enrolado",
   ACTIVE: "Activo",
   INACTIVE: "Inactivo",
 };
