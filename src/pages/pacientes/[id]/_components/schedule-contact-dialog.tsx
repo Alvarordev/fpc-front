@@ -116,8 +116,8 @@ export function ScheduleContactDialog({
                 value={selectedType}
                 onValueChange={(v) => setValue("type", v as ContactType)}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  {selectedType ? typeLabels[selectedType] : <SelectValue placeholder="Seleccionar tipo" />}
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(typeLabels).map(([k, v]) => (
@@ -133,8 +133,8 @@ export function ScheduleContactDialog({
                 value={selectedPurpose}
                 onValueChange={(v) => setValue("purpose", v as ContactPurpose)}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  {selectedPurpose ? purposeLabels[selectedPurpose] : <SelectValue placeholder="Seleccionar propósito" />}
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(purposeLabels).map(([k, v]) => (

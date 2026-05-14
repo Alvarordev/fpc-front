@@ -222,8 +222,8 @@ export function ContactContent() {
                       scheduleForm.setValue("type", v as ContactType)
                     }
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="w-full">
+                      {scheduleForm.watch("type") ? typeLabels[scheduleForm.watch("type")] : <SelectValue placeholder="Seleccionar tipo" />}
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(typeLabels).map(([k, v]) => (
@@ -241,8 +241,8 @@ export function ContactContent() {
                       scheduleForm.setValue("purpose", v as ContactPurpose)
                     }
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="w-full">
+                      {scheduleForm.watch("purpose") ? purposeLabels[scheduleForm.watch("purpose")] : <SelectValue placeholder="Seleccionar propósito" />}
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(purposeLabels).map(([k, v]) => (
@@ -297,8 +297,10 @@ export function ContactContent() {
                       completeForm.setValue("status", v as CompleteFormValues["status"])
                     }
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="w-full">
+                      {completeForm.watch("status")
+                        ? { COMPLETED: "Completado", CANCELLED: "Cancelado", NO_ANSWER: "No contestó" }[completeForm.watch("status")]
+                        : <SelectValue placeholder="Seleccionar estado" />}
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="COMPLETED">Completado</SelectItem>
