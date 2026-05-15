@@ -26,6 +26,8 @@ const psicoSchema = z.object({
   volunteerId: z.string().min(1, "Seleccioná un voluntario"),
   slotId: z.string().min(1, "Seleccioná un horario"),
   modality: z.enum(["CALL", "VIDEO_CALL"]),
+  slotDate: z.string(),
+  slotStartTime: z.string(),
 });
 
 export type PsicoFormValues = z.infer<typeof psicoSchema>;
@@ -71,7 +73,13 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
   async function handleSave() {
     const valid = await form.trigger();
     if (!valid) return;
-    onSave(form.getValues());
+    const values = form.getValues();
+    const selectedSlot = slots.find((s) => s.id === values.slotId);
+    onSave({
+      ...values,
+      slotDate: selectedSlot?.date ?? "",
+      slotStartTime: selectedSlot?.startTime ?? "",
+    });
     onOpenChange(false);
     form.reset();
   }

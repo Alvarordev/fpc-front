@@ -20,6 +20,7 @@ import {
 import { useAuthStore } from "@/store/auth-store";
 import { contactsApi, agentsApi, patientsApi, alertsApi, appointmentsApi } from "@/lib/api";
 import { usePatient } from "../../_hooks/use-patient";
+import { usePatientAppointments } from "../../_hooks/use-appointments";
 import { ContactAside } from "./contact-aside";
 import {
   PatientUpdateTabs,
@@ -97,6 +98,9 @@ export function ContactContent() {
   const isScheduleMode = !contactId;
 
   const { data: patient, isLoading: loadingPatient } = usePatient(id!);
+
+  // Existing psychooncology appointments — used to auto-compute sessionNumber
+  const { data: existingAppointments = [] } = usePatientAppointments(id!);
 
   const { data: agents = [] } = useQuery({
     queryKey: ["agents"],
@@ -337,13 +341,20 @@ export function ContactContent() {
 
     // 8. Psico session
     if (psicoDraft) {
+      // sessionNumber = existing appointments count + 1 (or 1 if none)
+      const nextSessionNumber = existingAppointments.length + 1;
+      const scheduledAt = psicoDraft.slotDate && psicoDraft.slotStartTime
+        ? `${psicoDraft.slotDate}T${psicoDraft.slotStartTime}`
+        : new Date().toISOString();
+
       await createSessionMutation.mutateAsync({
         patientId: id!,
         volunteerId: psicoDraft.volunteerId,
         contactId,
         availabilityId: psicoDraft.slotId,
         modality: psicoDraft.modality,
-        scheduledAt: new Date().toISOString(), // will be overridden by availability slot
+        scheduledAt,
+        sessionNumber: nextSessionNumber,
       });
     }
 
