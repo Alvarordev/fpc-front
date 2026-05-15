@@ -81,7 +81,7 @@ export function ScheduleContactDialog({
       purpose: "FOLLOW_UP",
       date: new Date().toISOString().slice(0, 10),
       time: "",
-      notes: "",
+      notes: ""
     },
   });
 

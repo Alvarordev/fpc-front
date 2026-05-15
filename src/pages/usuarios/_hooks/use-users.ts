@@ -17,8 +17,11 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateUserRequest) => usersApi.create(data),
-    onSuccess: () => {
+    onSuccess: (_user, variables) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      if (variables.role === "VOLUNTEER") {
+        queryClient.invalidateQueries({ queryKey: ["volunteers"] });
+      }
     },
   });
 }

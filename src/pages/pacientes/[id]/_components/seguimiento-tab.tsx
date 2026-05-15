@@ -1,14 +1,11 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Phone, CalendarClock, PhoneCall, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
-import { contactsApi } from "@/lib/api";
 import { useContacts } from "../_hooks/use-contacts";
 import { usePatientAppointments } from "../_hooks/use-appointments";
 import { buildTimeline } from "../_utils/timeline";
 import { TimelineEventCard } from "./timeline-event-card";
-import { ScheduleContactDialog, type ScheduleFormValues } from "./schedule-contact-dialog";
 import { toast } from "sonner";
 
 function formatShortDate(fecha: string): string {
@@ -29,36 +26,14 @@ interface SeguimientoTabProps {
 }
 
 export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const canManage = user?.role === "ADMIN" || user?.role === "AGENT";
-  const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: contacts = [], isLoading: loadingContacts } =
     useContacts(pacienteId);
   const { data: appointments = [], isLoading: loadingPsico } =
     usePatientAppointments(pacienteId);
-
-  const createMutation = useMutation({
-    mutationFn: (data: {
-      patientId: string;
-      agentId: string;
-      type: string;
-      status: string;
-      purpose: string;
-      scheduledAt: string;
-      notes?: string;
-    }) => contactsApi.create(data as any),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts", pacienteId] });
-      toast.success("Contacto agendado correctamente");
-    },
-    onError: (err: Error) => {
-      toast.error("Error al agendar contacto", {
-        description: err.message,
-      });
-    },
-  });
 
   const isLoading = loadingContacts || loadingPsico;
 
@@ -78,18 +53,19 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
     (a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""),
   )[0];
 
-  async function handleSchedule(values: ScheduleFormValues) {
-    if (!user) return;
-    const scheduledAt = `${values.date}T${values.time}:00`;
-    await createMutation.mutateAsync({
-      patientId: pacienteId,
-      agentId: user.id,
-      type: values.type,
-      status: "SCHEDULED",
-      purpose: values.purpose,
-      scheduledAt,
-      notes: values.notes || undefined,
-    });
+  function handleAgendar() {
+    if (scheduledContacts.length > 0) {
+      toast.error("Ya existe un contacto agendado", {
+        description:
+          "Completá o marcá como cancelado el contacto actual antes de agendar otro.",
+      });
+      return;
+    }
+    navigate(`/pacientes/${pacienteId}/contacto`);
+  }
+
+  function goToContact(contactId: string) {
+    navigate(`/pacientes/${pacienteId}/contacto?contactId=${contactId}`);
   }
 
   return (
@@ -132,21 +108,24 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
           )}
 
           {nextScheduled ? (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="flex size-8 items-center justify-center rounded-full bg-amber-50">
+            <button
+              onClick={() => goToContact(nextScheduled.id)}
+              className="flex items-center gap-2 text-sm group cursor-pointer"
+            >
+              <div className="flex size-8 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
                 <CalendarClock className="size-4 text-amber-600" />
               </div>
               <div>
-                <p className="font-medium text-foreground">
+                <p className="font-medium text-foreground group-hover:text-amber-700 transition-colors">
                   {formatShortDate(
                     extractDate(nextScheduled.scheduledAt) ?? "",
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  próximo contacto
+                  próximo contacto — clic para completar
                 </p>
               </div>
-            </div>
+            </button>
           ) : (
             <div className="flex items-center gap-2 text-sm">
               <div className="flex size-8 items-center justify-center rounded-full bg-muted">
@@ -168,7 +147,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
           <Button
             size="sm"
             className="gap-1.5 shrink-0"
-            onClick={() => setDialogOpen(true)}
+            onClick={handleAgendar}
             disabled={isLoading}
           >
             <CalendarPlus className="size-4" />
@@ -177,9 +156,12 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
         )}
       </div>
 
-      {/* Scheduled contact banner */}
+      {/* Scheduled contact banner — clickeable para completar */}
       {nextScheduled && (
-        <div className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+        <button
+          onClick={() => goToContact(nextScheduled.id)}
+          className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100 transition-colors cursor-pointer"
+        >
           <div className="flex size-9 items-center justify-center rounded-full bg-amber-100 shrink-0">
             <CalendarClock className="size-4 text-amber-700" />
           </div>
@@ -189,11 +171,11 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
               {formatShortDate(extractDate(nextScheduled.scheduledAt) ?? "")}
             </p>
             <p className="text-xs text-amber-700/80">
-              Completá el contacto cuando se concrete
+              Clic acá para registrar el contacto cuando se concrete
             </p>
           </div>
           <CalendarPlus className="size-4 text-amber-600 shrink-0" />
-        </div>
+        </button>
       )}
 
       {/* Timeline */}
@@ -213,23 +195,12 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
           </p>
         </div>
       ) : (
-        <div className="pt-2">
-          {timeline.map((event, i) => (
-            <TimelineEventCard
-              key={event.id}
-              event={event}
-              isLast={i === timeline.length - 1}
-            />
+        <div className="space-y-3 pt-2">
+          {timeline.map((event) => (
+            <TimelineEventCard key={event.id} event={event} />
           ))}
         </div>
       )}
-
-      <ScheduleContactDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={handleSchedule}
-        isPending={createMutation.isPending}
-      />
     </div>
   );
 }
