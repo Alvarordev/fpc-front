@@ -1,5 +1,5 @@
 import type { AvailabilitySlot, Volunteer } from "@/types";
-import { getDaysInMonth, groupSlotsByDay, WEEKDAY_LABELS } from "../_utils/calendar-helpers";
+import { getDaysInMonth, groupSlotsByDay, WEEKDAY_LABELS } from "@/lib/calendar-helpers";
 import { CalendarDayCell } from "./calendar-day-cell";
 
 interface AvailabilityCalendarProps {

@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatMonthYear } from "../_utils/calendar-helpers";
+import { formatMonthYear } from "@/lib/calendar-helpers";
 
 interface CalendarHeaderProps {
   year: number;
