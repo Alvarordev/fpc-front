@@ -198,7 +198,12 @@ export function ContactContent() {
 
   const createSessionMutation = useMutation({
     mutationFn: (data: any) => appointmentsApi.create(data),
-    onError: (err: Error) => toast.error("Error al agendar sesión", { description: err.message }),
+    onError: (err: any) => {
+      console.error("[PsicoSession] API error:", err);
+      console.error("[PsicoSession] Error status:", err?.status);
+      console.error("[PsicoSession] Error body:", JSON.stringify(err?.body, null, 2));
+      toast.error("Error al agendar sesión", { description: err.message });
+    },
   });
 
   const isLoading = loadingPatient || (!isScheduleMode && loadingContact);
@@ -341,26 +346,45 @@ export function ContactContent() {
 
     // 8. Psico session
     if (psicoDraft) {
-      // sessionNumber = existing appointments count + 1 (or 1 if none)
-      const nextSessionNumber = existingAppointments.length + 1;
-      const scheduledAt = psicoDraft.slotDate && psicoDraft.slotStartTime
-        ? `${psicoDraft.slotDate}T${psicoDraft.slotStartTime}`
-        : new Date().toISOString();
+      try {
+        // sessionNumber = existing appointments count + 1 (or 1 if none)
+        const nextSessionNumber = existingAppointments.length + 1;
+        const scheduledAt = psicoDraft.slotDate && psicoDraft.slotStartTime
+          ? `${psicoDraft.slotDate}T${psicoDraft.slotStartTime}`
+          : new Date().toISOString();
 
-      await createSessionMutation.mutateAsync({
-        patientId: id!,
-        volunteerId: psicoDraft.volunteerId,
-        contactId,
-        availabilityId: psicoDraft.slotId,
-        modality: psicoDraft.modality,
-        scheduledAt,
-        sessionNumber: nextSessionNumber,
-      });
+        const payload = {
+          patientId: id!,
+          volunteerId: psicoDraft.volunteerId,
+          contactId,
+          availabilityId: psicoDraft.slotId,
+          modality: psicoDraft.modality,
+          scheduledAt,
+          sessionNumber: nextSessionNumber,
+          isAdditionalSession: nextSessionNumber > 4,
+          patientEmail: null,
+        };
+
+        console.log("[PsicoSession] Sending payload:", JSON.stringify(payload, null, 2));
+        console.log("[PsicoSession] Field types:", Object.entries(payload).map(([k, v]) => `${k}: ${typeof v} = ${v}`));
+
+        await createSessionMutation.mutateAsync(payload);
+        toast.success("Psicosesión agendada correctamente");
+      } catch (err) {
+        console.error("[PsicoSession] Mutation failed:", err);
+        if (err instanceof Error) {
+          console.error("[PsicoSession] Error name:", err.name);
+          console.error("[PsicoSession] Error message:", err.message);
+          console.error("[PsicoSession] Error stack:", err.stack);
+        }
+        // Error toast already shown by mutation's onError — don't block success flow
+      }
     }
 
     // Success
     queryClient.invalidateQueries({ queryKey: ["contacts", id] });
     queryClient.invalidateQueries({ queryKey: ["patient", id] });
+    queryClient.invalidateQueries({ queryKey: ["appointments", id] });
     toast.success("Contacto completado correctamente");
     navigate(`/pacientes/${id}`);
   }

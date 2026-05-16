@@ -1,4 +1,6 @@
+import { useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
+import { ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -15,26 +17,41 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { appointmentsApi } from "@/lib/api";
 import { toast } from "sonner";
-import type { PsychooncologyAppointment } from "@/types";
+import type { PsychooncologyAppointment, ReferralType } from "@/types";
+
+const STORAGE_PREFIX = "agenda-session-form-";
+
+const referralLabels: Record<ReferralType, string> = {
+  PSYCHIATRY: "Psiquiatría",
+  NEUROLOGY: "Neurología",
+  CONTINUE_PSYCHOLOGY: "Continuar psicología",
+  PSYCHOONCOLOGIST: "Derivar a psicooncólogo",
+  NONE: "Ninguna",
+};
+
+type Outcome = "COMPLETED" | "CANCELLED";
+
+interface FormValues {
+  outcome: Outcome;
+  topicAddressed: string;
+  sessionDetails: string;
+  additionalObservations: string;
+  recommendations: string;
+  referral: ReferralType | "";
+}
 
 interface AgendaSessionResultSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appointment: PsychooncologyAppointment | null;
   patientName: string;
+  patientId: string;
   volunteerId: string | undefined;
-}
-
-type Outcome = "COMPLETED" | "CANCELLED";
-
-interface FormValues {
-  outcome: Outcome;
-  notes: string;
 }
 
 export function AgendaSessionResultSheet({
@@ -42,38 +59,61 @@ export function AgendaSessionResultSheet({
   onOpenChange,
   appointment,
   patientName,
-  volunteerId,
+  patientId,
 }: AgendaSessionResultSheetProps) {
-  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const storageKey = appointment ? `${STORAGE_PREFIX}${appointment.id}` : "";
+
+  const loadDraft = useCallback((): FormValues => {
+    if (!appointment) return getDefaults();
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) return JSON.parse(raw) as FormValues;
+    } catch { /* ignore corrupt data */ }
+    return getDefaults();
+  }, [appointment, storageKey]);
 
   const {
     control,
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting },
   } = useForm<FormValues>({
-    defaultValues: {
-      outcome: "COMPLETED",
-      notes: "",
-    },
+    defaultValues: getDefaults(),
   });
 
+  // Save draft to sessionStorage on every change
+  const watchedValues = watch();
+  useEffect(() => {
+    if (!appointment || !open) return;
+    sessionStorage.setItem(storageKey, JSON.stringify(watchedValues));
+  }, [watchedValues, appointment, open, storageKey]);
+
+  // Restore draft when opening
+  useEffect(() => {
+    if (open && appointment) {
+      reset(loadDraft());
+    }
+  }, [open, appointment, reset, loadDraft]);
+
+  const outcome = watch("outcome");
+  const isCompleting = outcome === "COMPLETED";
+
   const completeMutation = useMutation({
-    mutationFn: ({
-      id,
-      notes,
-    }: {
-      id: string;
-      notes: string;
-    }) =>
+    mutationFn: ({ id, data }: { id: string; data: FormValues }) =>
       appointmentsApi.complete(id, {
-        sessionDetails: notes || undefined,
+        topicAddressed: data.topicAddressed || undefined,
+        sessionDetails: data.sessionDetails || undefined,
+        additionalObservations: data.additionalObservations || undefined,
+        recommendations: data.recommendations || undefined,
+        referral: (data.referral as ReferralType) || undefined,
       }),
     onSuccess: () => {
-      toast.success("Sesión registrada como completada");
+      toast.success("Sesión registrada correctamente");
       queryClient.invalidateQueries({ queryKey: ["agenda"] });
+      clearDraft();
     },
     onError: () => {
       toast.error("Error al registrar la sesión");
@@ -85,15 +125,21 @@ export function AgendaSessionResultSheet({
     onSuccess: () => {
       toast.success("Sesión cancelada");
       queryClient.invalidateQueries({ queryKey: ["agenda"] });
+      clearDraft();
     },
     onError: () => {
       toast.error("Error al cancelar la sesión");
     },
   });
 
+  function clearDraft() {
+    if (storageKey) sessionStorage.removeItem(storageKey);
+  }
+
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
-      reset({ outcome: "COMPLETED", notes: "" });
+      reset(getDefaults());
+      clearDraft();
     }
     onOpenChange(nextOpen);
   }
@@ -104,7 +150,7 @@ export function AgendaSessionResultSheet({
     if (values.outcome === "COMPLETED") {
       await completeMutation.mutateAsync({
         id: appointment.id,
-        notes: values.notes,
+        data: values,
       });
     } else {
       await cancelMutation.mutateAsync(appointment.id);
@@ -114,28 +160,32 @@ export function AgendaSessionResultSheet({
   }
 
   const isPending = completeMutation.isPending || cancelMutation.isPending;
-
-  const timeDisplay = appointment
-    ? appointment.scheduledAt.slice(11, 16)
-    : "";
+  const timeDisplay = appointment?.scheduledAt.slice(11, 16) ?? "";
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
-        side={isMobile ? "bottom" : "right"}
-        className={
-          isMobile
-            ? "max-h-[85vh] rounded-t-xl"
-            : "flex flex-col gap-0 p-0 sm:max-w-md"
-        }
+        side="bottom"
+        className="max-h-[85vh] rounded-t-xl"
       >
         <SheetHeader className="border-border/60 border-b px-4 py-4">
           <SheetTitle>Registrar sesión</SheetTitle>
-          {appointment && (
-            <p className="text-muted-foreground text-sm">
-              {patientName} · {timeDisplay}
-            </p>
-          )}
+          <SheetDescription asChild>
+            <div className="flex items-center gap-2 mt-1">
+              <span>
+                {patientName} · {timeDisplay}
+              </span>
+              <a
+                href={`/pacientes/${patientId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+              >
+                Ver ficha
+                <ExternalLink className="size-3" />
+              </a>
+            </div>
+          </SheetDescription>
         </SheetHeader>
 
         <form
@@ -143,6 +193,7 @@ export function AgendaSessionResultSheet({
           className="flex h-full flex-col"
         >
           <div className="flex-1 space-y-5 overflow-y-auto p-4">
+            {/* Outcome selector */}
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                 ¿El paciente asistió?
@@ -171,16 +222,73 @@ export function AgendaSessionResultSheet({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                Notas de la sesión
-              </Label>
-              <Textarea
-                {...register("notes")}
-                placeholder="Registra observaciones, acuerdos y próximos pasos..."
-                className="min-h-32 resize-none"
-              />
-            </div>
+            {/* Completion fields — only when patient attended */}
+            {isCompleting && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tema abordado</Label>
+                  <Textarea
+                    {...register("topicAddressed")}
+                    placeholder="Ej: Ansiedad por diagnóstico oncológico..."
+                    className="min-h-20 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Detalles de la sesión</Label>
+                  <Textarea
+                    {...register("sessionDetails")}
+                    placeholder="Describí lo trabajado durante la sesión..."
+                    className="min-h-24 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Observaciones adicionales</Label>
+                  <Textarea
+                    {...register("additionalObservations")}
+                    placeholder="Actitud del paciente, nivel de participación..."
+                    className="min-h-20 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Recomendaciones</Label>
+                  <Textarea
+                    {...register("recommendations")}
+                    placeholder="Ejercicios para casa, lecturas sugeridas..."
+                    className="min-h-20 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Derivación</Label>
+                  <Controller
+                    name="referral"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="w-full">
+                          {field.value
+                            ? referralLabels[field.value as ReferralType]
+                            : <SelectValue placeholder="Seleccionar derivación (opcional)" />}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(referralLabels).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>
+                              {v}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <SheetFooter className="border-border/60 border-t p-4">
@@ -188,6 +296,7 @@ export function AgendaSessionResultSheet({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
+              className="flex-1"
             >
               Cancelar
             </Button>
@@ -196,6 +305,7 @@ export function AgendaSessionResultSheet({
               disabled={
                 isPending || isSubmitting || !appointment
               }
+              className="flex-1"
             >
               {isPending ? "Guardando..." : "Guardar sesión"}
             </Button>
@@ -204,4 +314,15 @@ export function AgendaSessionResultSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+function getDefaults(): FormValues {
+  return {
+    outcome: "COMPLETED",
+    topicAddressed: "",
+    sessionDetails: "",
+    additionalObservations: "",
+    recommendations: "",
+    referral: "",
+  };
 }

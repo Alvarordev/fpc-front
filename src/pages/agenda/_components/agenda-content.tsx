@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useVolunteerProfile } from "@/hooks/use-volunteer-profile";
 import { useAgenda } from "../_hooks/use-agenda";
 import { AgendaSessionCard } from "./agenda-session-card";
 import { AgendaSessionResultSheet } from "./agenda-session-result-sheet";
+import { AgendaSessionResultDialog } from "./agenda-session-result-dialog";
 import type { PsychooncologyAppointment } from "@/types";
 
 type Filter = "proximas" | "pasadas" | "todas";
@@ -35,6 +37,7 @@ function filterAppointments(
 export function AgendaContent() {
   const { volunteerId, isLoading: loadingProfile } =
     useVolunteerProfile();
+  const isMobile = useIsMobile();
 
   const [filter, setFilter] = useState<Filter>("proximas");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -61,6 +64,8 @@ export function AgendaContent() {
     ? patients.get(activeAppointment.patientId)?.fullName ??
       "Paciente desconocido"
     : "";
+
+  const activePatientId = activeAppointment?.patientId ?? "";
 
   if (loadingProfile || loadingAgenda) {
     return (
@@ -172,16 +177,31 @@ export function AgendaContent() {
         )}
       </div>
 
-      <AgendaSessionResultSheet
-        open={sheetOpen}
-        onOpenChange={(open) => {
-          setSheetOpen(open);
-          if (!open) setActiveAppointment(null);
-        }}
-        appointment={activeAppointment}
-        patientName={activePatientName}
-        volunteerId={volunteerId}
-      />
+      {isMobile ? (
+        <AgendaSessionResultSheet
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            setSheetOpen(open);
+            if (!open) setActiveAppointment(null);
+          }}
+          appointment={activeAppointment}
+          patientName={activePatientName}
+          patientId={activePatientId}
+          volunteerId={volunteerId}
+        />
+      ) : (
+        <AgendaSessionResultDialog
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            setSheetOpen(open);
+            if (!open) setActiveAppointment(null);
+          }}
+          appointment={activeAppointment}
+          patientName={activePatientName}
+          patientId={activePatientId}
+          volunteerId={volunteerId}
+        />
+      )}
     </div>
   );
 }

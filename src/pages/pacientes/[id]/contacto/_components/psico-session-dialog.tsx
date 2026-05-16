@@ -21,13 +21,19 @@ import {
 } from "@/components/ui/select";
 import { volunteersApi, availabilityApi } from "@/lib/api";
 import type { Volunteer, AvailabilitySlot } from "@/types";
+import { toast } from "sonner";
+
+const modalityLabels: Record<string, string> = {
+  CALL: "Llamada",
+  VIDEO_CALL: "Videollamada",
+};
 
 const psicoSchema = z.object({
   volunteerId: z.string().min(1, "Seleccioná un voluntario"),
   slotId: z.string().min(1, "Seleccioná un horario"),
   modality: z.enum(["CALL", "VIDEO_CALL"]),
-  slotDate: z.string(),
-  slotStartTime: z.string(),
+  slotDate: z.string().optional(),
+  slotStartTime: z.string().optional(),
 });
 
 export type PsicoFormValues = z.infer<typeof psicoSchema>;
@@ -39,6 +45,10 @@ function formatSlot(slot: AvailabilitySlot): string {
     month: "short",
   });
   return `${date} — ${slot.startTime.slice(0, 5)} a ${slot.endTime.slice(0, 5)}`;
+}
+
+function getVolunteerLabel(vol: Volunteer): string {
+  return `${vol.firstName} ${vol.lastName} — ${vol.specialty}`;
 }
 
 interface PsicoSessionDialogProps {
@@ -72,7 +82,15 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
 
   async function handleSave() {
     const valid = await form.trigger();
-    if (!valid) return;
+    if (!valid) {
+      // Show first validation error
+      const errors = form.formState.errors;
+      const firstError = Object.values(errors).find((e) => e?.message);
+      if (firstError?.message) {
+        toast.error(firstError.message as string);
+      }
+      return;
+    }
     const values = form.getValues();
     const selectedSlot = slots.find((s) => s.id === values.slotId);
     onSave({
@@ -99,26 +117,33 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
             <Controller
               name="volunteerId"
               control={form.control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(v) => {
-                    field.onChange(v);
-                    form.setValue("slotId", "");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar voluntario" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {volunteers.filter((v) => v.isActive).map((vol) => (
-                      <SelectItem key={vol.id} value={vol.id}>
-                        {vol.firstName} {vol.lastName} — {vol.specialty}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              render={({ field }) => {
+                const selectedVol = volunteers.find((v) => v.id === field.value);
+                return (
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => {
+                      field.onChange(v);
+                      form.setValue("slotId", "");
+                    }}
+                  >
+                    <SelectTrigger>
+                      {field.value
+                        ? selectedVol
+                          ? getVolunteerLabel(selectedVol)
+                          : field.value
+                        : <SelectValue placeholder="Seleccionar voluntario" />}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {volunteers.filter((v) => v.isActive).map((vol) => (
+                        <SelectItem key={vol.id} value={vol.id}>
+                          {getVolunteerLabel(vol)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -126,32 +151,38 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
             <Controller
               name="slotId"
               control={form.control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={!selectedVolunteerId}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        !selectedVolunteerId
-                          ? "Primero seleccioná voluntario"
-                          : availableSlots.length === 0
-                          ? "Sin horarios disponibles"
-                          : "Seleccionar horario"
+              render={({ field }) => {
+                const selectedSlot = slots.find((s) => s.id === field.value);
+                return (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={!selectedVolunteerId}
+                  >
+                    <SelectTrigger>
+                      {field.value && selectedSlot
+                        ? formatSlot(selectedSlot)
+                        : <SelectValue
+                            placeholder={
+                              !selectedVolunteerId
+                                ? "Primero seleccioná voluntario"
+                                : availableSlots.length === 0
+                                ? "Sin horarios disponibles"
+                                : "Seleccionar horario"
+                            }
+                          />
                       }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSlots.map((slot) => (
-                      <SelectItem key={slot.id} value={slot.id}>
-                        {formatSlot(slot)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSlots.map((slot) => (
+                        <SelectItem key={slot.id} value={slot.id}>
+                          {formatSlot(slot)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -162,7 +193,9 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger>
-                    <SelectValue />
+                    {field.value
+                      ? modalityLabels[field.value] ?? field.value
+                      : <SelectValue placeholder="Seleccionar modalidad" />}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CALL">Llamada</SelectItem>
