@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { CalendarPlus, BrainCircuit, PhoneCall, Video, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { usePatientAppointments, useVolunteers } from "../_hooks/use-appointments";
+import { PsicoSessionDetailDialog } from "./psico-session-detail-dialog";
+import type { PsychooncologyAppointment } from "@/types";
 
 const TOTAL_DEFAULT_SESSIONS = 4;
 
@@ -60,6 +63,9 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
   const { data: appointments = [], isLoading } = usePatientAppointments(pacienteId);
   const { data: volunteers = [] } = useVolunteers();
 
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<PsychooncologyAppointment | null>(null);
+
   const sorted = [...appointments].sort((a, b) => a.sessionNumber - b.sessionNumber);
 
   const totalSlots = Math.max(TOTAL_DEFAULT_SESSIONS, sorted.length);
@@ -71,6 +77,11 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
   function getVolunteerName(volunteerId: string): string {
     const v = volunteers.find((vol) => vol.id === volunteerId);
     return v ? `${v.firstName} ${v.lastName}` : "Voluntario";
+  }
+
+  function openDetail(appointment: PsychooncologyAppointment) {
+    setSelectedAppointment(appointment);
+    setDetailOpen(true);
   }
 
   return (
@@ -115,10 +126,13 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
               const isCompleted = a.status === "COMPLETED";
 
               return (
-                <div
+                <button
+                  type="button"
                   key={a.id}
+                  onClick={() => openDetail(a)}
                   className={cn(
-                    "min-w-60 max-w-70 shrink-0 rounded-xl border p-4 space-y-3",
+                    "min-w-60 max-w-70 shrink-0 rounded-xl border p-4 space-y-3 text-left",
+                    "cursor-pointer transition-colors hover:border-primary/30 hover:shadow-sm",
                     isCompleted
                       ? "border-emerald-200 bg-emerald-50/50"
                       : a.status === "SCHEDULED"
@@ -164,7 +178,7 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
                       {a.topicAddressed}
                     </p>
                   )}
-                </div>
+                </button>
               );
             })}
 
@@ -185,6 +199,20 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
           </div>
         </div>
       )}
+
+      <PsicoSessionDetailDialog
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) setSelectedAppointment(null);
+        }}
+        appointment={selectedAppointment}
+        volunteerName={
+          selectedAppointment
+            ? getVolunteerName(selectedAppointment.volunteerId)
+            : ""
+        }
+      />
     </div>
   );
 }
