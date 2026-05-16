@@ -5,7 +5,7 @@ import path from "node:path";
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiTarget = env.VITE_API_URL || "http://178.156.230.233:8081";
+  const apiTarget = env.VITE_API_URL || "http://178.156.230.233:8083";
 
   return {
     plugins: [react()],

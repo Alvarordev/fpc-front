@@ -1,9 +1,5 @@
 import { API_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/lib/constants";
 
-// ============================================================
-// Token management (in-memory + localStorage persistence)
-// ============================================================
-
 let accessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY);
 let refreshToken: string | null = localStorage.getItem(REFRESH_TOKEN_KEY);
 let refreshPromise: Promise<string | null> | null = null;
