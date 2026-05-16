@@ -416,7 +416,6 @@ interface AddAvailabilitySheetProps {
   volunteerId: string;
   defaultDate?: string;
   selectedWeekday?: number;
-  anchorPosition?: { x: number; y: number; side: "left" | "right" };
 }
 
 export function AddAvailabilitySheet({
@@ -425,7 +424,6 @@ export function AddAvailabilitySheet({
   volunteerId,
   defaultDate,
   selectedWeekday,
-  anchorPosition,
 }: AddAvailabilitySheetProps) {
   const isMobile = useIsMobile();
 
@@ -458,24 +456,10 @@ export function AddAvailabilitySheet({
     );
   }
 
-  // Desktop: anchored popover dialog (no overlay, positioned near clicked cell)
+  // Desktop: centered dialog with overlay
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        noOverlay
-        showCloseButton={false}
-        className="w-[360px] max-w-[calc(100vw-2rem)] p-0"
-        style={
-          anchorPosition
-            ? {
-                position: "fixed",
-                top: `${anchorPosition.y}px`,
-                left: `${anchorPosition.x}px`,
-                transform: "none",
-              }
-            : undefined
-        }
-      >
+      <DialogContent className="w-[360px] max-w-[calc(100vw-2rem)] p-0">
         <DialogHeader className="px-5 pt-5 pb-4">
           <DialogTitle>Agregar disponibilidad</DialogTitle>
         </DialogHeader>

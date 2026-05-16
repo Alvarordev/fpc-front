@@ -22,9 +22,6 @@ export function DisponibilidadContent() {
     string | undefined
   >(undefined);
   const [selectedWeekday, setSelectedWeekday] = useState<number | undefined>(undefined);
-  const [anchorPosition, setAnchorPosition] = useState<
-    { x: number; y: number; side: "left" | "right" } | undefined
-  >(undefined);
 
   const { data: slots = [] } = useMySlots(volunteerId);
   const deleteSlot = useDeleteSlot(volunteerId ?? "");
@@ -51,32 +48,13 @@ export function DisponibilidadContent() {
     }
   }
 
-  function handleDayClick(date: Date, anchor: HTMLElement) {
-    const rect = anchor.getBoundingClientRect();
-    const dialogWidth = 360;
-    const dialogHeight = 420;
-    const gap = 8;
-    const side =
-      rect.right + dialogWidth + gap > window.innerWidth
-        ? "left"
-        : "right";
-    const x =
-      side === "right"
-        ? rect.right + gap
-        : Math.max(8, rect.left - dialogWidth - gap);
-    const y = Math.max(
-      8,
-      Math.min(rect.top, window.innerHeight - dialogHeight - 8),
-    );
-
-    setAnchorPosition({ x, y, side });
+  function handleDayClick(date: Date, _anchor: HTMLElement) {
     setSelectedDate(date.toISOString().slice(0, 10));
     setSelectedWeekday(date.getDay());
     setSheetOpen(true);
   }
 
   function handleAddClick() {
-    setAnchorPosition(undefined);
     setSelectedDate(undefined);
     setSelectedWeekday(undefined);
     setSheetOpen(true);
@@ -161,7 +139,6 @@ export function DisponibilidadContent() {
         volunteerId={volunteerId}
         defaultDate={selectedDate}
         selectedWeekday={selectedWeekday}
-        anchorPosition={anchorPosition}
       />
     </div>
   );
