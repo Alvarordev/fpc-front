@@ -1,5 +1,5 @@
-import { useNavigate, useParams, Link } from "react-router-dom";
-import { Clock, ChevronRight } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,13 +40,15 @@ export function PatientDetailContent() {
   if (isError || !patient) {
     return (
       <div className="space-y-4">
-        <Link
-          to="/pacientes"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => navigate("/pacientes")}
         >
-          <ChevronRight className="size-3.5 rotate-180" />
+          <ArrowLeft className="size-3.5" />
           Volver a pacientes
-        </Link>
+        </Button>
         <p className="text-muted-foreground text-sm">
           Paciente no encontrado.
         </p>
@@ -62,18 +64,17 @@ export function PatientDetailContent() {
 
   return (
     <div className="space-y-5">
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link
-          to="/pacientes"
-          className="hover:text-foreground transition-colors"
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => navigate("/pacientes")}
         >
+          <ArrowLeft className="size-3.5" />
           Pacientes
-        </Link>
-        <ChevronRight className="size-3.5" />
-        <span className="text-foreground font-medium truncate max-w-[260px]">
-          {patient.fullName}
-        </span>
-      </nav>
+        </Button>
+      </div>
 
       <div className="flex items-start gap-4">
         <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold">
