@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   Area,
@@ -17,9 +17,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, BrainCircuit, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -60,24 +58,24 @@ const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string }> = [
 ];
 
 const DONUT_COLORS = [
-  "oklch(0.62 0.20 29)",    // warm coral
-  "oklch(0.62 0.17 250)",   // blue
-  "oklch(0.62 0.14 160)",   // teal
-  "oklch(0.62 0.18 300)",   // violet
-  "oklch(0.62 0.16 70)",    // amber
-  "oklch(0.62 0.13 210)",   // cyan
+  "oklch(0.62 0.20 29)",
+  "oklch(0.62 0.17 250)",
+  "oklch(0.62 0.14 160)",
+  "oklch(0.62 0.18 300)",
+  "oklch(0.62 0.16 70)",
+  "oklch(0.62 0.13 210)",
 ];
 
 const BAR_COLORS = [
-  "oklch(0.48 0.11 250)",   // slate blue
-  "oklch(0.48 0.12 30)",    // terracotta
-  "oklch(0.48 0.10 170)",   // sage
-  "oklch(0.48 0.11 310)",   // mauve
-  "oklch(0.48 0.10 80)",    // ochre
-  "oklch(0.42 0.05 250)",   // steel
+  "oklch(0.48 0.11 250)",
+  "oklch(0.48 0.12 30)",
+  "oklch(0.48 0.10 170)",
+  "oklch(0.48 0.11 310)",
+  "oklch(0.48 0.10 80)",
+  "oklch(0.42 0.05 250)",
 ];
 
-const OTHER_COLOR = "oklch(0.50 0.02 260)";  // neutral gray for "Otros"
+const OTHER_COLOR = "oklch(0.50 0.02 260)";
 
 const monthNames = Array.from({ length: 12 }, (_, index) =>
   new Intl.DateTimeFormat("es-PE", { month: "long" }).format(
@@ -120,111 +118,92 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-6">
-      <section className="rounded-3xl border border-border/70 bg-card shadow-sm">
-        <div className="flex flex-col gap-5 px-6 py-6 lg:px-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl space-y-3">
-              <Badge
-                variant="outline"
-                className="rounded-full border-border bg-muted/30 px-3 py-1 text-foreground"
-              >
-                Tablero ejecutivo
-              </Badge>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                  Panorama clínico y operativo del programa
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground lg:text-base">
-                  Una vista única para seguir captación, continuidad y desempeño
-                  de psicooncología del periodo seleccionado.
-                </p>
-              </div>
-            </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {snapshot.periodLabel}
+          </p>
+        </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <HeroMetric
-                icon={Users}
-                label="Enrolados"
-                value={numberFormatter.format(snapshot.enrolledCount)}
-              />
-              <HeroMetric
-                icon={BrainCircuit}
-                label="Sesiones psico"
-                value={numberFormatter.format(snapshot.psychoSessionsCount)}
-              />
-              <HeroMetric
-                icon={Activity}
-                label="Activos"
-                value={numberFormatter.format(snapshot.activeCount)}
-              />
-            </div>
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <p className="text-2xl font-semibold tabular-nums">
+              {numberFormatter.format(snapshot.enrolledCount)}
+            </p>
+            <p className="text-xs text-muted-foreground">Enrolados</p>
           </div>
-
-          <div className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {PERIOD_OPTIONS.map((option) => (
-                <Button
-                  key={option.value}
-                  variant={period === option.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPeriod(option.value)}
-                  className="rounded-full"
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Select
-                value={String(activeYear)}
-                onValueChange={(value) => setSelectedYear(value ?? String(activeYear))}
-              >
-                <SelectTrigger className="w-full min-w-36 bg-card sm:w-40">
-                  <SelectValue>{String(activeYear)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
-                      {String(year)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {period === "month" && (
-                <Select
-                  value={String(activeMonth)}
-                  onValueChange={(value) => setSelectedMonth(value ?? String(activeMonth))}
-                >
-                  <SelectTrigger className="w-full min-w-44 bg-card sm:w-52">
-                    <SelectValue>{capitalize(monthNames[activeMonth] ?? "Mes")}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {monthNames.map((month, index) => (
-                      <SelectItem key={month} value={String(index)}>
-                        {capitalize(month)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <div className="rounded-2xl border border-border/70 bg-card px-4 py-2 text-sm text-muted-foreground">
-                Periodo:{" "}
-                <span className="font-medium text-foreground">
-                  {snapshot.periodLabel}
-                </span>
-              </div>
-            </div>
+          <div className="text-center">
+            <p className="text-2xl font-semibold tabular-nums">
+              {numberFormatter.format(snapshot.psychoSessionsCount)}
+            </p>
+            <p className="text-xs text-muted-foreground">Sesiones</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-semibold tabular-nums">
+              {numberFormatter.format(snapshot.activeCount)}
+            </p>
+            <p className="text-xs text-muted-foreground">Activos</p>
           </div>
         </div>
-      </section>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1">
+          {PERIOD_OPTIONS.map((option) => (
+            <Button
+              key={option.value}
+              variant={period === option.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPeriod(option.value)}
+              className="rounded-full"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+
+        <Select
+          value={String(activeYear)}
+          onValueChange={(value) => setSelectedYear(value ?? String(activeYear))}
+        >
+          <SelectTrigger className="w-28 h-8 text-sm">
+            <SelectValue>{String(activeYear)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {availableYears.map((year) => (
+              <SelectItem key={year} value={String(year)}>
+                {String(year)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {period === "month" && (
+          <Select
+            value={String(activeMonth)}
+            onValueChange={(value) => setSelectedMonth(value ?? String(activeMonth))}
+          >
+            <SelectTrigger className="w-36 h-8 text-sm">
+              <SelectValue>{capitalize(monthNames[activeMonth] ?? "Mes")}</SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {monthNames.map((month, index) => (
+                <SelectItem key={month} value={String(index)}>
+                  {capitalize(month)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
 
       {dashboardData.isLoading && <DashboardLoading />}
 
       {dashboardData.isError && (
-        <Card className="rounded-3xl border-destructive/20 bg-destructive/5">
+        <Card>
           <CardHeader>
             <CardTitle>No se pudo cargar el dashboard</CardTitle>
             <CardDescription>
@@ -238,107 +217,110 @@ export function DashboardPage() {
 
       {!dashboardData.isLoading && !dashboardData.isError && (
         <>
-          <section className="grid gap-4 xl:grid-cols-2">
-            <ChartCard
-              title="Neoplasias dominantes"
-              description="Distribución de diagnósticos principales de los pacientes enrolados."
-              badge="Clínico"
-            >
-              <DonutChart data={snapshot.neoplasiaDistribution} centerLabel="Neoplasias" />
-            </ChartCard>
+          <section className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Neoplasias dominantes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DonutChart data={snapshot.neoplasiaDistribution} centerLabel="Neoplasias" />
+              </CardContent>
+            </Card>
 
-            <ChartCard
-              title="Distribución por hospital"
-              description="Centros con mayor concentración de pacientes del programa."
-              badge="Red de atención"
-            >
-              <DonutChart data={snapshot.hospitalDistribution} centerLabel="Hospitales" />
-            </ChartCard>
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribución por hospital</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DonutChart data={snapshot.hospitalDistribution} centerLabel="Hospitales" />
+              </CardContent>
+            </Card>
           </section>
 
           <section>
-            <ChartCard
-              title="Evolución de enrolados"
-              description="Cuántos pacientes se van sumando en el periodo seleccionado."
-              badge="Captación"
-            >
-              <TrendAreaChart data={snapshot.enrollmentTrend} />
-            </ChartCard>
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
-            <ChartCard
-              title="Enrolados, fallecidos y bajas"
-              description="Serie temporal de altas, cierres inactivos y señales de fallecimiento."
-              badge="Continuidad"
-               footer="Fallecidos es una señal inferida a partir de los datos disponibles."
-            >
-              <IndicatorTrendChart data={snapshot.enrollmentTrend} />
-            </ChartCard>
-
-            <ChartCard
-              title="Pacientes por región"
-              description="Origen o centro de referencia principal del paciente."
-              badge="Territorio"
-            >
-              <VerticalBarChart
-                data={snapshot.patientRegionDistribution}
-                valueLabel="Pacientes"
-              />
-            </ChartCard>
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[1.2fr_1fr_1fr]">
-            <ChartCard
-              title="Sesiones de psicooncología"
-              description="Ritmo mensual del equipo y actividad de acompañamiento."
-              badge="Operación"
-            >
-              <SessionVolumeChart data={snapshot.enrollmentTrend} />
-            </ChartCard>
-
-            <ChartCard
-              title="Estado de sesiones"
-              description="Mix entre completadas, agendadas, canceladas y sin respuesta."
-              badge="Calidad operativa"
-            >
-              <DonutChart data={snapshot.sessionStatusDistribution} centerLabel="Sesiones" />
-            </ChartCard>
-
-            <ChartCard
-              title="Modalidad de atención"
-              description="Cómo se están realizando las sesiones del periodo."
-              badge="Canales"
-            >
-              <DonutChart data={snapshot.sessionModalityDistribution} centerLabel="Modalidad" />
-            </ChartCard>
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[1.05fr_1.25fr]">
-            <ChartCard
-              title="Sesiones por región"
-              description="Territorios con más actividad de psicooncología en el corte."
-              badge="Cobertura"
-            >
-              <VerticalBarChart
-                data={snapshot.sessionRegionDistribution}
-                valueLabel="Sesiones"
-              />
-            </ChartCard>
-
-            <Card className="overflow-hidden rounded-3xl border-border/70 shadow-sm">
-              <CardHeader className="border-b border-border/60 bg-muted/20">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-lg">Indicadores de continuidad</CardTitle>
-                    <CardDescription>
-                      Resumen para seguimiento ejecutivo.
-                    </CardDescription>
-                  </div>
-                   <Badge variant="outline">Resumen</Badge>
-                </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Evolución de enrolados</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 p-6 sm:grid-cols-3">
+              <CardContent>
+                <TrendAreaChart data={snapshot.enrollmentTrend} />
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Enrolados, fallecidos y bajas</CardTitle>
+                <CardDescription>
+                  Fallecidos es una señal inferida a partir de los datos disponibles.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <IndicatorTrendChart data={snapshot.enrollmentTrend} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Pacientes por región</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VerticalBarChart
+                  data={snapshot.patientRegionDistribution}
+                  valueLabel="Pacientes"
+                />
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.2fr_1fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sesiones de psicooncología</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SessionVolumeChart data={snapshot.enrollmentTrend} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Estado de sesiones</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DonutChart data={snapshot.sessionStatusDistribution} centerLabel="Sesiones" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Modalidad de atención</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DonutChart data={snapshot.sessionModalityDistribution} centerLabel="Modalidad" />
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.05fr_1.25fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sesiones por región</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VerticalBarChart
+                  data={snapshot.sessionRegionDistribution}
+                  valueLabel="Sesiones"
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Indicadores de continuidad</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-3">
                 {snapshot.completionMix.map((item) => (
                   <CompactIndicator key={item.label} item={item} />
                 ))}
@@ -346,62 +328,66 @@ export function DashboardPage() {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-2">
-            <TableCard
-              title="Hospitales con más pacientes"
-              description="Top de concentración por establecimiento y composición activa e inactiva."
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-full">Hospital</TableHead>
-                    <TableHead className="w-24 whitespace-nowrap">Región</TableHead>
-                    <TableHead className="w-20 text-right">Pacientes</TableHead>
-                    <TableHead className="w-20 text-right">Activos</TableHead>
-                    <TableHead className="w-20 text-right">Inactivos</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {snapshot.hospitalRows.map((row) => (
-                    <TableRow key={row.hospital}>
-                      <TableCell className="w-full max-w-0">
-                        <span className="block truncate font-medium" title={row.hospital}>
-                          {row.hospital}
-                        </span>
-                      </TableCell>
-                      <TableCell className="w-24 text-muted-foreground">{row.department}</TableCell>
-                      <TableCell className="w-20 text-right">{row.patients}</TableCell>
-                      <TableCell className="w-20 text-right">{row.active}</TableCell>
-                      <TableCell className="w-20 text-right">{row.inactive}</TableCell>
+          <section className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Hospitales con más pacientes</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-full">Hospital</TableHead>
+                      <TableHead className="w-24 whitespace-nowrap">Región</TableHead>
+                      <TableHead className="w-20 text-right">Pacientes</TableHead>
+                      <TableHead className="w-20 text-right">Activos</TableHead>
+                      <TableHead className="w-20 text-right">Inactivos</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableCard>
+                  </TableHeader>
+                  <TableBody>
+                    {snapshot.hospitalRows.map((row) => (
+                      <TableRow key={row.hospital}>
+                        <TableCell className="w-full max-w-0">
+                          <span className="block truncate font-medium" title={row.hospital}>
+                            {row.hospital}
+                          </span>
+                        </TableCell>
+                        <TableCell className="w-24 text-muted-foreground">{row.department}</TableCell>
+                        <TableCell className="w-20 text-right">{row.patients}</TableCell>
+                        <TableCell className="w-20 text-right">{row.active}</TableCell>
+                        <TableCell className="w-20 text-right">{row.inactive}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
 
-            <TableCard
-              title="Regiones con mayor movimiento"
-              description="Cruce entre pacientes registrados y volumen de sesiones del periodo."
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Región</TableHead>
-                    <TableHead className="text-right">Pacientes</TableHead>
-                    <TableHead className="text-right">Sesiones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {snapshot.regionRows.map((row) => (
-                    <TableRow key={row.region}>
-                      <TableCell className="font-medium">{row.region}</TableCell>
-                      <TableCell className="text-right">{row.patients}</TableCell>
-                      <TableCell className="text-right">{row.sessions}</TableCell>
+            <Card>
+              <CardHeader>
+                <CardTitle>Regiones con mayor movimiento</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Región</TableHead>
+                      <TableHead className="text-right">Pacientes</TableHead>
+                      <TableHead className="text-right">Sesiones</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableCard>
+                  </TableHeader>
+                  <TableBody>
+                    {snapshot.regionRows.map((row) => (
+                      <TableRow key={row.region}>
+                        <TableCell className="font-medium">{row.region}</TableCell>
+                        <TableCell className="text-right">{row.patients}</TableCell>
+                        <TableCell className="text-right">{row.sessions}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </section>
         </>
       )}
@@ -409,87 +395,11 @@ export function DashboardPage() {
   );
 }
 
-function HeroMetric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Users;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {label}
-        </span>
-        <div className="rounded-full border border-primary/15 bg-primary/10 p-2 text-primary">
-          <Icon className="size-4" />
-        </div>
-      </div>
-      <p className="text-xl font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function ChartCard({
-  title,
-  description,
-  badge,
-  children,
-  footer,
-}: {
-  title: string;
-  description: string;
-  badge: string;
-  children: ReactNode;
-  footer?: string;
-}) {
-  return (
-    <Card className="overflow-hidden rounded-3xl border-border/70 shadow-sm">
-      <CardHeader className="border-b border-border/60 bg-muted/20">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </div>
-          <Badge variant="outline">{badge}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3 p-5">
-        {children}
-        {footer ? <p className="text-xs leading-5 text-muted-foreground">{footer}</p> : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TableCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card className="overflow-hidden rounded-3xl border-border/70 shadow-sm">
-      <CardHeader className="border-b border-border/60 bg-muted/20">
-        <CardTitle className="text-lg">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">{children}</CardContent>
-    </Card>
-  );
-}
-
 function CompactIndicator({ item }: { item: StatDatum }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border p-4",
+        "rounded-xl border p-4 text-center",
         item.tone === "danger"
           ? "border-destructive/20 bg-destructive/5"
           : item.tone === "primary"
@@ -497,19 +407,17 @@ function CompactIndicator({ item }: { item: StatDatum }) {
             : "border-border/70 bg-muted/20",
       )}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {item.label}
-      </p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight">{item.value}</p>
+      <p className="text-3xl font-semibold tracking-tight">{item.value}</p>
+      <p className="text-xs text-muted-foreground mt-1">{item.label}</p>
     </div>
   );
 }
 
 function DashboardLoading() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: 8 }).map((_, index) => (
-        <Card key={index} className="rounded-3xl border-border/70 shadow-sm">
+        <Card key={index}>
           <CardContent className="space-y-4 p-5">
             <div className="h-4 w-28 animate-pulse rounded-full bg-muted" />
             <div className="h-10 w-20 animate-pulse rounded-xl bg-muted" />
@@ -581,13 +489,13 @@ function DonutChart({
         </ResponsiveContainer>
       </div>
 
-      <div className="min-w-0 space-y-3">
+      <div className="min-w-0 space-y-2.5">
         {data.map((item, index) => (
           <div
             key={item.name}
-            className="flex items-center justify-between gap-3 px-1 py-1.5"
+            className="flex items-center justify-between gap-3"
           >
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
               <span
                 className="size-2.5 rounded-full shrink-0"
                 style={{
@@ -597,15 +505,13 @@ function DonutChart({
                       : DONUT_COLORS[index % DONUT_COLORS.length],
                 }}
               />
-              <span className="truncate text-sm font-medium" title={item.name}>
-                {item.name}
-              </span>
+              <span className="truncate text-sm">{item.name}</span>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold">{numberFormatter.format(item.value)}</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="text-right shrink-0">
+              <span className="text-sm font-medium">{numberFormatter.format(item.value)}</span>
+              <span className="text-xs text-muted-foreground ml-1">
                 {Math.round((item.value / total) * 100)}%
-              </p>
+              </span>
             </div>
           </div>
         ))}
@@ -792,7 +698,7 @@ function TooltipContent({
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-popover px-3 py-2 shadow-md">
+    <div className="rounded-xl border border-border/70 bg-popover px-3 py-2 shadow-md">
       {label ? (
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           {label}
