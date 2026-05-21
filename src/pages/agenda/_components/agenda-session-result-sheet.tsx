@@ -69,6 +69,7 @@ export function AgendaSessionResultSheet({
   const queryClient = useQueryClient();
   const storageKey = appointment ? `${STORAGE_PREFIX}${appointment.id}` : "";
   const [wizardStep, setWizardStep] = useState<"session" | "test">("session");
+  const [savedSessionValues, setSavedSessionValues] = useState<FormValues | null>(null);
 
   const loadDraft = useCallback((): FormValues => {
     if (!appointment) return getDefaults();
@@ -154,26 +155,32 @@ export function AgendaSessionResultSheet({
   async function onSubmit(values: FormValues) {
     if (!appointment) return;
 
-    if (values.outcome === "COMPLETED") {
-      await completeMutation.mutateAsync({
-        id: appointment.id,
-        data: values,
-      });
-    } else {
+    if (values.outcome === "CANCELLED") {
       await cancelMutation.mutateAsync(appointment.id);
+      handleOpenChange(false);
+      return;
     }
 
-    // If test is toggled on and patient attended, go to test step
-    if (values.showTest && values.outcome === "COMPLETED") {
+    if (values.showTest) {
+      setSavedSessionValues(values);
       setWizardStep("test");
       return;
     }
 
+    await completeMutation.mutateAsync({
+      id: appointment.id,
+      data: values,
+    });
     handleOpenChange(false);
   }
 
   function handleTestSubmit(_testValues: DistressFormValues) {
-    // TODO: save test results to backend
+    if (savedSessionValues && appointment) {
+      completeMutation.mutate({
+        id: appointment.id,
+        data: savedSessionValues,
+      });
+    }
     handleOpenChange(false);
   }
 
@@ -341,12 +348,11 @@ export function AgendaSessionResultSheet({
                 )}
               </div>
 
-              <SheetFooter className="border-border/60 shrink-0 border-t p-4">
+              <SheetFooter className="border-border/60 shrink-0 border-t p-4 flex items-center justify-between">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => handleOpenChange(false)}
-                  className="flex-1"
                 >
                   Cancelar
                 </Button>
@@ -355,12 +361,11 @@ export function AgendaSessionResultSheet({
                   disabled={
                     isPending || isSubmitting || !appointment
                   }
-                  className="flex-1"
                 >
                   {isPending
                     ? "Guardando..."
                     : watch("showTest") && isCompleting
-                      ? "Guardar y continuar al test"
+                      ? "Siguiente"
                       : "Guardar sesión"}
                 </Button>
               </SheetFooter>

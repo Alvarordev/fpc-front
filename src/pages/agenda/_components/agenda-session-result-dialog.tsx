@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, FlaskConical } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { appointmentsApi } from "@/lib/api";
 import { toast } from "sonner";
 import type { PsychooncologyAppointment, ReferralType } from "@/types";
+import {
+  DistressThermometer,
+  type DistressFormValues,
+} from "./distress-thermometer";
 
 const STORAGE_PREFIX = "agenda-session-form-";
 
@@ -40,6 +44,7 @@ interface FormValues {
   additionalObservations: string;
   recommendations: string;
   referral: ReferralType | "";
+  showTest: boolean;
 }
 
 interface AgendaSessionResultDialogProps {
@@ -60,6 +65,8 @@ export function AgendaSessionResultDialog({
 }: AgendaSessionResultDialogProps) {
   const queryClient = useQueryClient();
   const storageKey = appointment ? `${STORAGE_PREFIX}${appointment.id}` : "";
+  const [wizardStep, setWizardStep] = useState<"session" | "test">("session");
+  const [savedSessionValues, setSavedSessionValues] = useState<FormValues | null>(null);
 
   const loadDraft = useCallback((): FormValues => {
     if (!appointment) return getDefaults();
@@ -81,14 +88,12 @@ export function AgendaSessionResultDialog({
     defaultValues: getDefaults(),
   });
 
-  // Save draft to sessionStorage on every change
   const watchedValues = watch();
   useEffect(() => {
     if (!appointment || !open) return;
     sessionStorage.setItem(storageKey, JSON.stringify(watchedValues));
   }, [watchedValues, appointment, open, storageKey]);
 
-  // Restore draft when opening
   useEffect(() => {
     if (open && appointment) {
       reset(loadDraft());
@@ -134,12 +139,20 @@ export function AgendaSessionResultDialog({
     if (!nextOpen) {
       reset(getDefaults());
       clearDraft();
+      setWizardStep("session");
     }
     onOpenChange(nextOpen);
   }
 
   async function onSubmit(values: FormValues) {
     if (!appointment) return;
+
+    if (values.showTest) {
+      setSavedSessionValues(values);
+      setWizardStep("test");
+      return;
+    }
+
     await completeMutation.mutateAsync({
       id: appointment.id,
       data: values,
@@ -147,7 +160,21 @@ export function AgendaSessionResultDialog({
     handleOpenChange(false);
   }
 
-  async function handleCancel() {
+  function handleTestSubmit(_testValues: DistressFormValues) {
+    if (savedSessionValues && appointment) {
+      completeMutation.mutate({
+        id: appointment.id,
+        data: savedSessionValues,
+      });
+    }
+    handleOpenChange(false);
+  }
+
+  function handleTestCancel() {
+    handleOpenChange(false);
+  }
+
+  async function handleCancelSession() {
     if (!appointment) return;
     await cancelMutation.mutateAsync(appointment.id);
     handleOpenChange(false);
@@ -155,118 +182,166 @@ export function AgendaSessionResultDialog({
 
   const isPending = completeMutation.isPending || cancelMutation.isPending;
   const timeDisplay = appointment?.scheduledAt.slice(11, 16) ?? "";
+  const showTest = watch("showTest");
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle>Registrar sesión</DialogTitle>
-            <DialogDescription className="flex items-center gap-2 mt-1">
-              <span>
-                {patientName} · {timeDisplay}
-              </span>
-              <a
-                href={`/pacientes/${patientId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
-              >
-                Ver ficha
-                <ExternalLink className="size-3" />
-              </a>
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+        {wizardStep === "session" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Registrar sesión</DialogTitle>
+              <DialogDescription className="flex items-center gap-2 mt-1">
+                <span>
+                  {patientName} · {timeDisplay}
+                </span>
+                <a
+                  href={`/pacientes/${patientId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+                >
+                  Ver ficha
+                  <ExternalLink className="size-3" />
+                </a>
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-5 py-2">
-            {/* Topic addressed */}
-            <div className="space-y-2">
-              <Label>Tema abordado</Label>
-              <Textarea
-                {...register("topicAddressed")}
-                placeholder="Ej: Ansiedad por diagnóstico oncológico, manejo del duelo..."
-                className="min-h-20 resize-none"
-              />
-            </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col min-h-0 flex-1">
+              <div className="flex gap-6 min-h-0 flex-1">
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto py-2">
+                  <div className="space-y-2">
+                    <Label>Tema abordado</Label>
+                    <Textarea
+                      {...register("topicAddressed")}
+                      placeholder="Ej: Ansiedad por diagnóstico oncológico, manejo del duelo..."
+                      className="min-h-20 resize-none"
+                    />
+                  </div>
 
-            {/* Session details */}
-            <div className="space-y-2">
-              <Label>Detalles de la sesión</Label>
-              <Textarea
-                {...register("sessionDetails")}
-                placeholder="Describí lo trabajado durante la sesión: técnicas, ejercicios, dinámicas..."
-                className="min-h-24 resize-none"
-              />
-            </div>
+                  <div className="space-y-2">
+                    <Label>Detalles de la sesión</Label>
+                    <Textarea
+                      {...register("sessionDetails")}
+                      placeholder="Describí lo trabajado durante la sesión..."
+                      className="min-h-24 resize-none"
+                    />
+                  </div>
 
-            {/* Additional observations */}
-            <div className="space-y-2">
-              <Label>Observaciones adicionales</Label>
-              <Textarea
-                {...register("additionalObservations")}
-                placeholder="Actitud del paciente, nivel de participación, estado anímico..."
-                className="min-h-20 resize-none"
-              />
-            </div>
+                  <div className="space-y-2">
+                    <Label>Observaciones adicionales</Label>
+                    <Textarea
+                      {...register("additionalObservations")}
+                      placeholder="Actitud del paciente, nivel de participación..."
+                      className="min-h-20 resize-none"
+                    />
+                  </div>
 
-            {/* Recommendations */}
-            <div className="space-y-2">
-              <Label>Recomendaciones</Label>
-              <Textarea
-                {...register("recommendations")}
-                placeholder="Ejercicios para casa, lecturas sugeridas, pautas para la próxima sesión..."
-                className="min-h-20 resize-none"
-              />
-            </div>
+                  <div className="space-y-2">
+                    <Label>Recomendaciones</Label>
+                    <Textarea
+                      {...register("recommendations")}
+                      placeholder="Ejercicios para casa, lecturas sugeridas..."
+                      className="min-h-20 resize-none"
+                    />
+                  </div>
 
-            {/* Referral */}
-            <div className="space-y-2">
-              <Label>Derivación</Label>
-              <Controller
-                name="referral"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger>
-                      {field.value
-                        ? referralLabels[field.value as ReferralType]
-                        : <SelectValue placeholder="Seleccionar derivación (opcional)" />}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(referralLabels).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>
-                          {v}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </div>
+                  <div className="space-y-2">
+                    <Label>Derivación</Label>
+                    <Controller
+                      name="referral"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            {field.value
+                              ? referralLabels[field.value as ReferralType]
+                              : <SelectValue placeholder="Seleccionar derivación (opcional)" />}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(referralLabels).map(([k, v]) => (
+                              <SelectItem key={k} value={k}>
+                                {v}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isPending}
-            >
-              Cancelar sesión
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending || isSubmitting || !appointment}
-            >
-              {completeMutation.isPending
-                ? "Guardando..."
-                : "Completar sesión"}
-            </Button>
-          </DialogFooter>
-        </form>
+                <aside className="w-48 shrink-0 border-l border-border/60 pl-4">
+                  <Controller
+                    name="showTest"
+                    control={control}
+                    render={({ field }) => (
+                      <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-border/60 bg-muted/20 p-4">
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="mt-0.5 size-4 rounded accent-primary cursor-pointer shrink-0"
+                        />
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <FlaskConical className="size-3 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-medium leading-tight">
+                              Termómetro de Distrés
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Test NCCN para evaluar malestar en la última semana.
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                  />
+                </aside>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelSession}
+                  disabled={isPending}
+                >
+                  Cancelar sesión
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending || isSubmitting || !appointment}
+                >
+                  {isPending
+                    ? "Guardando..."
+                    : showTest
+                      ? "Siguiente"
+                      : "Completar sesión"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Termómetro de Distrés</DialogTitle>
+              <DialogDescription className="mt-1">
+                <span className="text-xs text-muted-foreground">
+                  {patientName}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+
+            <DistressThermometer
+              onSubmit={handleTestSubmit}
+              onCancel={handleTestCancel}
+            />
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -279,5 +354,6 @@ function getDefaults(): FormValues {
     additionalObservations: "",
     recommendations: "",
     referral: "",
+    showTest: false,
   };
 }
