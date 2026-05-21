@@ -1,9 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Phone, CalendarClock, PhoneCall, Clock, ArrowRight, User } from "lucide-react";
+import { Phone, CalendarClock, PhoneCall, Clock, ArrowRight, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 import { contactsApi, agentsApi, patientsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -69,24 +68,31 @@ export default function AgentAgendaPage() {
     (c) => isToday(c.scheduledAt) || isToday(c.completedAt),
   );
 
-  function PatientName({ patientId }: { patientId: string }) {
+  function PatientInfo({ patientId }: { patientId: string }) {
     const { data: patient } = useQuery({
       queryKey: ["patients", patientId],
       queryFn: () => patientsApi.getById(patientId),
       enabled: Boolean(patientId),
       staleTime: 60 * 1000,
     });
-    if (!patient) return <span className="text-muted-foreground">—</span>;
+    if (!patient) return null;
+
     return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          navigate(`/pacientes/${patientId}`);
-        }}
-        className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate max-w-[180px]"
-      >
-        {patient.fullName}
-      </button>
+      <div className="min-w-0">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/pacientes/${patientId}`);
+          }}
+          className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate max-w-[180px] block text-left"
+        >
+          {patient.fullName}
+        </button>
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+          <Phone className="size-3" />
+          {patient.primaryPhone}
+        </p>
+      </div>
     );
   }
 
@@ -151,12 +157,15 @@ export default function AgentAgendaPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <PatientName patientId={contact.patientId} />
-                          <Badge variant="outline" className="text-[10px] shrink-0">
+                          <PatientInfo patientId={contact.patientId} />
+                          <Badge variant="outline" className="text-[10px] shrink-0 self-start mt-0.5">
                             {typeLabels[contact.type]}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <Calendar className="size-3" />
+                          <span>{formatDate(contact.scheduledAt ?? "")}</span>
+                          <span>·</span>
                           <Clock className="size-3" />
                           <span>{formatTime(contact.scheduledAt)}</span>
                           {contact.purpose && (
@@ -234,7 +243,7 @@ export default function AgentAgendaPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <PatientName patientId={contact.patientId} />
+                          <PatientInfo patientId={contact.patientId} />
                           <Badge
                             variant={
                               contact.status === "COMPLETED"
@@ -243,7 +252,7 @@ export default function AgentAgendaPage() {
                                   ? "outline"
                                   : "secondary"
                             }
-                            className="text-[10px] shrink-0"
+                            className="text-[10px] shrink-0 self-start mt-0.5"
                           >
                             {contact.status === "COMPLETED"
                               ? "Completado"
