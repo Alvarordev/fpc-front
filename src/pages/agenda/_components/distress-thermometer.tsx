@@ -146,32 +146,20 @@ export function DistressThermometer({
 
         {/* ── 0-10 Scale ── */}
         <div className="space-y-3">
-          <div className="flex items-end justify-center gap-1 sm:gap-1.5">
+          <div className="flex items-center justify-center gap-0.5 flex-wrap sm:flex-nowrap">
             {Array.from({ length: 11 }, (_, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setScore(i)}
                 className={cn(
-                  "flex flex-col items-center gap-1 transition-all",
-                  score === i ? "scale-110" : "",
+                  "flex size-8 items-center justify-center rounded-full border-2 text-xs font-semibold transition-colors shrink-0",
+                  score === i
+                    ? `${scaleColor(i)} border-transparent text-white shadow-md scale-110`
+                    : "border-muted-foreground/20 bg-muted/30 text-muted-foreground hover:border-muted-foreground/40",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-9 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors",
-                    score === i
-                      ? `${scaleColor(i)} border-transparent text-white shadow-md`
-                      : "border-muted-foreground/20 bg-muted/30 text-muted-foreground hover:border-muted-foreground/40",
-                  )}
-                >
-                  {i}
-                </span>
-                {(i === 0 || i === 5 || i === 10) && (
-                  <span className="text-[10px] text-muted-foreground mt-0.5 leading-tight text-center">
-                    {i === 0 ? "Sin\ndistrés" : i === 5 ? "Moderado" : "Extremo"}
-                  </span>
-                )}
+                {i}
               </button>
             ))}
           </div>
