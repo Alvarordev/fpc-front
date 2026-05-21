@@ -1,73 +1,149 @@
-# React + TypeScript + Vite
+# FPC Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend React + Vite preparado para correr:
 
-Currently, two official plugins are available:
+- en desarrollo con `pnpm dev`
+- en un contenedor propio
+- detras de `nginx` en el mismo origen que el backend publicado por el VPS
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Variables de entorno
 
-## React Compiler
+`VITE_API_URL`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Dejar vacio para mismo origen.
+- Tambien acepta una URL absoluta si alguna vez necesitas publicar el frontend bajo otro origen.
+- Valores recomendados para el VPS:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_API_URL=
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+`VITE_API_PROXY_TARGET`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Solo se usa en `pnpm dev`.
+- Permite que Vite proxyee `/auth`, `/api`, `/users` y `/agents` a un backend local o remoto mientras desarrollas.
+- Ejemplo:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_API_PROXY_TARGET=http://127.0.0.1:8082
 ```
+
+## Rutas que usa el frontend
+
+Rutas principales del login y del flujo API:
+
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `/api/...`
+
+Rutas adicionales que el frontend actual tambien consume para pantallas administrativas:
+
+- `/users...`
+- `/agents...`
+
+Todas quedan relativas al mismo origen cuando `VITE_API_URL` esta vacio.
+
+## Desarrollo local
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Si quieres que el frontend hable con un backend mientras corres Vite, crea un `.env` con:
+
+```env
+VITE_API_URL=
+VITE_API_PROXY_TARGET=http://127.0.0.1:8082
+```
+
+## Build de produccion
+
+```bash
+pnpm build
+```
+
+## Docker
+
+Build manual:
+
+```bash
+docker build -t fpc-frontend:local --build-arg VITE_API_URL= .
+docker run -d --name fpc-frontend-dev --restart unless-stopped -p 127.0.0.1:3000:80 fpc-frontend:local
+```
+
+Con Compose:
+
+```bash
+docker compose -f docker-compose.frontend.yml up -d --build
+```
+
+El contenedor sirve los estaticos con `nginx` interno y fallback SPA para rutas como `/login` o `/dashboard`.
+
+## Nginx en el VPS
+
+Resumen esperado:
+
+- `http://IP:8084/` sirve el frontend
+- `http://IP:8084/login` carga la SPA
+- `/auth` y `/api` se proxyean a `http://127.0.0.1:8082`
+- `/users` y `/agents` tambien se proxyean porque el frontend actual los usa
+
+Bloque sugerido para el `nginx` del host:
+
+```nginx
+server {
+    listen 8084;
+    server_name _;
+
+    location /auth {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /users {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /agents {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Pasos tipicos en el VPS:
+
+```bash
+docker compose -f docker-compose.frontend.yml up -d --build
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Si ya administras `nginx` desde un archivo consolidado, agrega ese `server` block al archivo que corresponda.

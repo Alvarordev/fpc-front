@@ -1,0 +1,11 @@
+services:
+  frontend:
+    container_name: fpc-frontend-dev
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL-}
+    image: fpc-frontend:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
