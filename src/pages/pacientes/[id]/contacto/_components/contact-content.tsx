@@ -35,7 +35,7 @@ import {
 } from "./patient-update-tabs";
 import { PsicoSessionDialog, type PsicoFormValues } from "./psico-session-dialog";
 import { AlertDialog, type AlertFormValues } from "./alert-dialog";
-import { ScheduleContactDialog, type ScheduleFormValues } from "../../_components/schedule-contact-dialog";
+import { ScheduleContactDialog } from "../../_components/schedule-contact-dialog";
 import { toast } from "sonner";
 import type { ContactType, ContactPurpose } from "@/types";
 

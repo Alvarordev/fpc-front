@@ -170,21 +170,19 @@ export function AgendaSessionResultSheet({
       >
         <SheetHeader className="border-border/60 border-b px-4 py-4 shrink-0">
           <SheetTitle>Registrar sesión</SheetTitle>
-          <SheetDescription asChild>
-            <div className="flex items-center gap-2 mt-1">
-              <span>
-                {patientName} · {timeDisplay}
-              </span>
-              <a
-                href={`/pacientes/${patientId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
-              >
-                Ver ficha
-                <ExternalLink className="size-3" />
-              </a>
-            </div>
+          <SheetDescription className="flex items-center gap-2 mt-1">
+            <span>
+              {patientName} · {timeDisplay}
+            </span>
+            <a
+              href={`/pacientes/${patientId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+            >
+              Ver ficha
+              <ExternalLink className="size-3" />
+            </a>
           </SheetDescription>
         </SheetHeader>
 

@@ -35,7 +35,7 @@ export function HealthCentersToolbar({
         />
       </div>
 
-      <Select value={department} onValueChange={onDepartmentChange}>
+      <Select value={department} onValueChange={(v) => onDepartmentChange(v ?? "all")}>
         <SelectTrigger className="h-8 w-44 text-sm bg-background">
           <div className="flex items-center gap-2">
             <MapPin className="size-3 text-muted-foreground shrink-0" />

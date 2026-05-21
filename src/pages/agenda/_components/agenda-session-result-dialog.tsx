@@ -162,21 +162,19 @@ export function AgendaSessionResultDialog({
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Registrar sesión</DialogTitle>
-            <DialogDescription asChild>
-              <div className="flex items-center gap-2 mt-1">
-                <span>
-                  {patientName} · {timeDisplay}
-                </span>
-                <a
-                  href={`/pacientes/${patientId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
-                >
-                  Ver ficha
-                  <ExternalLink className="size-3" />
-                </a>
-              </div>
+            <DialogDescription className="flex items-center gap-2 mt-1">
+              <span>
+                {patientName} · {timeDisplay}
+              </span>
+              <a
+                href={`/pacientes/${patientId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+              >
+                Ver ficha
+                <ExternalLink className="size-3" />
+              </a>
             </DialogDescription>
           </DialogHeader>
 

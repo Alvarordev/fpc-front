@@ -106,11 +106,9 @@ export function PsicoSessionDetailDialog({
               {statusLabels[appointment.status]}
             </Badge>
           </div>
-          <DialogDescription asChild>
-            <div className="flex items-center gap-1.5 text-sm mt-1">
-              <User className="size-3.5 text-muted-foreground" />
-              <span>{volunteerName}</span>
-            </div>
+          <DialogDescription className="flex items-center gap-1.5 text-sm mt-1">
+            <User className="size-3.5 text-muted-foreground" />
+            <span>{volunteerName}</span>
           </DialogDescription>
         </DialogHeader>
 

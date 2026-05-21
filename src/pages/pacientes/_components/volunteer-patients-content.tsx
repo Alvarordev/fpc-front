@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { appointmentsApi, patientsApi } from "@/lib/api";
 import { useVolunteerProfile } from "@/hooks/use-volunteer-profile";
 import type {
-  PsychooncologyAppointment,
   Patient,
   AppointmentStatus,
 } from "@/types";

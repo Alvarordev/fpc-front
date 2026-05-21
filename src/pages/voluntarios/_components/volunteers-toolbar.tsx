@@ -41,7 +41,7 @@ export function VolunteersToolbar({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={volunteerId} onValueChange={onVolunteerIdChange}>
+        <Select value={volunteerId} onValueChange={(v) => onVolunteerIdChange(v ?? "all")}>
           <SelectTrigger className="h-8 w-56 text-sm bg-background">
             <div className="flex items-center gap-2 truncate">
               <User className="size-3.5 text-muted-foreground shrink-0" />

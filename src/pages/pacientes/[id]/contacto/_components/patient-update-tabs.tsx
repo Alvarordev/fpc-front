@@ -149,7 +149,7 @@ export function PatientUpdateTabs({
             <Label>Nivel educativo</Label>
             <Select
               value={detailsForm.watch("educationLevel")}
-              onValueChange={(v) => detailsForm.setValue("educationLevel", v)}
+              onValueChange={(v) => detailsForm.setValue("educationLevel", v ?? "")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar" />
@@ -211,7 +211,7 @@ export function PatientUpdateTabs({
             <Label>Establecimiento de salud</Label>
             <Select
               value={diagnosisForm.watch("healthCenterId")}
-              onValueChange={(v) => diagnosisForm.setValue("healthCenterId", v)}
+              onValueChange={(v) => diagnosisForm.setValue("healthCenterId", v ?? "")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar" />
@@ -249,7 +249,7 @@ export function PatientUpdateTabs({
             <Label>Diagnóstico asociado</Label>
             <Select
               value={treatmentForm.watch("diagnosisId")}
-              onValueChange={(v) => treatmentForm.setValue("diagnosisId", v)}
+              onValueChange={(v) => treatmentForm.setValue("diagnosisId", v ?? "")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar diagnóstico" />
@@ -284,7 +284,7 @@ export function PatientUpdateTabs({
             <Label>Establecimiento</Label>
             <Select
               value={treatmentForm.watch("healthCenterId")}
-              onValueChange={(v) => treatmentForm.setValue("healthCenterId", v)}
+              onValueChange={(v) => treatmentForm.setValue("healthCenterId", v ?? "")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar" />
