@@ -58,9 +58,11 @@ const epsOptions: Record<EpsProvider, string> = {
 export interface PatientDetailsFormValues {
   currentAddress: string;
   currentDistrict: string;
+  currentDepartment: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
   educationLevel: string;
+  nativeLanguage: string;
   requiresTranslation: boolean;
 }
 
@@ -144,6 +146,14 @@ export function PatientUpdateTabs({
           <div className="space-y-2">
             <Label>Teléfono de emergencia</Label>
             <Input {...detailsForm.register("emergencyContactPhone")} placeholder="+51999000000" />
+          </div>
+          <div className="space-y-2">
+            <Label>Departamento</Label>
+            <Input {...detailsForm.register("currentDepartment")} placeholder="Lima" />
+          </div>
+          <div className="space-y-2">
+            <Label>Lengua nativa</Label>
+            <Input {...detailsForm.register("nativeLanguage")} placeholder="Español, Quechua..." />
           </div>
           <div className="space-y-2">
             <Label>Nivel educativo</Label>
@@ -376,9 +386,11 @@ export function PatientUpdateTabs({
 export const patientDetailsDefaults: PatientDetailsFormValues = {
   currentAddress: "",
   currentDistrict: "",
+  currentDepartment: "",
   emergencyContactName: "",
   emergencyContactPhone: "",
   educationLevel: "",
+  nativeLanguage: "",
   requiresTranslation: false,
 };
 

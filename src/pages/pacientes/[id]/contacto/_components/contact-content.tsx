@@ -153,6 +153,53 @@ export function ContactContent() {
     }
   }, [existingContact, isScheduleMode, completeForm]);
 
+  // Pre-fill patient sub-entity forms from existing patient data
+  useEffect(() => {
+    if (!patient) return;
+
+    const d = patient.details;
+    detailsForm.reset({
+      currentAddress: d?.currentAddress ?? "",
+      currentDistrict: d?.currentDistrict ?? "",
+      currentDepartment: d?.currentDepartment ?? "",
+      emergencyContactName: d?.emergencyContactName ?? "",
+      emergencyContactPhone: d?.emergencyContactPhone ?? "",
+      educationLevel: d?.educationLevel ?? "",
+      nativeLanguage: d?.nativeLanguage ?? "",
+      requiresTranslation: d?.requiresTranslation ?? false,
+    });
+
+    const currentDx = patient.diagnoses?.find((dx) => dx.isCurrent) ?? patient.diagnoses?.[0];
+    diagnosisForm.reset({
+      diagnosis: currentDx?.diagnosis ?? "",
+      cancerStage: currentDx?.cancerStage ?? "UNKNOWN",
+      diagnosisDate: currentDx?.diagnosisDate ?? "",
+      healthCenterId: currentDx?.healthCenterId ?? "",
+      symptomLeadingToCheckup: currentDx?.symptomLeadingToCheckup ?? "",
+      waitTimeForDiagnosis: currentDx?.waitTimeForDiagnosis ?? "",
+      hasMedicalReport: currentDx?.hasMedicalReport ?? false,
+    });
+
+    const currentTx = patient.treatments?.find((tx) => tx.isCurrent) ?? patient.treatments?.[0];
+    treatmentForm.reset({
+      diagnosisId: currentTx?.diagnosis?.id ?? currentDx?.id ?? "",
+      treatmentType: currentTx?.treatmentType ?? "",
+      treatmentFrequency: currentTx?.treatmentFrequency ?? "",
+      healthCenterId: currentTx?.healthCenterId ?? "",
+      startDate: currentTx?.startDate ?? "",
+    });
+
+    const currentIns = patient.insurance?.find((ins) => ins.isCurrent) ?? patient.insurance?.[0];
+    insuranceForm.reset({
+      insuranceType: currentIns?.insuranceType ?? "SIS",
+      epsProvider: currentIns?.epsProvider ?? "",
+      changeReason: currentIns?.changeReason ?? "",
+      startDate: currentIns?.startDate ?? "",
+      canAffiliate: patient.sisAffiliations?.some((s) => s.canAffiliate) ?? true,
+      expectedDate: patient.sisAffiliations?.find((s) => s.expectedDate)?.expectedDate ?? "",
+    });
+  }, [patient, detailsForm, diagnosisForm, treatmentForm, insuranceForm]);
+
   // Mutations
   const createContactMutation = useMutation({
     mutationFn: (data: any) => contactsApi.create(data),
@@ -266,9 +313,11 @@ export function ContactContent() {
       await updateDetailsMutation.mutateAsync({
         currentAddress: detailValues.currentAddress || undefined,
         currentDistrict: detailValues.currentDistrict || undefined,
+        currentDepartment: detailValues.currentDepartment || undefined,
         emergencyContactName: detailValues.emergencyContactName || undefined,
         emergencyContactPhone: detailValues.emergencyContactPhone || undefined,
         educationLevel: detailValues.educationLevel || undefined,
+        nativeLanguage: detailValues.nativeLanguage || undefined,
         requiresTranslation: detailValues.requiresTranslation || undefined,
       });
     }
