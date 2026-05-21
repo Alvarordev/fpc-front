@@ -37,6 +37,7 @@ export function Step8Cierre() {
         agentId = agents[0]?.id
       }
 
+      const today = new Date().toISOString().slice(0, 10)
       const payload: FullEnrollmentRequest = {
         patientId: draft.patientId,
         patientData: draft.patientData.fullName ? draft.patientData : undefined,
@@ -50,8 +51,8 @@ export function Step8Cierre() {
         companions: null,
         enrollmentMetadata: {
           caseComments: meta.comments || null,
-          startTime: meta.startTime ? `2025-01-01T${meta.startTime}:00` : null,
-          endTime: meta.endTime ? `2025-01-01T${meta.endTime}:00` : null,
+          startTime: meta.startTime ? `${today}T${meta.startTime}:00Z` : null,
+          endTime: meta.endTime ? `${today}T${meta.endTime}:00Z` : null,
           dataPolicyAccepted: meta.dataPolicyAccepted,
           informedConsentAccepted: meta.informedConsentAccepted,
           isOncologicalPatient: meta.isOncologicalPatient,

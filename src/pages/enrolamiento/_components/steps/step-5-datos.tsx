@@ -24,8 +24,6 @@ export function Step5Datos() {
           <div className="flex flex-col gap-2"><Label className={fl}>Fecha de nacimiento <span className="text-destructive">*</span></Label><Input type="date" className={ic} value={pd.birthDate??""} onChange={e=>updateDraft({patientData:{...pd,birthDate:e.target.value||null}})} /></div>
         </div>
         <div className="flex flex-col gap-2"><Label className={fl}>Nombre completo <span className="text-destructive">*</span></Label><Input placeholder="Tal como aparece en el DNI" className={ic} value={pd.fullName} onChange={e=>updateDraft({patientData:{...pd,fullName:e.target.value}})} /></div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Rol</Label>
-          <Select value={pd.role??"PATIENT"} onValueChange={v=>updateDraft({patientData:{...pd,role:v as any}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="PATIENT">Paciente</SelectItem><SelectItem value="COMPANION">Acompañante</SelectItem></SelectContent></Select></div>
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos Demográficos" />
         <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={d.currentAddress??""} onChange={e=>updateDraft({details:{...d,currentAddress:e.target.value||null}})} /></div>
