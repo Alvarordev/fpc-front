@@ -120,20 +120,20 @@ export function PatientDetailContent() {
                 `/pacientes/${patient.id}/contacto?contactId=${nextScheduled.id}`,
               )
             }
-            className="shrink-0 flex items-center gap-2 text-sm group cursor-pointer"
+            className="shrink-0 flex items-center gap-2.5 text-sm group cursor-pointer py-1"
           >
-            <div className="flex size-8 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
+            <div className="flex size-9 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
               <CalendarClock className="size-4 text-amber-600" />
             </div>
-            <div>
-              <p className="font-medium text-foreground group-hover:text-amber-700 transition-colors">
+            <div className="text-right">
+              <p className="font-medium text-foreground group-hover:text-amber-700 transition-colors leading-tight">
                 {new Date(nextScheduled.scheduledAt!).toLocaleDateString(
                   "es-PE",
                   { day: "numeric", month: "short" },
                 )}
               </p>
-              <p className="text-xs text-muted-foreground">
-                próximo contacto — clic para completar
+              <p className="text-xs text-muted-foreground leading-tight">
+                próximo contacto
               </p>
             </div>
           </button>
