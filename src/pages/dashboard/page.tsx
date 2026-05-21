@@ -136,7 +136,7 @@ export function DashboardPage() {
                 </h1>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground lg:text-base">
                   Una vista única para seguir captación, continuidad y desempeño
-                  de psicooncología sobre la cohorte seleccionada.
+                  de psicooncología del periodo seleccionado.
                 </p>
               </div>
             </div>
@@ -211,7 +211,7 @@ export function DashboardPage() {
               )}
 
               <div className="rounded-2xl border border-border/70 bg-card px-4 py-2 text-sm text-muted-foreground">
-                Cohorte:{" "}
+                Periodo:{" "}
                 <span className="font-medium text-foreground">
                   {snapshot.periodLabel}
                 </span>
@@ -230,7 +230,7 @@ export function DashboardPage() {
             <CardDescription>
               {dashboardData.error instanceof Error
                 ? dashboardData.error.message
-                : "Verifica la conexión con el backend y vuelve a intentar."}
+                : "Verifica la conexión con el servidor y vuelve a intentar."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -241,7 +241,7 @@ export function DashboardPage() {
           <section className="grid gap-4 xl:grid-cols-2">
             <ChartCard
               title="Neoplasias dominantes"
-              description="Distribución de diagnósticos principales de la cohorte enrolada."
+              description="Distribución de diagnósticos principales de los pacientes enrolados."
               badge="Clínico"
             >
               <DonutChart data={snapshot.neoplasiaDistribution} centerLabel="Neoplasias" />
@@ -268,16 +268,16 @@ export function DashboardPage() {
 
           <section className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
             <ChartCard
-              title="Enrolados, fallecidos y drop-outs"
+              title="Enrolados, fallecidos y bajas"
               description="Serie temporal de altas, cierres inactivos y señales de fallecimiento."
               badge="Continuidad"
-              footer="Fallecidos es una señal inferida: hoy el backend no expone un motivo explícito de inactivación."
+               footer="Fallecidos es una señal inferida a partir de los datos disponibles."
             >
               <IndicatorTrendChart data={snapshot.enrollmentTrend} />
             </ChartCard>
 
             <ChartCard
-              title="Cohorte por región"
+              title="Pacientes por región"
               description="Origen o centro de referencia principal del paciente."
               badge="Territorio"
             >
@@ -332,10 +332,10 @@ export function DashboardPage() {
                   <div>
                     <CardTitle className="text-lg">Indicadores de continuidad</CardTitle>
                     <CardDescription>
-                      Resumen corto para seguimiento ejecutivo del cohorte.
+                      Resumen para seguimiento ejecutivo.
                     </CardDescription>
                   </div>
-                  <Badge variant="outline">Snapshot</Badge>
+                   <Badge variant="outline">Resumen</Badge>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4 p-6 sm:grid-cols-3">
@@ -381,7 +381,7 @@ export function DashboardPage() {
 
             <TableCard
               title="Regiones con mayor movimiento"
-              description="Cruce entre cohorte registrada y volumen de sesiones del periodo."
+              description="Cruce entre pacientes registrados y volumen de sesiones del periodo."
             >
               <Table>
                 <TableHeader>
@@ -712,7 +712,7 @@ function IndicatorTrendChart({ data }: { data: TrendDatum[] }) {
           <Legend />
           <Bar
             dataKey="dropouts"
-            name="Drop-outs"
+            name="Bajas"
             fill="var(--chart-4)"
             radius={[8, 8, 0, 0]}
           />

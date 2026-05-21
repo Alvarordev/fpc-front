@@ -221,7 +221,7 @@ export function buildDashboardSnapshot(
     completionMix: [
       { label: "Enrolados", value: enrolledPatients.length, tone: "primary" },
       { label: "Fallecidos", value: inferredDeceasedPatients.length, tone: "danger" },
-      { label: "Drop-outs", value: inactivePatients.length, tone: "muted" },
+      { label: "Bajas", value: inactivePatients.length, tone: "muted" },
     ],
     neoplasiaDistribution,
     hospitalDistribution,
