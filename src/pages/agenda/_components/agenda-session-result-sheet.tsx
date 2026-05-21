@@ -4,7 +4,6 @@ import { ExternalLink, FlaskConical } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -248,6 +247,34 @@ export function AgendaSessionResultSheet({
                 {/* Completion fields — only when patient attended */}
                 {isCompleting && (
                   <>
+                    {/* ── Test toggle — visible at the top ── */}
+                    <Controller
+                      name="showTest"
+                      control={control}
+                      render={({ field }) => (
+                        <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-border/60 bg-muted/20 p-4">
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={(e) => field.onChange(e.target.checked)}
+                            className="mt-0.5 size-4 rounded accent-primary cursor-pointer"
+                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <FlaskConical className="size-3.5 text-muted-foreground" />
+                              <span className="text-sm font-medium">
+                                Aplicar Termómetro de Distrés
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              Test de screening rápido (NCCN). Evalúa el nivel
+                              de malestar en la última semana.
+                            </p>
+                          </div>
+                        </label>
+                      )}
+                    />
+
                     <div className="space-y-2">
                       <Label>Tema abordado</Label>
                       <Textarea
@@ -307,35 +334,6 @@ export function AgendaSessionResultSheet({
                               ))}
                             </SelectContent>
                           </Select>
-                        )}
-                      />
-                    </div>
-
-                    {/* ── Test toggle ── */}
-                    <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                      <Controller
-                        name="showTest"
-                        control={control}
-                        render={({ field }) => (
-                          <label className="flex items-start gap-3 cursor-pointer">
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              className="mt-0.5"
-                            />
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <FlaskConical className="size-3.5 text-muted-foreground" />
-                                <span className="text-sm font-medium">
-                                  Aplicar Termómetro de Distrés
-                                </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                Test de screening rápido (NCCN). Evalúa el nivel
-                                de malestar en la última semana.
-                              </p>
-                            </div>
-                          </label>
                         )}
                       />
                     </div>
