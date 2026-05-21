@@ -166,9 +166,9 @@ export function AgendaSessionResultSheet({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[85vh] rounded-t-xl"
+        className="flex h-full max-h-[85vh] flex-col rounded-t-xl"
       >
-        <SheetHeader className="border-border/60 border-b px-4 py-4">
+        <SheetHeader className="border-border/60 border-b px-4 py-4 shrink-0">
           <SheetTitle>Registrar sesión</SheetTitle>
           <SheetDescription asChild>
             <div className="flex items-center gap-2 mt-1">
@@ -190,9 +190,9 @@ export function AgendaSessionResultSheet({
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="flex h-full flex-col"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex-1 space-y-5 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
             {/* Outcome selector */}
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
@@ -291,7 +291,7 @@ export function AgendaSessionResultSheet({
             )}
           </div>
 
-          <SheetFooter className="border-border/60 border-t p-4">
+          <SheetFooter className="border-border/60 shrink-0 border-t p-4">
             <Button
               type="button"
               variant="outline"

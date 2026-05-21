@@ -1,0 +1,31 @@
+export const DEPARTMENTS: { value: string; label: string }[] = [
+  { value: "AMAZONAS", label: "Amazonas" },
+  { value: "ANCASH", label: "Áncash" },
+  { value: "APURIMAC", label: "Apurímac" },
+  { value: "AREQUIPA", label: "Arequipa" },
+  { value: "AYACUCHO", label: "Ayacucho" },
+  { value: "CAJAMARCA", label: "Cajamarca" },
+  { value: "CALLAO", label: "Callao" },
+  { value: "CUSCO", label: "Cusco" },
+  { value: "HUANCAVELICA", label: "Huancavelica" },
+  { value: "HUANUCO", label: "Huánuco" },
+  { value: "ICA", label: "Ica" },
+  { value: "JUNIN", label: "Junín" },
+  { value: "LA_LIBERTAD", label: "La Libertad" },
+  { value: "LAMBAYEQUE", label: "Lambayeque" },
+  { value: "LIMA", label: "Lima" },
+  { value: "LORETO", label: "Loreto" },
+  { value: "MADRE_DE_DIOS", label: "Madre de Dios" },
+  { value: "MOQUEGUA", label: "Moquegua" },
+  { value: "PASCO", label: "Pasco" },
+  { value: "PIURA", label: "Piura" },
+  { value: "PUNO", label: "Puno" },
+  { value: "SAN_MARTIN", label: "San Martín" },
+  { value: "TACNA", label: "Tacna" },
+  { value: "TUMBES", label: "Tumbes" },
+  { value: "UCAYALI", label: "Ucayali" },
+];
+
+export const DEPARTMENT_LABELS: Record<string, string> = Object.fromEntries(
+  DEPARTMENTS.map((d) => [d.value, d.label]),
+);

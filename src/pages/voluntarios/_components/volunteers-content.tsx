@@ -15,7 +15,7 @@ export function VolunteersContent() {
   const role = useAuthStore((s) => s.user?.role);
   const isReadOnly = role === "VOLUNTEER";
 
-  const [search, setSearch] = useState("");
+  const [volunteerId, setVolunteerId] = useState("all");
   const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
   const [year, setYear] = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth());
@@ -24,18 +24,16 @@ export function VolunteersContent() {
   const { data: slots = [] } = useAllSlots();
 
   const filtered = volunteers.filter((v) => {
-    const fullName = `${v.firstName} ${v.lastName}`.toLowerCase();
-    const matchesSearch =
-      !search ||
-      fullName.includes(search.toLowerCase()) ||
-      v.specialty.toLowerCase().includes(search.toLowerCase());
+    const matchesVolunteer = volunteerId === "all" || v.id === volunteerId;
     const matchesActive =
       activeFilter === null || v.isActive === activeFilter;
-    return matchesSearch && matchesActive;
+    return matchesVolunteer && matchesActive;
   });
 
   const highlightedIds =
-    search || activeFilter !== null ? filtered.map((v) => v.id) : [];
+    volunteerId !== "all" || activeFilter !== null
+      ? filtered.map((v) => v.id)
+      : [];
 
   function prevMonth() {
     if (month === 0) {
@@ -72,8 +70,9 @@ export function VolunteersContent() {
       </div>
 
       <VolunteersToolbar
-        search={search}
-        onSearchChange={setSearch}
+        volunteerId={volunteerId}
+        onVolunteerIdChange={setVolunteerId}
+        volunteers={volunteers}
         activeFilter={activeFilter}
         onActiveFilterChange={setActiveFilter}
       />

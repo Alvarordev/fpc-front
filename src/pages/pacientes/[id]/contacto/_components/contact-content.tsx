@@ -35,6 +35,7 @@ import {
 } from "./patient-update-tabs";
 import { PsicoSessionDialog, type PsicoFormValues } from "./psico-session-dialog";
 import { AlertDialog, type AlertFormValues } from "./alert-dialog";
+import { ScheduleContactDialog, type ScheduleFormValues } from "../../_components/schedule-contact-dialog";
 import { toast } from "sonner";
 import type { ContactType, ContactPurpose } from "@/types";
 
@@ -117,8 +118,10 @@ export function ContactContent() {
   // Dialogs state
   const [psicoOpen, setPsicoOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [nextContactOpen, setNextContactOpen] = useState(false);
   const [psicoDraft, setPsicoDraft] = useState<PsicoFormValues | null>(null);
   const [alertDraft, setAlertDraft] = useState<AlertFormValues | null>(null);
+  const [nextContactDraft, setNextContactDraft] = useState<ScheduleFormValues | null>(null);
 
   // Schedule form
   const scheduleForm = useForm<ScheduleFormValues>({
@@ -204,6 +207,11 @@ export function ContactContent() {
       console.error("[PsicoSession] Error body:", JSON.stringify(err?.body, null, 2));
       toast.error("Error al agendar sesión", { description: err.message });
     },
+  });
+
+  const createNextContactMutation = useMutation({
+    mutationFn: (data: any) => contactsApi.create(data),
+    onError: (err: Error) => toast.error("Error al agendar siguiente contacto", { description: err.message }),
   });
 
   const isLoading = loadingPatient || (!isScheduleMode && loadingContact);
@@ -381,6 +389,38 @@ export function ContactContent() {
       }
     }
 
+    // 9. Next contact (siguiente contacto)
+    let createdNextContactId: string | null = null;
+    if (nextContactDraft) {
+      let agentId: string | undefined;
+      if (user?.role === "AGENT") {
+        const agent = agents.find((a) => a.userId === user.id);
+        agentId = agent?.id;
+      } else if (user?.role === "ADMIN") {
+        agentId = agents[0]?.id;
+      }
+      if (agentId) {
+        const result = await createNextContactMutation.mutateAsync({
+          patientId: id!,
+          agentId,
+          type: nextContactDraft.type,
+          status: "SCHEDULED",
+          purpose: nextContactDraft.purpose,
+          scheduledAt: `${nextContactDraft.date}T${nextContactDraft.time}:00`,
+          notes: nextContactDraft.notes || undefined,
+        });
+        createdNextContactId = (result as any)?.id ?? null;
+      }
+    }
+
+    // 10. Link current contact to next contact
+    if (createdNextContactId) {
+      await updateContactMutation.mutateAsync({
+        cId: contactId,
+        data: { scheduledNextContactId: createdNextContactId },
+      });
+    }
+
     // Success
     queryClient.invalidateQueries({ queryKey: ["contacts", id] });
     queryClient.invalidateQueries({ queryKey: ["patient", id] });
@@ -398,7 +438,8 @@ export function ContactContent() {
     addSisMutation.isPending ||
     updateDetailsMutation.isPending ||
     createAlertMutation.isPending ||
-    createSessionMutation.isPending;
+    createSessionMutation.isPending ||
+    createNextContactMutation.isPending;
 
   const form = isScheduleMode ? scheduleForm : completeForm;
   const onSubmitFn = isScheduleMode
@@ -584,8 +625,11 @@ export function ContactContent() {
               isPending={allPending}
               onPsicoOpen={() => setPsicoOpen(true)}
               onAlertOpen={() => setAlertOpen(true)}
+              onNextContactOpen={() => setNextContactOpen(true)}
               psicoDraft={!!psicoDraft}
               alertDraft={!!alertDraft}
+              nextContactDraft={!!nextContactDraft}
+              onClearNextContact={() => setNextContactDraft(null)}
               onCancel={() => navigate(`/pacientes/${id}`)}
             />
           </div>
@@ -612,6 +656,15 @@ export function ContactContent() {
       )}
 
       {/* Dialogs */}
+      <ScheduleContactDialog
+        open={nextContactOpen}
+        onOpenChange={setNextContactOpen}
+        onSubmit={async (values) => {
+          setNextContactDraft(values);
+          setNextContactOpen(false);
+        }}
+        isPending={false}
+      />
       <PsicoSessionDialog
         open={psicoOpen}
         onOpenChange={setPsicoOpen}

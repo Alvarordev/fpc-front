@@ -1,4 +1,4 @@
-import { Brain, TriangleAlert, Send } from "lucide-react";
+import { Brain, TriangleAlert, Send, CalendarPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -7,8 +7,11 @@ interface ContactAsideProps {
   isPending: boolean;
   onPsicoOpen: () => void;
   onAlertOpen: () => void;
+  onNextContactOpen: () => void;
   psicoDraft: boolean;
   alertDraft: boolean;
+  nextContactDraft: boolean;
+  onClearNextContact: () => void;
   onCancel: () => void;
 }
 
@@ -17,8 +20,11 @@ export function ContactAside({
   isPending,
   onPsicoOpen,
   onAlertOpen,
+  onNextContactOpen,
   psicoDraft,
   alertDraft,
+  nextContactDraft,
+  onClearNextContact,
   onCancel,
 }: ContactAsideProps) {
   return (
@@ -58,6 +64,36 @@ export function ContactAside({
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                 Alerta lista para registrar.
               </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={onNextContactOpen}
+            >
+              <CalendarPlus className="size-4 text-sky-500" />
+              Agendar siguiente contacto
+            </Button>
+            {nextContactDraft ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+                <span className="text-xs text-sky-700">
+                  Siguiente contacto listo para guardar.
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearNextContact}
+                  className="shrink-0 text-sky-500 hover:text-sky-700"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+                <CalendarPlus className="size-4 text-sky-600 shrink-0" />
+                <span className="text-xs text-sky-700">
+                  Sin siguiente contacto agendado.
+                </span>
+              </div>
             )}
           </>
         )}

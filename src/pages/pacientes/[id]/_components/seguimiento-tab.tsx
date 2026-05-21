@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Phone, CalendarClock, PhoneCall, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,9 @@ import { useContacts } from "../_hooks/use-contacts";
 import { usePatientAppointments } from "../_hooks/use-appointments";
 import { buildTimeline } from "../_utils/timeline";
 import { TimelineEventCard } from "./timeline-event-card";
+import { ScheduleContactDialog, type ScheduleFormValues } from "./schedule-contact-dialog";
+import { contactsApi, agentsApi } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 function formatShortDate(fecha: string): string {
@@ -28,12 +32,20 @@ interface SeguimientoTabProps {
 export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
   const canManage = user?.role === "ADMIN" || user?.role === "AGENT";
+
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const { data: contacts = [], isLoading: loadingContacts } =
     useContacts(pacienteId);
   const { data: appointments = [], isLoading: loadingPsico } =
     usePatientAppointments(pacienteId);
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents"],
+    queryFn: () => agentsApi.list(),
+    staleTime: 60 * 1000,
+  });
 
   const isLoading = loadingContacts || loadingPsico;
 
@@ -61,7 +73,34 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       });
       return;
     }
-    navigate(`/pacientes/${pacienteId}/contacto`);
+    setScheduleOpen(true);
+  }
+
+  async function handleScheduleSubmit(values: ScheduleFormValues) {
+    let agentId: string | undefined;
+    if (user?.role === "AGENT") {
+      const agent = agents.find((a) => a.userId === user.id);
+      agentId = agent?.id;
+    } else if (user?.role === "ADMIN") {
+      agentId = agents[0]?.id;
+    }
+    if (!agentId) {
+      toast.error("No se encontró un agente asociado a tu cuenta");
+      return;
+    }
+
+    await contactsApi.create({
+      patientId: pacienteId,
+      agentId,
+      type: values.type,
+      status: "SCHEDULED",
+      purpose: values.purpose,
+      scheduledAt: `${values.date}T${values.time}:00`,
+      notes: values.notes || undefined,
+    });
+
+    queryClient.invalidateQueries({ queryKey: ["contacts", pacienteId] });
+    toast.success("Contacto agendado correctamente");
   }
 
   function goToContact(contactId: string) {
@@ -201,6 +240,13 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
           ))}
         </div>
       )}
+
+      <ScheduleContactDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        onSubmit={handleScheduleSubmit}
+        isPending={false}
+      />
     </div>
   );
 }
