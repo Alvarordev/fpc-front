@@ -3,7 +3,7 @@ import { AuthGuard, GuestGuard } from "@/components/auth-guard";
 import { RoleGuard } from "@/components/role-guard";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { LoginPage } from "@/pages/login/page";
-import { DashboardPage } from "@/pages/dashboard/page";
+import { HomePage } from "@/pages/home/page";
 import PatientsPage from "@/pages/pacientes/page";
 import PatientDetailPage from "@/pages/pacientes/[id]/page";
 import ContactPage from "@/pages/pacientes/[id]/contacto/page";
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      { index: true, element: <HomePage /> },
       {
         path: "agenda",
         element: (
