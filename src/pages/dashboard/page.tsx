@@ -59,15 +59,25 @@ const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string }> = [
   { value: "year", label: "Año" },
 ];
 
-const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "oklch(0.72 0.118 76.39)",
-  "oklch(0.64 0.164 150.2)",
+const DONUT_COLORS = [
+  "oklch(0.62 0.20 29)",    // warm coral
+  "oklch(0.62 0.17 250)",   // blue
+  "oklch(0.62 0.14 160)",   // teal
+  "oklch(0.62 0.18 300)",   // violet
+  "oklch(0.62 0.16 70)",    // amber
+  "oklch(0.62 0.13 210)",   // cyan
 ];
+
+const BAR_COLORS = [
+  "oklch(0.48 0.11 250)",   // slate blue
+  "oklch(0.48 0.12 30)",    // terracotta
+  "oklch(0.48 0.10 170)",   // sage
+  "oklch(0.48 0.11 310)",   // mauve
+  "oklch(0.48 0.10 80)",    // ochre
+  "oklch(0.42 0.05 250)",   // steel
+];
+
+const OTHER_COLOR = "oklch(0.50 0.02 260)";  // neutral gray for "Otros"
 
 const monthNames = Array.from({ length: 12 }, (_, index) =>
   new Intl.DateTimeFormat("es-PE", { month: "long" }).format(
@@ -344,25 +354,25 @@ export function DashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Hospital</TableHead>
-                    <TableHead>Región</TableHead>
-                    <TableHead className="text-right">Pacientes</TableHead>
-                    <TableHead className="text-right">Activos</TableHead>
-                    <TableHead className="text-right">Inactivos</TableHead>
+                    <TableHead className="w-full">Hospital</TableHead>
+                    <TableHead className="w-24 whitespace-nowrap">Región</TableHead>
+                    <TableHead className="w-20 text-right">Pacientes</TableHead>
+                    <TableHead className="w-20 text-right">Activos</TableHead>
+                    <TableHead className="w-20 text-right">Inactivos</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {snapshot.hospitalRows.map((row) => (
                     <TableRow key={row.hospital}>
-                      <TableCell className="max-w-0">
+                      <TableCell className="w-full max-w-0">
                         <span className="block truncate font-medium" title={row.hospital}>
                           {row.hospital}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{row.department}</TableCell>
-                      <TableCell className="text-right">{row.patients}</TableCell>
-                      <TableCell className="text-right">{row.active}</TableCell>
-                      <TableCell className="text-right">{row.inactive}</TableCell>
+                      <TableCell className="w-24 text-muted-foreground">{row.department}</TableCell>
+                      <TableCell className="w-20 text-right">{row.patients}</TableCell>
+                      <TableCell className="w-20 text-right">{row.active}</TableCell>
+                      <TableCell className="w-20 text-right">{row.inactive}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -538,12 +548,15 @@ function DonutChart({
               stroke="transparent"
               paddingAngle={2}
             >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`${entry.name}-${index}`}
-                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                />
-              ))}
+              {data.map((entry, index) => {
+                const isOther = entry.name === "Otros";
+                const color = isOther
+                  ? OTHER_COLOR
+                  : DONUT_COLORS[index % DONUT_COLORS.length];
+                return (
+                  <Cell key={`${entry.name}-${index}`} fill={color} />
+                );
+              })}
             </Pie>
             <Tooltip content={<TooltipContent />} />
             <text
@@ -576,8 +589,13 @@ function DonutChart({
           >
             <div className="flex min-w-0 items-center gap-3">
               <span
-                className="size-2.5 rounded-full"
-                style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                className="size-2.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor:
+                    item.name === "Otros"
+                      ? OTHER_COLOR
+                      : DONUT_COLORS[index % DONUT_COLORS.length],
+                }}
               />
               <span className="truncate text-sm font-medium" title={item.name}>
                 {item.name}
@@ -625,12 +643,15 @@ function VerticalBarChart({
           <YAxis tickLine={false} axisLine={false} stroke="var(--muted-foreground)" />
           <Tooltip content={<TooltipContent labelSuffix={valueLabel} />} />
           <Bar dataKey="value" radius={[10, 10, 4, 4]}>
-            {data.map((entry, index) => (
-              <Cell
-                key={`${entry.name}-${index}`}
-                fill={CHART_COLORS[index % CHART_COLORS.length]}
-              />
-            ))}
+            {data.map((entry, index) => {
+              const isOther = entry.name === "Otros";
+              const color = isOther
+                ? OTHER_COLOR
+                : BAR_COLORS[index % BAR_COLORS.length];
+              return (
+                <Cell key={`${entry.name}-${index}`} fill={color} />
+              );
+            })}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
