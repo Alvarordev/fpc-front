@@ -6,7 +6,15 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const API_URL = process.env.API_URL || "http://178.156.230.233:8083";
+const rawApiUrl = process.env.API_URL?.trim();
+
+if (!rawApiUrl) {
+  throw new Error(
+    "Missing API_URL. Example: API_URL=http://127.0.0.1:8082 node scripts/seed-hospitales.mjs",
+  );
+}
+
+const API_URL = rawApiUrl.replace(/\/+$/, "");
 const TOKEN = process.env.TOKEN;
 
 if (!TOKEN) {
