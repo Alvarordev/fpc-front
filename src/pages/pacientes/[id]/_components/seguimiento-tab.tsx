@@ -146,26 +146,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
             </div>
           )}
 
-          {nextScheduled ? (
-            <button
-              onClick={() => goToContact(nextScheduled.id)}
-              className="flex items-center gap-2 text-sm group cursor-pointer"
-            >
-              <div className="flex size-8 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
-                <CalendarClock className="size-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground group-hover:text-amber-700 transition-colors">
-                  {formatShortDate(
-                    extractDate(nextScheduled.scheduledAt) ?? "",
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  próximo contacto — clic para completar
-                </p>
-              </div>
-            </button>
-          ) : (
+          {!nextScheduled && (
             <div className="flex items-center gap-2 text-sm">
               <div className="flex size-8 items-center justify-center rounded-full bg-muted">
                 <CalendarClock className="size-4 text-muted-foreground" />

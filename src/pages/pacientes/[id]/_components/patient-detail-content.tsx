@@ -1,10 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, CalendarClock, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { usePatient } from "../_hooks/use-patient";
+import { useContacts } from "../_hooks/use-contacts";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
@@ -28,6 +29,11 @@ export function PatientDetailContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: patient, isLoading, isError } = usePatient(id!);
+  const { data: contacts = [] } = useContacts(id!);
+
+  const nextScheduled = [...contacts]
+    .filter((c) => c.status === "SCHEDULED")
+    .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""))[0];
 
   if (isLoading) {
     return (
@@ -106,6 +112,32 @@ export function PatientDetailContent() {
             </span>
           </div>
         </div>
+
+        {nextScheduled && (
+          <button
+            onClick={() =>
+              navigate(
+                `/pacientes/${patient.id}/contacto?contactId=${nextScheduled.id}`,
+              )
+            }
+            className="shrink-0 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left hover:bg-amber-100 transition-colors cursor-pointer group"
+          >
+            <div className="flex size-7 items-center justify-center rounded-full bg-amber-100 shrink-0">
+              <CalendarClock className="size-3.5 text-amber-700" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-amber-900 whitespace-nowrap">
+                {new Date(nextScheduled.scheduledAt!).toLocaleDateString(
+                  "es-PE",
+                  { day: "numeric", month: "short" },
+                )}
+              </p>
+              <p className="text-[10px] text-amber-700/70 group-hover:text-amber-800">
+                completar →
+              </p>
+            </div>
+          </button>
+        )}
       </div>
 
       <Tabs defaultValue="resumen">
