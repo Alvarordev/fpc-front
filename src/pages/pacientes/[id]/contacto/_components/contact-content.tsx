@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarClock } from "lucide-react";
+import { ArrowLeft, CalendarClock, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -467,10 +467,13 @@ export function ContactContent() {
   if (!isScheduleMode && !loadingContact && !existingContact) {
     return (
       <div className="space-y-5">
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(`/pacientes/${id}`)}>
-          <ArrowLeft className="size-3.5" />
+        <Link
+          to={`/pacientes/${id}`}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronRight className="size-3.5 rotate-180" />
           Volver al paciente
-        </Button>
+        </Link>
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
           <p className="text-sm text-destructive">Contacto no encontrado.</p>
         </div>
@@ -480,10 +483,23 @@ export function ContactContent() {
 
   return (
     <div className="space-y-5">
-      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(`/pacientes/${id}`)}>
-        <ArrowLeft className="size-3.5" />
-        Volver al paciente
-      </Button>
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link
+          to="/pacientes"
+          className="hover:text-foreground transition-colors"
+        >
+          Pacientes
+        </Link>
+        <ChevronRight className="size-3.5" />
+        <Link
+          to={`/pacientes/${id}`}
+          className="hover:text-foreground transition-colors truncate max-w-[200px]"
+        >
+          {patient.fullName}
+        </Link>
+        <ChevronRight className="size-3.5" />
+        <span className="text-foreground font-medium">Contacto</span>
+      </nav>
 
       <div>
         <h1 className="text-xl font-semibold tracking-tight">
