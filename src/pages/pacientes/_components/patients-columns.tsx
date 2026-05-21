@@ -17,18 +17,40 @@ const statusStyles: Record<PatientStatus, string> = {
   INACTIVE: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
-const roleLabels: Record<string, string> = {
-  PATIENT: "Paciente",
-  COMPANION: "Acompañante",
-  UNKNOWN: "Sin definir",
-};
-
 function shortDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString("es-PE", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
+}
+
+function primaryDiagnosis(p: Patient): string {
+  return (
+    p.diagnoses?.find((d) => d.isCurrent)?.diagnosis ??
+    p.diagnoses?.[0]?.diagnosis ??
+    "—"
+  );
+}
+
+function formatearDepartamento(value?: string | null): string {
+  if (!value) return "—";
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
+function ultimoContacto(p: Patient): string | null {
+  if (!p.contacts?.length) return null;
+  const sorted = [...p.contacts].sort((a, b) => {
+    const dateA = a.completedAt ?? a.scheduledAt ?? a.createdAt ?? "";
+    const dateB = b.completedAt ?? b.scheduledAt ?? b.createdAt ?? "";
+    return dateB.localeCompare(dateA);
+  });
+  const last = sorted[0];
+  return last.completedAt ?? last.scheduledAt ?? null;
 }
 
 export const patientColumns: ColumnDef<Patient>[] = [
@@ -60,22 +82,50 @@ export const patientColumns: ColumnDef<Patient>[] = [
     },
   },
   {
+    accessorKey: "diagnoses",
+    header: "Diagnóstico",
+    cell: ({ row }) => {
+      const dx = primaryDiagnosis(row.original);
+      return (
+        <span className="text-sm text-muted-foreground truncate max-w-[200px]" title={dx}>
+          {dx}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "details",
+    header: "Departamento",
+    cell: ({ row }) => {
+      const dept = formatearDepartamento(row.original.details?.currentDepartment);
+      return (
+        <span className="text-sm text-muted-foreground">{dept}</span>
+      );
+    },
+  },
+  {
     accessorKey: "primaryPhone",
     header: "Teléfono",
     cell: ({ getValue }) => (
-      <span className="text-sm text-muted-foreground">
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
         {getValue() as string}
       </span>
     ),
   },
   {
-    accessorKey: "role",
-    header: "Rol",
-    cell: ({ getValue }) => (
-      <span className="text-sm text-muted-foreground">
-        {roleLabels[getValue() as string] ?? "—"}
-      </span>
-    ),
+    accessorKey: "contacts",
+    header: "Último contacto",
+    cell: ({ row }) => {
+      const lastDate = ultimoContacto(row.original);
+      if (!lastDate) {
+        return <span className="text-sm text-muted-foreground">—</span>;
+      }
+      return (
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {shortDate(lastDate)}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "status",
@@ -88,14 +138,5 @@ export const patientColumns: ColumnDef<Patient>[] = [
         </Badge>
       );
     },
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Registrado",
-    cell: ({ getValue }) => (
-      <span className="text-sm text-muted-foreground">
-        {shortDate(getValue() as string)}
-      </span>
-    ),
   },
 ];
