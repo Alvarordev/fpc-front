@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/auth-store";
 import { contactsApi, agentsApi, patientsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Contact, ContactPurpose, ContactType } from "@/types";
+import type { ContactPurpose, ContactType } from "@/types";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
