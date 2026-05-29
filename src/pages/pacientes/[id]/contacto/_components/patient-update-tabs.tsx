@@ -330,7 +330,7 @@ export function PatientUpdateTabs({
             >
               <SelectTrigger>
                 {insuranceForm.watch("insuranceType")
-                  ? insuranceOptions[insuranceForm.watch("insuranceType")]
+                  ? insuranceOptions[insuranceForm.watch("insuranceType") as InsuranceType]
                   : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>
