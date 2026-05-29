@@ -229,11 +229,11 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
               Diagnósticos ({patient.diagnoses.length})
             </p>
             {patient.diagnoses.length > 0 ? (
-              <div className="space-y-3">
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {patient.diagnoses.map((dx) => (
                   <div
                     key={dx.id}
-                    className="rounded-lg border bg-card p-4 space-y-3"
+                    className="rounded-lg border bg-card p-4 space-y-3 min-w-[320px] max-w-[380px] flex-shrink-0"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-3">
@@ -259,7 +259,7 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
                       <Field label="Fecha de diagnóstico" value={fmtDate(dx.diagnosisDate)} icon={Calendar} />
                       <Field label="Especialidad" value={dx.diagnosisSpecialty ?? "—"} />
                       <Field label="Centro de salud" value={dx.healthCenterName ?? "—"} icon={Building2} />
@@ -291,11 +291,11 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
               Tratamientos ({patient.treatments.length})
             </p>
             {patient.treatments.length > 0 ? (
-              <div className="space-y-3">
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {patient.treatments.map((tx) => (
                   <div
                     key={tx.id}
-                    className="rounded-lg border bg-card p-4 space-y-3"
+                    className="rounded-lg border bg-card p-4 space-y-3 min-w-[300px] max-w-[360px] flex-shrink-0"
                   >
                     <div className="flex items-start gap-3">
                       <Pill className="size-4 text-primary mt-0.5" />
@@ -317,7 +317,7 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
                       <Field label="Frecuencia" value={tx.treatmentFrequency ?? "—"} />
                       <Field
                         label="Período"
@@ -361,30 +361,49 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
               Seguro
             </p>
             {patient.insurance.length > 0 ? (
-              <div className="space-y-2">
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {patient.insurance.map((ins) => (
                   <div
                     key={ins.id}
-                    className="flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm"
+                    className="rounded-lg border bg-card p-4 space-y-3 min-w-[260px] max-w-[320px] flex-shrink-0"
                   >
-                    <Badge variant={ins.isCurrent ? "default" : "outline"} className="text-xs">
-                      {insuranceLabels[ins.insuranceType] ?? ins.insuranceType}
-                      {ins.epsProvider && ` — ${ins.epsProvider}`}
-                    </Badge>
-                    {ins.isCurrent && (
-                      <Badge variant="secondary" className="text-[10px]">Actual</Badge>
-                    )}
-                    {ins.startDate && (
-                      <span className="text-xs text-muted-foreground">
-                        Desde {fmtDate(ins.startDate)}
-                        {ins.endDate ? ` hasta ${fmtDate(ins.endDate)}` : ""}
-                      </span>
-                    )}
-                    {ins.changeReason && (
-                      <span className="text-xs text-muted-foreground">
-                        · {ins.changeReason}
-                      </span>
-                    )}
+                    <div className="flex items-start gap-3">
+                      <Shield className="size-4 text-primary mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {insuranceLabels[ins.insuranceType] ?? ins.insuranceType}
+                          {ins.epsProvider && (
+                            <span className="text-muted-foreground font-normal"> — {ins.epsProvider}</span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Badge
+                            variant={ins.isCurrent ? "default" : "outline"}
+                            className="text-[10px]"
+                          >
+                            {ins.isCurrent ? "Actual" : "Histórico"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 text-sm">
+                      {ins.startDate && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Calendar className="size-3" />
+                          <span>
+                            Desde {fmtDate(ins.startDate)}
+                            {ins.endDate ? ` hasta ${fmtDate(ins.endDate)}` : ""}
+                          </span>
+                        </div>
+                      )}
+                      {ins.changeReason && (
+                        <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                          <ArrowRight className="size-3 mt-0.5 shrink-0" />
+                          <span>{ins.changeReason}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

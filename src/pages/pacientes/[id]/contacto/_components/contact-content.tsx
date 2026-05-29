@@ -332,12 +332,11 @@ export function ContactContent() {
       });
     }
 
-    // 5. Insurance
+    // 5. Insurance — only if agent explicitly selected an insurance type
     const insValues = insuranceForm.getValues();
-    const hasInsuranceChange = insValues.changeReason.trim() || insValues.startDate.trim();
-    if (hasInsuranceChange || insValues.insuranceType !== "SIS") {
+    if (insValues.insuranceType) {
       await addInsuranceMutation.mutateAsync({
-        insuranceType: insValues.insuranceType,
+        insuranceType: insValues.insuranceType as any,
         epsProvider: insValues.insuranceType === "EPS" && insValues.epsProvider ? insValues.epsProvider : undefined,
         isCurrent: true,
         changeReason: insValues.changeReason || undefined,
@@ -346,7 +345,7 @@ export function ContactContent() {
       });
     }
 
-    // 6. SIS (only if NO insurance)
+    // 6. SIS (only if agent explicitly selected "NONE" as insurance)
     if (insValues.insuranceType === "NONE") {
       await addSisMutation.mutateAsync({
         canAffiliate: insValues.canAffiliate,

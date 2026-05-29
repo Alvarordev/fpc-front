@@ -85,7 +85,7 @@ export interface TreatmentFormValues {
 }
 
 export interface InsuranceFormValues {
-  insuranceType: InsuranceType;
+  insuranceType: InsuranceType | "";
   epsProvider: EpsProvider | "";
   changeReason: string;
   startDate: string;
@@ -427,10 +427,10 @@ export const treatmentDefaults: TreatmentFormValues = {
 };
 
 export const insuranceDefaults: InsuranceFormValues = {
-  insuranceType: "SIS",
+  insuranceType: "",
   epsProvider: "",
   changeReason: "",
   startDate: "",
-  canAffiliate: true,
+  canAffiliate: false,
   expectedDate: "",
 };
