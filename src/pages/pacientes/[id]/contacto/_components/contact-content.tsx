@@ -153,7 +153,9 @@ export function ContactContent() {
     }
   }, [existingContact, isScheduleMode, completeForm]);
 
-  // Pre-fill patient sub-entity forms from existing patient data
+  // Pre-fill only the details form with existing patient data (it's an UPDATE operation).
+  // Diagnosis, treatment, and insurance forms are intentionally NOT pre-filled because
+  // they trigger CREATE operations that would duplicate existing records.
   useEffect(() => {
     if (!patient) return;
 
@@ -168,37 +170,7 @@ export function ContactContent() {
       nativeLanguage: d?.nativeLanguage ?? "",
       requiresTranslation: d?.requiresTranslation ?? false,
     });
-
-    const currentDx = patient.diagnoses?.find((dx) => dx.isCurrent) ?? patient.diagnoses?.[0];
-    diagnosisForm.reset({
-      diagnosis: currentDx?.diagnosis ?? "",
-      cancerStage: currentDx?.cancerStage ?? "UNKNOWN",
-      diagnosisDate: currentDx?.diagnosisDate ?? "",
-      healthCenterId: currentDx?.healthCenterId ?? "",
-      symptomLeadingToCheckup: currentDx?.symptomLeadingToCheckup ?? "",
-      waitTimeForDiagnosis: currentDx?.waitTimeForDiagnosis ?? "",
-      hasMedicalReport: currentDx?.hasMedicalReport ?? false,
-    });
-
-    const currentTx = patient.treatments?.find((tx) => tx.isCurrent) ?? patient.treatments?.[0];
-    treatmentForm.reset({
-      diagnosisId: currentTx?.diagnosis?.id ?? currentDx?.id ?? "",
-      treatmentType: currentTx?.treatmentType ?? "",
-      treatmentFrequency: currentTx?.treatmentFrequency ?? "",
-      healthCenterId: currentTx?.healthCenterId ?? "",
-      startDate: currentTx?.startDate ?? "",
-    });
-
-    const currentIns = patient.insurance?.find((ins) => ins.isCurrent) ?? patient.insurance?.[0];
-    insuranceForm.reset({
-      insuranceType: currentIns?.insuranceType ?? "SIS",
-      epsProvider: currentIns?.epsProvider ?? "",
-      changeReason: currentIns?.changeReason ?? "",
-      startDate: currentIns?.startDate ?? "",
-      canAffiliate: patient.sisAffiliations?.some((s) => s.canAffiliate) ?? true,
-      expectedDate: patient.sisAffiliations?.find((s) => s.expectedDate)?.expectedDate ?? "",
-    });
-  }, [patient, detailsForm, diagnosisForm, treatmentForm, insuranceForm]);
+  }, [patient, detailsForm]);
 
   // Mutations
   const createContactMutation = useMutation({

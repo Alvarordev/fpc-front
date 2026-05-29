@@ -162,7 +162,9 @@ export function PatientUpdateTabs({
               onValueChange={(v) => detailsForm.setValue("educationLevel", v ?? "")}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
+                {detailsForm.watch("educationLevel")
+                  ? educationOptions[detailsForm.watch("educationLevel")]
+                  : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(educationOptions).map(([k, v]) => (
@@ -204,7 +206,9 @@ export function PatientUpdateTabs({
               onValueChange={(v) => diagnosisForm.setValue("cancerStage", v as CancerStage)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
+                {diagnosisForm.watch("cancerStage")
+                  ? cancerStageOptions[diagnosisForm.watch("cancerStage")]
+                  : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(cancerStageOptions).map(([k, v]) => (
@@ -224,7 +228,9 @@ export function PatientUpdateTabs({
               onValueChange={(v) => diagnosisForm.setValue("healthCenterId", v ?? "")}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
+                {diagnosisForm.watch("healthCenterId")
+                  ? hospitals.find((h) => h.id === diagnosisForm.watch("healthCenterId"))?.name
+                  : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>
                 {hospitals.map((h) => (
@@ -262,7 +268,9 @@ export function PatientUpdateTabs({
               onValueChange={(v) => treatmentForm.setValue("diagnosisId", v ?? "")}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar diagnóstico" />
+                {treatmentForm.watch("diagnosisId")
+                  ? diagnoses.find((d) => d.id === treatmentForm.watch("diagnosisId"))?.diagnosis
+                  : <SelectValue placeholder="Seleccionar diagnóstico" />}
               </SelectTrigger>
               <SelectContent>
                 {diagnoses.map((d) => (
@@ -297,7 +305,9 @@ export function PatientUpdateTabs({
               onValueChange={(v) => treatmentForm.setValue("healthCenterId", v ?? "")}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
+                {treatmentForm.watch("healthCenterId")
+                  ? hospitals.find((h) => h.id === treatmentForm.watch("healthCenterId"))?.name
+                  : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>
                 {hospitals.map((h) => (
@@ -319,7 +329,9 @@ export function PatientUpdateTabs({
               onValueChange={(v) => insuranceForm.setValue("insuranceType", v as InsuranceType)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
+                {insuranceForm.watch("insuranceType")
+                  ? insuranceOptions[insuranceForm.watch("insuranceType")]
+                  : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(insuranceOptions).map(([k, v]) => (
@@ -336,7 +348,9 @@ export function PatientUpdateTabs({
                 onValueChange={(v) => insuranceForm.setValue("epsProvider", v as EpsProvider)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar" />
+                  {insuranceForm.watch("epsProvider")
+                    ? epsOptions[insuranceForm.watch("epsProvider") as EpsProvider]
+                    : <SelectValue placeholder="Seleccionar" />}
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(epsOptions).map(([k, v]) => (
