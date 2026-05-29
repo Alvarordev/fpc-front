@@ -9,6 +9,8 @@ import { useContacts } from "../_hooks/use-contacts";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
+import { AlertBanner } from "./alert-banner";
+import { usePatientAlerts } from "../_hooks/use-patient-alerts";
 import type { PatientStatus } from "@/types";
 
 const statusLabels: Record<PatientStatus, string> = {
@@ -30,6 +32,7 @@ export function PatientDetailContent() {
   const navigate = useNavigate();
   const { data: patient, isLoading, isError } = usePatient(id!);
   const { data: contacts = [] } = useContacts(id!);
+  const { alerts } = usePatientAlerts(patient);
 
   const nextScheduled = [...contacts]
     .filter((c) => c.status === "SCHEDULED")
@@ -139,6 +142,8 @@ export function PatientDetailContent() {
           </button>
         )}
       </div>
+
+      <AlertBanner alerts={alerts} />
 
       <Tabs defaultValue="resumen">
         <TabsList className="mb-4">
