@@ -291,6 +291,27 @@ export interface CompanionResponse {
   isPrimaryInformant: boolean;
 }
 
+export type PatientSummaryStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
+
+export interface PatientSummaryContent {
+  resumenEjecutivo: string | null;
+  datosPersonales?: Record<string, unknown> | null;
+  contactoEmergencia?: Record<string, unknown> | null;
+  seguro?: Record<string, unknown> | null;
+  diagnosticos?: Record<string, unknown>[] | null;
+  tratamientos?: Record<string, unknown>[] | null;
+  proximasCitas?: Record<string, unknown>[] | null;
+  sintomas?: Record<string, unknown>[] | null;
+}
+
+export interface PatientSummaryResponse {
+  status: PatientSummaryStatus;
+  stale: boolean;
+  updatedAt: string | null;
+  content: PatientSummaryContent | null;
+  lastErrorCode: string | null;
+}
+
 // ============================================================
 // Patients — main
 // ============================================================
@@ -300,6 +321,7 @@ export interface Patient {
   fullName: string;
   dni: string | null;
   birthDate: string | null;
+  gender?: string | null;
   primaryPhone: string;
   secondaryPhone: string | null;
   hasWhatsapp: boolean;
@@ -315,6 +337,7 @@ export interface Patient {
   sisAffiliations: SisAffiliationResponse[];
   companions: CompanionResponse[];
   contacts: Contact[];
+  summary?: PatientSummaryResponse | null;
 }
 
 // ============================================================

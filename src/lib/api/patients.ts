@@ -21,6 +21,7 @@ import type {
   SisAffiliationResponse,
   CompanionResponse,
   Contact,
+  PatientSummaryResponse,
 } from "@/types";
 
 export const patientsApi = {
@@ -40,6 +41,10 @@ export const patientsApi = {
 
   getById(id: string): Promise<Patient> {
     return apiGet<Patient>(`/api/patients/${id}`);
+  },
+
+  refreshSummaryByDni(dni: string): Promise<PatientSummaryResponse> {
+    return apiGet<PatientSummaryResponse>(`/api/patients/dni/${dni}/summary`);
   },
 
   // --- Basic CRUD ---

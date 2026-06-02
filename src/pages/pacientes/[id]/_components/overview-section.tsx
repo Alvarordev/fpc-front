@@ -1,10 +1,16 @@
+import { useEffect, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   BrainCircuit,
+  Loader2,
   Phone,
   MapPin,
+  RefreshCw,
   Shield,
   HeartPulse,
   Pill,
@@ -21,6 +27,7 @@ import {
   Building2,
   ArrowRight,
 } from "lucide-react";
+import { patientsApi } from "@/lib/api";
 import type { Patient } from "@/types";
 
 // ============================================================
@@ -70,6 +77,15 @@ const educationLabels: Record<string, string> = {
   HIGHER: "Superior",
 };
 
+const summaryStatusLabels: Record<string, string> = {
+  PENDING: "Pendiente",
+  PROCESSING: "Procesando",
+  READY: "Listo",
+  FAILED: "Con error",
+};
+
+const autoRefreshSummaryStatuses = new Set(["PENDING", "PROCESSING"]);
+
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso + (iso.includes("T") ? "" : "T00:00:00")).toLocaleDateString(
@@ -108,25 +124,113 @@ interface OverviewSectionProps {
 }
 
 export function OverviewSection({ patient }: OverviewSectionProps) {
+  const queryClient = useQueryClient();
+  const autoRefreshPatientIdRef = useRef<string | null>(null);
   const d = patient.details;
+  const summary = patient.summary;
+  const executiveSummary = summary?.content?.resumenEjecutivo?.trim();
+  const hasExecutiveSummary = Boolean(executiveSummary);
+
+  const { mutate: refreshSummary, isPending: isRefreshingSummary } = useMutation({
+    mutationFn: ({ dni }: { dni: string; source: "auto" | "manual" }) =>
+      patientsApi.refreshSummaryByDni(dni),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["patients", patient.id] });
+
+      if (variables.source === "manual") {
+        toast.success("Resumen actualizado");
+      }
+    },
+    onError: (err: Error, variables) => {
+      toast.error(
+        variables.source === "manual"
+          ? "Error al refrescar resumen"
+          : "No se pudo actualizar el resumen automáticamente",
+        { description: err.message },
+      );
+    },
+  });
+
+  useEffect(() => {
+    if (!patient.dni) return;
+    if (!summary?.status || !autoRefreshSummaryStatuses.has(summary.status)) return;
+    if (autoRefreshPatientIdRef.current === patient.id) return;
+    if (isRefreshingSummary) return;
+
+    autoRefreshPatientIdRef.current = patient.id;
+    refreshSummary({ dni: patient.dni, source: "auto" });
+  }, [isRefreshingSummary, patient.dni, patient.id, refreshSummary, summary?.status]);
+
+  function handleManualRefreshSummary() {
+    if (!patient.dni) {
+      toast.error("El paciente no tiene DNI registrado");
+      return;
+    }
+
+    refreshSummary({ dni: patient.dni, source: "manual" });
+  }
 
   return (
     <div className="space-y-4">
       {/* ================================================ */}
-      {/* AI Summary Placeholder                           */}
+      {/* AI Summary                                       */}
       {/* ================================================ */}
-      <Card className="border-dashed">
+      <Card className={hasExecutiveSummary ? undefined : "border-dashed"}>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <BrainCircuit className="size-4 text-primary" />
-            Resumen del caso (IA)
-          </CardTitle>
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BrainCircuit className="size-4 text-primary" />
+              Resumen del caso (IA)
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {summary && (
+                <Badge
+                  variant={summary.status === "READY" ? "secondary" : "outline"}
+                  className="text-[10px]"
+                >
+                  {isRefreshingSummary
+                    ? "Actualizando"
+                    : summaryStatusLabels[summary.status] ?? summary.status}
+                  {summary.stale ? " · desactualizado" : ""}
+                </Badge>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={handleManualRefreshSummary}
+                disabled={isRefreshingSummary}
+                aria-label="Refrescar resumen del caso"
+                title="Refrescar resumen"
+              >
+                {isRefreshingSummary ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-3.5" />
+                )}
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            El resumen generado por inteligencia artificial aparecerá aquí una
-            vez que el sistema procese la información completa del paciente.
-          </p>
+          {hasExecutiveSummary ? (
+            <div className="space-y-3">
+              <p className="text-sm leading-6 text-foreground">
+                {executiveSummary}
+              </p>
+              {summary?.updatedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Actualizado el {fmtDate(summary.updatedAt)}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              El resumen generado por inteligencia artificial aparecerá aquí una
+              vez que el sistema procese la información completa del paciente.
+            </p>
+          )}
         </CardContent>
       </Card>
 
