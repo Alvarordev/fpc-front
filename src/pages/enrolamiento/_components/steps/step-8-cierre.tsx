@@ -56,7 +56,7 @@ export function Step8Cierre() {
           dataPolicyAccepted: meta.dataPolicyAccepted,
           informedConsentAccepted: meta.informedConsentAccepted,
           isOncologicalPatient: meta.isOncologicalPatient,
-          programEntryPoint: null,
+          programEntryPoint: meta.programEntryPoint || null,
           surveyAccepted: meta.surveyAccepted,
           agentId,
           affiliationType: (meta.affiliationType as any) || "PATIENT",

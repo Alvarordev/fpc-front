@@ -1,7 +1,8 @@
+import { useState } from "react"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"; import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, MapPin, Phone, GraduationCap, ShieldCheck } from "lucide-react"
+import { CreditCard, MapPin, Phone, GraduationCap, ShieldCheck, LogIn } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import type { InsuranceType, EpsProvider, EducationLevel } from "@/types"
 
@@ -11,9 +12,76 @@ const EDU:Record<EducationLevel,string>={NONE:"Sin estudios",INITIAL:"Inicial",P
 const INS:Record<InsuranceType,string>={SIS:"SIS",ESSALUD:"EsSalud",EPS:"EPS",FUERZAS_ARMADAS:"Fuerzas Armadas",SALUDPOL:"SaludPol",NONE:"Ninguno"}
 const EPS_LABELS:Record<EpsProvider,string>={PACIFICO:"Pacífico",RIMAC:"Rímac",MAPFRE:"Mapfre",LA_POSITIVA:"La Positiva",SANITAS:"Sanitas",ONCOSALUD:"Oncosalud",OTHER:"Otro"}
 
+const ENTRY_POINTS = [
+  "Llamada directa",
+  "Referido por paciente",
+  "Referido por Voluntario",
+  "Redes Sociales de FPC",
+  "Campaña prevención",
+  "Centro de salud/hospital",
+  "Otro",
+] as const
+
+const NATIVE_LANGUAGES = [
+  "Castellano",
+  "Quechua",
+  "Aymara",
+  "Lenguaje de Señas",
+  "Otros",
+] as const
+
 export function Step5Datos() {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
   const pd = draft.patientData; const d = draft.details; const ins = draft.insurance
+  const meta = draft.enrollmentMetadata
+
+  const saved = meta.programEntryPoint
+
+  const [entryPoint, setEntryPoint] = useState<string>(() => {
+    if (!saved) return ""
+    if ((ENTRY_POINTS as readonly string[]).includes(saved)) return saved
+    return "Otro"
+  })
+
+  const [customEntryPoint, setCustomEntryPoint] = useState<string>(() => {
+    if (!saved) return ""
+    if ((ENTRY_POINTS as readonly string[]).includes(saved)) return ""
+    return saved
+  })
+
+  function handleEntryPointChange(v: string) {
+    setEntryPoint(v)
+    setCustomEntryPoint("")
+    if (v === "Otro") {
+      updateDraft({ enrollmentMetadata: { ...meta, programEntryPoint: undefined } })
+    } else {
+      updateDraft({ enrollmentMetadata: { ...meta, programEntryPoint: v } })
+    }
+  }
+
+  const savedLang = d.nativeLanguage
+
+  const [nativeLanguage, setNativeLanguage] = useState<string>(() => {
+    if (!savedLang) return ""
+    if ((NATIVE_LANGUAGES as readonly string[]).includes(savedLang)) return savedLang
+    return "Otros"
+  })
+
+  const [customNativeLanguage, setCustomNativeLanguage] = useState<string>(() => {
+    if (!savedLang) return ""
+    if ((NATIVE_LANGUAGES as readonly string[]).includes(savedLang)) return ""
+    return savedLang
+  })
+
+  function handleNativeLanguageChange(v: string) {
+    setNativeLanguage(v)
+    setCustomNativeLanguage("")
+    if (v === "Otros") {
+      updateDraft({ details: { ...d, nativeLanguage: undefined } })
+    } else {
+      updateDraft({ details: { ...d, nativeLanguage: v } })
+    }
+  }
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-10">
@@ -51,17 +119,41 @@ export function Step5Datos() {
         <div className="flex flex-col gap-2"><Label className={fl}>Nivel educativo</Label>
           <Select value={d.educationLevel??""} onValueChange={v=>updateDraft({details:{...d,educationLevel:v as EducationLevel}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EDU).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>Lengua nativa</Label><Input placeholder="Español" className={ic} value={d.nativeLanguage??""} onChange={e=>updateDraft({details:{...d,nativeLanguage:e.target.value||null}})} /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Lengua nativa</Label>
+            <Select value={nativeLanguage} onValueChange={handleNativeLanguageChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <SelectContent>{NATIVE_LANGUAGES.map(l=><SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div className="flex flex-col gap-2"><Label className={fl}>¿Requiere traducción?</Label>
             <Select value={d.requiresTranslation?"Sí":"No"} onValueChange={v=>updateDraft({details:{...d,requiresTranslation:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
         </div>
+        {nativeLanguage==="Otros"&&<div className="flex flex-col gap-2"><Label className={fl}>Especificar lengua</Label>
+          <Input placeholder="Escriba la lengua nativa" className={ic} value={customNativeLanguage}
+            onChange={e=>{setCustomNativeLanguage(e.target.value);updateDraft({details:{...d,nativeLanguage:e.target.value||undefined}})}} />
+        </div>}
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={ShieldCheck} title="Seguro de Salud" />
-        <div className="flex flex-col gap-2"><Label className={fl}>Tipo de seguro <span className="text-destructive">*</span></Label>
+        <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente cuenta con un seguro de salud? <span className="text-destructive">*</span></Label>
+          <Select value={ins.insuranceType!=="NONE"?"Sí":"No"} onValueChange={v=>{if(v==="No"){updateDraft({insurance:{...ins,insuranceType:"NONE",epsProvider:undefined,startDate:null},sisAffiliation:{canAffiliate:true}})}else{updateDraft({insurance:{...ins,insuranceType:"SIS"}})}}}>
+            <SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+        {ins.insuranceType!=="NONE"&&<>
+          <div className="flex flex-col gap-2"><Label className={fl}>Tipo de seguro <span className="text-destructive">*</span></Label>
           <Select value={ins.insuranceType} onValueChange={v=>{updateDraft({insurance:{...ins,insuranceType:v as InsuranceType,epsProvider:v!=="EPS"?undefined:ins.epsProvider}});if(v==="NONE")updateDraft({sisAffiliation:{canAffiliate:true}})}}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent>{Object.entries(INS).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
         {ins.insuranceType==="EPS"&&<div className="flex flex-col gap-2"><Label className={fl}>Proveedor EPS</Label>
           <Select value={ins.epsProvider??""} onValueChange={v=>updateDraft({insurance:{...ins,epsProvider:v as EpsProvider}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EPS_LABELS).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>}
         <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio del seguro</Label><Input type="date" className={ic} value={ins.startDate??""} onChange={e=>updateDraft({insurance:{...ins,startDate:e.target.value||null}})} /></div>
+        </>}
+      </section>
+      <section className="flex flex-col gap-5"><SectionHeader icon={LogIn} title="Punto de Ingreso" />
+        <div className="flex flex-col gap-2"><Label className={fl}>¿Cuál fue el punto de ingreso al programa?</Label>
+          <Select value={entryPoint} onValueChange={handleEntryPointChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+            <SelectContent>{ENTRY_POINTS.map(ep=><SelectItem key={ep} value={ep}>{ep}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        {entryPoint==="Otro"&&<div className="flex flex-col gap-2"><Label className={fl}>Especificar</Label>
+          <Input placeholder="Describa el punto de ingreso" className={ic} value={customEntryPoint}
+            onChange={e=>{setCustomEntryPoint(e.target.value);updateDraft({enrollmentMetadata:{...meta,programEntryPoint:e.target.value||undefined}})}} />
+        </div>}
       </section>
       <StepNav currentStep={5} onPrev={prevStep} />
     </form>

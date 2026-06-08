@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useEnrollmentStore } from "../_store/enrollment-store";
 import { EnrollmentStepper } from "./enrollment-stepper";
 import { EnrollmentAside } from "./enrollment-aside";
@@ -27,10 +28,13 @@ function CurrentStep({ step }: { step: number }) {
 }
 
 export function EnrollmentShell() {
-  const { currentStep, rejectionReason, resetEnrollment, prevStep, clearRejection } =
+  const { currentStep, rejectionReason, resetEnrollment, prevStep, clearRejection, draft, categoriaClinica } =
     useEnrollmentStore();
 
-  const asideContent = resolveAsideContent(currentStep);
+  const asideContent = useMemo(
+    () => resolveAsideContent(currentStep, draft, categoriaClinica),
+    [currentStep, draft, categoriaClinica],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">

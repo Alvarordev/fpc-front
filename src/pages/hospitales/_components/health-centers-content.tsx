@@ -1,19 +1,35 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useHealthCenters } from "../_hooks/use-health-centers";
+import {
+  useHealthCenters,
+  useDeleteHealthCenter,
+  useReactivateHealthCenter,
+} from "../_hooks/use-health-centers";
+import { usePatientCountByHealthCenter } from "../_hooks/use-patient-count-by-health-center";
 import { healthCenterColumns } from "./health-centers-columns";
 import { HealthCentersToolbar } from "./health-centers-toolbar";
 import { CreateHealthCenterDialog } from "./create-health-center-dialog";
+import { EditHealthCenterDialog } from "./edit-health-center-dialog";
 import { DEPARTMENTS } from "../_utils/departments";
+import type { HealthCenter } from "@/types";
 
 export function HealthCentersContent() {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Edit dialog state
+  const [editingCenter, setEditingCenter] = useState<HealthCenter | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { data: centers = [], isLoading } = useHealthCenters();
+  const { data: patientCounts = new Map() } = usePatientCountByHealthCenter();
+
+  const deleteMutation = useDeleteHealthCenter();
+  const reactivateMutation = useReactivateHealthCenter();
 
   const filtered = useMemo(() => {
     let result = centers;
@@ -33,6 +49,44 @@ export function HealthCentersContent() {
     return result;
   }, [centers, search, department]);
 
+  const handleEdit = useCallback((center: HealthCenter) => {
+    setEditingCenter(center);
+    setEditDialogOpen(true);
+  }, []);
+
+  const handleToggleActive = useCallback(
+    async (center: HealthCenter) => {
+      try {
+        if (center.isActive) {
+          await deleteMutation.mutateAsync(center.id);
+          toast.success(`"${center.name}" desactivado`);
+        } else {
+          await reactivateMutation.mutateAsync(center.id);
+          toast.success(`"${center.name}" reactivado`);
+        }
+      } catch (err) {
+        toast.error(
+          center.isActive ? "Error al desactivar" : "Error al reactivar",
+          {
+            description:
+              err instanceof Error ? err.message : "Error inesperado",
+          },
+        );
+      }
+    },
+    [deleteMutation, reactivateMutation],
+  );
+
+  const columns = useMemo(
+    () =>
+      healthCenterColumns({
+        patientCounts,
+        onEdit: handleEdit,
+        onToggleActive: handleToggleActive,
+      }),
+    [patientCounts, handleEdit, handleToggleActive],
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
@@ -47,7 +101,7 @@ export function HealthCentersContent() {
         <Button
           size="sm"
           className="gap-1.5 shrink-0"
-          onClick={() => setDialogOpen(true)}
+          onClick={() => setCreateDialogOpen(true)}
         >
           <Plus className="size-4" />
           Nuevo centro
@@ -63,14 +117,20 @@ export function HealthCentersContent() {
 
       <DataTable
         data={filtered}
-        columns={healthCenterColumns}
+        columns={columns}
         isLoading={isLoading}
         emptyMessage="No hay centros de salud registrados"
       />
 
       <CreateHealthCenterDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+      />
+
+      <EditHealthCenterDialog
+        center={editingCenter}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
       />
     </div>
   );

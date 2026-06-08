@@ -611,6 +611,7 @@ export interface HealthCenter {
   slug: string;
   department: PeruDepartment;
   isActive: boolean;
+  patientCount?: number;
   createdAt: string;
   updatedAt: string;
 }
