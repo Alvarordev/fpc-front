@@ -83,6 +83,8 @@ export function Step5Datos() {
     }
   }
 
+  const hasInsurance = ins.insuranceType !== "NONE"
+
   return (
     <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-10">
       <StepHeader step={5} title="Datos del Paciente" description="Complete los datos de identidad, demográficos, contacto y seguro." />
@@ -120,7 +122,7 @@ export function Step5Datos() {
           <Select value={d.educationLevel??""} onValueChange={v=>updateDraft({details:{...d,educationLevel:v as EducationLevel}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EDU).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2"><Label className={fl}>Lengua nativa</Label>
-            <Select value={nativeLanguage} onValueChange={handleNativeLanguageChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+            <Select value={nativeLanguage} onValueChange={v=>handleNativeLanguageChange(v??"")}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
               <SelectContent>{NATIVE_LANGUAGES.map(l=><SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -134,19 +136,19 @@ export function Step5Datos() {
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={ShieldCheck} title="Seguro de Salud" />
         <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente cuenta con un seguro de salud? <span className="text-destructive">*</span></Label>
-          <Select value={ins.insuranceType!=="NONE"?"Sí":"No"} onValueChange={v=>{if(v==="No"){updateDraft({insurance:{...ins,insuranceType:"NONE",epsProvider:undefined,startDate:null},sisAffiliation:{canAffiliate:true}})}else{updateDraft({insurance:{...ins,insuranceType:"SIS"}})}}}>
+          <Select value={hasInsurance?"Sí":"No"} onValueChange={v=>{if(v==="No"){updateDraft({insurance:{...ins,insuranceType:"NONE",epsProvider:undefined,startDate:null},sisAffiliation:{canAffiliate:true}})}else{updateDraft({insurance:{...ins,insuranceType:"SIS"}})}}}>
             <SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-        {ins.insuranceType!=="NONE"&&<>
+        {hasInsurance&&<>
           <div className="flex flex-col gap-2"><Label className={fl}>Tipo de seguro <span className="text-destructive">*</span></Label>
-          <Select value={ins.insuranceType} onValueChange={v=>{updateDraft({insurance:{...ins,insuranceType:v as InsuranceType,epsProvider:v!=="EPS"?undefined:ins.epsProvider}});if(v==="NONE")updateDraft({sisAffiliation:{canAffiliate:true}})}}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent>{Object.entries(INS).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
-        {ins.insuranceType==="EPS"&&<div className="flex flex-col gap-2"><Label className={fl}>Proveedor EPS</Label>
-          <Select value={ins.epsProvider??""} onValueChange={v=>updateDraft({insurance:{...ins,epsProvider:v as EpsProvider}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EPS_LABELS).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>}
-        <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio del seguro</Label><Input type="date" className={ic} value={ins.startDate??""} onChange={e=>updateDraft({insurance:{...ins,startDate:e.target.value||null}})} /></div>
+            <Select value={ins.insuranceType} onValueChange={v=>{updateDraft({insurance:{...ins,insuranceType:v as InsuranceType,epsProvider:v!=="EPS"?undefined:ins.epsProvider}});if(v==="NONE")updateDraft({sisAffiliation:{canAffiliate:true}})}}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent>{Object.entries(INS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>
+          {ins.insuranceType==="EPS"&&<div className="flex flex-col gap-2"><Label className={fl}>Proveedor EPS</Label>
+            <Select value={ins.epsProvider??""} onValueChange={v=>updateDraft({insurance:{...ins,epsProvider:v as EpsProvider}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EPS_LABELS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>}
+          <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio del seguro</Label><Input type="date" className={ic} value={ins.startDate??""} onChange={e=>updateDraft({insurance:{...ins,startDate:e.target.value||null}})} /></div>
         </>}
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={LogIn} title="Punto de Ingreso" />
         <div className="flex flex-col gap-2"><Label className={fl}>¿Cuál fue el punto de ingreso al programa?</Label>
-          <Select value={entryPoint} onValueChange={handleEntryPointChange}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+          <Select value={entryPoint} onValueChange={v=>handleEntryPointChange(v??"")}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
             <SelectContent>{ENTRY_POINTS.map(ep=><SelectItem key={ep} value={ep}>{ep}</SelectItem>)}</SelectContent>
           </Select>
         </div>
