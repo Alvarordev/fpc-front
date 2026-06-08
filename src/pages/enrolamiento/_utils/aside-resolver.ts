@@ -10,7 +10,7 @@ function step5Conditionals(draft: EnrollmentDraft): string {
     );
   }
 
-  if (draft.insurance.insuranceType !== "NONE") {
+  if (draft.insurance.insuranceType === "NONE") {
     parts.push(
       'Estimada(o), dentro de los próximos minutos le compartiremos un enlace para que pueda verificar qué tipo de seguro tiene: https://app1.susalud.gob.pe/registro/ Para ello deberá seguir los siguientes pasos:\n1. Hacer clic en "Nuevo usuario".\n2. Registrarse utilizando su DNI o CE.\n3. Hacer clic en "Grabar".\n4. Validar sus datos y revisar su correo electrónico.\n5. Volver a la página e iniciar sesión.',
     );
