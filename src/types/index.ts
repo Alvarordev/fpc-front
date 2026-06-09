@@ -170,6 +170,20 @@ export interface Contact {
   updatedAt?: string;
 }
 
+export interface ContactServiceReferralRequest {
+  referredToSocialWorker?: boolean | null;
+  referredToSusalud?: boolean | null;
+  susaludRegistrationNumber?: string | null;
+  receivedFoodGuide?: boolean | null;
+  participatesInGam?: boolean | null;
+  programSatisfaction?: string | null;
+  wellbeingChanges?: string | null;
+  knowsAboutFissal?: boolean | null;
+  referredToPaus?: boolean | null;
+  referredToDae?: boolean | null;
+  referredToFissal?: boolean | null;
+}
+
 export interface CreateContactRequest {
   patientId: string;
   agentId: string;
@@ -180,6 +194,7 @@ export interface CreateContactRequest {
   completedAt?: string | null;
   notes?: string | null;
   scheduledNextContactId?: string | null;
+  serviceReferral?: ContactServiceReferralRequest | null;
 }
 
 export type UpdateContactRequest = Partial<CreateContactRequest>;

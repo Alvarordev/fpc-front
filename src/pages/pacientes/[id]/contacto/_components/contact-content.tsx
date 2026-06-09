@@ -28,10 +28,13 @@ import {
   diagnosisDefaults,
   treatmentDefaults,
   insuranceDefaults,
+  serviceReferralDefaults,
+  triToBool,
   type PatientDetailsFormValues,
   type DiagnosisFormValues,
   type TreatmentFormValues,
   type InsuranceFormValues,
+  type ServiceReferralFormValues,
 } from "./patient-update-tabs";
 import { PsicoSessionDialog, type PsicoFormValues } from "./psico-session-dialog";
 import { AlertDialog, type AlertFormValues } from "./alert-dialog";
@@ -140,6 +143,7 @@ export function ContactContent() {
   const diagnosisForm = useForm<DiagnosisFormValues>({ defaultValues: diagnosisDefaults });
   const treatmentForm = useForm<TreatmentFormValues>({ defaultValues: treatmentDefaults });
   const insuranceForm = useForm<InsuranceFormValues>({ defaultValues: insuranceDefaults });
+  const serviceReferralForm = useForm<ServiceReferralFormValues>({ defaultValues: serviceReferralDefaults });
 
   // Pre-fill complete form with existing contact data
   useEffect(() => {
@@ -169,6 +173,18 @@ export function ContactContent() {
       educationLevel: d?.educationLevel ?? "",
       nativeLanguage: d?.nativeLanguage ?? "",
       requiresTranslation: d?.requiresTranslation ?? false,
+      zoneType: d?.zoneType ?? "",
+      emergencyContactGender: d?.emergencyContactGender ?? "",
+      evidenceOfDomesticViolence: d?.evidenceOfDomesticViolence === true ? "si" : d?.evidenceOfDomesticViolence === false ? "no" : "",
+      usesWoodStove: d?.usesWoodStove === true ? "si" : d?.usesWoodStove === false ? "no" : "",
+      isWorking: d?.isWorking === true ? "si" : d?.isWorking === false ? "no" : "",
+      receivesFinancialSupport: d?.receivesFinancialSupport === true ? "si" : d?.receivesFinancialSupport === false ? "no" : "",
+      referredToSocialWorker: d?.referredToSocialWorker === true ? "si" : d?.referredToSocialWorker === false ? "no" : "",
+      hasConadisCard: d?.hasConadisCard === true ? "si" : d?.hasConadisCard === false ? "no" : "",
+      knowsAboutFissal: d?.knowsAboutFissal === true ? "si" : d?.knowsAboutFissal === false ? "no" : "",
+      isDeceased: d?.isDeceased === true ? "si" : d?.isDeceased === false ? "no" : "",
+      programDropoutReason: d?.programDropoutReason ?? "",
+      programDropoutDate: d?.programDropoutDate ?? "",
     });
   }, [patient, detailsForm]);
 
@@ -267,12 +283,33 @@ export function ContactContent() {
     if (!contactId) return;
 
     // 1. Update contact
+    const srValues = serviceReferralForm.getValues();
+    const hasServiceReferral = Object.entries(srValues).some(
+      ([k, v]) => k !== "susaludRegistrationNumber" && k !== "programSatisfaction" && k !== "wellbeingChanges"
+        ? v === true
+        : v !== "" && v !== false
+    );
     await updateContactMutation.mutateAsync({
       cId: contactId,
       data: {
         status: values.status,
         completedAt: `${values.date}T${values.time}:00`,
         notes: values.notes || undefined,
+        ...(hasServiceReferral && {
+          serviceReferral: {
+            referredToSocialWorker: srValues.referredToSocialWorker || undefined,
+            referredToSusalud: srValues.referredToSusalud || undefined,
+            susaludRegistrationNumber: srValues.susaludRegistrationNumber || undefined,
+            receivedFoodGuide: srValues.receivedFoodGuide || undefined,
+            participatesInGam: srValues.participatesInGam || undefined,
+            programSatisfaction: srValues.programSatisfaction || undefined,
+            wellbeingChanges: srValues.wellbeingChanges || undefined,
+            knowsAboutFissal: srValues.knowsAboutFissal || undefined,
+            referredToPaus: srValues.referredToPaus || undefined,
+            referredToDae: srValues.referredToDae || undefined,
+            referredToFissal: srValues.referredToFissal || undefined,
+          },
+        }),
       },
     });
 
@@ -291,6 +328,18 @@ export function ContactContent() {
         educationLevel: detailValues.educationLevel || undefined,
         nativeLanguage: detailValues.nativeLanguage || undefined,
         requiresTranslation: detailValues.requiresTranslation || undefined,
+        zoneType: detailValues.zoneType || undefined,
+        emergencyContactGender: detailValues.emergencyContactGender || undefined,
+        evidenceOfDomesticViolence: triToBool(detailValues.evidenceOfDomesticViolence),
+        usesWoodStove: triToBool(detailValues.usesWoodStove),
+        isWorking: triToBool(detailValues.isWorking),
+        receivesFinancialSupport: triToBool(detailValues.receivesFinancialSupport),
+        referredToSocialWorker: triToBool(detailValues.referredToSocialWorker),
+        hasConadisCard: triToBool(detailValues.hasConadisCard),
+        knowsAboutFissal: triToBool(detailValues.knowsAboutFissal),
+        isDeceased: triToBool(detailValues.isDeceased),
+        programDropoutReason: detailValues.programDropoutReason || undefined,
+        programDropoutDate: detailValues.programDropoutDate || undefined,
       });
     }
 
@@ -668,6 +717,7 @@ export function ContactContent() {
                   diagnosisForm={diagnosisForm as any}
                   treatmentForm={treatmentForm as any}
                   insuranceForm={insuranceForm as any}
+                  serviceReferralForm={serviceReferralForm as any}
                 />
               </CardContent>
             </Card>
