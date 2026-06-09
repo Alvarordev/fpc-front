@@ -345,16 +345,21 @@ export default function AgentAgendaPage() {
               </div>
             ) : (
               <div className="divide-y divide-border/60">
-                {todayContacts
-                  .sort((a, b) => (b.scheduledAt ?? "").localeCompare(a.scheduledAt ?? ""))
-                  .map((contact) => (
-                    <button
-                      key={contact.id}
-                      onClick={() =>
-                        navigate(
-                          `/pacientes/${contact.patientId}/contacto?contactId=${contact.id}`,
-                        )
-                      }
+                  {todayContacts
+                    .sort((a, b) => (b.scheduledAt ?? "").localeCompare(a.scheduledAt ?? ""))
+                    .map((contact) => (
+                      <button
+                        key={contact.id}
+                        onClick={() => {
+                          if (contact.status === "COMPLETED") {
+                            navigate(`/pacientes/${contact.patientId}`);
+                          } else {
+                            navigate(
+                              `/pacientes/${contact.patientId}/contacto?contactId=${contact.id}`,
+                            );
+                          }
+                        }}
+
                       className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-muted/30 transition-colors cursor-pointer group"
                     >
                       <div
