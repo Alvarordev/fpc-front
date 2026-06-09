@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { alertsApi, appointmentsApi, healthCentersApi, volunteersApi } from "@/lib/api";
+import { alertsApi, appointmentsApi, contactsApi, healthCentersApi, volunteersApi } from "@/lib/api";
 import { usePatients } from "@/pages/pacientes/_hooks/use-patients";
-import type { Alert, HealthCenter, PsychooncologyAppointment, Volunteer } from "@/types";
+import type { Alert, Contact, HealthCenter, PsychooncologyAppointment, Volunteer } from "@/types";
 
 export function useDashboardData() {
   const patientsQuery = usePatients();
@@ -18,33 +18,39 @@ export function useDashboardData() {
     staleTime: 60 * 1000,
   });
 
-  // Active alerts for the banner
   const alertsQuery = useQuery<Alert[]>({
     queryKey: ["dashboardAlerts"],
     queryFn: () => alertsApi.list({ status: "ACTIVE" }),
     staleTime: 30 * 1000,
   });
 
-  // Upcoming psychooncology sessions for the pending list
   const upcomingSessionsQuery = useQuery<PsychooncologyAppointment[]>({
     queryKey: ["dashboardUpcomingSessions"],
     queryFn: () => appointmentsApi.list({ upcoming: true }),
     staleTime: 30 * 1000,
   });
 
-  // Volunteers for name lookup
   const volunteersQuery = useQuery<Volunteer[]>({
     queryKey: ["dashboardVolunteers"],
     queryFn: () => volunteersApi.list(),
     staleTime: 5 * 60 * 1000,
   });
 
+  const contactsQuery = useQuery<Contact[]>({
+    queryKey: ["dashboardContacts"],
+    queryFn: () => contactsApi.list(),
+    staleTime: 30 * 1000,
+  });
+
   const allLoading =
     patientsQuery.isLoading ||
     appointmentsQuery.isLoading ||
     healthCentersQuery.isLoading;
-  const alertsLoading = alertsQuery.isLoading;
-  const sessionsLoading = upcomingSessionsQuery.isLoading || volunteersQuery.isLoading;
+  const operationalLoading =
+    alertsQuery.isLoading ||
+    upcomingSessionsQuery.isLoading ||
+    volunteersQuery.isLoading ||
+    contactsQuery.isLoading;
 
   return {
     patients: patientsQuery.data ?? [],
@@ -55,9 +61,9 @@ export function useDashboardData() {
       (s) => s.status === "SCHEDULED",
     ),
     volunteers: volunteersQuery.data ?? [],
+    contacts: contactsQuery.data ?? [],
     isLoading: allLoading,
-    isAlertsLoading: alertsLoading,
-    isSessionsLoading: sessionsLoading,
+    isOperationalLoading: operationalLoading,
     isError:
       patientsQuery.isError ||
       appointmentsQuery.isError ||

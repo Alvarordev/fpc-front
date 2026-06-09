@@ -63,7 +63,7 @@ import {
   type TrendDatum,
 } from "./_utils/analytics";
 import { useDashboardData } from "./_hooks/use-dashboard-data";
-import type { PsychooncologyAppointment, Patient, Volunteer } from "@/types";
+import type { Alert, PsychooncologyAppointment, Patient, Volunteer, Contact } from "@/types";
 
 const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string }> = [
   { value: "month", label: "Mes" },
@@ -246,18 +246,22 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* ═══ PENDING SESSIONS (callcenter only) ═══ */}
-      {role === "AGENT" && !dashboardData.isLoading && !dashboardData.isError && (
-        <PendingSessionsSection
-          sessions={pendingSessions}
+      {/* ═══ AGENT: Operational View ═══ */}
+      {role === "AGENT" && (
+        <AgentDashboardView
+          activeAlerts={dashboardData.activeAlerts}
+          isAlertsLoading={dashboardData.isAlertsLoading}
+          contacts={dashboardData.contacts}
+          upcomingSessions={pendingSessions}
           patientMap={patientMap}
           volunteerMap={volunteerMap}
-          isLoading={dashboardData.isSessionsLoading}
+          isOperationalLoading={dashboardData.isOperationalLoading}
           onViewPatient={(id) => navigate(`/pacientes/${id}`)}
         />
       )}
 
-      {!dashboardData.isLoading && !dashboardData.isError && (
+      {/* ═══ ADMIN: Charts & Analytics ═══ */}
+      {role === "ADMIN" && !dashboardData.isLoading && !dashboardData.isError && (
         <>
           <section className="grid gap-6 xl:grid-cols-2">
             <Card>
@@ -594,6 +598,244 @@ function PendingSessionsSection({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ── Agent Dashboard View ──
+
+const contactTypeLabels: Record<string, string> = {
+  CALL: "Llamada",
+  WHATSAPP: "WhatsApp",
+  VIDEO_CALL: "Videollamada",
+  EMAIL: "Email",
+  IN_PERSON: "Presencial",
+};
+
+const contactPurposeLabels: Record<string, string> = {
+  FIRST_CONTACT: "Primer contacto",
+  ENROLLMENT: "Enrolamiento",
+  FOLLOW_UP: "Seguimiento",
+  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
+  OTHER: "Otro",
+};
+
+function formatContactTime(iso: string | null): string {
+  if (!iso) return "—";
+  return iso.slice(11, 16);
+}
+
+interface AgentDashboardViewProps {
+  activeAlerts: Alert[];
+  isAlertsLoading: boolean;
+  contacts: Contact[];
+  upcomingSessions: PsychooncologyAppointment[];
+  patientMap: Map<string, Patient>;
+  volunteerMap: Map<string, Volunteer>;
+  isOperationalLoading: boolean;
+  onViewPatient: (id: string) => void;
+}
+
+function AgentDashboardView({
+  activeAlerts,
+  isAlertsLoading,
+  contacts,
+  upcomingSessions,
+  patientMap,
+  volunteerMap,
+  isOperationalLoading,
+  onViewPatient,
+}: AgentDashboardViewProps) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const scheduledContacts = contacts.filter((c) => c.status === "SCHEDULED");
+  const todayContacts = scheduledContacts.filter(
+    (c) => c.scheduledAt?.slice(0, 10) === today,
+  );
+  const pendingContacts = scheduledContacts.filter(
+    (c) => c.scheduledAt && c.scheduledAt.slice(0, 10) > today,
+  );
+
+  todayContacts.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
+  pendingContacts.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
+
+  if (isOperationalLoading) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-10">
+            <p className="text-sm text-muted-foreground text-center">
+              Cargando datos operativos...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Alerts Banner */}
+      {!isAlertsLoading && activeAlerts.length > 0 && (
+        <AlertBanner alerts={activeAlerts} />
+      )}
+
+      {/* Contactos de hoy */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Phone className="size-4 text-primary" />
+              Contactos de hoy
+            </CardTitle>
+            {todayContacts.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {todayContacts.length}
+              </Badge>
+            )}
+          </div>
+          <CardDescription>
+            Contactos programados para el día de hoy.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {todayContacts.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-5 pb-4">
+              No hay contactos programados para hoy.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {todayContacts.map((c) => {
+                const patient = patientMap.get(c.patientId);
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                      <Phone className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {patient?.fullName ?? "Paciente desconocido"}
+                      </p>
+                      <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                        <span>{contactTypeLabels[c.type] ?? c.type}</span>
+                        <span>·</span>
+                        <span>{contactPurposeLabels[c.purpose] ?? c.purpose}</span>
+                        {c.scheduledAt && (
+                          <>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="size-3" />
+                              {formatContactTime(c.scheduledAt)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 gap-1 text-xs h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewPatient(c.patientId);
+                      }}
+                    >
+                      Ver paciente
+                      <ArrowRight className="size-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contactos pendientes */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="size-4 text-primary" />
+              Contactos pendientes
+            </CardTitle>
+            {pendingContacts.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {pendingContacts.length}
+              </Badge>
+            )}
+          </div>
+          <CardDescription>
+            Próximos contactos programados.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {pendingContacts.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-5 pb-4">
+              No hay contactos pendientes.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {pendingContacts.map((c) => {
+                const patient = patientMap.get(c.patientId);
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                      <Calendar className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {patient?.fullName ?? "Paciente desconocido"}
+                      </p>
+                      <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                        <span>{contactTypeLabels[c.type] ?? c.type}</span>
+                        <span>·</span>
+                        <span>{contactPurposeLabels[c.purpose] ?? c.purpose}</span>
+                        {c.scheduledAt && (
+                          <>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="size-3" />
+                              {formatSessionDate(c.scheduledAt)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 gap-1 text-xs h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewPatient(c.patientId);
+                      }}
+                    >
+                      Ver paciente
+                      <ArrowRight className="size-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pending Psico Sessions */}
+      <PendingSessionsSection
+        sessions={upcomingSessions}
+        patientMap={patientMap}
+        volunteerMap={volunteerMap}
+        isLoading={false}
+        onViewPatient={onViewPatient}
+      />
+    </div>
   );
 }
 
