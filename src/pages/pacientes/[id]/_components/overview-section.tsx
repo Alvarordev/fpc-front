@@ -26,6 +26,13 @@ import {
   FileText,
   Building2,
   ArrowRight,
+  Flame,
+  Briefcase,
+  Heart,
+  LogOut,
+  IdCard,
+  Info,
+  Skull,
 } from "lucide-react";
 import { patientsApi } from "@/lib/api";
 import type { Patient } from "@/types";
@@ -281,6 +288,7 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
                 <Field label="Distrito" value={d.currentDistrict ?? "—"} />
                 <Field label="Departamento" value={d.currentDepartment ?? "—"} />
                 <Field label="Departamento de nacimiento" value={d.birthDepartment ?? "—"} />
+                <Field label="Zona" value={d.zoneType ?? "—"} icon={MapPin} />
                 <Field
                   label="Coincide dirección DNI"
                   value={d.dniMatchesAddress === null ? "—" : d.dniMatchesAddress ? "Sí" : "No"}
@@ -300,13 +308,120 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
               </div>
 
               {/* Contacto de emergencia */}
-              {(d.emergencyContactName || d.emergencyContactPhone) && (
+              {(d.emergencyContactName || d.emergencyContactPhone || d.emergencyContactGender) && (
                 <>
                   <Separator />
                   <p className="text-xs font-medium text-muted-foreground">Contacto de emergencia</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <Field label="Nombre" value={d.emergencyContactName ?? "—"} />
                     <Field label="Teléfono" value={d.emergencyContactPhone ?? "—"} icon={Phone} />
+                    <Field label="Género" value={d.emergencyContactGender ?? "—"} icon={User} />
+                  </div>
+                </>
+              )}
+              {/* Datos de seguimiento social */}
+              {(d.evidenceOfDomesticViolence !== null ||
+                d.usesWoodStove !== null ||
+                d.isWorking !== null ||
+                d.receivesFinancialSupport !== null ||
+                d.programDropoutReason ||
+                d.programDropoutDate ||
+                d.referredToSocialWorker !== null ||
+                d.hasConadisCard !== null ||
+                d.knowsAboutFissal !== null ||
+                d.isDeceased !== null) && (
+                <>
+                  <Separator />
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Datos de seguimiento social
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <Field
+                      label="Violencia doméstica"
+                      value={
+                        d.evidenceOfDomesticViolence === null
+                          ? "—"
+                          : d.evidenceOfDomesticViolence
+                            ? "Sí"
+                            : "No"
+                      }
+                      icon={AlertTriangle}
+                    />
+                    <Field
+                      label="Usa cocina a leña"
+                      value={
+                        d.usesWoodStove === null ? "—" : d.usesWoodStove ? "Sí" : "No"
+                      }
+                      icon={Flame}
+                    />
+                    <Field
+                      label="Trabaja actualmente"
+                      value={
+                        d.isWorking === null ? "—" : d.isWorking ? "Sí" : "No"
+                      }
+                      icon={Briefcase}
+                    />
+                    <Field
+                      label="Recibe apoyo económico"
+                      value={
+                        d.receivesFinancialSupport === null
+                          ? "—"
+                          : d.receivesFinancialSupport
+                            ? "Sí"
+                            : "No"
+                      }
+                      icon={Heart}
+                    />
+                    <Field
+                      label="Derivado a trabajo social"
+                      value={
+                        d.referredToSocialWorker === null
+                          ? "—"
+                          : d.referredToSocialWorker
+                            ? "Sí"
+                            : "No"
+                      }
+                      icon={ArrowRight}
+                    />
+                    <Field
+                      label="Tiene carnet CONADIS"
+                      value={
+                        d.hasConadisCard === null
+                          ? "—"
+                          : d.hasConadisCard
+                            ? "Sí"
+                            : "No"
+                      }
+                      icon={IdCard}
+                    />
+                    <Field
+                      label="Conoce FISSAL"
+                      value={
+                        d.knowsAboutFissal === null
+                          ? "—"
+                          : d.knowsAboutFissal
+                            ? "Sí"
+                            : "No"
+                      }
+                      icon={Info}
+                    />
+                    <Field
+                      label="Fallecido"
+                      value={
+                        d.isDeceased === null
+                          ? "—"
+                          : d.isDeceased
+                            ? "Sí"
+                            : "No"
+                      }
+                      icon={Skull}
+                    />
+                    {d.programDropoutDate && (
+                      <Field label="Fecha de abandono" value={fmtDate(d.programDropoutDate)} icon={Calendar} />
+                    )}
+                    {d.programDropoutReason && (
+                      <Field label="Motivo de abandono" value={d.programDropoutReason} icon={LogOut} />
+                    )}
                   </div>
                 </>
               )}
