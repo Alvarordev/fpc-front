@@ -144,7 +144,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6 pb-6">
       {/* ═══ ALERTS BANNER (callcenter only) ═══ */}
-      {role === "AGENT" && !dashboardData.isAlertsLoading && dashboardData.activeAlerts.length > 0 && (
+      {role === "AGENT" && !dashboardData.isOperationalLoading && dashboardData.activeAlerts.length > 0 && (
         <AlertBanner alerts={dashboardData.activeAlerts} />
       )}
 
@@ -250,7 +250,7 @@ export function DashboardPage() {
       {role === "AGENT" && (
         <AgentDashboardView
           activeAlerts={dashboardData.activeAlerts}
-          isAlertsLoading={dashboardData.isAlertsLoading}
+          isAlertsLoading={dashboardData.isOperationalLoading}
           contacts={dashboardData.contacts}
           upcomingSessions={pendingSessions}
           patientMap={patientMap}
