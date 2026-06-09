@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -17,6 +17,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  Phone,
+  Video,
+  Calendar,
+  BrainCircuit,
+  Clock,
+  User,
+  ArrowRight,
+  MessageCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,8 +50,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
+import { AlertBanner } from "@/pages/pacientes/[id]/_components/alert-banner";
 import {
   buildDashboardSnapshot,
   getAvailableYears,
@@ -51,6 +63,7 @@ import {
   type TrendDatum,
 } from "./_utils/analytics";
 import { useDashboardData } from "./_hooks/use-dashboard-data";
+import type { PsychooncologyAppointment, Patient, Volunteer } from "@/types";
 
 const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string }> = [
   { value: "month", label: "Mes" },
@@ -87,6 +100,7 @@ const numberFormatter = new Intl.NumberFormat("es-PE");
 
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
   const today = new Date();
   const [period, setPeriod] = useState<DashboardPeriod>("year");
   const [selectedYear, setSelectedYear] = useState(String(today.getFullYear()));
@@ -116,8 +130,24 @@ export function DashboardPage() {
     month: activeMonth,
   });
 
+  // Build lookup maps for pending sessions
+  const patientMap = new Map(
+    dashboardData.patients.map((p) => [p.id, p]),
+  );
+  const volunteerMap = new Map(
+    dashboardData.volunteers.map((v) => [v.id, v]),
+  );
+
+  const pendingSessions = dashboardData.upcomingSessions;
+
   return (
     <div className="space-y-6 pb-6">
+      {/* ═══ ALERTS BANNER ═══ */}
+      {!dashboardData.isAlertsLoading && dashboardData.activeAlerts.length > 0 && (
+        <AlertBanner alerts={dashboardData.activeAlerts} />
+      )}
+
+      {/* ═══ HEADER + STATS ═══ */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
@@ -213,6 +243,17 @@ export function DashboardPage() {
             </CardDescription>
           </CardHeader>
         </Card>
+      )}
+
+      {/* ═══ PENDING SESSIONS ═══ */}
+      {!dashboardData.isLoading && !dashboardData.isError && (
+        <PendingSessionsSection
+          sessions={pendingSessions}
+          patientMap={patientMap}
+          volunteerMap={volunteerMap}
+          isLoading={dashboardData.isSessionsLoading}
+          onViewPatient={(id) => navigate(`/pacientes/${id}`)}
+        />
       )}
 
       {!dashboardData.isLoading && !dashboardData.isError && (
@@ -394,6 +435,168 @@ export function DashboardPage() {
     </div>
   );
 }
+
+// ── Pending Sessions Section ──
+
+const sessionNumberLabels: Record<number, string> = {
+  1: "Primera sesión",
+  2: "Segunda sesión",
+  3: "Tercera sesión",
+  4: "Cuarta sesión",
+};
+
+function sessionLabel(num: number): string {
+  return sessionNumberLabels[num] ?? `Sesión ${num}`;
+}
+
+function formatSessionDate(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dateStr = d.toLocaleDateString("es-PE", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
+  if (d.toDateString() === today.toDateString()) return `Hoy — ${dateStr}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `Mañana — ${dateStr}`;
+  return dateStr;
+}
+
+function formatSessionTime(iso: string): string {
+  return iso.slice(11, 16);
+}
+
+interface PendingSessionsSectionProps {
+  sessions: PsychooncologyAppointment[];
+  patientMap: Map<string, Patient>;
+  volunteerMap: Map<string, Volunteer>;
+  isLoading: boolean;
+  onViewPatient: (id: string) => void;
+}
+
+function PendingSessionsSection({
+  sessions,
+  patientMap,
+  volunteerMap,
+  isLoading,
+  onViewPatient,
+}: PendingSessionsSectionProps) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageCircle className="size-4 text-primary" />
+            Próximas sesiones
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Cargando sesiones...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return null; // Don't show anything if no pending sessions
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageCircle className="size-4 text-primary" />
+            Próximas sesiones pendientes
+          </CardTitle>
+          <Badge variant="secondary" className="text-xs">
+            {sessions.length} pendiente{sessions.length !== 1 ? "s" : ""}
+          </Badge>
+        </div>
+        <CardDescription>
+          Recordatorios para contactar a los pacientes antes de su sesión.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y divide-border/50">
+          {sessions.map((s) => {
+            const patient = patientMap.get(s.patientId);
+            const volunteer = volunteerMap.get(s.volunteerId);
+            const ModalityIcon = s.modality === "VIDEO_CALL" ? Video : Phone;
+
+            return (
+              <div
+                key={s.id}
+                className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
+              >
+                {/* Modality icon */}
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <ModalityIcon className="size-4" />
+                </div>
+
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">
+                      {patient?.fullName ?? "Paciente desconocido"}
+                    </p>
+                    {patient?.hasWhatsapp && (
+                      <span className="text-[10px] text-emerald-600 font-medium shrink-0">
+                        WP
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <BrainCircuit className="size-3" />
+                      {sessionLabel(s.sessionNumber)}
+                    </span>
+                    {volunteer && (
+                      <span className="flex items-center gap-1">
+                        <User className="size-3" />
+                        {volunteer.firstName} {volunteer.lastName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="size-3" />
+                      {formatSessionDate(s.scheduledAt)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3" />
+                      {formatSessionTime(s.scheduledAt)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 gap-1 text-xs h-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewPatient(s.patientId);
+                  }}
+                >
+                  Ver paciente
+                  <ArrowRight className="size-3" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Chart Components ──
 
 function CompactIndicator({ item }: { item: StatDatum }) {
   return (
