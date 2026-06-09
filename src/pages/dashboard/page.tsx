@@ -142,8 +142,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-6">
-      {/* ═══ ALERTS BANNER ═══ */}
-      {!dashboardData.isAlertsLoading && dashboardData.activeAlerts.length > 0 && (
+      {/* ═══ ALERTS BANNER (callcenter only) ═══ */}
+      {role === "AGENT" && !dashboardData.isAlertsLoading && dashboardData.activeAlerts.length > 0 && (
         <AlertBanner alerts={dashboardData.activeAlerts} />
       )}
 
@@ -245,8 +245,8 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* ═══ PENDING SESSIONS ═══ */}
-      {!dashboardData.isLoading && !dashboardData.isError && (
+      {/* ═══ PENDING SESSIONS (callcenter only) ═══ */}
+      {role === "AGENT" && !dashboardData.isLoading && !dashboardData.isError && (
         <PendingSessionsSection
           sessions={pendingSessions}
           patientMap={patientMap}
