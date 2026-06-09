@@ -15,7 +15,7 @@ function AsideCard({ title, text, variant }: { title: string; text: string; vari
         <p className="text-xs font-semibold uppercase tracking-wider">{title}</p>
       </div>
       <div className={cn("px-4 py-3", variant === "script" ? "bg-primary/5 text-foreground/90" : "bg-amber-500/5 text-foreground/90")}>
-        <p className="whitespace-pre-line text-sm leading-relaxed">{text}</p>
+        <div className="whitespace-pre-line text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />
       </div>
     </div>
   );

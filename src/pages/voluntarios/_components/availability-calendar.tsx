@@ -8,6 +8,7 @@ interface AvailabilityCalendarProps {
   slots: AvailabilitySlot[];
   volunteers: Volunteer[];
   highlightedIds: string[];
+  patientNameByAvailabilityId: Map<string, string>;
 }
 
 export function AvailabilityCalendar({
@@ -16,6 +17,7 @@ export function AvailabilityCalendar({
   slots,
   volunteers,
   highlightedIds,
+  patientNameByAvailabilityId,
 }: AvailabilityCalendarProps) {
   const days = getDaysInMonth(year, month);
   const slotsByDay = groupSlotsByDay(slots, year, month);
@@ -44,6 +46,7 @@ export function AvailabilityCalendar({
               slots={daySlots}
               volunteers={volunteers}
               highlightedIds={highlightedIds}
+              patientNameByAvailabilityId={patientNameByAvailabilityId}
             />
           );
         })}

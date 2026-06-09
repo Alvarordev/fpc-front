@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { volunteersApi, availabilityApi } from "@/lib/api";
-import type { Volunteer, AvailabilitySlot } from "@/types";
+import { volunteersApi, availabilityApi, appointmentsApi, patientsApi } from "@/lib/api";
+import type { Volunteer, AvailabilitySlot, PsychooncologyAppointment, Patient } from "@/types";
 
 export function useVolunteers() {
   return useQuery<Volunteer[]>({
@@ -23,5 +23,21 @@ export function useAllSlots() {
       return allSlots;
     },
     staleTime: 30 * 1000,
+  });
+}
+
+export function useAllAppointments() {
+  return useQuery<PsychooncologyAppointment[]>({
+    queryKey: ["allAppointments"],
+    queryFn: () => appointmentsApi.list(),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function usePatients() {
+  return useQuery<Patient[]>({
+    queryKey: ["patients"],
+    queryFn: () => patientsApi.list(),
+    staleTime: 60 * 1000,
   });
 }

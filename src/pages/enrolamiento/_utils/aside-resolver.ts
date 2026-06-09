@@ -21,15 +21,28 @@ function step5Conditionals(draft: EnrollmentDraft): string {
 
 function step7Script(draft: EnrollmentDraft, categoriaClinica: "signos" | "diagnostico" | null): string {
   const hasInsurance = draft.insurance.insuranceType !== "NONE";
+  const hasMedicalReport = draft.diagnosis.hasMedicalReport;
 
-  if (hasInsurance) {
-    if (categoriaClinica === "signos") {
-      return "Entiendo su situación. Dado que cuenta con seguro y presenta signos o síntomas, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+  const baseScript = (() => {
+    if (hasInsurance) {
+      if (categoriaClinica === "signos") {
+        return "Entiendo su situación. Dado que cuenta con seguro y presenta signos o síntomas, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+      }
+      return "Entiendo su situación. Dado que cuenta con seguro y ya cuenta con un diagnóstico, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
     }
-    return "Entiendo su situación. Dado que cuenta con seguro y ya cuenta con un diagnóstico, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+
+    return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas.";
+  })();
+
+  if (hasMedicalReport === undefined || hasMedicalReport === null) {
+    return baseScript;
   }
 
-  return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas.";
+  const informeMedico = hasMedicalReport
+    ? "<strong>INFORME MÉDICO</strong>\n\nSI TIENE INFORME MÉDICO: De acuerdo, le pedimos que por favor nos pueda enviar su informe médico a nuestro número de WhatsApp 923514021.\n\nNO TIENE INFORME MÉDICO: Le recomendamos que pueda acercarse al establecimiento de salud en donde se atiende para que pueda solicitar su informe médico. En cuanto lo tenga disponible, por favor nos lo hace llegar vía WhatsApp o correo electrónico sepa@fpc.pe"
+    : "";
+
+  return informeMedico ? `${baseScript}\n\n${informeMedico}` : baseScript;
 }
 
 export function resolveAsideContent(

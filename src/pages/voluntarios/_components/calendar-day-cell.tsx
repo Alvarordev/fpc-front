@@ -8,6 +8,7 @@ interface CalendarDayCellProps {
   slots: AvailabilitySlot[];
   volunteers: Volunteer[];
   highlightedIds: string[];
+  patientNameByAvailabilityId: Map<string, string>;
 }
 
 const TODAY = new Date();
@@ -25,6 +26,7 @@ export function CalendarDayCell({
   slots,
   volunteers,
   highlightedIds,
+  patientNameByAvailabilityId,
 }: CalendarDayCellProps) {
   const isCurrentMonth = date.getMonth() === currentMonth;
   const today = isToday(date);
@@ -56,23 +58,33 @@ export function CalendarDayCell({
           highlightedIds.includes(slot.volunteerId);
         const isAvailable = slot.status === "AVAILABLE";
         const initials = `${volunteer.firstName[0]}${volunteer.lastName[0]}`;
+        const patientName = patientNameByAvailabilityId.get(slot.id);
 
         return (
-          <div
-            key={slot.id}
-            title={`${volunteer.firstName} ${volunteer.lastName} · ${formatTimeRange(slot.startTime, slot.endTime)}`}
-            className={cn(
-              "flex items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight border truncate cursor-default transition-opacity",
-              isAvailable
-                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                : "bg-amber-100 text-amber-700 border-amber-200 opacity-70",
-              !isHighlighted && "opacity-15",
+          <div key={slot.id} className="space-y-0.5">
+            <div
+              title={`${volunteer.firstName} ${volunteer.lastName} · ${formatTimeRange(slot.startTime, slot.endTime)}${patientName ? ` · ${patientName}` : ""}`}
+              className={cn(
+                "flex items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight border truncate cursor-default transition-opacity",
+                isAvailable
+                  ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                  : "bg-amber-100 text-amber-700 border-amber-200 opacity-70",
+                !isHighlighted && "opacity-15",
+              )}
+            >
+              <span className="font-semibold shrink-0">{initials}</span>
+              <span className="truncate">
+                {formatTimeRange(slot.startTime, slot.endTime)}
+              </span>
+            </div>
+            {!isAvailable && patientName && (
+              <div
+                className="text-[10px] text-amber-600 truncate px-1 leading-tight"
+                title={patientName}
+              >
+                {patientName}
+              </div>
             )}
-          >
-            <span className="font-semibold shrink-0">{initials}</span>
-            <span className="truncate">
-              {formatTimeRange(slot.startTime, slot.endTime)}
-            </span>
           </div>
         );
       })}

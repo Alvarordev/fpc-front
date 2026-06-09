@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/store/auth-store";
-import { useVolunteers, useAllSlots } from "../_hooks/use-volunteers";
+import { useVolunteers, useAllSlots, useAllAppointments, usePatients } from "../_hooks/use-volunteers";
 import { VolunteersToolbar } from "./volunteers-toolbar";
 import { VolunteersTable } from "./volunteers-table";
 import { getVolunteerColumns } from "./volunteers-columns";
@@ -22,6 +22,20 @@ export function VolunteersContent() {
 
   const { data: volunteers = [] } = useVolunteers();
   const { data: slots = [] } = useAllSlots();
+  const { data: appointments = [] } = useAllAppointments();
+  const { data: patients = [] } = usePatients();
+
+  const patientNameByAvailabilityId = useMemo(() => {
+    const patientMap = new Map(patients.map((p) => [p.id, p.fullName]));
+    const result = new Map<string, string>();
+    for (const appt of appointments) {
+      if (appt.status === "SCHEDULED") {
+        const name = patientMap.get(appt.patientId);
+        if (name) result.set(appt.availabilityId, name);
+      }
+    }
+    return result;
+  }, [appointments, patients]);
 
   const filtered = volunteers.filter((v) => {
     const matchesVolunteer = volunteerId === "all" || v.id === volunteerId;
@@ -99,6 +113,7 @@ export function VolunteersContent() {
             slots={slots}
             volunteers={filtered}
             highlightedIds={highlightedIds}
+            patientNameByAvailabilityId={patientNameByAvailabilityId}
           />
         </TabsContent>
 
