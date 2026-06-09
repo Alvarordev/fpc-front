@@ -86,7 +86,7 @@ export function Step7Atencion() {
       {esDx && <div className="flex flex-col gap-8">
         <section className="flex flex-col gap-5"><SectionHeader icon={Stethoscope} title="Diagnóstico Oncológico" />
           <div className="flex flex-col gap-2"><Label className={fl}>¿Cuál es el diagnóstico oncológico? <span className="text-destructive">*</span></Label>
-              <Select value={diagnosisSelectValue} onValueChange={v=>{if(v===OTHER_VALUE){setIsOtherDiagnosis(true);updateDraft({diagnosis:{...dx,diagnosis:""}})}else{setIsOtherDiagnosis(false);updateDraft({diagnosis:{...dx,diagnosis:v}})}}}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar diagnóstico..." /></SelectTrigger>
+              <Select value={diagnosisSelectValue} onValueChange={v=>{if(!v)return;if(v===OTHER_VALUE){setIsOtherDiagnosis(true);updateDraft({diagnosis:{...dx,diagnosis:""}})}else{setIsOtherDiagnosis(false);updateDraft({diagnosis:{...dx,diagnosis:v}})}}}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar diagnóstico..." /></SelectTrigger>
                 <SelectContent>{DIAGNOSIS_OPTIONS.map(o=><SelectItem key={o} value={o}>{o}</SelectItem>)}<SelectSeparator /><SelectItem value={OTHER_VALUE}>Otro (especificar)</SelectItem></SelectContent>
               </Select>
             </div>
