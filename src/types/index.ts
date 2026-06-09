@@ -199,9 +199,21 @@ export interface PatientDetailsResponse {
   travelTimeToHospital: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
+  zoneType: string | null;
+  emergencyContactGender: string | null;
   educationLevel: EducationLevel | null;
   nativeLanguage: string | null;
   requiresTranslation: boolean;
+  evidenceOfDomesticViolence: boolean | null;
+  usesWoodStove: boolean | null;
+  isWorking: boolean | null;
+  receivesFinancialSupport: boolean | null;
+  programDropoutReason: string | null;
+  programDropoutDate: string | null;
+  referredToSocialWorker: boolean | null;
+  hasConadisCard: boolean | null;
+  knowsAboutFissal: boolean | null;
+  isDeceased: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -375,6 +387,16 @@ export interface EnrollPatientDetailsRequest {
   educationLevel?: EducationLevel | null;
   nativeLanguage?: string | null;
   requiresTranslation?: boolean;
+  evidenceOfDomesticViolence?: boolean | null;
+  usesWoodStove?: boolean | null;
+  isWorking?: boolean | null;
+  receivesFinancialSupport?: boolean | null;
+  programDropoutReason?: string | null;
+  programDropoutDate?: string | null;
+  referredToSocialWorker?: boolean | null;
+  hasConadisCard?: boolean | null;
+  knowsAboutFissal?: boolean | null;
+  isDeceased?: boolean | null;
 }
 
 export interface AddInsuranceRequest {
