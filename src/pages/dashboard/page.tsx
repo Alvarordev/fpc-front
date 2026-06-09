@@ -100,6 +100,7 @@ const numberFormatter = new Intl.NumberFormat("es-PE");
 
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user);
+  const role = user?.role;
   const navigate = useNavigate();
   const today = new Date();
   const [period, setPeriod] = useState<DashboardPeriod>("year");
@@ -107,7 +108,7 @@ export function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(String(today.getMonth()));
   const dashboardData = useDashboardData();
 
-  if (user?.role === "VOLUNTEER") {
+  if (role === "VOLUNTEER") {
     return <Navigate to="/agenda" replace />;
   }
 
