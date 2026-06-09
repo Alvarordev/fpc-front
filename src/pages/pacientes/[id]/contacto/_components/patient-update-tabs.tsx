@@ -145,13 +145,6 @@ export function triToBool(val: string): boolean | null | undefined {
   return undefined;
 }
 
-/** Converts boolean | null to tri-state string */
-function boolToTri(val: boolean | null | undefined): string {
-  if (val === true) return "si";
-  if (val === false) return "no";
-  return "";
-}
-
 /** Reusable tri-state Select for Sí/No/— fields */
 function TriSelect({
   value,
@@ -165,7 +158,7 @@ function TriSelect({
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange}>
+      <Select value={value} onValueChange={(v) => v !== null && onChange(v)}>
         <SelectTrigger className="h-9">
           <SelectValue>{triLabel(value)}</SelectValue>
         </SelectTrigger>
