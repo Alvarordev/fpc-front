@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -17,16 +17,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  Phone,
-  Video,
-  Calendar,
-  BrainCircuit,
-  Clock,
-  User,
-  ArrowRight,
-  MessageCircle,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -50,10 +40,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
-import { AlertBanner } from "@/pages/pacientes/[id]/_components/alert-banner";
 import {
   buildDashboardSnapshot,
   getAvailableYears,
@@ -63,7 +51,6 @@ import {
   type TrendDatum,
 } from "./_utils/analytics";
 import { useDashboardData } from "./_hooks/use-dashboard-data";
-import type { Alert, PsychooncologyAppointment, Patient, Volunteer, Contact } from "@/types";
 
 const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string }> = [
   { value: "month", label: "Mes" },
@@ -100,15 +87,13 @@ const numberFormatter = new Intl.NumberFormat("es-PE");
 
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user);
-  const role = user?.role;
-  const navigate = useNavigate();
   const today = new Date();
   const [period, setPeriod] = useState<DashboardPeriod>("year");
   const [selectedYear, setSelectedYear] = useState(String(today.getFullYear()));
   const [selectedMonth, setSelectedMonth] = useState(String(today.getMonth()));
   const dashboardData = useDashboardData();
 
-  if (role === "VOLUNTEER") {
+  if (user?.role === "VOLUNTEER") {
     return <Navigate to="/agenda" replace />;
   }
 
@@ -131,24 +116,8 @@ export function DashboardPage() {
     month: activeMonth,
   });
 
-  // Build lookup maps for pending sessions
-  const patientMap = new Map(
-    dashboardData.patients.map((p) => [p.id, p]),
-  );
-  const volunteerMap = new Map(
-    dashboardData.volunteers.map((v) => [v.id, v]),
-  );
-
-  const pendingSessions = dashboardData.upcomingSessions;
-
   return (
     <div className="space-y-6 pb-6">
-      {/* ═══ ALERTS BANNER (callcenter only) ═══ */}
-      {role === "AGENT" && !dashboardData.isOperationalLoading && dashboardData.activeAlerts.length > 0 && (
-        <AlertBanner alerts={dashboardData.activeAlerts} />
-      )}
-
-      {/* ═══ HEADER + STATS ═══ */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
@@ -246,22 +215,7 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* ═══ AGENT: Operational View ═══ */}
-      {role === "AGENT" && (
-        <AgentDashboardView
-          activeAlerts={dashboardData.activeAlerts}
-          isAlertsLoading={dashboardData.isOperationalLoading}
-          contacts={dashboardData.contacts}
-          upcomingSessions={pendingSessions}
-          patientMap={patientMap}
-          volunteerMap={volunteerMap}
-          isOperationalLoading={dashboardData.isOperationalLoading}
-          onViewPatient={(id) => navigate(`/pacientes/${id}`)}
-        />
-      )}
-
-      {/* ═══ ADMIN: Charts & Analytics ═══ */}
-      {role === "ADMIN" && !dashboardData.isLoading && !dashboardData.isError && (
+      {!dashboardData.isLoading && !dashboardData.isError && (
         <>
           <section className="grid gap-6 xl:grid-cols-2">
             <Card>
@@ -441,403 +395,6 @@ export function DashboardPage() {
   );
 }
 
-// ── Pending Sessions Section ──
-
-const sessionNumberLabels: Record<number, string> = {
-  1: "Primera sesión",
-  2: "Segunda sesión",
-  3: "Tercera sesión",
-  4: "Cuarta sesión",
-};
-
-function sessionLabel(num: number): string {
-  return sessionNumberLabels[num] ?? `Sesión ${num}`;
-}
-
-function formatSessionDate(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const dateStr = d.toLocaleDateString("es-PE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-
-  if (d.toDateString() === today.toDateString()) return `Hoy — ${dateStr}`;
-  if (d.toDateString() === tomorrow.toDateString()) return `Mañana — ${dateStr}`;
-  return dateStr;
-}
-
-function formatSessionTime(iso: string): string {
-  return iso.slice(11, 16);
-}
-
-interface PendingSessionsSectionProps {
-  sessions: PsychooncologyAppointment[];
-  patientMap: Map<string, Patient>;
-  volunteerMap: Map<string, Volunteer>;
-  isLoading: boolean;
-  onViewPatient: (id: string) => void;
-}
-
-function PendingSessionsSection({
-  sessions,
-  patientMap,
-  volunteerMap,
-  isLoading,
-  onViewPatient,
-}: PendingSessionsSectionProps) {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageCircle className="size-4 text-primary" />
-            Próximas sesiones
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Cargando sesiones...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (sessions.length === 0) {
-    return null; // Don't show anything if no pending sessions
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageCircle className="size-4 text-primary" />
-            Próximas sesiones pendientes
-          </CardTitle>
-          <Badge variant="secondary" className="text-xs">
-            {sessions.length} pendiente{sessions.length !== 1 ? "s" : ""}
-          </Badge>
-        </div>
-        <CardDescription>
-          Recordatorios para contactar a los pacientes antes de su sesión.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="divide-y divide-border/50">
-          {sessions.map((s) => {
-            const patient = patientMap.get(s.patientId);
-            const volunteer = volunteerMap.get(s.volunteerId);
-            const ModalityIcon = s.modality === "VIDEO_CALL" ? Video : Phone;
-
-            return (
-              <div
-                key={s.id}
-                className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
-              >
-                {/* Modality icon */}
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <ModalityIcon className="size-4" />
-                </div>
-
-                {/* Info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium truncate">
-                      {patient?.fullName ?? "Paciente desconocido"}
-                    </p>
-                    {patient?.hasWhatsapp && (
-                      <span className="text-[10px] text-emerald-600 font-medium shrink-0">
-                        WP
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                    <span className="flex items-center gap-1">
-                      <BrainCircuit className="size-3" />
-                      {sessionLabel(s.sessionNumber)}
-                    </span>
-                    {volunteer && (
-                      <span className="flex items-center gap-1">
-                        <User className="size-3" />
-                        {volunteer.firstName} {volunteer.lastName}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="size-3" />
-                      {formatSessionDate(s.scheduledAt)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="size-3" />
-                      {formatSessionTime(s.scheduledAt)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 gap-1 text-xs h-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewPatient(s.patientId);
-                  }}
-                >
-                  Ver paciente
-                  <ArrowRight className="size-3" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Agent Dashboard View ──
-
-const contactTypeLabels: Record<string, string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Email",
-  IN_PERSON: "Presencial",
-};
-
-const contactPurposeLabels: Record<string, string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-};
-
-function formatContactTime(iso: string | null): string {
-  if (!iso) return "—";
-  return iso.slice(11, 16);
-}
-
-interface AgentDashboardViewProps {
-  activeAlerts: Alert[];
-  isAlertsLoading: boolean;
-  contacts: Contact[];
-  upcomingSessions: PsychooncologyAppointment[];
-  patientMap: Map<string, Patient>;
-  volunteerMap: Map<string, Volunteer>;
-  isOperationalLoading: boolean;
-  onViewPatient: (id: string) => void;
-}
-
-function AgentDashboardView({
-  activeAlerts,
-  isAlertsLoading,
-  contacts,
-  upcomingSessions,
-  patientMap,
-  volunteerMap,
-  isOperationalLoading,
-  onViewPatient,
-}: AgentDashboardViewProps) {
-  const today = new Date().toISOString().slice(0, 10);
-
-  const scheduledContacts = contacts.filter((c) => c.status === "SCHEDULED");
-  const todayContacts = scheduledContacts.filter(
-    (c) => c.scheduledAt?.slice(0, 10) === today,
-  );
-  const pendingContacts = scheduledContacts.filter(
-    (c) => c.scheduledAt && c.scheduledAt.slice(0, 10) > today,
-  );
-
-  todayContacts.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
-  pendingContacts.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""));
-
-  if (isOperationalLoading) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="py-10">
-            <p className="text-sm text-muted-foreground text-center">
-              Cargando datos operativos...
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Alerts Banner */}
-      {!isAlertsLoading && activeAlerts.length > 0 && (
-        <AlertBanner alerts={activeAlerts} />
-      )}
-
-      {/* Contactos de hoy */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Phone className="size-4 text-primary" />
-              Contactos de hoy
-            </CardTitle>
-            {todayContacts.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {todayContacts.length}
-              </Badge>
-            )}
-          </div>
-          <CardDescription>
-            Contactos programados para el día de hoy.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {todayContacts.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-5 pb-4">
-              No hay contactos programados para hoy.
-            </p>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {todayContacts.map((c) => {
-                const patient = patientMap.get(c.patientId);
-                return (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-                      <Phone className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">
-                        {patient?.fullName ?? "Paciente desconocido"}
-                      </p>
-                      <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{contactTypeLabels[c.type] ?? c.type}</span>
-                        <span>·</span>
-                        <span>{contactPurposeLabels[c.purpose] ?? c.purpose}</span>
-                        {c.scheduledAt && (
-                          <>
-                            <span>·</span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="size-3" />
-                              {formatContactTime(c.scheduledAt)}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 gap-1 text-xs h-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewPatient(c.patientId);
-                      }}
-                    >
-                      Ver paciente
-                      <ArrowRight className="size-3" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Contactos pendientes */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="size-4 text-primary" />
-              Contactos pendientes
-            </CardTitle>
-            {pendingContacts.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {pendingContacts.length}
-              </Badge>
-            )}
-          </div>
-          <CardDescription>
-            Próximos contactos programados.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {pendingContacts.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-5 pb-4">
-              No hay contactos pendientes.
-            </p>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {pendingContacts.map((c) => {
-                const patient = patientMap.get(c.patientId);
-                return (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                      <Calendar className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">
-                        {patient?.fullName ?? "Paciente desconocido"}
-                      </p>
-                      <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{contactTypeLabels[c.type] ?? c.type}</span>
-                        <span>·</span>
-                        <span>{contactPurposeLabels[c.purpose] ?? c.purpose}</span>
-                        {c.scheduledAt && (
-                          <>
-                            <span>·</span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="size-3" />
-                              {formatSessionDate(c.scheduledAt)}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 gap-1 text-xs h-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewPatient(c.patientId);
-                      }}
-                    >
-                      Ver paciente
-                      <ArrowRight className="size-3" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pending Psico Sessions */}
-      <PendingSessionsSection
-        sessions={upcomingSessions}
-        patientMap={patientMap}
-        volunteerMap={volunteerMap}
-        isLoading={false}
-        onViewPatient={onViewPatient}
-      />
-    </div>
-  );
-}
 
 // ── Chart Components ──
 
