@@ -483,6 +483,7 @@ export interface EnrollmentMetadataRequest {
   currentlyAttendingConsultations?: boolean | null;
   currentlyReceivingTreatment?: boolean | null;
   surveyAccepted?: boolean;
+  surveyRating?: number | null;
   agentId?: string | null;
 }
 
@@ -496,6 +497,23 @@ export interface SymptomReportRequest {
   indicationsReceived?: string | null;
 }
 
+export interface FamilyPreventionTalkInterestRequest {
+  talkName: string;
+  familyMemberName: string;
+  familyMemberPhone: string;
+  familyMemberEmail: string;
+}
+
+export interface FamilyPreventionTalkInterestResponse {
+  id: string;
+  patientId: string;
+  talkName: string;
+  familyMemberName: string;
+  familyMemberPhone: string;
+  familyMemberEmail: string;
+  createdAt: string;
+}
+
 export interface FullEnrollmentRequest {
   patientId: string | null;
   patientData?: CreatePatientRequest;
@@ -505,6 +523,7 @@ export interface FullEnrollmentRequest {
   diagnosis?: AddDiagnosisRequest | null;
   treatment?: AddTreatmentRequest | null;
   medicalAppointments?: AddMedicalAppointmentRequest[] | null;
+  familyPreventionTalkInterests?: FamilyPreventionTalkInterestRequest[] | null;
   sisAffiliation?: AddSisAffiliationRequest | null;
   companions?: LinkCompanionRequest[] | null;
   enrollmentMetadata?: EnrollmentMetadataRequest | null;

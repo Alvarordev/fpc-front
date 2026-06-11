@@ -58,6 +58,7 @@ export function Step8Cierre() {
           isOncologicalPatient: meta.isOncologicalPatient,
           programEntryPoint: meta.programEntryPoint || null,
           surveyAccepted: meta.surveyAccepted,
+          surveyRating: meta.surveyRating ?? null,
           agentId,
           affiliationType: (meta.affiliationType as any) || "PATIENT",
         },
@@ -97,6 +98,33 @@ export function Step8Cierre() {
       <section className="flex flex-col gap-5"><SectionHeader icon={ClipboardCheck} title="Encuesta de Satisfacción" />
         <div className="flex flex-col gap-2"><Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿El paciente acepta la encuesta? <span className="text-destructive">*</span></Label>
           <Select value={meta.surveyAccepted?"Sí":"No"} onValueChange={v=>updateDraft({enrollmentMetadata:{...meta,surveyAccepted:v==="Sí"}})}><SelectTrigger className="w-full bg-card border"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí, acepta</SelectItem><SelectItem value="No">No desea</SelectItem></SelectContent></Select></div>
+        {meta.surveyAccepted && (
+          <div className="flex flex-col gap-2 pt-1">
+            <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Calificación (1 al 5)</Label>
+            <Select
+              value={meta.surveyRating ? String(meta.surveyRating) : ""}
+              onValueChange={(v) =>
+                updateDraft({
+                  enrollmentMetadata: {
+                    ...meta,
+                    surveyRating: v ? Number(v) : undefined,
+                  },
+                })
+              }
+            >
+              <SelectTrigger className="max-w-48 bg-card border">
+                <SelectValue placeholder="Sin calificar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 — Muy mala</SelectItem>
+                <SelectItem value="2">2 — Mala</SelectItem>
+                <SelectItem value="3">3 — Regular</SelectItem>
+                <SelectItem value="4">4 — Buena</SelectItem>
+                <SelectItem value="5">5 — Muy buena</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={Clock} title="Registro de Tiempo" />
         <div className="flex flex-col gap-2"><Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Hora de fin <span className="text-destructive">*</span></Label><Input type="time" value={meta.endTime?.slice(0,5)??now} onChange={e=>updateDraft({enrollmentMetadata:{...meta,endTime:e.target.value}})} className="max-w-48 bg-card border" /></div>

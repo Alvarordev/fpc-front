@@ -22,6 +22,7 @@ function step5Conditionals(draft: EnrollmentDraft): string {
 function step7Script(draft: EnrollmentDraft, categoriaClinica: "signos" | "diagnostico" | null): string {
   const hasInsurance = draft.insurance.insuranceType !== "NONE";
   const hasMedicalReport = draft.diagnosis.hasMedicalReport;
+  const hasSoughtConsultation = draft.symptomReport.hasSoughtMedicalConsultation;
 
   const baseScript = (() => {
     if (hasInsurance) {
@@ -34,15 +35,28 @@ function step7Script(draft: EnrollmentDraft, categoriaClinica: "signos" | "diagn
     return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas.";
   })();
 
-  if (hasMedicalReport === undefined || hasMedicalReport === null) {
-    return baseScript;
+  // Medical appointment guidance when patient hasn't sought consultation (signos only)
+  let medAppointmentGuidance = "";
+  if (categoriaClinica === "signos" && hasSoughtConsultation === false) {
+    const insuranceType = draft.insurance.insuranceType;
+    if (insuranceType === "ESSALUD") {
+      medAppointmentGuidance = "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — ESSALUD</strong>\n\nEstimado(a), al finalizar esta llamada le compartiremos un enlace donde podrá verificar dónde se atiende:\nhttps://dondemeatiendo.essalud.gob.pe/#/consulta\n\nPara la consulta deberá tener a la mano su DNI, CE o Permiso Temporal de Permanencia.";
+    } else if (insuranceType === "SIS") {
+      medAppointmentGuidance = "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — SIS</strong>\n\nConsultar el número de DNI y verificar el establecimiento a través del siguiente enlace:\nhttps://cel.sis.gob.pe/SisConsultaEnLinea\n\nPosteriormente enviar al paciente una captura de pantalla de su establecimiento de atención.";
+    }
   }
 
-  const informeMedico = hasMedicalReport
-    ? "<strong>INFORME MÉDICO</strong>\n\nSI TIENE INFORME MÉDICO: De acuerdo, le pedimos que por favor nos pueda enviar su informe médico a nuestro número de WhatsApp 923514021.\n\nNO TIENE INFORME MÉDICO: Le recomendamos que pueda acercarse al establecimiento de salud en donde se atiende para que pueda solicitar su informe médico. En cuanto lo tenga disponible, por favor nos lo hace llegar vía WhatsApp o correo electrónico sepa@fpc.pe"
-    : "";
+  const parts: string[] = [baseScript];
+  if (medAppointmentGuidance) parts.push(medAppointmentGuidance);
 
-  return informeMedico ? `${baseScript}\n\n${informeMedico}` : baseScript;
+  if (hasMedicalReport !== undefined && hasMedicalReport !== null) {
+    const informeMedico = hasMedicalReport
+      ? "<strong>INFORME MÉDICO</strong>\n\nSI TIENE INFORME MÉDICO: De acuerdo, le pedimos que por favor nos pueda enviar su informe médico a nuestro número de WhatsApp 923514021.\n\nNO TIENE INFORME MÉDICO: Le recomendamos que pueda acercarse al establecimiento de salud en donde se atiende para que pueda solicitar su informe médico. En cuanto lo tenga disponible, por favor nos lo hace llegar vía WhatsApp o correo electrónico sepa@fpc.pe"
+      : "";
+    if (informeMedico) parts.push(informeMedico);
+  }
+
+  return parts.join("\n\n");
 }
 
 export function resolveAsideContent(
@@ -114,7 +128,7 @@ export function resolveAsideContent(
     case 8:
       return {
         script:
-          "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos una breve encuesta de satisfacción del 1 al 5 por WhatsApp. Recuerde que puede contactarnos al 080074012 de lunes a viernes de 8:30 a.m. a 5:30 p.m.",
+          "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos por WhatsApp una breve encuesta de satisfacción sobre la presente llamada, en la que usted deberá marcar una calificación del 1 al 5.\n\nRecuerde que para cualquier duda o consulta puede comunicarse con nuestro Programa SEPA de lunes a viernes de 8:30 a.m. a 5:30 p.m. y los sábados de 8:30 a.m. a 12:00 p.m. al 0800 74012.",
         reference: "SEPA Protocol — Cierre de Sesión v4.2",
       };
 

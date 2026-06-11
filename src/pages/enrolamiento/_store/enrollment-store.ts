@@ -8,6 +8,7 @@ import type {
   AddDiagnosisRequest,
   AddTreatmentRequest,
   AddSisAffiliationRequest,
+  FamilyPreventionTalkInterestRequest,
   EnrollmentMetadataRequest,
 } from "@/types";
 
@@ -37,6 +38,7 @@ export interface EnrollmentDraft {
   diagnosis: AddDiagnosisRequest;
   treatment: AddTreatmentRequest;
   medicalAppointments: never[];
+  familyPreventionTalkInterests: FamilyPreventionTalkInterestRequest[];
   sisAffiliation: AddSisAffiliationRequest;
   companions: never[];
   enrollmentMetadata: EnrollmentMetadataRequest & {
@@ -44,6 +46,7 @@ export interface EnrollmentDraft {
     endTime?: string;
     comments?: string;
     surveyAccepted?: boolean;
+    surveyRating?: number;
     affiliationType?: string;
     isOncologicalPatient?: boolean;
     nombreTercero?: string;
@@ -61,6 +64,7 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   diagnosis: { diagnosis: "", isCurrent: true },
   treatment: { diagnosisId: PLACEHOLDER_DIAGNOSIS_ID, treatmentType: "", isCurrent: true },
   medicalAppointments: [],
+  familyPreventionTalkInterests: [],
   sisAffiliation: { canAffiliate: true },
   companions: [],
   enrollmentMetadata: {},
