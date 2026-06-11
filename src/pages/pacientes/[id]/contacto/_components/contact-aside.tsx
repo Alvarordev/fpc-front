@@ -1,4 +1,4 @@
-import { Brain, TriangleAlert, Send, CalendarPlus, X } from "lucide-react";
+import { Brain, TriangleAlert, Send, CalendarPlus, Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -8,10 +8,13 @@ interface ContactAsideProps {
   onPsicoOpen: () => void;
   onAlertOpen: () => void;
   onNextContactOpen: () => void;
+  onReminderOpen: () => void;
   psicoDraft: boolean;
   alertDraft: boolean;
   nextContactDraft: boolean;
+  reminderDraftCount: number;
   onClearNextContact: () => void;
+  onClearReminders: () => void;
   onCancel: () => void;
 }
 
@@ -21,10 +24,13 @@ export function ContactAside({
   onPsicoOpen,
   onAlertOpen,
   onNextContactOpen,
+  onReminderOpen,
   psicoDraft,
   alertDraft,
   nextContactDraft,
+  reminderDraftCount,
   onClearNextContact,
+  onClearReminders,
   onCancel,
 }: ContactAsideProps) {
   return (
@@ -64,6 +70,36 @@ export function ContactAside({
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                 Alerta lista para registrar.
               </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={onReminderOpen}
+            >
+              <Bell className="size-4 text-amber-500" />
+              Agregar recordatorio
+            </Button>
+            {reminderDraftCount > 0 ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <span className="text-xs text-amber-700">
+                  {reminderDraftCount} recordatorio{reminderDraftCount !== 1 ? "s" : ""} listo{reminderDraftCount !== 1 ? "s" : ""} para guardar.
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearReminders}
+                  className="shrink-0 text-amber-500 hover:text-amber-700"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <Bell className="size-4 text-amber-600 shrink-0" />
+                <span className="text-xs text-amber-700">
+                  Sin recordatorios agregados.
+                </span>
+              </div>
             )}
             <Button
               type="button"

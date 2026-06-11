@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthStore } from "@/store/auth-store";
-import { contactsApi, agentsApi, patientsApi, alertsApi, appointmentsApi } from "@/lib/api";
+import { contactsApi, agentsApi, patientsApi, alertsApi, appointmentsApi, recordatoriosApi } from "@/lib/api";
 import { usePatient } from "../../_hooks/use-patient";
 import { usePatientAppointments } from "../../_hooks/use-appointments";
 import { ContactAside } from "./contact-aside";
@@ -37,6 +37,7 @@ import {
   type ServiceReferralFormValues,
 } from "./patient-update-tabs";
 import { PsicoSessionDialog, type PsicoFormValues } from "./psico-session-dialog";
+import { ReminderDraftDialog, type ReminderDraftFormValues } from "./reminder-draft-dialog";
 import { AlertDialog, type AlertFormValues } from "./alert-dialog";
 import { ScheduleContactDialog } from "../../_components/schedule-contact-dialog";
 import { toast } from "sonner";
@@ -125,6 +126,8 @@ export function ContactContent() {
   const [psicoDraft, setPsicoDraft] = useState<PsicoFormValues | null>(null);
   const [alertDraft, setAlertDraft] = useState<AlertFormValues | null>(null);
   const [nextContactDraft, setNextContactDraft] = useState<ScheduleFormValues | null>(null);
+  const [remindersOpen, setRemindersOpen] = useState(false);
+  const [reminderDrafts, setReminderDrafts] = useState<ReminderDraftFormValues[]>([]);
 
   // Schedule form
   const scheduleForm = useForm<ScheduleFormValues>({
@@ -490,10 +493,29 @@ export function ContactContent() {
       });
     }
 
+    // 11. Create recordatorios (reminders)
+    if (reminderDrafts.length > 0) {
+      for (const draft of reminderDrafts) {
+        try {
+          await recordatoriosApi.create({
+            patientId: id!,
+            contactId,
+            type: draft.type,
+            description: draft.description,
+            scheduledDate: draft.scheduledDate,
+            notes: draft.notes?.trim() || null,
+          });
+        } catch {
+          // Don't block on individual reminder failures
+        }
+      }
+    }
+
     // Success
     queryClient.invalidateQueries({ queryKey: ["contacts", id] });
     queryClient.invalidateQueries({ queryKey: ["patient", id] });
     queryClient.invalidateQueries({ queryKey: ["appointments", id] });
+    queryClient.invalidateQueries({ queryKey: ["recordatorios", id] });
     toast.success("Contacto completado correctamente");
     navigate(`/pacientes/${id}`);
   }
@@ -695,10 +717,13 @@ export function ContactContent() {
               onPsicoOpen={() => setPsicoOpen(true)}
               onAlertOpen={() => setAlertOpen(true)}
               onNextContactOpen={() => setNextContactOpen(true)}
+              onReminderOpen={() => setRemindersOpen(true)}
               psicoDraft={!!psicoDraft}
               alertDraft={!!alertDraft}
               nextContactDraft={!!nextContactDraft}
+              reminderDraftCount={reminderDrafts.length}
               onClearNextContact={() => setNextContactDraft(null)}
+              onClearReminders={() => setReminderDrafts([])}
               onCancel={() => navigate(`/pacientes/${id}`)}
             />
           </div>
@@ -744,6 +769,11 @@ export function ContactContent() {
         open={alertOpen}
         onOpenChange={setAlertOpen}
         onSave={setAlertDraft}
+      />
+      <ReminderDraftDialog
+        open={remindersOpen}
+        onOpenChange={setRemindersOpen}
+        onSave={(values) => setReminderDrafts((prev) => [...prev, values])}
       />
     </div>
   );
