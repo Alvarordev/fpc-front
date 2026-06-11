@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 import { useContacts } from "../_hooks/use-contacts";
 import { usePatientAppointments } from "../_hooks/use-appointments";
+import { useRecordatorios } from "../_hooks/use-recordatorios";
 import { buildTimeline } from "../_utils/timeline";
 import { TimelineEventCard } from "./timeline-event-card";
 import { ScheduleContactDialog, type ScheduleFormValues } from "./schedule-contact-dialog";
@@ -41,17 +42,19 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
     useContacts(pacienteId);
   const { data: appointments = [], isLoading: loadingPsico } =
     usePatientAppointments(pacienteId);
+  const { data: reminders = [], isLoading: loadingReminders } =
+    useRecordatorios(pacienteId);
   const { data: agents = [] } = useQuery({
     queryKey: ["agents"],
     queryFn: () => agentsApi.list(),
     staleTime: 60 * 1000,
   });
 
-  const isLoading = loadingContacts || loadingPsico;
+  const isLoading = loadingContacts || loadingPsico || loadingReminders;
 
   const completedContacts = contacts.filter((c) => c.status !== "SCHEDULED");
   const scheduledContacts = contacts.filter((c) => c.status === "SCHEDULED");
-  const timeline = buildTimeline(contacts, appointments);
+  const timeline = buildTimeline(contacts, appointments, reminders);
 
   const sortedCompleted = [...completedContacts].sort(
     (a, b) =>

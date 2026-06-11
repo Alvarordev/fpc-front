@@ -29,6 +29,16 @@ export type ContactPurpose =
   | "PSYCHOONCOLOGY_REFERRAL"
   | "OTHER";
 
+export type ReminderType =
+  | "LABORATORIO"
+  | "IMAGEN"
+  | "CONSULTA"
+  | "PROCEDIMIENTO"
+  | "MEDICACION"
+  | "OTRO";
+
+export type ReminderStatus = "PENDIENTE" | "COMPLETADO" | "CANCELADO";
+
 export type InsuranceType =
   | "SIS"
   | "ESSALUD"
@@ -655,6 +665,39 @@ export interface CompleteAppointmentRequest {
   additionalObservations?: string | null;
   recommendations?: string | null;
   referral?: ReferralType | null;
+}
+
+// ============================================================
+// Recordatorios (Reminders)
+// ============================================================
+
+export interface Reminder {
+  id: string;
+  patientId: string;
+  contactId: string;
+  type: ReminderType;
+  description: string;
+  scheduledDate: string;
+  status: ReminderStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateReminderRequest {
+  patientId: string;
+  contactId?: string;
+  type: ReminderType;
+  description: string;
+  scheduledDate: string;
+  notes?: string | null;
+}
+
+export interface UpdateReminderRequest {
+  type?: ReminderType;
+  description?: string;
+  scheduledDate?: string;
+  notes?: string | null;
 }
 
 // ============================================================

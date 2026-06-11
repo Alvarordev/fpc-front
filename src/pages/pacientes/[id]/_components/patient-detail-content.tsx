@@ -9,6 +9,7 @@ import { useContacts } from "../_hooks/use-contacts";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
+import { RecordatoriosTab } from "./recordatorios-tab";
 import { AlertBanner } from "./alert-banner";
 import { usePatientAlerts } from "../_hooks/use-patient-alerts";
 import type { PatientStatus } from "@/types";
@@ -150,6 +151,7 @@ export function PatientDetailContent() {
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
           <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
+          <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen">
@@ -162,6 +164,10 @@ export function PatientDetailContent() {
 
         <TabsContent value="psicooncologia">
           <PsicoTab pacienteId={patient.id} />
+        </TabsContent>
+
+        <TabsContent value="recordatorios">
+          <RecordatoriosTab pacienteId={patient.id} />
         </TabsContent>
       </Tabs>
     </div>

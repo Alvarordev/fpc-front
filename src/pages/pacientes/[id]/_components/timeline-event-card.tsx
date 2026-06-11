@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   CalendarClock,
   Clock,
+  Bell,
   MessageSquare,
   Video,
   Mail,
@@ -27,11 +28,23 @@ const appointmentStatusLabels: Record<string, string> = {
   NO_ANSWER: "No contestó",
 };
 
+const reminderStatusLabels: Record<string, string> = {
+  PENDIENTE: "Pendiente",
+  COMPLETADO: "Completado",
+  CANCELADO: "Cancelado",
+};
+
 const contactStatusStyles: Record<string, string> = {
   SCHEDULED: "bg-amber-50 text-amber-700 border-amber-200",
   COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   CANCELLED: "bg-zinc-100 text-zinc-600 border-zinc-200",
   NO_ANSWER: "bg-red-50 text-red-700 border-red-200",
+};
+
+const reminderStatusStyles: Record<string, string> = {
+  PENDIENTE: "bg-amber-50 text-amber-700 border-amber-200",
+  COMPLETADO: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  CANCELADO: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
 const contactTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -62,25 +75,34 @@ interface TimelineEventCardProps {
 const accentBar = {
   contacto: "border-l-blue-400",
   psico: "border-l-purple-400",
+  recordatorio: "border-l-amber-400",
 };
 
 const iconBg = {
   contacto: "bg-blue-50 text-blue-600",
   psico: "bg-purple-50 text-purple-600",
+  recordatorio: "bg-amber-50 text-amber-600",
 };
 
 export function TimelineEventCard({ event }: TimelineEventCardProps) {
   const isContact = event.type === "contacto";
+  const isRecordatorio = event.type === "recordatorio";
 
   const statusLabel = isContact
     ? contactStatusLabels[event.status] ?? event.status
-    : appointmentStatusLabels[event.status] ?? event.status;
+    : isRecordatorio
+      ? reminderStatusLabels[event.status] ?? event.status
+      : appointmentStatusLabels[event.status] ?? event.status;
 
-  const statusStyle = contactStatusStyles[event.status] ?? "bg-muted text-muted-foreground border-muted";
+  const statusStyle = isRecordatorio
+    ? reminderStatusStyles[event.status] ?? "bg-muted text-muted-foreground border-muted"
+    : contactStatusStyles[event.status] ?? "bg-muted text-muted-foreground border-muted";
 
   const Icon = isContact
     ? (event.meta?.type ? (contactTypeIcons[event.meta.type] ?? Phone) : Phone)
-    : BrainCircuit;
+    : isRecordatorio
+      ? Bell
+      : BrainCircuit;
 
   return (
     <div

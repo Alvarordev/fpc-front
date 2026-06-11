@@ -8,3 +8,4 @@ export { availabilityApi } from "./availability";
 export { appointmentsApi } from "./appointments";
 export { healthCentersApi } from "./health-centers";
 export { alertsApi } from "./alerts";
+export { recordatoriosApi } from "./recordatorios";

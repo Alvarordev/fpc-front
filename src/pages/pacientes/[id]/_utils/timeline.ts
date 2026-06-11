@@ -1,6 +1,6 @@
-import type { Contact, PsychooncologyAppointment } from "@/types";
+import type { Contact, PsychooncologyAppointment, Reminder } from "@/types";
 
-export type TimelineEventType = "contacto" | "psico";
+export type TimelineEventType = "contacto" | "psico" | "recordatorio";
 
 export interface TimelineEvent {
   id: string;
@@ -42,6 +42,7 @@ const contactPurposeLabels: Record<string, string> = {
 export function buildTimeline(
   contacts: Contact[],
   appointments: PsychooncologyAppointment[],
+  reminders?: Reminder[],
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
 
@@ -89,6 +90,35 @@ export function buildTimeline(
         sessionNumber: a.sessionNumber,
       },
     });
+  }
+
+  if (reminders) {
+    for (const r of reminders) {
+      const date = r.scheduledDate;
+      if (!date) continue;
+
+      const reminderTypeLabels: Record<string, string> = {
+        LABORATORIO: "Laboratorio",
+        IMAGEN: "Imagen",
+        CONSULTA: "Consulta",
+        PROCEDIMIENTO: "Procedimiento",
+        MEDICACION: "Medicación",
+        OTRO: "Otro",
+      };
+
+      events.push({
+        id: r.id,
+        type: "recordatorio",
+        fecha: date,
+        hora: null,
+        title: `${reminderTypeLabels[r.type] ?? r.type}: ${r.description}`,
+        description: r.notes,
+        status: r.status,
+        meta: {
+          type: r.type,
+        },
+      });
+    }
   }
 
   return events.sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.hora ?? "").localeCompare(a.hora ?? ""));
