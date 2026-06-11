@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Activity, Stethoscope, HeartPulse, Building2, Plus } from "lucide-react"
+import { Activity, Stethoscope, HeartPulse, Building2, Plus, Users, Minus } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import { healthCentersApi } from "@/lib/api"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
@@ -38,6 +38,19 @@ const DIAGNOSIS_OPTIONS = [
 
 const OTHER_VALUE = "OTHER"
 
+const TALK_TOPICS = [
+  "Prevención del cáncer de mama",
+  "Prevención del cáncer de cuello uterino",
+  "Prevención del cáncer de próstata",
+  "Prevención del cáncer de estómago",
+  "Prevención del cáncer de pulmón",
+  "Prevención del cáncer de colon y recto",
+  "Prevención del cáncer de piel",
+  "Prevención general del cáncer",
+] as const
+
+const TALK_OTHER = "TALK_OTHER"
+
 export function Step7Atencion() {
   const { draft, updateDraft, nextStep, prevStep, categoriaClinica } = useEnrollmentStore()
   const sr = draft.symptomReport; const dx = draft.diagnosis; const tx = draft.treatment; const sis = draft.sisAffiliation
@@ -64,6 +77,34 @@ export function Step7Atencion() {
 
   const activeCenters = healthCenters.filter(c => c.isActive)
 
+  // Family prevention talk interests
+  const ft = draft.familyPreventionTalkInterests
+  const [showFamilyTalks, setShowFamilyTalks] = useState(ft.length > 0)
+  const [talkOtherIndices, setTalkOtherIndices] = useState<Set<number>>(() => {
+    const topics = TALK_TOPICS as readonly string[]
+    const others = new Set<number>()
+    ft.forEach((entry, i) => { if (entry.talkName && !topics.includes(entry.talkName)) others.add(i) })
+    return others
+  })
+
+  function setTalkOther(idx: number, isOther: boolean) {
+    setTalkOtherIndices(prev => { const next = new Set(prev); if (isOther) next.add(idx); else next.delete(idx); return next })
+  }
+  function addFamilyTalk() {
+    const entry = { talkName: "", familyMemberName: "", familyMemberPhone: "", familyMemberEmail: "" }
+    updateDraft({ familyPreventionTalkInterests: [...ft, entry] })
+  }
+  function removeFamilyTalk(idx: number) {
+    const updated = ft.filter((_, i) => i !== idx)
+    setTalkOtherIndices(prev => { const next = new Set<number>(); prev.forEach(i => { if (i < idx) next.add(i); else if (i > idx) next.add(i - 1) }); return next })
+    updateDraft({ familyPreventionTalkInterests: updated })
+    if (updated.length === 0) setShowFamilyTalks(false)
+  }
+  function updateFamilyTalk(idx: number, field: keyof typeof ft[0], value: string) {
+    const updated = ft.map((e, i) => i === idx ? { ...e, [field]: value } : e)
+    updateDraft({ familyPreventionTalkInterests: updated })
+  }
+
   return (
     <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
       <StepHeader step={7} title="Atención Especializada" description={`Rama activa: ${label}${!tieneSeguroReal ? " · Sin seguro" : ""}`} />
@@ -75,7 +116,7 @@ export function Step7Atencion() {
           <div className="flex flex-col gap-2"><Label className={fl}>¿Presenta malestar o dolor?</Label>
             <Select value={sr.hasDiscomfort===true?"Sí":sr.hasDiscomfort===false?"No":""} onValueChange={v=>updateDraft({symptomReport:{...sr,hasDiscomfort:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Signos y síntomas</Label><Textarea value={sr.signsAndSymptoms??""} onChange={e=>updateDraft({symptomReport:{...sr,signsAndSymptoms:e.target.value||null}})} placeholder="Describa los signos o síntomas..." className="bg-card border min-h-20" /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>¿Solicitó o asistió a consulta médica?</Label>
+            <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente ha sacado o asistido a una cita médica?</Label>
             <Select value={sr.hasSoughtMedicalConsultation===true?"Sí":sr.hasSoughtMedicalConsultation===false?"No":""} onValueChange={v=>updateDraft({symptomReport:{...sr,hasSoughtMedicalConsultation:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Especialidad consultada</Label><Input value={sr.specialty??""} onChange={e=>updateDraft({symptomReport:{...sr,specialty:e.target.value||null}})} placeholder="Ej: Oncología" className="bg-card border" /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Indicaciones recibidas</Label><Input value={sr.indicationsReceived??""} onChange={e=>updateDraft({symptomReport:{...sr,indicationsReceived:e.target.value||null}})} placeholder="Indicaciones de la consulta" className="bg-card border" /></div>
@@ -129,6 +170,50 @@ export function Step7Atencion() {
           </div>
         </section>
       </div>}
+
+      {/* SERVICIOS DE APOYO */}
+      <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-5"><SectionHeader icon={Users} title="Servicios de Apoyo" />
+          <div className="flex flex-col gap-2"><Label className={fl}>¿Familiares interesados en charlas de prevención del cáncer?</Label>
+            <Select value={showFamilyTalks ? "Sí" : "No"} onValueChange={v => {
+              const show = v === "Sí"
+              setShowFamilyTalks(show)
+              if (show && ft.length === 0) addFamilyTalk()
+              if (!show) updateDraft({ familyPreventionTalkInterests: [] })
+            }}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+            </Select>
+          </div>
+          {showFamilyTalks && ft.map((entry, idx) => (
+            <div key={idx} className="rounded-xl border border-border/60 bg-muted/20 p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground">Familiar {idx + 1}</p>
+                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground/60 hover:text-destructive" onClick={() => removeFamilyTalk(idx)}>
+                  <Minus className="size-3.5" />
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2"><Label className={fl}>Charla de prevención</Label>
+                <Select value={talkOtherIndices.has(idx) ? TALK_OTHER : (entry.talkName || "")} onValueChange={v => {
+                  if (!v) return
+                  if (v === TALK_OTHER) { setTalkOther(idx, true); updateFamilyTalk(idx, "talkName", "") }
+                  else { setTalkOther(idx, false); updateFamilyTalk(idx, "talkName", v) }
+                }}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar charla..." /></SelectTrigger>
+                  <SelectContent>{TALK_TOPICS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}<SelectSeparator /><SelectItem value={TALK_OTHER}>Otro (especificar)</SelectItem></SelectContent>
+                </Select>
+                {talkOtherIndices.has(idx) && <Input value={entry.talkName} onChange={e => updateFamilyTalk(idx, "talkName", e.target.value)} placeholder="Especifique la charla de prevención..." className="bg-card border" />}
+              </div>
+              <div className="flex flex-col gap-2"><Label className={fl}>Nombre del familiar</Label><Input value={entry.familyMemberName} onChange={e => updateFamilyTalk(idx, "familyMemberName", e.target.value)} placeholder="Ej: Rosa García" className="bg-card border" /></div>
+              <div className="flex flex-col gap-2"><Label className={fl}>Teléfono del familiar</Label><Input value={entry.familyMemberPhone} onChange={e => updateFamilyTalk(idx, "familyMemberPhone", e.target.value)} placeholder="Ej: +51 999 000 777" className="bg-card border" /></div>
+              <div className="flex flex-col gap-2"><Label className={fl}>Correo electrónico del familiar</Label><Input value={entry.familyMemberEmail} onChange={e => updateFamilyTalk(idx, "familyMemberEmail", e.target.value)} placeholder="Ej: rosa@example.com" className="bg-card border" /></div>
+            </div>
+          ))}
+          {showFamilyTalks && (
+            <Button type="button" variant="outline" size="sm" className="gap-1.5 self-start" onClick={addFamilyTalk}>
+              <Plus className="size-3.5" />Agregar familiar
+            </Button>
+          )}
+        </section>
+      </div>
 
       {/* SIN SEGURO → SIS */}
       {!tieneSeguroReal && <div className="flex flex-col gap-8">
