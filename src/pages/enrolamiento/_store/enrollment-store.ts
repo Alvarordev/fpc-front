@@ -7,6 +7,7 @@ import type {
   SymptomReportRequest,
   AddDiagnosisRequest,
   AddTreatmentRequest,
+  AddMedicalAppointmentRequest,
   AddSisAffiliationRequest,
   FamilyPreventionTalkInterestRequest,
   EnrollmentMetadataRequest,
@@ -37,7 +38,7 @@ export interface EnrollmentDraft {
   symptomReport: SymptomReportRequest;
   diagnosis: AddDiagnosisRequest;
   treatment: AddTreatmentRequest;
-  medicalAppointments: never[];
+  medicalAppointments: AddMedicalAppointmentRequest[];
   familyPreventionTalkInterests: FamilyPreventionTalkInterestRequest[];
   sisAffiliation: AddSisAffiliationRequest;
   companions: never[];

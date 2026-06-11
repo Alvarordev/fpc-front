@@ -456,6 +456,7 @@ export interface AddTreatmentRequest {
   isCurrent: boolean;
   changeReason?: string | null;
   notReceivingReason?: string | null;
+  treatmentSituation?: string | null;
 }
 
 export interface AddMedicalAppointmentRequest {

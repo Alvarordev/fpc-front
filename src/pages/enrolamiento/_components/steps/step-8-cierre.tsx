@@ -38,6 +38,41 @@ export function Step8Cierre() {
       }
 
       const today = new Date().toISOString().slice(0, 10)
+      const shouldSendTreatment =
+        !!draft.treatment.treatmentType ||
+        !!draft.treatment.treatmentFrequency ||
+        !!draft.treatment.healthCenterId ||
+        !!draft.treatment.treatmentSituation ||
+        !!draft.treatment.notReceivingReason ||
+        meta.currentlyReceivingTreatment === false
+
+      const treatment = shouldSendTreatment
+        ? {
+            ...draft.treatment,
+            treatmentType:
+              draft.treatment.treatmentType ||
+              (meta.currentlyReceivingTreatment === false
+                ? "No recibe tratamiento"
+                : draft.treatment.treatmentType),
+          }
+        : undefined
+
+      const medicalAppointments = draft.medicalAppointments.filter((a) =>
+        !!a.healthCenterId ||
+        !!a.specialty ||
+        !!a.appointmentDate ||
+        !!a.nextAppointmentDate ||
+        !!a.difficulties ||
+        !!a.referredTo
+      )
+
+      const familyPreventionTalkInterests = draft.familyPreventionTalkInterests.filter((t) =>
+        !!t.talkName ||
+        !!t.familyMemberName ||
+        !!t.familyMemberPhone ||
+        !!t.familyMemberEmail
+      )
+
       const payload: FullEnrollmentRequest = {
         patientId: draft.patientId,
         patientData: draft.patientData.fullName ? draft.patientData : undefined,
@@ -45,9 +80,10 @@ export function Step8Cierre() {
         insurance: draft.insurance.insuranceType && draft.insurance.insuranceType !== "NONE" ? { ...draft.insurance } : undefined,
         symptomReport: draft.symptomReport.hasDiscomfort !== undefined ? { ...draft.symptomReport } : null,
         diagnosis: draft.diagnosis.diagnosis ? { ...draft.diagnosis } : undefined,
-        treatment: draft.treatment.treatmentType ? { ...draft.treatment } : undefined,
+        treatment,
         sisAffiliation: draft.insurance.insuranceType === "NONE" ? { ...draft.sisAffiliation } : null,
-        medicalAppointments: null,
+        medicalAppointments: medicalAppointments.length > 0 ? medicalAppointments : null,
+        familyPreventionTalkInterests: familyPreventionTalkInterests.length > 0 ? familyPreventionTalkInterests : null,
         companions: null,
         enrollmentMetadata: {
           caseComments: meta.comments || null,
@@ -57,6 +93,8 @@ export function Step8Cierre() {
           informedConsentAccepted: meta.informedConsentAccepted,
           isOncologicalPatient: meta.isOncologicalPatient,
           programEntryPoint: meta.programEntryPoint || null,
+          currentlyAttendingConsultations: meta.currentlyAttendingConsultations ?? null,
+          currentlyReceivingTreatment: meta.currentlyReceivingTreatment ?? null,
           surveyAccepted: meta.surveyAccepted,
           surveyRating: meta.surveyRating ?? null,
           agentId,
