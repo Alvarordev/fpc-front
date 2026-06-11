@@ -57,7 +57,7 @@ export function Step8Cierre() {
           }
         : undefined
 
-      const medicalAppointments = draft.medicalAppointments.filter((a) =>
+      const medicalAppointments = (draft.medicalAppointments ?? []).filter((a) =>
         !!a.healthCenterId ||
         !!a.specialty ||
         !!a.appointmentDate ||
@@ -66,7 +66,7 @@ export function Step8Cierre() {
         !!a.referredTo
       )
 
-      const familyPreventionTalkInterests = draft.familyPreventionTalkInterests.filter((t) =>
+      const familyPreventionTalkInterests = (draft.familyPreventionTalkInterests ?? []).filter((t) =>
         !!t.talkName ||
         !!t.familyMemberName ||
         !!t.familyMemberPhone ||

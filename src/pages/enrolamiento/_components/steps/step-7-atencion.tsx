@@ -104,8 +104,10 @@ export function Step7Atencion() {
       ? dx.diagnosis
       : ""
 
-  const appointment = draft.medicalAppointments[0] ?? EMPTY_APPOINTMENT
-  const ft = draft.familyPreventionTalkInterests
+  const medicalAppointments = draft.medicalAppointments ?? []
+  const familyPreventionTalkInterests = draft.familyPreventionTalkInterests ?? []
+  const appointment = medicalAppointments[0] ?? EMPTY_APPOINTMENT
+  const ft = familyPreventionTalkInterests
   const [showFamilyTalks, setShowFamilyTalks] = useState(ft.length > 0)
   const [talkOtherIndices, setTalkOtherIndices] = useState<Set<number>>(() => {
     const topics = TALK_TOPICS as readonly string[]
