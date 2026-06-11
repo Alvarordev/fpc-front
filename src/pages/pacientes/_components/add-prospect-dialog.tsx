@@ -186,6 +186,7 @@ export function AddProspectDialog({
               <Select
                 value={entryPoint}
                 onValueChange={(v) => {
+                  if (!v) return;
                   setEntryPoint(v);
                   setCustomEntryPoint("");
                   if (v === "Otro") {
