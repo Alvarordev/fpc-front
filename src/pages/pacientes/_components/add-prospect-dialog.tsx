@@ -32,19 +32,28 @@ const ENTRY_POINTS = [
   "Otro",
 ] as const;
 
-const schema = z.object({
-  fullName: z.string().min(1, "Nombre requerido"),
-  phone: z.string().min(1, "Celular requerido"),
-  dni: z.string().optional(),
-  email: z.string().email("Correo inválido").optional().or(z.literal("")),
-  diagnosisNote: z.string().optional(),
-  entryChannel: z.string().optional(),
-  customEntryChannel: z.string().optional(),
-  isOncological: z.boolean(),
-  scheduledDate: z.string().min(1, "Fecha requerida"),
-  scheduledTime: z.string().min(1, "Hora requerida"),
-  additionalNotes: z.string().optional(),
-});
+const schema = z
+  .object({
+    fullName: z.string().min(1, "Nombre requerido"),
+    phone: z.string().min(1, "Celular requerido"),
+    dni: z.string().optional(),
+    email: z.string().email("Correo inválido").optional().or(z.literal("")),
+    diagnosisNote: z.string().optional(),
+    entryChannel: z.string().optional(),
+    customEntryChannel: z.string().optional(),
+    isOncological: z.boolean(),
+    scheduledDate: z.string().optional(),
+    scheduledTime: z.string().optional(),
+    additionalNotes: z.string().optional(),
+  })
+  .refine((values) => !values.scheduledDate || !!values.scheduledTime, {
+    path: ["scheduledTime"],
+    message: "Hora requerida si se agenda contacto",
+  })
+  .refine((values) => !values.scheduledTime || !!values.scheduledDate, {
+    path: ["scheduledDate"],
+    message: "Fecha requerida si se agenda contacto",
+  });
 
 export type AddProspectFormValues = z.infer<typeof schema>;
 
@@ -256,15 +265,18 @@ export function AddProspectDialog({
 
           {/* --- Agendamiento del primer contacto --- */}
           <div className="space-y-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Agendamiento del primer contacto
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Agendamiento del primer contacto
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Opcional. Completá fecha y hora solo si querés dejar un contacto posterior programado.
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
-                <Label className={fl}>
-                  Fecha agendada <span className="text-destructive">*</span>
-                </Label>
+                <Label className={fl}>Fecha agendada</Label>
                 <Input
                   type="date"
                   className={ic}
@@ -277,9 +289,7 @@ export function AddProspectDialog({
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <Label className={fl}>
-                  Hora agendada <span className="text-destructive">*</span>
-                </Label>
+                <Label className={fl}>Hora agendada</Label>
                 <Input
                   type="time"
                   className={ic}

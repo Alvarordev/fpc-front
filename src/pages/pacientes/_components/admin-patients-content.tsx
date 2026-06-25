@@ -46,17 +46,21 @@ export function AdminPatientsContent() {
   });
 
   async function handleProspectSubmit(values: AddProspectFormValues) {
-    // Resolve agent ID
+    const shouldScheduleContact = Boolean(values.scheduledDate && values.scheduledTime);
     let agentId: string | undefined;
-    if (user?.role === "AGENT") {
-      const agent = agents.find((a) => a.userId === user.id);
-      agentId = agent?.id;
-    } else if (user?.role === "ADMIN") {
-      agentId = agents[0]?.id;
-    }
-    if (!agentId) {
-      toast.error("No se encontró un agente asociado a tu cuenta");
-      return;
+
+    if (shouldScheduleContact) {
+      if (user?.role === "AGENT") {
+        const agent = agents.find((a) => a.userId === user.id);
+        agentId = agent?.id;
+      } else if (user?.role === "ADMIN") {
+        agentId = agents[0]?.id;
+      }
+
+      if (!agentId) {
+        toast.error("No se encontró un agente asociado para agendar el contacto");
+        return;
+      }
     }
 
     setIsCreating(true);
@@ -69,41 +73,47 @@ export function AdminPatientsContent() {
         hasWhatsapp: true,
       });
 
-      // 2. Build contact notes with prospect metadata
-      const canal =
-        values.entryChannel === "Otro"
-          ? values.customEntryChannel || "Otro"
-          : values.entryChannel || undefined;
+      if (shouldScheduleContact) {
+        // 2. Build contact notes with prospect metadata
+        const canal =
+          values.entryChannel === "Otro"
+            ? values.customEntryChannel || "Otro"
+            : values.entryChannel || undefined;
 
-      const notesParts: string[] = [];
-      if (values.email)
-        notesParts.push(`Correo: ${values.email}`);
-      if (values.diagnosisNote)
-        notesParts.push(`Diagnóstico / Nota: ${values.diagnosisNote}`);
-      if (canal)
-        notesParts.push(`Canal de ingreso: ${canal}`);
-      notesParts.push(
-        `Paciente oncológico: ${values.isOncological ? "Sí" : "No"}`,
-      );
-      if (values.additionalNotes)
-        notesParts.push(`Notas adicionales: ${values.additionalNotes}`);
+        const notesParts: string[] = [];
+        if (values.email)
+          notesParts.push(`Correo: ${values.email}`);
+        if (values.diagnosisNote)
+          notesParts.push(`Diagnóstico / Nota: ${values.diagnosisNote}`);
+        if (canal)
+          notesParts.push(`Canal de ingreso: ${canal}`);
+        notesParts.push(
+          `Paciente oncológico: ${values.isOncological ? "Sí" : "No"}`,
+        );
+        if (values.additionalNotes)
+          notesParts.push(`Notas adicionales: ${values.additionalNotes}`);
 
-      const contactNotes =
-        notesParts.length > 0 ? notesParts.join("\n") : undefined;
+        const contactNotes =
+          notesParts.length > 0 ? notesParts.join("\n") : undefined;
 
-      // 3. Create scheduled contact
-      await contactsApi.create({
-        patientId: patient.id,
-        agentId,
-        type: "CALL",
-        status: "SCHEDULED",
-        purpose: "FIRST_CONTACT",
-        scheduledAt: `${values.scheduledDate}T${values.scheduledTime}:00`,
-        notes: contactNotes || undefined,
-      });
+        // 3. Create scheduled contact only when date and time were provided.
+        await contactsApi.create({
+          patientId: patient.id,
+          agentId: agentId!,
+          type: "CALL",
+          status: "SCHEDULED",
+          purpose: "FIRST_CONTACT",
+          scheduledAt: `${values.scheduledDate}T${values.scheduledTime}:00`,
+          notes: contactNotes || undefined,
+        });
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["patients"] });
-      toast.success("Prospecto creado correctamente");
+      toast.success(
+        shouldScheduleContact
+          ? "Prospecto creado y contacto agendado correctamente"
+          : "Prospecto creado correctamente",
+      );
     } catch {
       toast.error("Error al crear el prospecto");
     } finally {
