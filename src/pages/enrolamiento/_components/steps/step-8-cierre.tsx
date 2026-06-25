@@ -10,7 +10,7 @@ import { useAuthStore } from "@/store/auth-store"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import { toast } from "sonner"
-import type { FullEnrollmentRequest } from "@/types"
+import { buildEnrollmentPayload, resolveEnrollmentAgentId } from "./step-8-payload"
 
 export function Step8Cierre() {
   const { draft, updateDraft, prevStep, isComplete, completeEnrollment, resetEnrollment } = useEnrollmentStore()
@@ -28,79 +28,8 @@ export function Step8Cierre() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      let agentId: string | undefined
-
-      if (user?.role === "AGENT") {
-        const agent = agents.find(a => a.userId === user.id)
-        agentId = agent?.id
-      } else if (user?.role === "ADMIN") {
-        agentId = agents[0]?.id
-      }
-
-      const today = new Date().toISOString().slice(0, 10)
-      const shouldSendTreatment =
-        !!draft.treatment.treatmentType ||
-        !!draft.treatment.treatmentFrequency ||
-        !!draft.treatment.healthCenterId ||
-        !!draft.treatment.treatmentSituation ||
-        !!draft.treatment.notReceivingReason ||
-        meta.currentlyReceivingTreatment === false
-
-      const treatment = shouldSendTreatment
-        ? {
-            ...draft.treatment,
-            treatmentType:
-              draft.treatment.treatmentType ||
-              (meta.currentlyReceivingTreatment === false
-                ? "No recibe tratamiento"
-                : draft.treatment.treatmentType),
-          }
-        : undefined
-
-      const medicalAppointments = (draft.medicalAppointments ?? []).filter((a) =>
-        !!a.healthCenterId ||
-        !!a.specialty ||
-        !!a.appointmentDate ||
-        !!a.nextAppointmentDate ||
-        !!a.difficulties ||
-        !!a.referredTo
-      )
-
-      const familyPreventionTalkInterests = (draft.familyPreventionTalkInterests ?? []).filter((t) =>
-        !!t.talkName ||
-        !!t.familyMemberName ||
-        !!t.familyMemberPhone ||
-        !!t.familyMemberEmail
-      )
-
-      const payload: FullEnrollmentRequest = {
-        patientId: draft.patientId,
-        patientData: draft.patientData.fullName ? draft.patientData : undefined,
-        details: { ...draft.details },
-        insurance: draft.insurance.insuranceType && draft.insurance.insuranceType !== "NONE" ? { ...draft.insurance } : undefined,
-        symptomReport: draft.symptomReport.hasDiscomfort !== undefined ? { ...draft.symptomReport } : null,
-        diagnosis: draft.diagnosis.diagnosis ? { ...draft.diagnosis } : undefined,
-        treatment,
-        sisAffiliation: draft.insurance.insuranceType === "NONE" ? { ...draft.sisAffiliation } : null,
-        medicalAppointments: medicalAppointments.length > 0 ? medicalAppointments : null,
-        familyPreventionTalkInterests: familyPreventionTalkInterests.length > 0 ? familyPreventionTalkInterests : null,
-        companions: null,
-        enrollmentMetadata: {
-          caseComments: meta.comments || null,
-          startTime: meta.startTime ? `${today}T${meta.startTime}:00Z` : null,
-          endTime: meta.endTime ? `${today}T${meta.endTime}:00Z` : null,
-          dataPolicyAccepted: meta.dataPolicyAccepted,
-          informedConsentAccepted: meta.informedConsentAccepted,
-          isOncologicalPatient: meta.isOncologicalPatient,
-          programEntryPoint: meta.programEntryPoint || null,
-          currentlyAttendingConsultations: meta.currentlyAttendingConsultations ?? null,
-          currentlyReceivingTreatment: meta.currentlyReceivingTreatment ?? null,
-          surveyAccepted: meta.surveyAccepted,
-          surveyRating: meta.surveyRating ?? null,
-          agentId,
-          affiliationType: (meta.affiliationType as any) || "PATIENT",
-        },
-      }
+      const agentId = resolveEnrollmentAgentId(user, agents)
+      const payload = buildEnrollmentPayload({ draft, agentId })
       await patientsApi.enroll(payload)
     },
     onSuccess: () => {

@@ -318,7 +318,27 @@ export interface SisAffiliationResponse {
   canAffiliate: boolean;
   expectedDate: string | null;
   cantAffiliateReason: string | null;
+  comments: string | null;
   affiliatedAt: string | null;
+  createdAt: string;
+}
+
+export interface SymptomReportResponse {
+  id: string;
+  patientId: string;
+  contactId: string;
+  enrollmentId: string;
+  isPainPresent: boolean;
+  painLocation: string | null;
+  painIntensity: string | null;
+  painDescription: string | null;
+  discomfortDescription: string | null;
+  symptomDuration: string | null;
+  symptomFrequency: string | null;
+  hasSoughtMedicalConsultation: boolean;
+  healthCenterId: string | null;
+  specialty: string | null;
+  discomfortSeverity: string | null;
   createdAt: string;
 }
 
@@ -373,6 +393,8 @@ export interface Patient {
   medicalAppointments: MedicalAppointmentResponse[];
   sisAffiliations: SisAffiliationResponse[];
   companions: CompanionResponse[];
+  familyPreventionTalkInterests: FamilyPreventionTalkInterestResponse[];
+  symptomReports: SymptomReportResponse[];
   contacts: Contact[];
   summary?: PatientSummaryResponse | null;
 }

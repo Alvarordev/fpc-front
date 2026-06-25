@@ -254,8 +254,7 @@ export function Step7Atencion() {
       )}
 
       <section className="flex flex-col gap-5"><SectionHeader icon={Users} title="Servicios de Apoyo" />
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>¿Desea recibir soporte emocional (psicooncología)?</Label><Input disabled value="Pendiente de endpoint en fullEnrollment" className="bg-muted/40 border text-muted-foreground" /></div>
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2"><Label className={fl}>¿Se derivó con la asistenta social?</Label><Select value={details.referredToSocialWorker === true ? "Sí" : details.referredToSocialWorker === false ? "No" : ""} onValueChange={v => updateDraft({ details: { ...details, referredToSocialWorker: v === "Sí" } })}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
         </div>
         <div className="flex flex-col gap-2"><Label className={fl}>¿Familiares interesados en charlas de prevención del cáncer?</Label><Select value={showFamilyTalks ? "Sí" : "No"} onValueChange={v => { const show = v === "Sí"; setShowFamilyTalks(show); if (show && ft.length === 0) addFamilyTalk(); if (!show) updateDraft({ familyPreventionTalkInterests: [] }) }}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
