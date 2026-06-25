@@ -1,57 +1,70 @@
 import { API_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/lib/constants";
 
 let accessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY);
-let refreshToken: string | null = localStorage.getItem(REFRESH_TOKEN_KEY);
-let refreshPromise: Promise<string | null> | null = null;
+let authExpiredHandler: (() => void) | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
 }
 
+export function registerAuthExpiredHandler(handler: () => void): () => void {
+  authExpiredHandler = handler;
+
+  return () => {
+    if (authExpiredHandler === handler) {
+      authExpiredHandler = null;
+    }
+  };
+}
+
 export function setTokens(access: string, refresh: string): void {
   accessToken = access;
-  refreshToken = refresh;
   localStorage.setItem(ACCESS_TOKEN_KEY, access);
   localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
 }
 
 export function clearTokens(): void {
   accessToken = null;
-  refreshToken = null;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function isAccessTokenExpired(token: string | null = accessToken): boolean {
+  if (!token) return true;
+
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return false;
+
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      "=",
+    );
+    const decodedPayload = JSON.parse(atob(paddedPayload)) as { exp?: unknown };
+
+    if (typeof decodedPayload.exp !== "number") return false;
+
+    return decodedPayload.exp * 1000 <= Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function expireAuthSession(): void {
+  clearTokens();
+  authExpiredHandler?.();
 }
 
 // ============================================================
 // Token refresh
 // ============================================================
 
-async function refreshAccessToken(): Promise<string | null> {
-  if (!refreshToken) return null;
-
-  try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    if (!res.ok) {
-      clearTokens();
-      return null;
-    }
-
-    const data = await res.json();
-    setTokens(data.accessToken, data.refreshToken);
-    return data.accessToken;
-  } catch {
-    clearTokens();
-    return null;
-  }
-}
+// Intentionally disabled for now: when the access token expires, the user must
+// be logged out instead of silently refreshing the session.
 
 // ============================================================
-// Base fetch wrapper with auto-refresh
+// Base fetch wrapper
 // ============================================================
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
@@ -70,6 +83,11 @@ export async function apiFetch<T = unknown>(
     ...(extraHeaders as Record<string, string>),
   };
 
+  if (auth && isAccessTokenExpired()) {
+    expireAuthSession();
+    throw new ApiError(401, { message: "Session expired" });
+  }
+
   if (auth && accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
@@ -80,25 +98,10 @@ export async function apiFetch<T = unknown>(
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   };
 
-  let res = await fetch(`${API_URL}${path}`, fetchOptions);
+  const res = await fetch(`${API_URL}${path}`, fetchOptions);
 
-  // Auto-refresh on 401 (only if auth was intended and we have a refresh token)
-  if (auth && res.status === 401 && refreshToken) {
-    // Prevent concurrent refresh calls
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken();
-    }
-
-    const newToken = await refreshPromise;
-    refreshPromise = null;
-
-    if (newToken) {
-      headers["Authorization"] = `Bearer ${newToken}`;
-      res = await fetch(`${API_URL}${path}`, {
-        ...fetchOptions,
-        headers,
-      });
-    }
+  if (auth && res.status === 401) {
+    expireAuthSession();
   }
 
   if (!res.ok) {

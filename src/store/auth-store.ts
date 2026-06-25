@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authApi } from "@/lib/api/auth";
-import { clearTokens } from "@/lib/api-client";
+import { clearTokens, registerAuthExpiredHandler } from "@/lib/api-client";
 import { AUTH_USER_KEY } from "@/lib/constants";
 import type { User, LoginRequest } from "@/types";
 
@@ -58,3 +58,7 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+
+registerAuthExpiredHandler(() => {
+  useAuthStore.getState().logout();
+});
