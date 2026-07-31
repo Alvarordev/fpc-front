@@ -6,6 +6,7 @@ import {
   UserCheck,
   TriangleAlert,
   Building2,
+  Headset,
   ShieldUser,
 } from "lucide-react";
 import type { NavGroup } from "@/types/navigation";
@@ -52,6 +53,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
     {
       label: "Operaciones",
       items: [
+        { title: "Call center", url: "/callcenter", icon: Headset },
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
@@ -70,4 +72,5 @@ export const pathTitles: Record<string, string> = {
   "/alertas": "Alertas",
   "/hospitales": "Hospitales",
   "/usuarios": "Usuarios",
+  "/callcenter": "Call center",
 };
