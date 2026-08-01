@@ -494,7 +494,7 @@ export function PatientUpdateTabs({
             >
               <SelectTrigger>
                 {detailsForm.watch("emergencyContactGender")
-                  ? genderOptions[detailsForm.watch("emergencyContactGender")] ?? detailsForm.watch("emergencyContactGender")
+                  ? genderOptions[detailsForm.watch("emergencyContactGender")] ?? "No especificado"
                   : <SelectValue placeholder="Seleccionar" />}
               </SelectTrigger>
               <SelectContent>

@@ -95,7 +95,7 @@ export function CreateReminderDialog({
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
               Tipo <span className="text-destructive">*</span>
             </Label>
-            <Select value={type} onValueChange={(v) => setType(v as ReminderType)}>
+            <Select items={TYPE_OPTIONS} value={type} onValueChange={(v) => setType(v as ReminderType)}>
               <SelectTrigger className="w-full bg-card border">
                 <SelectValue placeholder="Seleccionar tipo..." />
               </SelectTrigger>

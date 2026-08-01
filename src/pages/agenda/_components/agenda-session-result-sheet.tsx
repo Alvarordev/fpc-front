@@ -232,6 +232,10 @@ export function AgendaSessionResultSheet({
                     control={control}
                     render={({ field }) => (
                       <Select
+                        items={{
+                          COMPLETED: "Sí, asistió",
+                          CANCELLED: "No asistió / cancelar",
+                        }}
                         value={field.value}
                         onValueChange={field.onChange}
                       >

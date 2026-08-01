@@ -137,7 +137,14 @@ function SessionEditForm({ session, pacienteId, onDone }: SessionEditFormProps) 
     <div className="space-y-3 pt-2 border-t border-border/40">
       <div className="space-y-2">
         <label className="text-xs font-medium text-foreground">Cambiar horario</label>
-        <Select value={selectedSlotId} onValueChange={(v) => v && setSelectedSlotId(v)}>
+        <Select
+          items={merged.map((slot) => ({
+            value: slot.id,
+            label: `${formatSlotLabel(slot)}${slot.isCurrent ? " (actual)" : ""}`,
+          }))}
+          value={selectedSlotId}
+          onValueChange={(v) => v && setSelectedSlotId(v)}
+        >
           <SelectTrigger className="h-9 text-xs">
             <SelectValue />
           </SelectTrigger>

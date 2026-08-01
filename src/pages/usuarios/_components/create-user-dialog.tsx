@@ -161,6 +161,11 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
             <Select
+              items={{
+                AGENT: "Agente",
+                VOLUNTEER: "Voluntario",
+                ADMIN: "Administrador",
+              }}
               value={selectedRole}
               onValueChange={(v) => setValue("role", v as UserRole)}
             >

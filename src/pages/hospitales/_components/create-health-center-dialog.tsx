@@ -95,6 +95,10 @@ export function CreateHealthCenterDialog({
           <div className="space-y-2">
             <Label>Departamento</Label>
             <Select
+              items={DEPARTMENTS.map((department) => ({
+                value: department.value,
+                label: department.label,
+              }))}
               value={department}
               onValueChange={(v) => setValue("department", v ?? "")}
             >
