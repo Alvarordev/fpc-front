@@ -4,18 +4,17 @@ Frontend React + Vite preparado para correr:
 
 - en desarrollo con `pnpm dev`
 - en un contenedor propio
-- detras de `nginx` en el mismo origen que el backend publicado por el VPS
+- consumiendo una API configurada durante el build
 
 ## Variables de entorno
 
 `VITE_API_URL`
 
-- Dejar vacio para mismo origen.
-- Tambien acepta una URL absoluta si alguna vez necesitas publicar el frontend bajo otro origen.
-- Valores recomendados para el VPS:
+- URL publica de la API que utilizara el navegador.
+- Para el backend local publicado en el puerto `3000`:
 
 ```env
-VITE_API_URL=
+VITE_API_URL=http://localhost:3000
 ```
 
 `VITE_API_PROXY_TARGET`
@@ -25,7 +24,7 @@ VITE_API_URL=
 - Ejemplo:
 
 ```env
-VITE_API_PROXY_TARGET=http://127.0.0.1:8082
+VITE_API_PROXY_TARGET=http://127.0.0.1:3000
 ```
 
 ## Rutas que usa el frontend
@@ -41,21 +40,45 @@ Rutas adicionales que el frontend actual tambien consume para pantallas administ
 - `/users...`
 - `/agents...`
 
-Todas quedan relativas al mismo origen cuando `VITE_API_URL` esta vacio.
+Todas se resuelven contra `VITE_API_URL` cuando tiene un valor configurado.
 
 ## Desarrollo local
 
+Levantar PostgreSQL desde el repositorio del backend:
+
 ```bash
-pnpm install
-pnpm dev
+cd ../fpc-backend
+docker compose -f compose.local.yml up -d postgres
+npm ci
+npm run migration:run
+npm run start:dev
 ```
 
-Si quieres que el frontend hable con un backend mientras corres Vite, crea un `.env` con:
+La API y Swagger quedan disponibles en `http://localhost:3000` y `http://localhost:3000/docs` respectivamente. El backend local debe conservar `CORS_ORIGIN=http://localhost:5173`.
+
+En otra terminal, desde este repositorio:
+
+```bash
+corepack pnpm install
+cp .env.example .env
+corepack pnpm dev
+```
+
+La configuracion local debe apuntar al puerto publicado por Nest:
 
 ```env
-VITE_API_URL=
-VITE_API_PROXY_TARGET=http://127.0.0.1:8082
+VITE_API_URL=http://localhost:3000
 ```
+
+## Cliente OpenAPI
+
+El cliente tipado usa como fuente el contrato versionado del backend, sin consultar el servidor en ejecucion:
+
+```bash
+npm run api:generate
+```
+
+El comando lee `../fpc-backend/openapi/openapi.json` y genera `src/api/schema.d.ts`. No edites ese archivo manualmente; vuelve a ejecutar el comando cada vez que se actualice el contrato del backend.
 
 ## Build de produccion
 
@@ -63,87 +86,30 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8082
 pnpm build
 ```
 
-## Docker
+## Docker local
 
-Build manual:
-
-```bash
-docker build -t fpc-frontend:local --build-arg VITE_API_URL= .
-docker run -d --name fpc-frontend-dev --restart unless-stopped -p 127.0.0.1:3000:80 fpc-frontend:local
-```
-
-Con Compose:
+Con el backend publicado en `http://localhost:3000`, construir la imagen:
 
 ```bash
-docker compose -f docker-compose.frontend.yml up -d --build
+docker build --build-arg VITE_API_URL=http://localhost:3000 -t fpc-frontend:local .
 ```
 
-El contenedor sirve los estaticos con `nginx` interno y fallback SPA para rutas como `/login` o `/dashboard`.
+Una vez construida, el frontend se levanta con un solo `docker run`:
 
-## Nginx en el VPS
-
-Resumen esperado:
-
-- `http://IP:8084/` sirve el frontend
-- `http://IP:8084/login` carga la SPA
-- `/auth` y `/api` se proxyean a `http://127.0.0.1:8082`
-- `/users` y `/agents` tambien se proxyean porque el frontend actual los usa
-
-Bloque sugerido para el `nginx` del host:
-
-```nginx
-server {
-    listen 8084;
-    server_name _;
-
-    location /auth {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /api {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /users {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /agents {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+```bash
+docker run -d \
+  --name fpc-frontend-dev \
+  --restart unless-stopped \
+  -p 127.0.0.1:5173:80 \
+  fpc-frontend:local
 ```
 
-Pasos tipicos en el VPS:
+El frontend queda disponible en `http://localhost:5173`. La URL de la API la usa el navegador, por lo que no es necesario compartir una red Docker con el backend.
+
+Alternativamente, se puede construir y levantar mediante Compose:
 
 ```bash
 docker compose -f docker-compose.frontend.yml up -d --build
-sudo nginx -t
-sudo systemctl reload nginx
 ```
 
-Si ya administras `nginx` desde un archivo consolidado, agrega ese `server` block al archivo que corresponda.
+El contenedor sirve los estaticos con su nginx interno y mantiene el fallback SPA para rutas como `/login` o `/dashboard`.
