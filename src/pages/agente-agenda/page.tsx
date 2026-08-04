@@ -1,427 +1,60 @@
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Phone,
-  CalendarClock,
-  PhoneCall,
-  Clock,
-  ArrowRight,
-  Calendar,
-  BrainCircuit,
-  Video,
-  User,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/auth-store";
-import { alertsApi, appointmentsApi, contactsApi, agentsApi, patientsApi, volunteersApi } from "@/lib/api";
-import { AlertBanner } from "@/pages/pacientes/[id]/_components/alert-banner";
-import { cn } from "@/lib/utils";
-import type { Alert, ContactPurpose, ContactType, PsychooncologyAppointment, Volunteer } from "@/types";
+import { useNavigate } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowRight, BrainCircuit, Calendar, CalendarClock, Phone, PhoneCall, Video } from "lucide-react"
+import { agentsApi } from "@/api/agents"
+import { alertsApi } from "@/api/alerts"
+import { followUpsApi } from "@/api/follow-ups"
+import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
+import { volunteersApi } from "@/api/volunteers"
+import { patientsApi } from "@/api/patients"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { useAuthStore } from "@/store/auth-store"
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = new Date().toISOString().slice(0, 10)
+const typeLabels: Record<string, string> = { CALL: "Llamada", WHATSAPP: "WhatsApp", VIDEO_CALL: "Videollamada", EMAIL: "Email", IN_PERSON: "Presencial", FACEBOOK: "Facebook" }
+const purposeLabels: Record<string, string> = { FIRST_CONTACT: "Primer contacto", ENROLLMENT: "Enrolamiento", FOLLOW_UP: "Seguimiento", PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología", OTHER: "Otro" }
 
-const typeLabels: Record<ContactType, string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Email",
-  IN_PERSON: "Presencial",
-};
-
-const purposeLabels: Record<ContactPurpose, string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-};
-
-function formatTime(datetime: string | null): string {
-  if (!datetime) return "—";
-  return datetime.slice(11, 16);
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-PE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function isToday(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  return dateStr.slice(0, 10) === TODAY;
-}
-
-function sessionLabel(num: number): string {
-  if (num <= 4) return `Sesión ${num}`;
-  return `Extra ${num - 4}`;
-}
+function isToday(date: string | null) { return Boolean(date && date.slice(0, 10) === TODAY) }
+function formatDate(date: string) { return new Date(date).toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" }) }
+function formatTime(date: string | null) { return date ? new Date(date).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }) : "-" }
 
 export default function AgentAgendaPage() {
-  const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const agentsQuery = useQuery({ queryKey: ["agents"], queryFn: agentsApi.list, staleTime: 60_000 })
+  const agentId = agentsQuery.data?.find((agent) => agent.userId === user?.id)?.id
+  const followUpsQuery = useQuery({ queryKey: ["agent-follow-ups"], queryFn: () => followUpsApi.list(), enabled: Boolean(agentId), staleTime: 30_000 })
+  const alertsQuery = useQuery({ queryKey: ["agent-alerts"], queryFn: alertsApi.list, staleTime: 30_000 })
+  const sessionsQuery = useQuery({ queryKey: ["agent-upcoming-sessions"], queryFn: () => psychooncologyAppointmentsApi.list({ status: "SCHEDULED" }), staleTime: 30_000 })
+  const volunteersQuery = useQuery({ queryKey: ["volunteers"], queryFn: volunteersApi.list, staleTime: 300_000 })
+  const followUps = followUpsQuery.data ?? []
+  const pendingFollowUps = followUps.filter((item) => item.status === "SCHEDULED")
+  const todayFollowUps = followUps.filter((item) => isToday(item.scheduledAt) || isToday(item.completedAt))
+  const activeAlerts = (alertsQuery.data ?? []).filter((alert) => alert.status === "ACTIVE")
+  const sessions = sessionsQuery.data ?? []
+  const volunteers = new Map((volunteersQuery.data ?? []).map((volunteer) => [volunteer.id, volunteer]))
 
-  // ── Agent lookup ──
-  const { data: agents = [] } = useQuery({
-    queryKey: ["agents"],
-    queryFn: () => agentsApi.list(),
-    staleTime: 60 * 1000,
-  });
-  const agentId = agents.find((a) => a.userId === user?.id)?.id;
+  if (agentsQuery.isLoading || followUpsQuery.isLoading) return <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Cargando agenda...</div>
 
-  // ── Contacts ──
-  const { data: contacts = [], isLoading: contactsLoading } = useQuery({
-    queryKey: ["contacts"],
-    queryFn: () => contactsApi.list(),
-    staleTime: 30 * 1000,
-  });
-  const myContacts = contacts.filter((c) => c.agentId === agentId);
-  const pendingCalls = myContacts.filter((c) => c.status === "SCHEDULED");
-  const todayContacts = myContacts.filter(
-    (c) => isToday(c.scheduledAt) || isToday(c.completedAt),
-  );
+  return <div className="space-y-6">
+    {activeAlerts.length > 0 && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3"><p className="text-sm font-medium text-red-900">{activeAlerts[0].title}</p><p className="text-xs text-red-700">{activeAlerts[0].description}</p></div>}
+    <div><h1 className="text-xl font-semibold tracking-tight">Mi agenda</h1><p className="mt-1 text-sm text-muted-foreground">Seguimientos programados y sesiones de psicooncología.</p></div>
+    {sessions.length > 0 && <SessionsPanel sessions={sessions} volunteers={volunteers} navigate={navigate} />}
+    <div className="grid gap-4 xl:grid-cols-2"><FollowUpPanel title="Pendientes" icon={CalendarClock} items={pendingFollowUps} navigate={navigate} /><FollowUpPanel title="Hoy" icon={Phone} items={todayFollowUps} navigate={navigate} /></div>
+  </div>
+}
 
-  // ── Active alerts ──
-  const { data: activeAlerts = [] } = useQuery<Alert[]>({
-    queryKey: ["agentAlerts"],
-    queryFn: () => alertsApi.list({ status: "ACTIVE" }),
-    staleTime: 30 * 1000,
-  });
+function FollowUpPanel({ title, icon: Icon, items, navigate }: { title: string; icon: typeof Phone; items: Awaited<ReturnType<typeof followUpsApi.list>>; navigate: ReturnType<typeof useNavigate> }) {
+  return <Card className="overflow-hidden"><CardHeader className="border-b bg-muted/20"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><span className="flex size-8 items-center justify-center rounded-full bg-amber-50"><Icon className="size-4 text-amber-600" /></span>{title}</CardTitle><Badge variant="secondary">{items.length}</Badge></div></CardHeader><CardContent className="p-0">{items.length === 0 ? <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground"><PhoneCall className="size-8 opacity-30" /><p className="text-sm">No hay seguimientos para mostrar</p></div> : <div className="divide-y">{items.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? "")).map((followUp) => <PatientRow key={followUp.id} patientName={followUp.subjectPatientName ?? "Paciente desconocido"} icon={Phone} title={typeLabels[followUp.type]} meta={`${purposeLabels[followUp.purpose]} · ${followUp.scheduledAt ? `${formatDate(followUp.scheduledAt)} ${formatTime(followUp.scheduledAt)}` : "Sin fecha"}`} onClick={() => navigate(`/pacientes/${followUp.subjectPatientId}/contacto?followUpId=${followUp.id}`)} />)}</div>}</CardContent></Card>
+}
 
-  // ── Pending psycho sessions ──
-  const { data: upcomingSessions = [] } = useQuery<PsychooncologyAppointment[]>({
-    queryKey: ["agentUpcomingSessions"],
-    queryFn: () => appointmentsApi.list({ upcoming: true }),
-    staleTime: 30 * 1000,
-  });
-  const pendingSessions = upcomingSessions.filter((s) => s.status === "SCHEDULED");
+function SessionsPanel({ sessions, volunteers, navigate }: { sessions: Awaited<ReturnType<typeof psychooncologyAppointmentsApi.list>>; volunteers: Map<string, Awaited<ReturnType<typeof volunteersApi.list>>[number]>; navigate: ReturnType<typeof useNavigate> }) {
+  const patientsQuery = useQuery({ queryKey: ["agenda-session-patients"], queryFn: () => patientsApi.list({ limit: 100 }), staleTime: 60_000 })
+  const names = new Map((patientsQuery.data?.data ?? []).map((patient) => [patient.id, patient.fullName]))
+  return <Card><CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><BrainCircuit className="size-4 text-purple-600" />Sesiones de psicooncología pendientes</CardTitle><Badge variant="secondary">{sessions.length}</Badge></div><CardDescription>Recordatorios para contactar a los pacientes antes de su sesión.</CardDescription></CardHeader><CardContent className="divide-y p-0">{sessions.map((session) => { const volunteer = volunteers.get(session.volunteerId); return <PatientRow key={session.id} patientName={names.get(session.patientId) ?? "Paciente desconocido"} icon={session.modality === "VIDEO_CALL" ? Video : Phone} title={`Sesión ${session.sessionNumber}`} meta={`${volunteer ? `${volunteer.firstName} ${volunteer.lastName} · ` : ""}${formatDate(session.scheduledAt)} ${formatTime(session.scheduledAt)}`} onClick={() => navigate(`/pacientes/${session.patientId}`)} /> })}</CardContent></Card>
+}
 
-  // ── Volunteers (for session names) ──
-  const { data: volunteers = [] } = useQuery<Volunteer[]>({
-    queryKey: ["agentVolunteers"],
-    queryFn: () => volunteersApi.list(),
-    staleTime: 5 * 60 * 1000,
-  });
-  const volunteerMap = new Map(volunteers.map((v) => [v.id, v]));
-
-  // ── Patient info component ──
-  function PatientInfo({ patientId }: { patientId: string }) {
-    const { data: patient } = useQuery({
-      queryKey: ["patients", patientId],
-      queryFn: () => patientsApi.getById(patientId),
-      enabled: Boolean(patientId),
-      staleTime: 60 * 1000,
-    });
-    if (!patient) return null;
-
-    return (
-      <div className="min-w-0">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/pacientes/${patientId}`);
-          }}
-          className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate max-w-[180px] block text-left"
-        >
-          {patient.fullName}
-        </button>
-        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-          <Phone className="size-3" />
-          {patient.primaryPhone}
-        </p>
-      </div>
-    );
-  }
-
-  // ── Patient name (simple lookup for session cards) ──
-  function PatientName({ patientId }: { patientId: string }) {
-    const { data: patient } = useQuery({
-      queryKey: ["patients", patientId],
-      queryFn: () => patientsApi.getById(patientId),
-      enabled: Boolean(patientId),
-      staleTime: 60 * 1000,
-    });
-    if (!patient) return <span className="text-sm">Paciente desconocido</span>;
-    return (
-      <span className="text-sm font-medium truncate">{patient.fullName}</span>
-    );
-  }
-
-  if (contactsLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-muted-foreground text-sm">Cargando agenda...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* ═══ ALERTS BANNER ═══ */}
-      {activeAlerts.length > 0 && <AlertBanner alerts={activeAlerts} />}
-
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Mi agenda
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Llamadas pendientes, contactos programados y sesiones de psicooncología.
-        </p>
-      </div>
-
-      {/* ═══ PENDING SESSIONS ═══ */}
-      {pendingSessions.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BrainCircuit className="size-4 text-purple-600" />
-                Sesiones de psicooncología pendientes
-              </CardTitle>
-              <Badge variant="secondary" className="text-xs">
-                {pendingSessions.length}
-              </Badge>
-            </div>
-            <CardDescription>
-              Recordatorios para contactar a los pacientes antes de su sesión.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border/50">
-              {pendingSessions.map((s) => {
-                const volunteer = volunteerMap.get(s.volunteerId);
-                const ModalityIcon = s.modality === "VIDEO_CALL" ? Video : Phone;
-
-                return (
-                  <div
-                    key={s.id}
-                    className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                      <ModalityIcon className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <PatientName patientId={s.patientId} />
-                      <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                        <span className="flex items-center gap-1">
-                          <BrainCircuit className="size-3" />
-                          {sessionLabel(s.sessionNumber)}
-                        </span>
-                        {volunteer && (
-                          <span className="flex items-center gap-1">
-                            <User className="size-3" />
-                            {volunteer.firstName} {volunteer.lastName}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="size-3" />
-                          {formatDate(s.scheduledAt)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="size-3" />
-                          {formatTime(s.scheduledAt)}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 gap-1 text-xs h-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/pacientes/${s.patientId}`);
-                      }}
-                    >
-                      Ver paciente
-                      <ArrowRight className="size-3" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ═══ CONTACT CARDS ═══ */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        {/* Pendientes */}
-        <Card className="overflow-hidden rounded-3xl border-border/70 shadow-sm">
-          <CardHeader className="border-b border-border/60 bg-muted/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-full bg-amber-50">
-                  <CalendarClock className="size-4 text-amber-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Pendientes</CardTitle>
-                </div>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                {pendingCalls.length}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {pendingCalls.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-                <PhoneCall className="size-8 opacity-30" />
-                <p className="text-sm">No hay llamadas pendientes</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {pendingCalls
-                  .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""))
-                  .map((contact) => (
-                    <button
-                      key={contact.id}
-                      onClick={() =>
-                        navigate(
-                          `/pacientes/${contact.patientId}/contacto?contactId=${contact.id}`,
-                        )
-                      }
-                      className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-muted/30 transition-colors cursor-pointer group"
-                    >
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
-                        <Phone className="size-4 text-amber-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <PatientInfo patientId={contact.patientId} />
-                          <Badge variant="outline" className="text-[10px] shrink-0 self-start mt-0.5">
-                            {typeLabels[contact.type]}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <Calendar className="size-3" />
-                          <span>{formatDate(contact.scheduledAt ?? "")}</span>
-                          <span>·</span>
-                          <Clock className="size-3" />
-                          <span>{formatTime(contact.scheduledAt)}</span>
-                          {contact.purpose && (
-                            <>
-                              <span>·</span>
-                              <span>{purposeLabels[contact.purpose]}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <ArrowRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                    </button>
-                  ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Hoy */}
-        <Card className="overflow-hidden rounded-3xl border-border/70 shadow-sm">
-          <CardHeader className="border-b border-border/60 bg-muted/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-full bg-blue-50">
-                  <Phone className="size-4 text-blue-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Hoy</CardTitle>
-                </div>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                {todayContacts.length}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {todayContacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-                <CalendarClock className="size-8 opacity-30" />
-                <p className="text-sm">No hay contactos para hoy</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border/60">
-                  {todayContacts
-                    .sort((a, b) => (b.scheduledAt ?? "").localeCompare(a.scheduledAt ?? ""))
-                    .map((contact) => (
-                      <button
-                        key={contact.id}
-                        onClick={() => {
-                          if (contact.status === "COMPLETED") {
-                            navigate(`/pacientes/${contact.patientId}`);
-                          } else {
-                            navigate(
-                              `/pacientes/${contact.patientId}/contacto?contactId=${contact.id}`,
-                            );
-                          }
-                        }}
-
-                      className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-muted/30 transition-colors cursor-pointer group"
-                    >
-                      <div
-                        className={cn(
-                          "flex size-9 shrink-0 items-center justify-center rounded-full",
-                          contact.status === "COMPLETED"
-                            ? "bg-emerald-50"
-                            : contact.status === "NO_ANSWER"
-                              ? "bg-zinc-100"
-                              : "bg-blue-50",
-                        )}
-                      >
-                        <PhoneCall
-                          className={cn(
-                            "size-4",
-                            contact.status === "COMPLETED"
-                              ? "text-emerald-600"
-                              : contact.status === "NO_ANSWER"
-                                ? "text-zinc-500"
-                                : "text-blue-600",
-                          )}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <PatientInfo patientId={contact.patientId} />
-                          <Badge
-                            variant={
-                              contact.status === "COMPLETED"
-                                ? "default"
-                                : contact.status === "SCHEDULED"
-                                  ? "outline"
-                                  : "secondary"
-                            }
-                            className="text-[10px] shrink-0 self-start mt-0.5"
-                          >
-                            {contact.status === "COMPLETED"
-                              ? "Completado"
-                              : contact.status === "SCHEDULED"
-                                ? "Agendado"
-                                : contact.status === "CANCELLED"
-                                  ? "Cancelado"
-                                  : "No contestó"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                          <Clock className="size-3" />
-                          <span>
-                            {formatTime(contact.scheduledAt)}
-                          </span>
-                          <span>·</span>
-                          <span>{typeLabels[contact.type]}</span>
-                        </div>
-                      </div>
-                      <ArrowRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                    </button>
-                  ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+function PatientRow({ patientName, icon: Icon, title, meta, onClick }: { patientName: string; icon: typeof Phone; title: string; meta: string; onClick: () => void }) {
+  return <button className="flex w-full items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-muted/30" onClick={onClick}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-50"><Icon className="size-4 text-blue-600" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{patientName}</p><p className="mt-1 text-xs text-muted-foreground">{title}</p><p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Calendar className="size-3" />{meta}</p></div><ArrowRight className="size-4 shrink-0 text-muted-foreground" /></button>
 }

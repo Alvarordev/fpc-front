@@ -56,6 +56,23 @@ export interface paths {
         patch: operations["AlertsController_resolve"];
         trace?: never;
     };
+    "/call-center/workload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get pending call center workload */
+        get: operations["CallCenterController_workload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents": {
         parameters: {
             query?: never;
@@ -201,7 +218,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List visible follow-ups */
+        get: operations["FollowUpsController_findAll"];
         put?: never;
         /** Create a follow-up */
         post: operations["FollowUpsController_create"];
@@ -919,6 +937,43 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        CallCenterAgentDto: {
+            /** Format: uuid */
+            id: string;
+            fullName: string;
+        };
+        CallCenterFollowUpDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            subjectPatientId: string;
+            subjectPatientName: string;
+            /** Format: uuid */
+            agentId: string;
+            /** @enum {string} */
+            type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            /** Format: date-time */
+            scheduledAt: string | null;
+        };
+        CallCenterReminderDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            subjectPatientId: string;
+            subjectPatientName: string;
+            /** Format: uuid */
+            assignedAgentId: string;
+            description: string;
+            /** Format: date-time */
+            dueAt: string;
+        };
+        CallCenterWorkloadResponseDto: {
+            agents: components["schemas"]["CallCenterAgentDto"][];
+            scheduledFollowUps: components["schemas"]["CallCenterFollowUpDto"][];
+            pendingReminders: components["schemas"]["CallCenterReminderDto"][];
+        };
         CreateAgentDto: {
             /** Format: email */
             email: string;
@@ -1152,6 +1207,7 @@ export interface components {
             id: string;
             /** Format: uuid */
             subjectPatientId: string;
+            subjectPatientName: string | null;
             /** Format: uuid */
             interlocutorId: string;
             /** Format: uuid */
@@ -1948,6 +2004,32 @@ export interface operations {
             };
         };
     };
+    CallCenterController_workload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallCenterWorkloadResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AgentsController_findAll: {
         parameters: {
             query?: never;
@@ -2289,6 +2371,43 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EnrollmentResponseDto"][];
                 };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FollowUpsController_findAll: {
+        parameters: {
+            query?: {
+                agentId?: string;
+                patientId?: string;
+                status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpResponseDto"][];
+                };
+            };
+            /** @description The authenticated agent has no profile */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description JWT missing, invalid, or expired */
             401: {
@@ -3884,7 +4003,11 @@ export interface operations {
     };
     PsychooncologyAppointmentsController_findAll: {
         parameters: {
-            query?: never;
+            query?: {
+                volunteerId?: string;
+                patientId?: string;
+                status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            };
             header?: never;
             path?: never;
             cookie?: never;

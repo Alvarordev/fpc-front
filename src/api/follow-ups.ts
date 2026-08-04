@@ -1,10 +1,11 @@
-import type { components } from "./schema"
+import type { components, operations } from "./schema"
 import { api } from "./client"
 
 export type CreateFollowUpInput = components["schemas"]["CreateFollowUpDto"]
 export type UpdateFollowUpInput = components["schemas"]["UpdateFollowUpDto"]
 export type CreateReminderInput = components["schemas"]["CreateReminderDto"]
 export type FollowUp = components["schemas"]["FollowUpResponseDto"]
+export type FollowUpFilters = NonNullable<operations["FollowUpsController_findAll"]["parameters"]["query"]>
 
 export class FollowUpsApiError extends Error {
   readonly status: number
@@ -17,6 +18,15 @@ export class FollowUpsApiError extends Error {
 }
 
 export const followUpsApi = {
+  async list(filters: FollowUpFilters = {}): Promise<FollowUp[]> {
+    const { data, response } = await api.GET("/follow-ups", {
+      params: { query: filters },
+    })
+
+    if (!data) throw new FollowUpsApiError(response.status)
+    return data
+  },
+
   async create(input: CreateFollowUpInput): Promise<FollowUp> {
     const { data, response } = await api.POST("/follow-ups", { body: input })
 

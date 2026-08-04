@@ -39,7 +39,7 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
   const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
   const appointmentsQuery = useQuery({
     queryKey: ["psychooncology-appointments"],
-    queryFn: psychooncologyAppointmentsApi.list,
+    queryFn: () => psychooncologyAppointmentsApi.list(),
   })
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],

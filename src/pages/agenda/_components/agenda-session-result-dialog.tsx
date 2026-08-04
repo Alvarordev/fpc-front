@@ -20,9 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { appointmentsApi } from "@/lib/api";
+import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments";
 import { toast } from "sonner";
-import type { PsychooncologyAppointment, ReferralType } from "@/types";
+import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments";
+import type { ReferralType } from "@/types";
 import {
   DistressThermometer,
   type DistressFormValues,
@@ -102,7 +103,8 @@ export function AgendaSessionResultDialog({
 
   const completeMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormValues }) =>
-      appointmentsApi.complete(id, {
+      psychooncologyAppointmentsApi.update(id, {
+        status: "COMPLETED",
         topicAddressed: data.topicAddressed || undefined,
         sessionDetails: data.sessionDetails || undefined,
         additionalObservations: data.additionalObservations || undefined,
@@ -120,7 +122,7 @@ export function AgendaSessionResultDialog({
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id: string) => appointmentsApi.cancel(id),
+    mutationFn: (id: string) => psychooncologyAppointmentsApi.cancel(id),
     onSuccess: () => {
       toast.success("Sesión cancelada");
       queryClient.invalidateQueries({ queryKey: ["agenda"] });

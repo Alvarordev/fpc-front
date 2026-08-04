@@ -1,9 +1,10 @@
-import type { components } from "./schema"
+import type { components, operations } from "./schema"
 import { api } from "./client"
 
 export type CreatePsychooncologyAppointmentInput = components["schemas"]["CreatePsychooncologyAppointmentDto"]
 export type UpdatePsychooncologyAppointmentInput = components["schemas"]["UpdatePsychooncologyAppointmentDto"]
 export type PsychooncologyAppointment = components["schemas"]["PsychooncologyAppointmentResponseDto"]
+export type PsychooncologyAppointmentFilters = NonNullable<operations["PsychooncologyAppointmentsController_findAll"]["parameters"]["query"]>
 
 export class PsychooncologyAppointmentsApiError extends Error {
   readonly status: number
@@ -16,8 +17,10 @@ export class PsychooncologyAppointmentsApiError extends Error {
 }
 
 export const psychooncologyAppointmentsApi = {
-  async list(): Promise<PsychooncologyAppointment[]> {
-    const { data, response } = await api.GET("/psychooncology-appointments")
+  async list(filters: PsychooncologyAppointmentFilters = {}): Promise<PsychooncologyAppointment[]> {
+    const { data, response } = await api.GET("/psychooncology-appointments", {
+      params: { query: filters },
+    })
 
     if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
     return data

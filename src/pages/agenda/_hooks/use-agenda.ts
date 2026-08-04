@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { appointmentsApi, patientsApi } from "@/lib/api";
-import type { PsychooncologyAppointment, Patient } from "@/types";
+import { psychooncologyAppointmentsApi, type PsychooncologyAppointment } from "@/api/psychooncology-appointments";
+import { patientsApi } from "@/lib/api";
+import type { Patient } from "@/types";
 
 /**
  * Fetches all psychooncology appointments for a volunteer
@@ -10,7 +11,7 @@ export function useAgenda(volunteerId: string | undefined) {
   const appointmentsQuery = useQuery({
     queryKey: ["agenda", volunteerId],
     queryFn: () =>
-      appointmentsApi.list({ volunteerId: volunteerId! }),
+      psychooncologyAppointmentsApi.list({ volunteerId: volunteerId! }),
     enabled: Boolean(volunteerId),
   });
 

@@ -6,7 +6,7 @@ import { useAgenda } from "../_hooks/use-agenda";
 import { AgendaSessionCard } from "./agenda-session-card";
 import { AgendaSessionResultSheet } from "./agenda-session-result-sheet";
 import { AgendaSessionResultDialog } from "./agenda-session-result-dialog";
-import type { PsychooncologyAppointment } from "@/types";
+import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments";
 
 type Filter = "proximas" | "pasadas" | "todas";
 
