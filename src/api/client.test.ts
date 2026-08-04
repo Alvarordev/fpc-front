@@ -9,6 +9,11 @@ describe("typed API client", () => {
 
   it("sends credentials on a typed health request", async () => {
     vi.stubEnv("VITE_API_URL", "http://localhost:3000")
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      removeItem: () => undefined,
+      setItem: () => undefined,
+    })
 
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

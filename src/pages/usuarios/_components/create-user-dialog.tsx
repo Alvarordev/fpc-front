@@ -1,87 +1,91 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useCreateUser } from "../_hooks/use-users";
-import { volunteersApi } from "@/lib/api";
-import type { UserRole } from "@/types";
+} from "@/components/ui/select"
+import { useCreateUser } from "../_hooks/use-users"
+import { volunteersApi } from "@/lib/api"
+import type { UserRole } from "@/types"
 
 const schema = z
   .object({
     email: z.string().email("Email inválido"),
     password: z.string().min(6, "Mínimo 6 caracteres"),
-    role: z.enum(["ADMIN", "AGENT", "VOLUNTEER"] as const),
+    role: z.enum(["ADMIN", "FOUNDATION", "AGENT", "VOLUNTEER"] as const),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     specialty: z.string().optional(),
     phone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.role !== "VOLUNTEER") return;
+    if (data.role !== "VOLUNTEER") return
 
     if (!data.firstName || data.firstName.trim().length < 2) {
       ctx.addIssue({
         code: "custom",
         path: ["firstName"],
         message: "Nombre requerido (mín. 2 caracteres)",
-      });
+      })
     }
     if (!data.lastName || data.lastName.trim().length < 2) {
       ctx.addIssue({
         code: "custom",
         path: ["lastName"],
         message: "Apellido requerido (mín. 2 caracteres)",
-      });
+      })
     }
     if (!data.specialty || data.specialty.trim().length < 2) {
       ctx.addIssue({
         code: "custom",
         path: ["specialty"],
         message: "Especialidad requerida",
-      });
+      })
     }
     if (!data.phone || data.phone.trim().length < 9) {
       ctx.addIssue({
         code: "custom",
         path: ["phone"],
         message: "Teléfono inválido (mín. 9 dígitos)",
-      });
+      })
     }
-  });
+  })
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>
 
 interface CreateUserDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
+  FOUNDATION: "Fundación",
   AGENT: "Agente",
   VOLUNTEER: "Voluntario",
-};
+}
 
-export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) {
-  const createUser = useCreateUser();
-  const [stepError, setStepError] = useState<string | null>(null);
-  const [isCreatingVolunteer, setIsCreatingVolunteer] = useState(false);
+export function CreateUserDialog({
+  open,
+  onOpenChange,
+}: CreateUserDialogProps) {
+  const createUser = useCreateUser()
+  const [stepError, setStepError] = useState<string | null>(null)
+  const [isCreatingVolunteer, setIsCreatingVolunteer] = useState(false)
 
   const {
     register,
@@ -101,33 +105,33 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
       specialty: "",
       phone: "",
     },
-  });
+  })
 
-  const selectedRole = watch("role");
-  const isPending = createUser.isPending || isCreatingVolunteer;
+  const selectedRole = watch("role")
+  const isPending = createUser.isPending || isCreatingVolunteer
 
   function handleClose() {
-    onOpenChange(false);
-    reset();
-    setStepError(null);
-    setIsCreatingVolunteer(false);
+    onOpenChange(false)
+    reset()
+    setStepError(null)
+    setIsCreatingVolunteer(false)
   }
 
   async function onSubmit(values: FormValues) {
-    setStepError(null);
+    setStepError(null)
 
     const createdUser = await createUser.mutateAsync({
       email: values.email,
       password: values.password,
       role: values.role,
-    });
+    })
 
     if (values.role !== "VOLUNTEER") {
-      handleClose();
-      return;
+      handleClose()
+      return
     }
 
-    setIsCreatingVolunteer(true);
+    setIsCreatingVolunteer(true)
     try {
       await volunteersApi.create({
         userId: createdUser.id,
@@ -136,14 +140,12 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         specialty: values.specialty!,
         email: values.email,
         phone: values.phone!,
-      });
-      handleClose();
+      })
+      handleClose()
     } catch (err) {
-      setStepError(
-        (err as Error)?.message ?? "Error al crear el voluntario",
-      );
+      setStepError((err as Error)?.message ?? "Error al crear el voluntario")
     } finally {
-      setIsCreatingVolunteer(false);
+      setIsCreatingVolunteer(false)
     }
   }
 
@@ -154,10 +156,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
           <DialogTitle>Crear nuevo usuario</DialogTitle>
         </DialogHeader>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4 mt-2"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
             <Select
@@ -165,17 +164,19 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 AGENT: "Agente",
                 VOLUNTEER: "Voluntario",
                 ADMIN: "Administrador",
+                FOUNDATION: "Fundación",
               }}
               value={selectedRole}
               onValueChange={(v) => setValue("role", v as UserRole)}
             >
-              <SelectTrigger className="h-9 text-sm w-full">
+              <SelectTrigger className="h-9 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AGENT">Agente</SelectItem>
                 <SelectItem value="VOLUNTEER">Voluntario</SelectItem>
                 <SelectItem value="ADMIN">Administrador</SelectItem>
+                <SelectItem value="FOUNDATION">Fundación</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -188,9 +189,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               className="h-9 text-sm"
             />
             {errors.email && (
-              <p className="text-xs text-destructive">
-                {errors.email.message}
-              </p>
+              <p className="text-destructive text-xs">{errors.email.message}</p>
             )}
           </div>
 
@@ -202,7 +201,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               className="h-9 text-sm"
             />
             {errors.password && (
-              <p className="text-xs text-destructive">
+              <p className="text-destructive text-xs">
                 {errors.password.message}
               </p>
             )}
@@ -210,8 +209,8 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
 
           {selectedRole === "VOLUNTEER" && (
             <>
-              <div className="border-t pt-4 mt-4">
-                <p className="text-xs font-medium text-muted-foreground mb-3">
+              <div className="mt-4 border-t pt-4">
+                <p className="text-muted-foreground mb-3 text-xs font-medium">
                   Datos del voluntario
                 </p>
 
@@ -224,7 +223,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Juan"
                     />
                     {errors.firstName && (
-                      <p className="text-xs text-destructive">
+                      <p className="text-destructive text-xs">
                         {errors.firstName.message}
                       </p>
                     )}
@@ -238,14 +237,14 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Pérez"
                     />
                     {errors.lastName && (
-                      <p className="text-xs text-destructive">
+                      <p className="text-destructive text-xs">
                         {errors.lastName.message}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2 mt-3">
+                <div className="mt-3 space-y-2">
                   <Label className="text-xs">Especialidad</Label>
                   <Input
                     {...register("specialty")}
@@ -253,13 +252,13 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     placeholder="Psicooncología, Psicología clínica, etc."
                   />
                   {errors.specialty && (
-                    <p className="text-xs text-destructive">
+                    <p className="text-destructive text-xs">
                       {errors.specialty.message}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-2 mt-3">
+                <div className="mt-3 space-y-2">
                   <Label className="text-xs">Teléfono</Label>
                   <Input
                     {...register("phone")}
@@ -267,7 +266,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     placeholder="987654321"
                   />
                   {errors.phone && (
-                    <p className="text-xs text-destructive">
+                    <p className="text-destructive text-xs">
                       {errors.phone.message}
                     </p>
                   )}
@@ -285,11 +284,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              className="flex-1"
-              disabled={isPending}
-            >
+            <Button type="submit" className="flex-1" disabled={isPending}>
               {isPending
                 ? isCreatingVolunteer
                   ? "Creando voluntario..."
@@ -300,7 +295,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         </form>
 
         {(createUser.isError || stepError) && (
-          <div className="border-destructive/20 bg-destructive/5 rounded-xl border p-4 mt-2">
+          <div className="border-destructive/20 bg-destructive/5 mt-2 rounded-xl border p-4">
             <p className="text-destructive text-sm">
               {stepError ??
                 (createUser.error as Error)?.message ??
@@ -310,5 +305,5 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         )}
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -1,15 +1,13 @@
 function normalizeApiUrl(rawUrl?: string): string {
-  const value = rawUrl?.trim();
+  const value = rawUrl?.trim()
 
   if (!value || value === "/") {
-    return "";
+    return ""
   }
 
-  return value.replace(/\/+$/, "");
+  return value.replace(/\/+$/, "")
 }
 
-export const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL);
+export const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL)
 
-export const ACCESS_TOKEN_KEY = "fpc-access-token";
-export const REFRESH_TOKEN_KEY = "fpc-refresh-token";
-export const AUTH_USER_KEY = "fpc-auth-user";
+export const ACCESS_TOKEN_KEY = "fpc-access-token"

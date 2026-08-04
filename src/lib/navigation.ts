@@ -8,9 +8,9 @@ import {
   Building2,
   Headset,
   ShieldUser,
-} from "lucide-react";
-import type { NavGroup } from "@/types/navigation";
-import type { UserRole } from "@/types";
+} from "lucide-react"
+import type { NavGroup } from "@/types/navigation"
+import type { UserRole } from "@/types"
 
 export const navConfig: Record<UserRole, NavGroup[]> = {
   AGENT: [
@@ -59,7 +59,17 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       ],
     },
   ],
-};
+  FOUNDATION: [
+    {
+      label: "Gestión",
+      items: [
+        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
+      ],
+    },
+  ],
+}
 
 export const pathTitles: Record<string, string> = {
   "/": "Dashboard",
@@ -73,4 +83,4 @@ export const pathTitles: Record<string, string> = {
   "/hospitales": "Hospitales",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",
-};
+}
