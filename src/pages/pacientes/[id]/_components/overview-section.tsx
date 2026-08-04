@@ -139,8 +139,8 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
   const hasExecutiveSummary = Boolean(executiveSummary);
 
   const { mutate: refreshSummary, isPending: isRefreshingSummary } = useMutation({
-    mutationFn: ({ dni }: { dni: string; source: "auto" | "manual" }) =>
-      patientsApi.refreshSummaryByDni(dni),
+    mutationFn: ({ id }: { id: string; source: "auto" | "manual" }) =>
+      patientsApi.getSummary(id),
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["patients", patient.id] });
 
@@ -159,22 +159,16 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
   });
 
   useEffect(() => {
-    if (!patient.dni) return;
     if (!summary?.status || !autoRefreshSummaryStatuses.has(summary.status)) return;
     if (autoRefreshPatientIdRef.current === patient.id) return;
     if (isRefreshingSummary) return;
 
     autoRefreshPatientIdRef.current = patient.id;
-    refreshSummary({ dni: patient.dni, source: "auto" });
-  }, [isRefreshingSummary, patient.dni, patient.id, refreshSummary, summary?.status]);
+    refreshSummary({ id: patient.id, source: "auto" });
+  }, [isRefreshingSummary, patient.id, refreshSummary, summary?.status]);
 
   function handleManualRefreshSummary() {
-    if (!patient.dni) {
-      toast.error("El paciente no tiene DNI registrado");
-      return;
-    }
-
-    refreshSummary({ dni: patient.dni, source: "manual" });
+    refreshSummary({ id: patient.id, source: "manual" });
   }
 
   return (

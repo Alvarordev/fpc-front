@@ -403,6 +403,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a patient timeline
+         * @description Returns the complete visible history. Admin, foundation, and agent roles can read all patient events. Volunteers can read all events only when any psycho-oncology appointment assigns them to the patient; otherwise the endpoint returns 403.
+         */
+        get: operations["PatientsController_timelineForPatient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patients/{id}": {
         parameters: {
             query?: never;
@@ -1215,6 +1235,60 @@ export interface components {
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
             isActive?: boolean;
         };
+        FollowUpTimelineEventDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "FOLLOW_UP";
+            /** Format: date-time */
+            occurredAt: string;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            notes: string | null;
+        };
+        ReminderTimelineEventDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "REMINDER";
+            /** Format: date-time */
+            occurredAt: string;
+            /** @enum {string} */
+            status: "PENDING" | "DONE" | "DISMISSED";
+            /** Format: uuid */
+            followUpId: string | null;
+            description: string;
+        };
+        PsychooncologyAppointmentTimelineEventDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "PSYCHOONCOLOGY_APPOINTMENT";
+            /** Format: date-time */
+            occurredAt: string;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            modality: "CALL" | "VIDEO_CALL";
+            sessionNumber: number;
+        };
         PatientResponseDto: {
             /** Format: uuid */
             id: string;
@@ -1274,6 +1348,11 @@ export interface components {
             model: string | null;
             /** @enum {string} */
             source: "ON_DEMAND" | "STORED" | "PENDING";
+        };
+        Object: Record<string, never>;
+        PatientTimelineResponseDto: {
+            data: (components["schemas"]["FollowUpTimelineEventDto"] | components["schemas"]["ReminderTimelineEventDto"] | components["schemas"]["PsychooncologyAppointmentTimelineEventDto"])[];
+            total: number;
         };
         PatientDetailsResponseDto: {
             /** Format: uuid */
@@ -2304,7 +2383,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agents can only access their own follow-ups */
+            /** @description Patient is not assigned to the volunteer */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3014,6 +3093,50 @@ export interface operations {
                 };
                 content?: never;
             };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_timelineForPatient: {
+        parameters: {
+            query?: {
+                limit?: components["schemas"]["Object"];
+                offset?: components["schemas"]["Object"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientTimelineResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient is not assigned to the volunteer */
             403: {
                 headers: {
                     [name: string]: unknown;

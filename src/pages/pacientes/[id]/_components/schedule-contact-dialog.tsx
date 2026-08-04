@@ -34,6 +34,7 @@ const schema = z.object({
   date: z.string().min(1, "Fecha requerida"),
   time: z.string().min(1, "Hora requerida"),
   notes: z.string().optional(),
+  agentId: z.string().optional(),
 });
 
 export type ScheduleFormValues = z.infer<typeof schema>;
@@ -59,6 +60,8 @@ interface ScheduleContactDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: ScheduleFormValues) => Promise<void>;
   isPending: boolean;
+  agents?: Array<{ id: string; fullName: string }>;
+  requiresAgentSelection?: boolean;
 }
 
 export function ScheduleContactDialog({
@@ -66,11 +69,14 @@ export function ScheduleContactDialog({
   onOpenChange,
   onSubmit,
   isPending,
+  agents = [],
+  requiresAgentSelection = false,
 }: ScheduleContactDialogProps) {
   const {
     register,
     handleSubmit,
     setValue,
+    setError,
     watch,
     reset,
     formState: { errors },
@@ -87,6 +93,7 @@ export function ScheduleContactDialog({
 
   const selectedType = watch("type");
   const selectedPurpose = watch("purpose");
+  const selectedAgentId = watch("agentId");
 
   function handleClose() {
     onOpenChange(false);
@@ -94,6 +101,11 @@ export function ScheduleContactDialog({
   }
 
   async function submit(values: ScheduleFormValues) {
+    if (requiresAgentSelection && !values.agentId) {
+      setError("agentId", { message: "Seleccioná un agente" });
+      return;
+    }
+
     await onSubmit(values);
     handleClose();
   }
@@ -144,6 +156,30 @@ export function ScheduleContactDialog({
               </Select>
             </div>
           </div>
+
+          {requiresAgentSelection && (
+            <div className="space-y-2">
+              <Label>Agente responsable</Label>
+              <Select
+                value={selectedAgentId}
+                onValueChange={(value) => setValue("agentId", value ?? undefined, { shouldValidate: true })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar agente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.agentId && (
+                <p className="text-xs text-destructive">{errors.agentId.message ?? "Seleccioná un agente"}</p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

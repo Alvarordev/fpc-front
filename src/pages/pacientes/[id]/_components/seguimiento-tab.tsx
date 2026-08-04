@@ -1,226 +1,162 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Phone, CalendarClock, PhoneCall, CalendarPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/auth-store";
-import { useContacts } from "../_hooks/use-contacts";
-import { usePatientAppointments } from "../_hooks/use-appointments";
-import { useRecordatorios } from "../_hooks/use-recordatorios";
-import { buildTimeline } from "../_utils/timeline";
-import { TimelineEventCard } from "./timeline-event-card";
-import { ScheduleContactDialog, type ScheduleFormValues } from "./schedule-contact-dialog";
-import { contactsApi, agentsApi } from "@/lib/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { CalendarClock, CalendarPlus, Phone, PhoneCall } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { agentsApi } from "@/api/agents"
+import { followUpsApi } from "@/api/follow-ups"
+import { patientTimelineApi } from "@/api/patient-timeline"
+import { useAuthStore } from "@/store/auth-store"
+import { ScheduleContactDialog, type ScheduleFormValues } from "./schedule-contact-dialog"
+import { TimelineEventCard } from "./timeline-event-card"
 
-function formatShortDate(fecha: string): string {
-  return new Date(fecha + "T12:00:00").toLocaleDateString("es-PE", {
+interface SeguimientoTabProps {
+  pacienteId: string
+}
+
+function formatShortDate(date: string): string {
+  return new Date(date).toLocaleDateString("es-PE", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
-}
-
-function extractDate(datetime: string | null): string | null {
-  if (!datetime) return null;
-  return datetime.slice(0, 10);
-}
-
-interface SeguimientoTabProps {
-  pacienteId: string;
+  })
 }
 
 export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
-  const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
-  const queryClient = useQueryClient();
-  const canManage = user?.role === "ADMIN" || user?.role === "AGENT";
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
+  const requiresAgentSelection = user?.role === "ADMIN" || user?.role === "FOUNDATION"
 
-  const [scheduleOpen, setScheduleOpen] = useState(false);
-
-  const { data: contacts = [], isLoading: loadingContacts } =
-    useContacts(pacienteId);
-  const { data: appointments = [], isLoading: loadingPsico } =
-    usePatientAppointments(pacienteId);
-  const { data: reminders = [], isLoading: loadingReminders } =
-    useRecordatorios(pacienteId);
-  const { data: agents = [] } = useQuery({
+  const timelineQuery = useQuery({
+    queryKey: ["patient-timeline", pacienteId],
+    queryFn: () => patientTimelineApi.list(pacienteId),
+    enabled: Boolean(pacienteId),
+  })
+  const agentsQuery = useQuery({
     queryKey: ["agents"],
-    queryFn: () => agentsApi.list(),
-    staleTime: 60 * 1000,
-  });
+    queryFn: agentsApi.list,
+    enabled: canManage,
+    staleTime: 60_000,
+  })
+  const scheduleMutation = useMutation({
+    mutationFn: followUpsApi.create,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["patient-timeline", pacienteId] })
+      toast.success("Seguimiento agendado correctamente")
+    },
+    onError: (error: Error) => toast.error("No se pudo agendar el seguimiento", { description: error.message }),
+  })
 
-  const isLoading = loadingContacts || loadingPsico || loadingReminders;
+  const events = timelineQuery.data?.data ?? []
+  const followUps = events.filter((event) => event.kind === "FOLLOW_UP")
+  const completedFollowUps = followUps.filter((event) => event.status === "COMPLETED")
+  const nextScheduled = followUps
+    .filter((event) => event.status === "SCHEDULED")
+    .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))[0]
+  const lastCompleted = [...completedFollowUps].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0]
 
-  const completedContacts = contacts.filter((c) => c.status !== "SCHEDULED");
-  const scheduledContacts = contacts.filter((c) => c.status === "SCHEDULED");
-  const timeline = buildTimeline(contacts, appointments, reminders);
+  async function schedule(values: ScheduleFormValues) {
+    const ownAgent = agentsQuery.data?.find((agent) => agent.userId === user?.id)
+    const agentId = requiresAgentSelection ? values.agentId : ownAgent?.id
 
-  const sortedCompleted = [...completedContacts].sort(
-    (a, b) =>
-      (b.completedAt ?? b.createdAt).localeCompare(
-        a.completedAt ?? a.createdAt,
-      ),
-  );
-  const lastContact = sortedCompleted[0];
-
-  const nextScheduled = [...scheduledContacts].sort(
-    (a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""),
-  )[0];
-
-  function handleAgendar() {
-    if (scheduledContacts.length > 0) {
-      toast.error("Ya existe un contacto agendado", {
-        description:
-          "Completá o marcá como cancelado el contacto actual antes de agendar otro.",
-      });
-      return;
-    }
-    setScheduleOpen(true);
-  }
-
-  async function handleScheduleSubmit(values: ScheduleFormValues) {
-    let agentId: string | undefined;
-    if (user?.role === "AGENT") {
-      const agent = agents.find((a) => a.userId === user.id);
-      agentId = agent?.id;
-    } else if (user?.role === "ADMIN") {
-      agentId = agents[0]?.id;
-    }
     if (!agentId) {
-      toast.error("No se encontró un agente asociado a tu cuenta");
-      return;
+      throw new Error("No se encontró un agente asociado a tu cuenta")
     }
 
-    await contactsApi.create({
-      patientId: pacienteId,
+    await scheduleMutation.mutateAsync({
+      subjectPatientId: pacienteId,
+      interlocutorId: pacienteId,
       agentId,
       type: values.type,
-      status: "SCHEDULED",
       purpose: values.purpose,
       scheduledAt: `${values.date}T${values.time}:00`,
       notes: values.notes || undefined,
-    });
-
-    queryClient.invalidateQueries({ queryKey: ["contacts", pacienteId] });
-    toast.success("Contacto agendado correctamente");
+    })
   }
 
-  function goToContact(contactId: string) {
-    navigate(`/pacientes/${pacienteId}/contacto?contactId=${contactId}`);
+  function openSchedule() {
+    if (nextScheduled) {
+      toast.error("Ya existe un seguimiento agendado", {
+        description: "Completá, cancelá o marcá como no contestado el seguimiento actual antes de agendar otro.",
+      })
+      return
+    }
+
+    setScheduleOpen(true)
   }
 
   return (
     <div className="space-y-5">
-      {/* Stats bar */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-6 flex-wrap">
+        <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2 text-sm">
             <div className="flex size-8 items-center justify-center rounded-full bg-blue-50">
               <Phone className="size-4 text-blue-600" />
             </div>
             <div>
-              <p className="font-medium text-foreground">
-                {completedContacts.length}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                contactos registrados
-              </p>
+              <p className="font-medium text-foreground">{completedFollowUps.length}</p>
+              <p className="text-xs text-muted-foreground">seguimientos completados</p>
             </div>
           </div>
-
-          {lastContact && (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="flex size-8 items-center justify-center rounded-full bg-muted">
-                <PhoneCall className="size-4 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">
-                  {formatShortDate(
-                    extractDate(lastContact.completedAt) ??
-                      extractDate(lastContact.createdAt) ??
-                      "",
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  último contacto
-                </p>
-              </div>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="flex size-8 items-center justify-center rounded-full bg-muted">
+              <PhoneCall className="size-4 text-muted-foreground" />
             </div>
-          )}
-
-          {!nextScheduled && (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="flex size-8 items-center justify-center rounded-full bg-muted">
-                <CalendarClock className="size-4 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium text-muted-foreground">
-                  Sin programar
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  próximo contacto
-                </p>
-              </div>
+            <div>
+              <p className="font-medium text-foreground">
+                {lastCompleted ? formatShortDate(lastCompleted.occurredAt) : "Sin contactos"}
+              </p>
+              <p className="text-xs text-muted-foreground">último contacto</p>
             </div>
-          )}
+          </div>
         </div>
-
         {canManage && (
-          <Button
-            size="sm"
-            className="gap-1.5 shrink-0"
-            onClick={handleAgendar}
-            disabled={isLoading}
-          >
+          <Button size="sm" className="shrink-0 gap-1.5" onClick={openSchedule}>
             <CalendarPlus className="size-4" />
-            Agendar contacto
+            Agendar seguimiento
           </Button>
         )}
       </div>
 
-      {/* Scheduled contact banner — clickeable para completar */}
       {nextScheduled && (
         <button
-          onClick={() => goToContact(nextScheduled.id)}
-          className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100 transition-colors cursor-pointer"
+          type="button"
+          onClick={() => navigate(`/pacientes/${pacienteId}/contacto?followUpId=${nextScheduled.followUpId}`)}
+          className="flex w-full items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition-colors hover:bg-amber-100"
         >
-          <div className="flex size-9 items-center justify-center rounded-full bg-amber-100 shrink-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
             <CalendarClock className="size-4 text-amber-700" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-amber-900">
-              Contacto agendado para{" "}
-              {formatShortDate(extractDate(nextScheduled.scheduledAt) ?? "")}
+              Seguimiento agendado para {formatShortDate(nextScheduled.occurredAt)}
             </p>
-            <p className="text-xs text-amber-700/80">
-              Clic acá para registrar el contacto cuando se concrete
-            </p>
+            <p className="text-xs text-amber-700/80">Abrílo para registrar el resultado</p>
           </div>
-          <CalendarPlus className="size-4 text-amber-600 shrink-0" />
         </button>
       )}
 
-      {/* Timeline */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-48">
-          <p className="text-sm text-muted-foreground">
-            Cargando historial...
-          </p>
-        </div>
-      ) : timeline.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-2">
-          <p className="text-sm font-medium text-foreground">
-            Sin historial de seguimiento
-          </p>
-          <p className="text-xs text-muted-foreground text-center max-w-xs">
-            Los contactos y sesiones de psicooncología aparecerán aquí.
-          </p>
+      {timelineQuery.isLoading ? (
+        <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Cargando historial...</div>
+      ) : timelineQuery.isError ? (
+        <div className="flex h-48 items-center justify-center text-sm text-destructive">No se pudo cargar el historial.</div>
+      ) : events.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2">
+          <p className="text-sm font-medium">Sin historial de seguimiento</p>
+          <p className="text-xs text-muted-foreground">Los seguimientos, recordatorios y sesiones aparecerán aquí.</p>
         </div>
       ) : (
         <div className="space-y-3 pt-2">
-          {timeline.map((event) => (
-            <TimelineEventCard key={event.id} event={event} />
+          {events.map((event) => (
+            <TimelineEventCard
+              key={`${event.kind}-${event.id}`}
+              event={event}
+              onClick={event.kind === "FOLLOW_UP" ? () => navigate(`/pacientes/${pacienteId}/contacto?followUpId=${event.followUpId}`) : undefined}
+            />
           ))}
         </div>
       )}
@@ -228,9 +164,11 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       <ScheduleContactDialog
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
-        onSubmit={handleScheduleSubmit}
-        isPending={false}
+        onSubmit={schedule}
+        isPending={scheduleMutation.isPending}
+        agents={agentsQuery.data}
+        requiresAgentSelection={requiresAgentSelection}
       />
     </div>
-  );
+  )
 }

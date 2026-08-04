@@ -1,11 +1,14 @@
-import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import {
+  patientsApi as patientsHttpApi,
+  type PatientDetailsResponse as ApiPatientDetailsResponse,
+  type PatientResponse as ApiPatientResponse,
+  type PatientSummaryResponse as ApiPatientSummaryResponse,
+} from "@/api/patients";
 import type {
   Patient,
-  PatientStatus,
-  PatientRole,
   CreatePatientRequest,
   UpdatePatientRequest,
-  ChangeStatusRequest,
   FullEnrollmentRequest,
   EnrollPatientDetailsRequest,
   AddInsuranceRequest,
@@ -24,41 +27,113 @@ import type {
   PatientSummaryResponse,
 } from "@/types";
 
+function toLegacyDetails(
+  details: ApiPatientDetailsResponse["details"],
+): Patient["details"] {
+  if (!details) {
+    return null;
+  }
+
+  return {
+    ...details,
+    evidenceOfDomesticViolence: null,
+    usesWoodStove: null,
+    isWorking: null,
+    receivesFinancialSupport: null,
+    programDropoutReason: null,
+    programDropoutDate: null,
+    referredToSocialWorker: null,
+    hasConadisCard: null,
+    knowsAboutFissal: null,
+    isDeceased: null,
+  };
+}
+
+function toLegacySummary(summary: ApiPatientSummaryResponse): PatientSummaryResponse {
+  return {
+    status: summary.status,
+    stale: false,
+    updatedAt: null,
+    content: summary.summary ? { resumenEjecutivo: summary.summary } : null,
+    lastErrorCode: summary.status === "FAILED" ? "SUMMARY_FAILED" : null,
+  };
+}
+
+function toLegacyPatient(
+  patient: ApiPatientResponse | ApiPatientDetailsResponse,
+): Patient {
+  const details = "details" in patient ? toLegacyDetails(patient.details) : null;
+  const summary = "summary" in patient && patient.summary
+    ? {
+        status: "READY" as const,
+        stale: false,
+        updatedAt: patient.updatedAt,
+        content: { resumenEjecutivo: patient.summary },
+        lastErrorCode: null,
+      }
+    : undefined;
+
+  return {
+    ...patient,
+    status: patient.status === "ENROLLED" ? "ENROLLED" : "PROSPECT",
+    details,
+    insurance: [],
+    diagnoses: [],
+    treatments: [],
+    medicalAppointments: [],
+    sisAffiliations: [],
+    companions: [],
+    familyPreventionTalkInterests: [],
+    symptomReports: [],
+    contacts: [],
+    summary,
+  };
+}
+
 export const patientsApi = {
   // --- List / Get ---
 
-  list(): Promise<Patient[]> {
-    return apiGet<Patient[]>("/api/patients");
+  async list(): Promise<Patient[]> {
+    const response = await patientsHttpApi.list({ limit: 100 });
+    return response.data.map(toLegacyPatient);
   },
 
-  listByStatus(status: PatientStatus): Promise<Patient[]> {
-    return apiGet<Patient[]>(`/api/patients/status/${status}`);
+  async getById(id: string): Promise<Patient> {
+    return toLegacyPatient(await patientsHttpApi.getById(id));
   },
 
-  listByRole(role: PatientRole): Promise<Patient[]> {
-    return apiGet<Patient[]>(`/api/patients/role/${role}`);
-  },
-
-  getById(id: string): Promise<Patient> {
-    return apiGet<Patient>(`/api/patients/${id}`);
-  },
-
-  refreshSummaryByDni(dni: string): Promise<PatientSummaryResponse> {
-    return apiGet<PatientSummaryResponse>(`/api/patients/dni/${dni}/summary`);
+  async getSummary(id: string): Promise<PatientSummaryResponse> {
+    return toLegacySummary(await patientsHttpApi.getSummary(id));
   },
 
   // --- Basic CRUD ---
 
-  create(data: CreatePatientRequest): Promise<Patient> {
-    return apiPost<Patient>("/api/patients", data);
+  async create(data: CreatePatientRequest): Promise<Patient> {
+    const { fullName, primaryPhone, secondaryPhone, dni, birthDate, hasWhatsapp } = data;
+    return toLegacyPatient(
+      await patientsHttpApi.create({
+        fullName,
+        primaryPhone,
+        secondaryPhone: secondaryPhone ?? undefined,
+        dni: dni ?? undefined,
+        birthDate: birthDate ?? undefined,
+        hasWhatsapp,
+      }),
+    );
   },
 
-  update(id: string, data: UpdatePatientRequest): Promise<Patient> {
-    return apiPut<Patient>(`/api/patients/${id}`, data);
-  },
-
-  changeStatus(id: string, data: ChangeStatusRequest): Promise<Patient> {
-    return apiPatch<Patient>(`/api/patients/${id}/status`, data);
+  async update(id: string, data: UpdatePatientRequest): Promise<Patient> {
+    const { fullName, primaryPhone, secondaryPhone, dni, birthDate, hasWhatsapp } = data;
+    return toLegacyPatient(
+      await patientsHttpApi.update(id, {
+        fullName,
+        primaryPhone,
+        secondaryPhone: secondaryPhone ?? undefined,
+        dni: dni ?? undefined,
+        birthDate: birthDate ?? undefined,
+        hasWhatsapp,
+      }),
+    );
   },
 
   // --- Enrollment ---
@@ -73,8 +148,38 @@ export const patientsApi = {
     return apiPost<Patient>(`/api/patients/${id}/enroll`, data);
   },
 
-  updateDetails(id: string, data: EnrollPatientDetailsRequest): Promise<Patient> {
-    return apiPut<Patient>(`/api/patients/${id}/details`, data);
+  updateDetails(id: string, data: EnrollPatientDetailsRequest) {
+    const {
+      birthDepartment,
+      currentAddress,
+      currentDistrict,
+      currentDepartment,
+      dniMatchesAddress,
+      travelTimeToHospital,
+      emergencyContactName,
+      emergencyContactPhone,
+      zoneType,
+      emergencyContactGender,
+      educationLevel,
+      nativeLanguage,
+      requiresTranslation,
+    } = data;
+
+    return patientsHttpApi.updateDetails(id, {
+      birthDepartment: birthDepartment ?? undefined,
+      currentAddress: currentAddress ?? undefined,
+      currentDistrict: currentDistrict ?? undefined,
+      currentDepartment: currentDepartment ?? undefined,
+      dniMatchesAddress: dniMatchesAddress ?? undefined,
+      travelTimeToHospital: travelTimeToHospital ?? undefined,
+      emergencyContactName: emergencyContactName ?? undefined,
+      emergencyContactPhone: emergencyContactPhone ?? undefined,
+      zoneType: zoneType ?? undefined,
+      emergencyContactGender: emergencyContactGender ?? undefined,
+      educationLevel: educationLevel ?? undefined,
+      nativeLanguage: nativeLanguage ?? undefined,
+      requiresTranslation: requiresTranslation ?? undefined,
+    });
   },
 
   // --- Insurance ---

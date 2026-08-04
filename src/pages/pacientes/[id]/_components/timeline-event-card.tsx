@@ -1,157 +1,72 @@
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import {
-  Phone,
-  PhoneCall,
-  BrainCircuit,
-  CalendarClock,
-  Clock,
-  Bell,
-  MessageSquare,
-  Video,
-  Mail,
-  Users,
-} from "lucide-react";
-import type { TimelineEvent } from "../_utils/timeline";
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { Bell, BrainCircuit, CalendarClock, Mail, MessageSquare, PhoneCall, Users, Video } from "lucide-react"
+import type { ComponentType } from "react"
+import type { PatientTimelineEvent } from "@/api/patient-timeline"
 
-const contactStatusLabels: Record<string, string> = {
+const followUpStatusLabels: Record<string, string> = {
   SCHEDULED: "Agendado",
   COMPLETED: "Completado",
   CANCELLED: "Cancelado",
   NO_ANSWER: "No contestó",
-};
-
-const appointmentStatusLabels: Record<string, string> = {
-  SCHEDULED: "Programada",
-  COMPLETED: "Completada",
-  CANCELLED: "Cancelada",
-  NO_ANSWER: "No contestó",
-};
-
+}
 const reminderStatusLabels: Record<string, string> = {
-  PENDIENTE: "Pendiente",
-  COMPLETADO: "Completado",
-  CANCELADO: "Cancelado",
-};
-
-const contactStatusStyles: Record<string, string> = {
-  SCHEDULED: "bg-amber-50 text-amber-700 border-amber-200",
-  COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  CANCELLED: "bg-zinc-100 text-zinc-600 border-zinc-200",
-  NO_ANSWER: "bg-red-50 text-red-700 border-red-200",
-};
-
-const reminderStatusStyles: Record<string, string> = {
-  PENDIENTE: "bg-amber-50 text-amber-700 border-amber-200",
-  COMPLETADO: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  CANCELADO: "bg-zinc-100 text-zinc-600 border-zinc-200",
-};
-
-const contactTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  PENDING: "Pendiente",
+  DONE: "Completado",
+  DISMISSED: "Descartado",
+}
+const typeIcons: Record<string, ComponentType<{ className?: string }>> = {
   CALL: PhoneCall,
   WHATSAPP: MessageSquare,
   VIDEO_CALL: Video,
   EMAIL: Mail,
   IN_PERSON: Users,
-};
-
-function formatDate(fecha: string): string {
-  return new Date(fecha + "T12:00:00").toLocaleDateString("es-PE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
-function formatTime(hora?: string | null): string {
-  if (!hora) return "";
-  return hora;
+function formatDate(date: string): string {
+  return new Date(date).toLocaleString("es-PE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
 interface TimelineEventCardProps {
-  event: TimelineEvent;
+  event: PatientTimelineEvent
+  onClick?: () => void
 }
 
-const accentBar = {
-  contacto: "border-l-blue-400",
-  psico: "border-l-purple-400",
-  recordatorio: "border-l-amber-400",
-};
-
-const iconBg = {
-  contacto: "bg-blue-50 text-blue-600",
-  psico: "bg-purple-50 text-purple-600",
-  recordatorio: "bg-amber-50 text-amber-600",
-};
-
-export function TimelineEventCard({ event }: TimelineEventCardProps) {
-  const isContact = event.type === "contacto";
-  const isRecordatorio = event.type === "recordatorio";
-
-  const statusLabel = isContact
-    ? contactStatusLabels[event.status] ?? event.status
-    : isRecordatorio
-      ? reminderStatusLabels[event.status] ?? event.status
-      : appointmentStatusLabels[event.status] ?? event.status;
-
-  const statusStyle = isRecordatorio
-    ? reminderStatusStyles[event.status] ?? "bg-muted text-muted-foreground border-muted"
-    : contactStatusStyles[event.status] ?? "bg-muted text-muted-foreground border-muted";
-
-  const Icon = isContact
-    ? (event.meta?.type ? (contactTypeIcons[event.meta.type] ?? Phone) : Phone)
-    : isRecordatorio
-      ? Bell
-      : BrainCircuit;
+export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
+  const isFollowUp = event.kind === "FOLLOW_UP"
+  const isReminder = event.kind === "REMINDER"
+  const Icon = isFollowUp ? typeIcons[event.type] ?? PhoneCall : isReminder ? Bell : BrainCircuit
+  const title = isFollowUp
+    ? `Seguimiento: ${event.purpose.replaceAll("_", " ")}`
+    : isReminder
+      ? "Recordatorio"
+      : `Sesión de psicooncología ${event.sessionNumber}`
+  const statusLabel = isReminder ? reminderStatusLabels[event.status] : followUpStatusLabels[event.status]
+  const accent = isFollowUp ? "border-l-blue-400" : isReminder ? "border-l-amber-400" : "border-l-purple-400"
+  const iconColor = isFollowUp ? "bg-blue-50 text-blue-600" : isReminder ? "bg-amber-50 text-amber-600" : "bg-purple-50 text-purple-600"
 
   return (
     <div
-      className={cn(
-        "rounded-lg border bg-card pl-3 pr-4 py-3 border-l-[3px]",
-        accentBar[event.type],
-      )}
+      className={cn("rounded-lg border border-l-[3px] bg-card px-4 py-3", accent, onClick && "cursor-pointer transition-colors hover:bg-muted/40")}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (event) => event.key === "Enter" && onClick() : undefined}
     >
-      {/* Header: icon + title + badge */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div
-          className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-full",
-            iconBg[event.type],
-          )}
-        >
-          <Icon className="size-3.5" />
-        </div>
-        <p className="text-sm font-medium text-foreground">{event.title}</p>
-        <Badge className={cn("border text-[10px] font-medium ml-auto", statusStyle)}>
-          {statusLabel}
-        </Badge>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className={cn("flex size-7 shrink-0 items-center justify-center rounded-full", iconColor)}><Icon className="size-3.5" /></div>
+        <p className="text-sm font-medium">{title}</p>
+        <Badge className="ml-auto border text-[10px] font-medium" variant="outline">{statusLabel ?? event.status}</Badge>
       </div>
-
-      {/* Meta row: date · time · agent */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2.5 ml-[35px]">
+      <div className="mt-2.5 ml-[35px] flex items-center gap-2 text-xs text-muted-foreground">
         <CalendarClock className="size-3 shrink-0" />
-        <span>{formatDate(event.fecha)}</span>
-        {event.hora && (
-          <>
-            <span>·</span>
-            <Clock className="size-3 shrink-0" />
-            <span>{formatTime(event.hora)}</span>
-          </>
-        )}
-        {event.meta?.agentName && (
-          <>
-            <span>·</span>
-            <span className="truncate">{event.meta.agentName}</span>
-          </>
-        )}
+        <span>{formatDate(event.occurredAt)}</span>
       </div>
-
-      {/* Description */}
-      {event.description && (
-        <p className="text-xs text-muted-foreground mt-1.5 ml-[35px] leading-relaxed line-clamp-3">
-          {event.description}
+      {((isFollowUp && event.notes) || (isReminder && event.description)) && (
+        <p className="mt-1.5 ml-[35px] text-xs leading-relaxed text-muted-foreground">
+          {isFollowUp ? event.notes : event.description}
         </p>
       )}
     </div>
-  );
+  )
 }

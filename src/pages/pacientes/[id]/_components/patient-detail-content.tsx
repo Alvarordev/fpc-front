@@ -1,17 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarClock, Clock } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { usePatient } from "../_hooks/use-patient";
-import { useContacts } from "../_hooks/use-contacts";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
-import { PsicoTab } from "./psico-tab";
-import { RecordatoriosTab } from "./recordatorios-tab";
-import { AlertBanner } from "./alert-banner";
-import { usePatientAlerts } from "../_hooks/use-patient-alerts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PatientStatus } from "@/types";
 
 const statusLabels: Record<PatientStatus, string> = {
@@ -32,12 +27,6 @@ export function PatientDetailContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: patient, isLoading, isError } = usePatient(id!);
-  const { data: contacts = [] } = useContacts(id!);
-  const { alerts } = usePatientAlerts(patient);
-
-  const nextScheduled = [...contacts]
-    .filter((c) => c.status === "SCHEDULED")
-    .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""))[0];
 
   if (isLoading) {
     return (
@@ -117,57 +106,18 @@ export function PatientDetailContent() {
           </div>
         </div>
 
-        {nextScheduled && (
-          <button
-            onClick={() =>
-              navigate(
-                `/pacientes/${patient.id}/contacto?contactId=${nextScheduled.id}`,
-              )
-            }
-            className="shrink-0 flex items-center gap-2.5 text-sm group cursor-pointer py-1"
-          >
-            <div className="flex size-9 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
-              <CalendarClock className="size-4 text-amber-600" />
-            </div>
-            <div className="text-right">
-              <p className="font-medium text-foreground group-hover:text-amber-700 transition-colors leading-tight">
-                {new Date(nextScheduled.scheduledAt!).toLocaleDateString(
-                  "es-PE",
-                  { day: "numeric", month: "short" },
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground leading-tight">
-                próximo contacto
-              </p>
-            </div>
-          </button>
-        )}
       </div>
-
-      <AlertBanner alerts={alerts} />
 
       <Tabs defaultValue="resumen">
         <TabsList className="mb-4">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
-          <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
-          <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
         </TabsList>
-
         <TabsContent value="resumen">
           <OverviewSection patient={patient} />
         </TabsContent>
-
         <TabsContent value="seguimiento">
           <SeguimientoTab pacienteId={patient.id} />
-        </TabsContent>
-
-        <TabsContent value="psicooncologia">
-          <PsicoTab pacienteId={patient.id} />
-        </TabsContent>
-
-        <TabsContent value="recordatorios">
-          <RecordatoriosTab pacienteId={patient.id} />
         </TabsContent>
       </Tabs>
     </div>
