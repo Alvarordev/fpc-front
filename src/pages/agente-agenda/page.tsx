@@ -25,7 +25,7 @@ export default function AgentAgendaPage() {
   const agentsQuery = useQuery({ queryKey: ["agents"], queryFn: agentsApi.list, staleTime: 60_000 })
   const agentId = agentsQuery.data?.find((agent) => agent.userId === user?.id)?.id
   const followUpsQuery = useQuery({ queryKey: ["agent-follow-ups"], queryFn: () => followUpsApi.list(), enabled: Boolean(agentId), staleTime: 30_000 })
-  const alertsQuery = useQuery({ queryKey: ["agent-alerts"], queryFn: alertsApi.list, staleTime: 30_000 })
+  const alertsQuery = useQuery({ queryKey: ["agent-alerts"], queryFn: () => alertsApi.list(), staleTime: 30_000 })
   const sessionsQuery = useQuery({ queryKey: ["agent-upcoming-sessions"], queryFn: () => psychooncologyAppointmentsApi.list({ status: "SCHEDULED" }), staleTime: 30_000 })
   const volunteersQuery = useQuery({ queryKey: ["volunteers"], queryFn: volunteersApi.list, staleTime: 300_000 })
   const followUps = followUpsQuery.data ?? []

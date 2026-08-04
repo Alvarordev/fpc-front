@@ -24,7 +24,7 @@ import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateHealthCenter } from "../_hooks/use-health-centers";
 import { DEPARTMENTS } from "../_utils/departments";
-import type { HealthCenter, PeruDepartment } from "@/types";
+import type { HealthCenter, UpdateHealthCenterInput } from "@/api/health-centers";
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
@@ -79,7 +79,7 @@ export function EditHealthCenterDialog({
     if (!center) return;
 
     const name = values.name.toUpperCase();
-    const department = values.department as PeruDepartment;
+    const department = values.department as UpdateHealthCenterInput["department"];
 
     try {
       await updateMutation.mutateAsync({

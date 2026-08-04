@@ -1,13 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { healthCentersApi } from "@/lib/api";
-import type {
-  HealthCenter,
-  CreateHealthCenterRequest,
-  UpdateHealthCenterRequest,
-} from "@/types";
+import { healthCentersApi, type UpdateHealthCenterInput } from "@/api/health-centers";
 
 export function useHealthCenters() {
-  return useQuery<HealthCenter[]>({
+  return useQuery({
     queryKey: ["healthCenters"],
     queryFn: () => healthCentersApi.list(),
     staleTime: 60 * 1000,
@@ -17,8 +12,7 @@ export function useHealthCenters() {
 export function useCreateHealthCenter() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateHealthCenterRequest) =>
-      healthCentersApi.create(data),
+    mutationFn: healthCentersApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] });
     },
@@ -33,7 +27,7 @@ export function useUpdateHealthCenter() {
       data,
     }: {
       id: string;
-      data: UpdateHealthCenterRequest;
+      data: UpdateHealthCenterInput;
     }) => healthCentersApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] });
@@ -44,7 +38,7 @@ export function useUpdateHealthCenter() {
 export function useDeleteHealthCenter() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => healthCentersApi.delete(id),
+    mutationFn: (id: string) => healthCentersApi.update(id, { isActive: false }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] });
     },
@@ -54,7 +48,7 @@ export function useDeleteHealthCenter() {
 export function useReactivateHealthCenter() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => healthCentersApi.reactivate(id),
+    mutationFn: (id: string) => healthCentersApi.update(id, { isActive: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] });
     },

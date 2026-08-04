@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/store/auth-store";
-import { useVolunteers, useAllSlots, useAllAppointments, usePatients } from "../_hooks/use-volunteers";
+import { useVolunteers, useVolunteerCalendar } from "../_hooks/use-volunteers";
 import { VolunteersToolbar } from "./volunteers-toolbar";
 import { VolunteersTable } from "./volunteers-table";
 import { getVolunteerColumns } from "./volunteers-columns";
@@ -20,22 +20,20 @@ export function VolunteersContent() {
   const [year, setYear] = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth());
 
+  const range = useMemo(() => ({ from: new Date(year, month, 1).toISOString().slice(0, 10), to: new Date(year, month + 1, 0).toISOString().slice(0, 10) }), [year, month]);
   const { data: volunteers = [] } = useVolunteers();
-  const { data: slots = [] } = useAllSlots();
-  const { data: appointments = [] } = useAllAppointments();
-  const { data: patients = [] } = usePatients();
+  const { data: calendar } = useVolunteerCalendar(range.from, range.to);
+  const slots = useMemo(() => (calendar?.volunteers ?? []).flatMap((volunteer) => volunteer.availabilitySlots.map((slot) => ({ ...slot, volunteerId: volunteer.id }))), [calendar]);
 
   const patientNameByAvailabilityId = useMemo(() => {
-    const patientMap = new Map(patients.map((p) => [p.id, p.fullName]));
     const result = new Map<string, string>();
-    for (const appt of appointments) {
-      if (appt.status === "SCHEDULED") {
-        const name = patientMap.get(appt.patientId);
-        if (name) result.set(appt.availabilityId, name);
+    for (const volunteer of calendar?.volunteers ?? []) {
+      for (const appointment of volunteer.appointments) {
+        if (appointment.status === "SCHEDULED") result.set(appointment.availabilityId, appointment.patientName);
       }
     }
     return result;
-  }, [appointments, patients]);
+  }, [calendar]);
 
   const filtered = volunteers.filter((v) => {
     const matchesVolunteer = volunteerId === "all" || v.id === volunteerId;

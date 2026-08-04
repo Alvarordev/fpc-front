@@ -3,6 +3,7 @@ import { api } from "./client"
 
 export type Volunteer = components["schemas"]["VolunteerResponseDto"]
 export type VolunteerAvailability = components["schemas"]["VolunteerAvailabilityResponseDto"]
+export type CreateVolunteerInput = components["schemas"]["CreateVolunteerDto"]
 
 export class VolunteersApiError extends Error {
   readonly status: number
@@ -27,6 +28,12 @@ export const volunteersApi = {
       params: { path: { volunteerId } },
     })
 
+    if (!data) throw new VolunteersApiError(response.status)
+    return data
+  },
+
+  async create(input: CreateVolunteerInput): Promise<Volunteer> {
+    const { data, response } = await api.POST("/volunteers", { body: input })
     if (!data) throw new VolunteersApiError(response.status)
     return data
   },

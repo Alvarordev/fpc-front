@@ -1,14 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { alertsApi } from "@/lib/api";
-import type { Alert } from "@/types";
+import { alertsApi, type Alert } from "@/api/alerts";
 
 type AlertFilter = "ACTIVE" | "RESOLVED" | "all";
 
 export function useAlerts(filter: AlertFilter = "all") {
   return useQuery<Alert[]>({
     queryKey: ["alerts", filter],
-    queryFn: () =>
-      alertsApi.list(filter !== "all" ? { status: filter } : undefined),
+    queryFn: () => alertsApi.list(filter !== "all" ? { status: filter } : {}),
     staleTime: 15 * 1000,
   });
 }
@@ -16,13 +14,7 @@ export function useAlerts(filter: AlertFilter = "all") {
 export function useResolveAlert() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      resolvedByAgentId,
-    }: {
-      id: string;
-      resolvedByAgentId: string;
-    }) => alertsApi.resolve(id, { resolvedByAgentId }),
+    mutationFn: (id: string) => alertsApi.resolve(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },

@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -19,13 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCreateUser } from "../_hooks/use-users"
-import { volunteersApi } from "@/lib/api"
+import { agentsApi } from "@/api/agents"
+import { volunteersApi } from "@/api/volunteers"
 import type { UserRole } from "@/types"
 
 const schema = z
   .object({
     email: z.string().email("Email inválido"),
-    password: z.string().min(6, "Mínimo 6 caracteres"),
+    password: z.string().min(8, "Mínimo 8 caracteres"),
     role: z.enum(["ADMIN", "FOUNDATION", "AGENT", "VOLUNTEER"] as const),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
@@ -33,7 +35,7 @@ const schema = z
     phone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.role !== "VOLUNTEER") return
+    if (data.role !== "VOLUNTEER" && data.role !== "AGENT") return
 
     if (!data.firstName || data.firstName.trim().length < 2) {
       ctx.addIssue({
@@ -49,7 +51,7 @@ const schema = z
         message: "Apellido requerido (mín. 2 caracteres)",
       })
     }
-    if (!data.specialty || data.specialty.trim().length < 2) {
+    if (data.role === "VOLUNTEER" && (!data.specialty || data.specialty.trim().length < 2)) {
       ctx.addIssue({
         code: "custom",
         path: ["specialty"],
@@ -85,7 +87,9 @@ export function CreateUserDialog({
 }: CreateUserDialogProps) {
   const createUser = useCreateUser()
   const [stepError, setStepError] = useState<string | null>(null)
-  const [isCreatingVolunteer, setIsCreatingVolunteer] = useState(false)
+  const queryClient = useQueryClient()
+  const createAgent = useMutation({ mutationFn: agentsApi.create, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["users"] }); queryClient.invalidateQueries({ queryKey: ["agents"] }) } })
+  const createVolunteer = useMutation({ mutationFn: volunteersApi.create, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["users"] }); queryClient.invalidateQueries({ queryKey: ["volunteers"] }) } })
 
   const {
     register,
@@ -108,45 +112,29 @@ export function CreateUserDialog({
   })
 
   const selectedRole = watch("role")
-  const isPending = createUser.isPending || isCreatingVolunteer
+  const isPending = createUser.isPending || createAgent.isPending || createVolunteer.isPending
 
   function handleClose() {
     onOpenChange(false)
     reset()
     setStepError(null)
-    setIsCreatingVolunteer(false)
   }
 
   async function onSubmit(values: FormValues) {
     setStepError(null)
 
-    const createdUser = await createUser.mutateAsync({
-      email: values.email,
-      password: values.password,
-      role: values.role,
-    })
-
-    if (values.role !== "VOLUNTEER") {
+    if (values.role === "AGENT") {
+      await createAgent.mutateAsync({ email: values.email, password: values.password, fullName: `${values.firstName ?? ""} ${values.lastName ?? ""}`.trim(), phone: values.phone ?? "" })
       handleClose()
       return
     }
-
-    setIsCreatingVolunteer(true)
-    try {
-      await volunteersApi.create({
-        userId: createdUser.id,
-        firstName: values.firstName!,
-        lastName: values.lastName!,
-        specialty: values.specialty!,
-        email: values.email,
-        phone: values.phone!,
-      })
+    if (values.role === "VOLUNTEER") {
+      await createVolunteer.mutateAsync({ email: values.email, password: values.password, firstName: values.firstName!, lastName: values.lastName!, specialty: values.specialty!, phone: values.phone! })
       handleClose()
-    } catch (err) {
-      setStepError((err as Error)?.message ?? "Error al crear el voluntario")
-    } finally {
-      setIsCreatingVolunteer(false)
+      return
     }
+    await createUser.mutateAsync({ email: values.email, password: values.password, role: values.role })
+    handleClose()
   }
 
   return (
@@ -207,11 +195,11 @@ export function CreateUserDialog({
             )}
           </div>
 
-          {selectedRole === "VOLUNTEER" && (
+          {(selectedRole === "VOLUNTEER" || selectedRole === "AGENT") && (
             <>
               <div className="mt-4 border-t pt-4">
                 <p className="text-muted-foreground mb-3 text-xs font-medium">
-                  Datos del voluntario
+                  Datos del perfil
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -244,7 +232,7 @@ export function CreateUserDialog({
                   </div>
                 </div>
 
-                <div className="mt-3 space-y-2">
+                {selectedRole === "VOLUNTEER" && <div className="mt-3 space-y-2">
                   <Label className="text-xs">Especialidad</Label>
                   <Input
                     {...register("specialty")}
@@ -256,7 +244,7 @@ export function CreateUserDialog({
                       {errors.specialty.message}
                     </p>
                   )}
-                </div>
+                </div>}
 
                 <div className="mt-3 space-y-2">
                   <Label className="text-xs">Teléfono</Label>
@@ -286,19 +274,17 @@ export function CreateUserDialog({
             </Button>
             <Button type="submit" className="flex-1" disabled={isPending}>
               {isPending
-                ? isCreatingVolunteer
-                  ? "Creando voluntario..."
-                  : "Creando..."
-                : `Crear ${roleLabels[selectedRole].toLowerCase()}`}
+                ? "Creando..."
+                  : `Crear ${roleLabels[selectedRole].toLowerCase()}`}
             </Button>
           </div>
         </form>
 
-        {(createUser.isError || stepError) && (
+        {(createUser.isError || createAgent.isError || createVolunteer.isError || stepError) && (
           <div className="border-destructive/20 bg-destructive/5 mt-2 rounded-xl border p-4">
             <p className="text-destructive text-sm">
               {stepError ??
-                (createUser.error as Error)?.message ??
+                (createUser.error as Error)?.message ?? (createAgent.error as Error)?.message ?? (createVolunteer.error as Error)?.message ??
                 "Error al crear usuario"}
             </p>
           </div>

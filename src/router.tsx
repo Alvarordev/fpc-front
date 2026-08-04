@@ -53,7 +53,14 @@ export const router = createBrowserRouter([
       { path: "pacientes", element: <PatientsPage /> },
       { path: "pacientes/:id", element: <PatientDetailPage /> },
       { path: "pacientes/:id/contacto", element: <ContactPage /> },
-      { path: "voluntarios", element: <VolunteersPage /> },
+      {
+        path: "voluntarios",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
+            <VolunteersPage />
+          </RoleGuard>
+        ),
+      },
       {
         path: "usuarios",
         element: (
@@ -73,7 +80,7 @@ export const router = createBrowserRouter([
       {
         path: "hospitales",
         element: (
-          <RoleGuard allowedRoles={["ADMIN", "AGENT"]}>
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
             <HealthCentersPage />
           </RoleGuard>
         ),

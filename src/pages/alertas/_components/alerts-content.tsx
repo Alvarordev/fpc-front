@@ -3,9 +3,8 @@ import { TriangleAlert, CheckCircle, X, Clock, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/auth-store";
 import { useAlerts, useResolveAlert } from "../_hooks/use-alerts";
-import type { Alert } from "@/types";
+import type { Alert } from "@/api/alerts";
 
 type Filter = "ACTIVE" | "RESOLVED" | "all";
 
@@ -20,7 +19,6 @@ function formatDate(iso: string): string {
 export function AlertsContent() {
   const [filter, setFilter] = useState<Filter>("ACTIVE");
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const user = useAuthStore((s) => s.user);
 
   const { data: alerts = [] } = useAlerts(filter);
   const resolveAlert = useResolveAlert();
@@ -30,11 +28,7 @@ export function AlertsContent() {
   );
 
   async function handleResolve(alert: Alert) {
-    if (!user) return;
-    await resolveAlert.mutateAsync({
-      id: alert.id,
-      resolvedByAgentId: user.id,
-    });
+    await resolveAlert.mutateAsync(alert.id);
     setConfirmId(null);
   }
 
@@ -151,14 +145,12 @@ export function AlertsContent() {
                       <Clock className="size-3" />
                       <span>
                         Reportada el {formatDate(alert.createdAt)}
-                        {alert.createdByAgentName &&
-                          ` por ${alert.createdByAgentName}`}
+                        {alert.createdByName && ` por ${alert.createdByName}`}
                       </span>
                       {alert.resolvedAt && (
                         <span className="ml-2">
                           · Resuelta el {formatDate(alert.resolvedAt)}
-                          {alert.resolvedByAgentName &&
-                            ` por ${alert.resolvedByAgentName}`}
+                          {alert.resolvedByName && ` por ${alert.resolvedByName}`}
                         </span>
                       )}
                     </div>

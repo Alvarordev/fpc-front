@@ -1,13 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { usersApi } from "@/lib/api";
-import type { User, CreateUserRequest } from "@/types";
+import { usersApi, type CreateUserInput } from "@/api/users";
 
 export function useUsers() {
-  return useQuery<User[]>({
+  return useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const page = await usersApi.list({ size: 100 });
-      return page.content;
+      const page = await usersApi.list();
+      return page.data;
     },
     staleTime: 30 * 1000,
   });
@@ -16,12 +15,9 @@ export function useUsers() {
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateUserRequest) => usersApi.create(data),
-    onSuccess: (_user, variables) => {
+    mutationFn: (data: CreateUserInput) => usersApi.create(data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      if (variables.role === "VOLUNTEER") {
-        queryClient.invalidateQueries({ queryKey: ["volunteers"] });
-      }
     },
   });
 }

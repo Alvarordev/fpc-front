@@ -2,6 +2,7 @@ import type { components } from "./schema"
 import { api } from "./client"
 
 export type Agent = components["schemas"]["AgentResponseDto"]
+export type CreateAgentInput = components["schemas"]["CreateAgentDto"]
 
 export class AgentsApiError extends Error {
   readonly status: number
@@ -21,6 +22,12 @@ export const agentsApi = {
       throw new AgentsApiError(response.status)
     }
 
+    return data
+  },
+
+  async create(input: CreateAgentInput): Promise<Agent> {
+    const { data, response } = await api.POST("/agents", { body: input })
+    if (!data) throw new AgentsApiError(response.status)
     return data
   },
 }

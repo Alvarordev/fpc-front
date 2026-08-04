@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Building2, MapPin, MoreHorizontal, Pencil, Power, PowerOff } from "lucide-react";
-import type { HealthCenter } from "@/types";
+import type { HealthCenter } from "@/api/health-centers";
 
 const departmentLabels: Record<string, string> = {
   AMAZONAS: "Amazonas",
@@ -40,13 +40,11 @@ const departmentLabels: Record<string, string> = {
 };
 
 interface HealthCenterColumnsOptions {
-  patientCounts: Map<string, number>;
   onEdit: (center: HealthCenter) => void;
   onToggleActive: (center: HealthCenter) => void;
 }
 
 export function healthCenterColumns({
-  patientCounts,
   onEdit,
   onToggleActive,
 }: HealthCenterColumnsOptions): ColumnDef<HealthCenter>[] {
@@ -103,7 +101,7 @@ export function healthCenterColumns({
       id: "patientCount",
       header: "Pacientes",
       cell: ({ row }) => {
-        const count = patientCounts.get(row.original.id) ?? 0;
+        const count = row.original.patientCount ?? 0;
         return (
           <span className="text-sm font-medium text-foreground tabular-nums">
             {count}

@@ -747,7 +747,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List users */
+        get: operations["UsersController_findAll"];
         put?: never;
         /** Create a user */
         post: operations["UsersController_create"];
@@ -896,6 +897,23 @@ export interface paths {
         patch: operations["VolunteersController_resume"];
         trace?: never;
     };
+    "/volunteer-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get volunteer availability and scheduled appointments */
+        get: operations["VolunteerCalendarController_findInRange"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -920,10 +938,12 @@ export interface components {
             id: string;
             /** Format: uuid */
             healthCenterId: string;
+            healthCenterName: string;
             /** Format: uuid */
             followUpId: string;
             /** Format: uuid */
             createdById: string;
+            createdByName: string;
             title: string;
             description: string;
             /** @enum {string} */
@@ -932,6 +952,9 @@ export interface components {
             resolvedAt: string | null;
             /** Format: uuid */
             resolvedById: string | null;
+            /** Format: uuid */
+            resolvedByUserId: string | null;
+            resolvedByName: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1299,6 +1322,7 @@ export interface components {
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
             isActive: boolean;
+            patientCount: number;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1807,6 +1831,14 @@ export interface components {
             /** @enum {string} */
             role: "ADMIN" | "FOUNDATION" | "AGENT" | "VOLUNTEER";
             isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UserListResponseDto: {
+            data: components["schemas"]["UserResponseDto"][];
+            total: number;
         };
         CreateVolunteerAvailabilityDto: {
             date: string;
@@ -1863,6 +1895,46 @@ export interface components {
             email?: string;
             phone?: string;
         };
+        VolunteerCalendarAvailabilityDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            date: string;
+            /** @example 09:00:00 */
+            startTime: string;
+            /** @example 10:00:00 */
+            endTime: string;
+            /** @enum {string} */
+            status: "AVAILABLE" | "RESERVED";
+        };
+        VolunteerCalendarAppointmentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            patientName: string;
+            /** Format: uuid */
+            availabilityId: string;
+            /** @enum {string} */
+            modality: "CALL" | "VIDEO_CALL";
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: date-time */
+            scheduledAt: string;
+        };
+        VolunteerCalendarVolunteerDto: {
+            /** Format: uuid */
+            id: string;
+            firstName: string;
+            lastName: string;
+            specialty: string;
+            isActive: boolean;
+            availabilitySlots: components["schemas"]["VolunteerCalendarAvailabilityDto"][];
+            appointments: components["schemas"]["VolunteerCalendarAppointmentDto"][];
+        };
+        VolunteerCalendarResponseDto: {
+            volunteers: components["schemas"]["VolunteerCalendarVolunteerDto"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -1874,7 +1946,11 @@ export type $defs = Record<string, never>;
 export interface operations {
     AlertsController_findAll: {
         parameters: {
-            query?: never;
+            query?: {
+                status?: "ACTIVE" | "RESOLVED";
+                healthCenterId?: string;
+                createdById?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2010,6 +2086,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Administrator or agent role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Alert not found */
             404: {
                 headers: {
@@ -2045,6 +2128,13 @@ export interface operations {
             };
             /** @description JWT missing, invalid, or expired */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator role required */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4508,6 +4598,40 @@ export interface operations {
             };
         };
     };
+    UsersController_findAll: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserListResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     UsersController_create: {
         parameters: {
             query?: never;
@@ -4996,6 +5120,49 @@ export interface operations {
             };
             /** @description Volunteer not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    VolunteerCalendarController_findInRange: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolunteerCalendarResponseDto"];
+                };
+            };
+            /** @description Invalid date range */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator, agent, or foundation role required */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

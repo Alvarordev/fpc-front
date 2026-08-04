@@ -8,13 +8,12 @@ import {
   useDeleteHealthCenter,
   useReactivateHealthCenter,
 } from "../_hooks/use-health-centers";
-import { usePatientCountByHealthCenter } from "../_hooks/use-patient-count-by-health-center";
 import { healthCenterColumns } from "./health-centers-columns";
 import { HealthCentersToolbar } from "./health-centers-toolbar";
 import { CreateHealthCenterDialog } from "./create-health-center-dialog";
 import { EditHealthCenterDialog } from "./edit-health-center-dialog";
 import { DEPARTMENTS } from "../_utils/departments";
-import type { HealthCenter } from "@/types";
+import type { HealthCenter } from "@/api/health-centers";
 
 export function HealthCentersContent() {
   const [search, setSearch] = useState("");
@@ -26,7 +25,6 @@ export function HealthCentersContent() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { data: centers = [], isLoading } = useHealthCenters();
-  const { data: patientCounts = new Map() } = usePatientCountByHealthCenter();
 
   const deleteMutation = useDeleteHealthCenter();
   const reactivateMutation = useReactivateHealthCenter();
@@ -80,11 +78,10 @@ export function HealthCentersContent() {
   const columns = useMemo(
     () =>
       healthCenterColumns({
-        patientCounts,
         onEdit: handleEdit,
         onToggleActive: handleToggleActive,
       }),
-    [patientCounts, handleEdit, handleToggleActive],
+    [handleEdit, handleToggleActive],
   );
 
   return (

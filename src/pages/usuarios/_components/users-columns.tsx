@@ -1,18 +1,20 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { User } from "@/types";
+import type { User } from "@/api/users";
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrador",
   AGENT: "Agente",
   VOLUNTEER: "Voluntario",
+  FOUNDATION: "Fundación",
 };
 
 const roleStyles: Record<string, string> = {
   ADMIN: "bg-amber-50 text-amber-700 border-amber-200",
   AGENT: "bg-blue-50 text-blue-700 border-blue-200",
   VOLUNTEER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  FOUNDATION: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
 function shortDate(isoDate: string): string {
