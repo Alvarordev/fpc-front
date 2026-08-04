@@ -6,7 +6,7 @@ import AgentAgendaPage from "@/pages/agente-agenda/page";
 export function HomePage() {
   const user = useAuthStore((s) => s.user);
 
-  if (user?.role === "ADMIN") return <DashboardPage />;
+  if (user?.role === "ADMIN" || user?.role === "FOUNDATION") return <DashboardPage />;
   if (user?.role === "AGENT") return <AgentAgendaPage />;
 
   return <Navigate to="/agenda" replace />;

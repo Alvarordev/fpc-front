@@ -1,39 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { appointmentsApi, healthCentersApi } from "@/lib/api";
-import { usePatients } from "@/pages/pacientes/_hooks/use-patients";
-import type { HealthCenter, PsychooncologyAppointment } from "@/types";
+import { useQuery } from "@tanstack/react-query"
+import { dashboardApi, type DashboardQuery } from "@/api/dashboard"
 
-export function useDashboardData() {
-  const patientsQuery = usePatients();
-
-  const appointmentsQuery = useQuery<PsychooncologyAppointment[]>({
-    queryKey: ["dashboardAppointments"],
-    queryFn: () => appointmentsApi.list(),
-    staleTime: 60 * 1000,
-  });
-
-  const healthCentersQuery = useQuery<HealthCenter[]>({
-    queryKey: ["dashboardHealthCenters"],
-    queryFn: () => healthCentersApi.list(),
-    staleTime: 60 * 1000,
-  });
-
-  return {
-    patients: patientsQuery.data ?? [],
-    appointments: appointmentsQuery.data ?? [],
-    healthCenters: healthCentersQuery.data ?? [],
-    isLoading:
-      patientsQuery.isLoading ||
-      appointmentsQuery.isLoading ||
-      healthCentersQuery.isLoading,
-    isError:
-      patientsQuery.isError ||
-      appointmentsQuery.isError ||
-      healthCentersQuery.isError,
-    error:
-      patientsQuery.error ??
-      appointmentsQuery.error ??
-      healthCentersQuery.error ??
-      null,
-  };
+export function useDashboardData(query: DashboardQuery) {
+  return useQuery({
+    queryKey: ["dashboard", query.period, query.year, query.month ?? null],
+    queryFn: () => dashboardApi.get(query),
+    staleTime: 30_000,
+  })
 }

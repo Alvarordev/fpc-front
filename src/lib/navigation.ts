@@ -17,7 +17,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
     {
       label: "Gestión",
       items: [
-        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Mi agenda", url: "/", icon: LayoutDashboard },
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
       ],

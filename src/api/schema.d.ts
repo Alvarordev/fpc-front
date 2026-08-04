@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get aggregated dashboard analytics for a Lima calendar month or year */
+        get: operations["DashboardController_getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents": {
         parameters: {
             query?: never;
@@ -996,6 +1013,78 @@ export interface components {
             agents: components["schemas"]["CallCenterAgentDto"][];
             scheduledFollowUps: components["schemas"]["CallCenterFollowUpDto"][];
             pendingReminders: components["schemas"]["CallCenterReminderDto"][];
+        };
+        DashboardMetaDto: {
+            /** @enum {string} */
+            period: "month" | "year";
+            year: number;
+            month: number | null;
+            /** @example America/Lima */
+            timezone: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+        };
+        DashboardSummaryDto: {
+            /** @description Enrollment records created in the selected period. */
+            enrollmentEvents: number;
+            /** @description Distinct patients with an enrollment created in the selected period. */
+            cohortPatients: number;
+            activePatients: number;
+            inactivePatients: number;
+            /** @description Patients marked deceased by date or deactivation reason. */
+            deceasedPatients: number;
+            /** @description Inactive cohort patients who are not deceased. */
+            dropoutPatients: number;
+            /** @description Psycho-oncology appointments scheduled in the selected period, regardless of status. */
+            sessions: number;
+            completedSessions: number;
+            /** @description Completed sessions divided by all scheduled sessions, from 0 to 100. */
+            completionRate: number;
+        };
+        DashboardDistributionItemDto: {
+            /** @example LIMA */
+            label: string;
+            /** @example 42 */
+            count: number;
+        };
+        DashboardDistributionsDto: {
+            /** @description Top six values; remaining values are combined as Otros. */
+            gender: components["schemas"]["DashboardDistributionItemDto"][];
+            /** @description Current diagnosis for cohort patients. Top six values; remaining values are combined as Otros. */
+            diagnoses: components["schemas"]["DashboardDistributionItemDto"][];
+            /** @description Current treatment for cohort patients. Top six values; remaining values are combined as Otros. */
+            treatments: components["schemas"]["DashboardDistributionItemDto"][];
+            /** @description Current cancer stage for cohort patients. Top six values; remaining values are combined as Otros. */
+            cancerStages: components["schemas"]["DashboardDistributionItemDto"][];
+        };
+        DashboardTrendPointDto: {
+            /**
+             * @description A Lima calendar day for month periods, or YYYY-MM for year periods.
+             * @example 2026-08-01
+             */
+            period: string;
+            enrollmentEvents: number;
+            sessions: number;
+            completedSessions: number;
+        };
+        DashboardTableItemDto: {
+            /** @example Instituto Nacional de Enfermedades Neoplasicas */
+            name: string;
+            /** @example 30 */
+            count: number;
+        };
+        DashboardResponseDto: {
+            meta: components["schemas"]["DashboardMetaDto"];
+            summary: components["schemas"]["DashboardSummaryDto"];
+            distributions: components["schemas"]["DashboardDistributionsDto"];
+            /** @description A zero-filled enrollment and session series for the selected period. */
+            trend: components["schemas"]["DashboardTrendPointDto"][];
+            /** @description Up to eight hospitals using current medical appointment, treatment, then diagnosis precedence. */
+            hospitals: components["schemas"]["DashboardTableItemDto"][];
+            /** @description Up to eight regions using hospital department, then current and birth department precedence. */
+            regions: components["schemas"]["DashboardTableItemDto"][];
         };
         CreateAgentDto: {
             /** Format: email */
@@ -2134,6 +2223,53 @@ export interface operations {
                 content?: never;
             };
             /** @description Administrator role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getDashboard: {
+        parameters: {
+            query: {
+                period: "month" | "year";
+                year: number;
+                /** @description Required when period is month. Month number is one-based. */
+                month?: number;
+                /** @description Dashboard calendar timezone. Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResponseDto"];
+                };
+            };
+            /** @description The period, year, month, or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
