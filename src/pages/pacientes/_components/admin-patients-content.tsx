@@ -6,9 +6,8 @@ import { usePatients } from "../_hooks/use-patients";
 import { PatientsToolbar } from "./patients-toolbar";
 import { PatientsTable } from "./patients-table";
 import { patientColumns } from "./patients-columns";
-import type { PatientStatus } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
-import { patientsApi } from "@/lib/api";
+import { patientsApi } from "@/api/patients";
 import { toast } from "sonner";
 import {
   AddProspectDialog,
@@ -17,14 +16,15 @@ import {
 
 export function AdminPatientsContent() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<PatientStatus | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"UNENROLLED" | "ENROLLED" | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [prospectOpen, setProspectOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  const { data: patients = [], isLoading } = usePatients();
+  const { data: patientPage, isLoading } = usePatients();
+  const patients = patientPage?.data ?? [];
 
   const filtered = patients.filter((p) => {
     const matchesSearch =

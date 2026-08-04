@@ -16,8 +16,8 @@ export class RemindersApiError extends Error {
 }
 
 export const remindersApi = {
-  async list(): Promise<Reminder[]> {
-    const { data, response } = await api.GET("/reminders")
+  async list(filters: { patientId?: string } = {}): Promise<Reminder[]> {
+    const { data, response } = await api.GET("/reminders", { params: { query: filters } })
 
     if (!data) throw new RemindersApiError(response.status)
     return data

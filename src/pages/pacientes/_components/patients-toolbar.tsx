@@ -2,27 +2,22 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { PatientStatus } from "@/types";
 
 interface PatientsToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
-  statusFilter: PatientStatus | null;
-  onStatusFilterChange: (status: PatientStatus | null) => void;
+  statusFilter: "UNENROLLED" | "ENROLLED" | null;
+  onStatusFilterChange: (status: "UNENROLLED" | "ENROLLED" | null) => void;
 }
 
-const statuses: { value: PatientStatus; label: string }[] = [
-  { value: "PROSPECT", label: "Prospecto" },
+const statuses: { value: "UNENROLLED" | "ENROLLED"; label: string }[] = [
+  { value: "UNENROLLED", label: "Sin enrolar" },
   { value: "ENROLLED", label: "Enrolado" },
-  { value: "ACTIVE", label: "Activo" },
-  { value: "INACTIVE", label: "Inactivo" },
 ];
 
-const statusLabels: Record<PatientStatus, string> = {
-  PROSPECT: "Prospecto",
+const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
+  UNENROLLED: "Sin enrolar",
   ENROLLED: "Enrolado",
-  ACTIVE: "Activo",
-  INACTIVE: "Inactivo",
 };
 
 export function PatientsToolbar({

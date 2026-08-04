@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { psychooncologyAppointmentsApi, type PsychooncologyAppointment } from "@/api/psychooncology-appointments";
-import { patientsApi } from "@/lib/api";
-import type { Patient } from "@/types";
+import { patientsApi, type PatientDetailsResponse } from "@/api/patients";
 
 /**
  * Fetches all psychooncology appointments for a volunteer
@@ -25,12 +24,12 @@ export function useAgenda(volunteerId: string | undefined) {
 
   const patientsQuery = useQuery({
     queryKey: ["agendaPatients", patientIds],
-    queryFn: async (): Promise<Map<string, Patient>> => {
+    queryFn: async (): Promise<Map<string, PatientDetailsResponse>> => {
       if (patientIds.length === 0) return new Map();
       const results = await Promise.all(
         patientIds.map((id) => patientsApi.getById(id)),
       );
-      const map = new Map<string, Patient>();
+      const map = new Map<string, PatientDetailsResponse>();
       for (const p of results) {
         map.set(p.id, p);
       }

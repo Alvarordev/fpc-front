@@ -9,20 +9,14 @@ import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
 import { RecordatoriosTab } from "./recordatorios-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { PatientStatus } from "@/types";
-
-const statusLabels: Record<PatientStatus, string> = {
-  PROSPECT: "Prospecto",
+const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
+  UNENROLLED: "Sin enrolar",
   ENROLLED: "Enrolado",
-  ACTIVE: "Activo",
-  INACTIVE: "Inactivo",
 };
 
-const statusStyles: Record<PatientStatus, string> = {
-  PROSPECT: "bg-violet-50 text-violet-700 border-violet-200",
+const statusStyles: Record<"UNENROLLED" | "ENROLLED", string> = {
+  UNENROLLED: "bg-violet-50 text-violet-700 border-violet-200",
   ENROLLED: "bg-blue-50 text-blue-700 border-blue-200",
-  ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  INACTIVE: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
 export function PatientDetailContent() {

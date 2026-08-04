@@ -91,7 +91,7 @@ export default function CallcenterPage() {
               {items > 0 && <CardContent className="grid p-0 xl:grid-cols-2">
                 <TaskColumn title="Seguimientos programados" count={group.followUps.length} empty="No hay seguimientos pendientes.">
                   {group.followUps.sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? "")).map((followUp) => (
-                    <button key={followUp.id} className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/30" onClick={() => navigate(`/pacientes/${followUp.subjectPatientId}/contacto?followUpId=${followUp.id}`)}>
+                    <button key={followUp.id} className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/30" onClick={() => navigate(`/pacientes/${followUp.subjectPatientId}/seguimientos/${followUp.id}`)}>
                       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600"><Phone className="size-4" /></div>
                       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{followUp.subjectPatientName}</p><p className="mt-0.5 text-xs text-muted-foreground">{typeLabels[followUp.type]} · {purposeLabels[followUp.purpose]}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Calendar className="size-3" />{formatDate(followUp.scheduledAt)}<Clock className="ml-1 size-3" />{formatTime(followUp.scheduledAt)}</p></div>
                       <ArrowRight className="size-4 shrink-0 text-muted-foreground" />

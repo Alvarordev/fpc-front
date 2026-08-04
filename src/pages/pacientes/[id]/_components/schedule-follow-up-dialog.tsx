@@ -20,10 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ContactType, ContactPurpose } from "@/types";
+import type { CreateFollowUpInput } from "@/api/follow-ups";
 
 const schema = z.object({
-  type: z.enum(["CALL", "WHATSAPP", "VIDEO_CALL", "EMAIL", "IN_PERSON"] as const),
+  type: z.enum(["CALL", "WHATSAPP", "VIDEO_CALL", "EMAIL", "IN_PERSON", "FACEBOOK"] as const),
   purpose: z.enum([
     "FIRST_CONTACT",
     "ENROLLMENT",
@@ -37,17 +37,18 @@ const schema = z.object({
   agentId: z.string().optional(),
 });
 
-export type ScheduleFormValues = z.infer<typeof schema>;
+export type ScheduleFollowUpFormValues = z.infer<typeof schema>;
 
-const typeLabels: Record<ContactType, string> = {
+const typeLabels: Record<CreateFollowUpInput["type"], string> = {
   CALL: "Llamada",
   WHATSAPP: "WhatsApp",
   VIDEO_CALL: "Videollamada",
   EMAIL: "Email",
   IN_PERSON: "Presencial",
+  FACEBOOK: "Facebook",
 };
 
-const purposeLabels: Record<ContactPurpose, string> = {
+const purposeLabels: Record<CreateFollowUpInput["purpose"], string> = {
   FIRST_CONTACT: "Primer contacto",
   ENROLLMENT: "Enrolamiento",
   FOLLOW_UP: "Seguimiento",
@@ -55,23 +56,23 @@ const purposeLabels: Record<ContactPurpose, string> = {
   OTHER: "Otro",
 };
 
-interface ScheduleContactDialogProps {
+interface ScheduleFollowUpDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: ScheduleFormValues) => Promise<void>;
+  onSubmit: (values: ScheduleFollowUpFormValues) => Promise<void>;
   isPending: boolean;
   agents?: Array<{ id: string; fullName: string }>;
   requiresAgentSelection?: boolean;
 }
 
-export function ScheduleContactDialog({
+export function ScheduleFollowUpDialog({
   open,
   onOpenChange,
   onSubmit,
   isPending,
   agents = [],
   requiresAgentSelection = false,
-}: ScheduleContactDialogProps) {
+}: ScheduleFollowUpDialogProps) {
   const {
     register,
     handleSubmit,
@@ -80,7 +81,7 @@ export function ScheduleContactDialog({
     watch,
     reset,
     formState: { errors },
-  } = useForm<ScheduleFormValues>({
+  } = useForm<ScheduleFollowUpFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       type: "CALL",
@@ -100,7 +101,7 @@ export function ScheduleContactDialog({
     reset();
   }
 
-  async function submit(values: ScheduleFormValues) {
+  async function submit(values: ScheduleFollowUpFormValues) {
     if (requiresAgentSelection && !values.agentId) {
       setError("agentId", { message: "Seleccioná un agente" });
       return;
@@ -114,9 +115,9 @@ export function ScheduleContactDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Agendar contacto</DialogTitle>
+          <DialogTitle>Agendar seguimiento</DialogTitle>
           <DialogDescription>
-            Programá un nuevo contacto de seguimiento para este paciente.
+            Programá un nuevo seguimiento para este paciente.
           </DialogDescription>
         </DialogHeader>
 
@@ -126,7 +127,7 @@ export function ScheduleContactDialog({
               <Label>Tipo</Label>
               <Select
                 value={selectedType}
-                onValueChange={(v) => setValue("type", v as ContactType)}
+                onValueChange={(v) => setValue("type", v as CreateFollowUpInput["type"])}
               >
                 <SelectTrigger className="w-full">
                   {selectedType ? typeLabels[selectedType] : <SelectValue placeholder="Seleccionar tipo" />}
@@ -143,7 +144,7 @@ export function ScheduleContactDialog({
               <Label>Propósito</Label>
               <Select
                 value={selectedPurpose}
-                onValueChange={(v) => setValue("purpose", v as ContactPurpose)}
+                onValueChange={(v) => setValue("purpose", v as CreateFollowUpInput["purpose"])}
               >
                 <SelectTrigger className="w-full">
                   {selectedPurpose ? purposeLabels[selectedPurpose] : <SelectValue placeholder="Seleccionar propósito" />}

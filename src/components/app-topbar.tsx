@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { pathTitles } from "@/lib/navigation";
-import { patientsApi } from "@/lib/api";
+import { patientsApi } from "@/api/patients";
 
 function PatientBreadcrumbs({ patientId }: { patientId: string }) {
   const { data: patient } = useQuery({
@@ -27,9 +27,9 @@ export function AppTopbar() {
   const segments = pathname.split("/").filter(Boolean);
   const baseSegment = "/" + (segments[0] ?? "");
 
-  const isPatientDetail = segments[0] === "pacientes" && segments.length >= 2 && segments[1] !== "contacto";
-  const isContactPage = segments[0] === "pacientes" && segments[2] === "contacto";
-  const patientId = isPatientDetail ? segments[1] : isContactPage ? segments[1] : null;
+  const isPatientDetail = segments[0] === "pacientes" && segments.length >= 2;
+  const isFollowUpPage = segments[0] === "pacientes" && segments[2] === "seguimientos";
+  const patientId = isPatientDetail ? segments[1] : null;
 
   if (patientId) {
     return (
@@ -50,10 +50,10 @@ export function AppTopbar() {
           >
             <PatientBreadcrumbs patientId={patientId} />
           </Link>
-          {isContactPage && (
+          {isFollowUpPage && (
             <>
               <ChevronRight className="size-3.5 shrink-0" />
-              <span className="text-foreground font-medium">Contacto</span>
+              <span className="text-foreground font-medium">Seguimiento</span>
             </>
           )}
         </nav>

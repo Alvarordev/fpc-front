@@ -1,5 +1,5 @@
 import { FollowUpContent } from "./_components/follow-up-content";
 
-export default function ContactPage() {
+export default function FollowUpPage() {
   return <FollowUpContent />;
 }

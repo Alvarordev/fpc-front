@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, CalendarPlus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
-import { ScheduleContactDialog, type ScheduleFormValues } from "../../_components/schedule-contact-dialog"
+import { ScheduleFollowUpDialog, type ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-dialog"
 import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
 
 const statusLabels: Record<string, string> = {
@@ -23,9 +23,7 @@ const statusLabels: Record<string, string> = {
 }
 
 export function FollowUpContent() {
-  const { id: patientId } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
-  const followUpId = searchParams.get("followUpId")
+  const { id: patientId, followUpId } = useParams<{ id: string; followUpId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
@@ -109,9 +107,10 @@ export function FollowUpContent() {
   }
 
   const followUp = followUpQuery.data
+  if (followUp.subjectPatientId !== patientId) return <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
   const isOpen = followUp.status === "SCHEDULED"
 
-  async function scheduleNext(values: ScheduleFormValues) {
+  async function scheduleNext(values: ScheduleFollowUpFormValues) {
     const ownAgent = agentsQuery.data?.find((agent) => agent.userId === user?.id)
     const agentId = requiresAgentSelection ? values.agentId : ownAgent?.id
 
@@ -185,7 +184,7 @@ export function FollowUpContent() {
         </Card>
       )}
 
-      <ScheduleContactDialog open={nextOpen} onOpenChange={setNextOpen} onSubmit={scheduleNext} isPending={nextMutation.isPending} agents={agentsQuery.data} requiresAgentSelection={requiresAgentSelection} />
+      <ScheduleFollowUpDialog open={nextOpen} onOpenChange={setNextOpen} onSubmit={scheduleNext} isPending={nextMutation.isPending} agents={agentsQuery.data} requiresAgentSelection={requiresAgentSelection} />
       <SchedulePsychooncologyDialog
         open={psychooncologyOpen}
         onOpenChange={setPsychooncologyOpen}

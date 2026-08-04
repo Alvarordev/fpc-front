@@ -39,7 +39,7 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
   const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
   const appointmentsQuery = useQuery({
     queryKey: ["psychooncology-appointments"],
-    queryFn: () => psychooncologyAppointmentsApi.list(),
+    queryFn: () => psychooncologyAppointmentsApi.list({ patientId: pacienteId }),
   })
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],
@@ -82,7 +82,6 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
   })
 
   const appointments = (appointmentsQuery.data ?? [])
-    .filter((appointment) => appointment.patientId === pacienteId)
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
   const ownVolunteerId = user?.role === "VOLUNTEER"
     ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)?.id

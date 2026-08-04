@@ -54,7 +54,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
   const [agentId, setAgentId] = useState<string>()
   const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
   const requiresAgentSelection = user?.role === "ADMIN" || user?.role === "FOUNDATION"
-  const remindersQuery = useQuery({ queryKey: ["reminders"], queryFn: remindersApi.list })
+  const remindersQuery = useQuery({ queryKey: ["reminders", pacienteId], queryFn: () => remindersApi.list({ patientId: pacienteId }) })
   const agentsQuery = useQuery({
     queryKey: ["agents"],
     queryFn: agentsApi.list,
@@ -105,7 +105,6 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
   })
 
   const reminders = (remindersQuery.data ?? [])
-    .filter((reminder) => reminder.subjectPatientId === pacienteId)
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
 
   function closeForm() {

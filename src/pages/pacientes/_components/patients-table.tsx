@@ -1,12 +1,12 @@
 import { DataTable } from "@/components/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { Patient } from "@/types";
+import type { PatientListItem } from "@/api/patients";
 
 interface PatientsTableProps {
-  data: Patient[];
-  columns: ColumnDef<Patient>[];
+  data: PatientListItem[];
+  columns: ColumnDef<PatientListItem>[];
   isLoading?: boolean;
-  onRowClick?: (patient: Patient) => void;
+  onRowClick?: (patient: PatientListItem) => void;
 }
 
 export function PatientsTable({

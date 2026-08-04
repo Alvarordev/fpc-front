@@ -11,6 +11,13 @@ export type PatientDetailsInput = components["schemas"]["UpsertPatientDetailsDto
 export type PatientResponse = components["schemas"]["PatientResponseDto"]
 export type PatientDetailsResponse =
   components["schemas"]["PatientDetailsWithSummaryResponseDto"]
+export type PatientListItem = components["schemas"]["PatientListItemResponseDto"]
+export type PatientDiagnosis = components["schemas"]["PatientDiagnosisResponseDto"]
+export type PatientTreatment = components["schemas"]["PatientTreatmentResponseDto"]
+export type PatientInsurance = components["schemas"]["PatientInsuranceResponseDto"]
+export type PatientMedicalAppointment = components["schemas"]["PatientMedicalAppointmentResponseDto"]
+export type PatientSisAffiliation = components["schemas"]["PatientSisAffiliationResponseDto"]
+export type PatientSymptomReport = components["schemas"]["PatientSymptomReportResponseDto"]
 export type PatientSummaryResponse = components["schemas"]["PatientSummaryResponseDto"]
 
 export class PatientsApiError extends Error {

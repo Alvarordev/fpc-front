@@ -4,6 +4,7 @@ import { api } from "./client"
 export type Volunteer = components["schemas"]["VolunteerResponseDto"]
 export type VolunteerAvailability = components["schemas"]["VolunteerAvailabilityResponseDto"]
 export type CreateVolunteerInput = components["schemas"]["CreateVolunteerDto"]
+export type CreateAvailabilityInput = components["schemas"]["CreateVolunteerAvailabilityDto"]
 
 export class VolunteersApiError extends Error {
   readonly status: number
@@ -36,5 +37,16 @@ export const volunteersApi = {
     const { data, response } = await api.POST("/volunteers", { body: input })
     if (!data) throw new VolunteersApiError(response.status)
     return data
+  },
+
+  async createAvailability(volunteerId: string, input: CreateAvailabilityInput): Promise<VolunteerAvailability> {
+    const { data, response } = await api.POST("/volunteers/{volunteerId}/availability", { params: { path: { volunteerId } }, body: input })
+    if (!data) throw new VolunteersApiError(response.status)
+    return data
+  },
+
+  async deleteAvailability(volunteerId: string, id: string): Promise<void> {
+    const { response } = await api.DELETE("/volunteers/{volunteerId}/availability/{id}", { params: { path: { volunteerId, id } } })
+    if (!response.ok) throw new VolunteersApiError(response.status)
   },
 }

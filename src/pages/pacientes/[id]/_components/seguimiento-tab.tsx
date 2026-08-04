@@ -8,7 +8,7 @@ import { agentsApi } from "@/api/agents"
 import { followUpsApi } from "@/api/follow-ups"
 import { patientTimelineApi } from "@/api/patient-timeline"
 import { useAuthStore } from "@/store/auth-store"
-import { ScheduleContactDialog, type ScheduleFormValues } from "./schedule-contact-dialog"
+import { ScheduleFollowUpDialog, type ScheduleFollowUpFormValues } from "./schedule-follow-up-dialog"
 import { TimelineEventCard } from "./timeline-event-card"
 
 interface SeguimientoTabProps {
@@ -59,7 +59,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))[0]
   const lastCompleted = [...completedFollowUps].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0]
 
-  async function schedule(values: ScheduleFormValues) {
+  async function schedule(values: ScheduleFollowUpFormValues) {
     const ownAgent = agentsQuery.data?.find((agent) => agent.userId === user?.id)
     const agentId = requiresAgentSelection ? values.agentId : ownAgent?.id
 
@@ -125,7 +125,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       {nextScheduled && (
         <button
           type="button"
-          onClick={() => navigate(`/pacientes/${pacienteId}/contacto?followUpId=${nextScheduled.followUpId}`)}
+          onClick={() => navigate(`/pacientes/${pacienteId}/seguimientos/${nextScheduled.followUpId}`)}
           className="flex w-full items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition-colors hover:bg-amber-100"
         >
           <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
@@ -155,13 +155,13 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
             <TimelineEventCard
               key={`${event.kind}-${event.id}`}
               event={event}
-              onClick={event.kind === "FOLLOW_UP" ? () => navigate(`/pacientes/${pacienteId}/contacto?followUpId=${event.followUpId}`) : undefined}
+              onClick={event.kind === "FOLLOW_UP" ? () => navigate(`/pacientes/${pacienteId}/seguimientos/${event.followUpId}`) : undefined}
             />
           ))}
         </div>
       )}
 
-      <ScheduleContactDialog
+      <ScheduleFollowUpDialog
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
         onSubmit={schedule}

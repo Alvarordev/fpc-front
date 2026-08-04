@@ -1179,6 +1179,15 @@ export interface components {
             nativeLanguage?: string;
             requiresTranslation?: boolean;
             referredToSocialWorker?: boolean;
+            evidenceOfDomesticViolence?: boolean;
+            usesWoodStove?: boolean;
+            isWorking?: boolean;
+            receivesFinancialSupport?: boolean;
+            hasConadisCard?: boolean;
+            knowsAboutFissal?: boolean;
+            programDropoutReason?: string;
+            /** Format: date */
+            programDropoutDate?: string;
         };
         EnrollmentInsuranceDto: {
             /** @enum {string} */
@@ -1520,13 +1529,71 @@ export interface components {
             /** Format: uuid */
             patientId: string;
             isPrimaryInformant: boolean;
+            companionDisplayName: string | null;
             /** Format: date-time */
             createdAt: string;
             companion?: components["schemas"]["PatientResponseDto"];
             patient?: components["schemas"]["PatientResponseDto"];
         };
+        CurrentDiagnosisResponseDto: {
+            /** Format: uuid */
+            id: string;
+            diagnosis: string;
+            cancerStage: string | null;
+            /** Format: date */
+            diagnosisDate: string | null;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName: string | null;
+        };
+        LatestFollowUpResponseDto: {
+            /** Format: uuid */
+            id: string;
+            type: string;
+            status: string;
+            purpose: string;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: date-time */
+            scheduledAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+        };
+        PatientListItemResponseDto: {
+            /** Format: uuid */
+            id: string;
+            fullName: string;
+            /** Format: email */
+            email: string | null;
+            dni: string | null;
+            /** Format: date */
+            birthDate: string | null;
+            gender: string | null;
+            primaryPhone: string;
+            secondaryPhone: string | null;
+            hasWhatsapp: boolean;
+            /** @enum {string} */
+            role: "UNKNOWN" | "PATIENT" | "COMPANION";
+            /** @enum {string} */
+            status: "UNENROLLED" | "ENROLLED";
+            isActive: boolean;
+            /** @enum {string|null} */
+            deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
+            deactivationReasonDetail: string | null;
+            /** Format: date-time */
+            deactivatedAt: string | null;
+            /** Format: date */
+            deceasedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            currentDiagnosis: components["schemas"]["CurrentDiagnosisResponseDto"] | null;
+            currentDepartment: string | null;
+            latestFollowUp: components["schemas"]["LatestFollowUpResponseDto"] | null;
+        };
         PatientListResponseDto: {
-            data: components["schemas"]["PatientResponseDto"][];
+            data: components["schemas"]["PatientListItemResponseDto"][];
             total: number;
         };
         PatientSummaryResponseDto: {
@@ -1561,10 +1628,167 @@ export interface components {
             educationLevel: "INITIAL" | "PRIMARY_INCOMPLETE" | "PRIMARY" | "SECONDARY_INCOMPLETE" | "SECONDARY" | "TECHNICAL" | "TECHNICAL_INCOMPLETE" | "HIGHER" | "HIGHER_INCOMPLETE" | "NONE" | null;
             nativeLanguage: string | null;
             requiresTranslation: boolean;
+            referredToSocialWorker: boolean | null;
+            evidenceOfDomesticViolence: boolean | null;
+            usesWoodStove: boolean | null;
+            isWorking: boolean | null;
+            receivesFinancialSupport: boolean | null;
+            hasConadisCard: boolean | null;
+            knowsAboutFissal: boolean | null;
+            programDropoutReason: string | null;
+            /** Format: date */
+            programDropoutDate: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        PatientDiagnosisResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            diagnosis: string;
+            /** @enum {string|null} */
+            cancerStage: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN" | null;
+            /** Format: date */
+            diagnosisDate: string | null;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName?: string | null;
+            diagnosisSpecialty: string | null;
+            symptomLeadingToCheckup: string | null;
+            waitTimeForDiagnosis: string | null;
+            hasMedicalReport: boolean;
+            isCurrent: boolean;
+            changeReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientDiagnosisSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            diagnosis: string;
+            /** @enum {string|null} */
+            cancerStage: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN" | null;
+            /** Format: date */
+            diagnosisDate: string | null;
+        };
+        PatientTreatmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            diagnosisId: string;
+            treatmentType: string;
+            treatmentFrequency: string | null;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName?: string | null;
+            diagnosisSummary?: components["schemas"]["PatientDiagnosisSummaryDto"] | null;
+            /** Format: date */
+            startDate: string | null;
+            /** Format: date */
+            endDate: string | null;
+            isCurrent: boolean;
+            changeReason: string | null;
+            notReceivingReason: string | null;
+            treatmentSituation: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientInsuranceResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
+            /** @enum {string|null} */
+            epsProvider: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER" | null;
+            isCurrent: boolean;
+            changeReason: string | null;
+            /** Format: date */
+            startDate: string | null;
+            /** Format: date */
+            endDate: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientMedicalAppointmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName?: string | null;
+            specialty: string;
+            /** Format: date */
+            appointmentDate: string | null;
+            /** Format: date */
+            nextAppointmentDate: string | null;
+            hasReferralSheet: boolean;
+            referredTo: string | null;
+            difficulties: string | null;
+            isFirstConsultation: boolean;
+            isCurrent: boolean;
+            changeReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientSisAffiliationResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            canAffiliate: boolean;
+            /** Format: date */
+            expectedDate: string | null;
+            cantAffiliateReason: string | null;
+            /** Format: date-time */
+            affiliatedAt: string | null;
+            comments: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientSymptomReportResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            enrollmentId: string | null;
+            discomfortSeverity: string | null;
+            discomfortDescription: string | null;
+            hasDiscomfort: boolean | null;
+            signsAndSymptoms: string | null;
+            indicationsReceived: string | null;
+            symptomDuration: string | null;
+            symptomFrequency: string | null;
+            isPainPresent: boolean | null;
+            painIntensity: number | null;
+            painLocation: string | null;
+            painDescription: string | null;
+            hasSoughtMedicalConsultation: boolean;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            specialty: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         PatientDetailsWithSummaryResponseDto: {
             /** Format: uuid */
@@ -1597,6 +1821,13 @@ export interface components {
             updatedAt: string;
             details: components["schemas"]["PatientDetailsResponseDto"] | null;
             summary: string | null;
+            diagnoses: components["schemas"]["PatientDiagnosisResponseDto"][];
+            treatments: components["schemas"]["PatientTreatmentResponseDto"][];
+            insurance: components["schemas"]["PatientInsuranceResponseDto"][];
+            medicalAppointments: components["schemas"]["PatientMedicalAppointmentResponseDto"][];
+            sisAffiliations: components["schemas"]["PatientSisAffiliationResponseDto"][];
+            symptomReports: components["schemas"]["PatientSymptomReportResponseDto"][];
+            companions: components["schemas"]["CompanionPatientResponseDto"][];
         };
         UpdatePatientDto: {
             fullName?: string;
@@ -1631,29 +1862,6 @@ export interface components {
             hasMedicalReport?: boolean;
             changeReason?: string;
         };
-        PatientDiagnosisResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            patientId: string;
-            /** Format: uuid */
-            followUpId: string;
-            diagnosis: string;
-            /** @enum {string|null} */
-            cancerStage: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN" | null;
-            /** Format: date */
-            diagnosisDate: string | null;
-            /** Format: uuid */
-            healthCenterId: string | null;
-            diagnosisSpecialty: string | null;
-            symptomLeadingToCheckup: string | null;
-            waitTimeForDiagnosis: string | null;
-            hasMedicalReport: boolean;
-            isCurrent: boolean;
-            changeReason: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
         CreatePatientInsuranceDto: {
             /** Format: uuid */
             followUpId: string;
@@ -1664,26 +1872,6 @@ export interface components {
             changeReason?: string;
             startDate?: string;
             endDate?: string;
-        };
-        PatientInsuranceResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            patientId: string;
-            /** Format: uuid */
-            followUpId: string;
-            /** @enum {string} */
-            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
-            /** @enum {string|null} */
-            epsProvider: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER" | null;
-            isCurrent: boolean;
-            changeReason: string | null;
-            /** Format: date */
-            startDate: string | null;
-            /** Format: date */
-            endDate: string | null;
-            /** Format: date-time */
-            createdAt: string;
         };
         CreatePatientMedicalAppointmentDto: {
             /** Format: uuid */
@@ -1699,29 +1887,6 @@ export interface components {
             isFirstConsultation?: boolean;
             changeReason?: string;
         };
-        PatientMedicalAppointmentResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            patientId: string;
-            /** Format: uuid */
-            followUpId: string;
-            /** Format: uuid */
-            healthCenterId: string | null;
-            specialty: string;
-            /** Format: date */
-            appointmentDate: string | null;
-            /** Format: date */
-            nextAppointmentDate: string | null;
-            hasReferralSheet: boolean;
-            referredTo: string | null;
-            difficulties: string | null;
-            isFirstConsultation: boolean;
-            isCurrent: boolean;
-            changeReason: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
         CreatePatientSisAffiliationDto: {
             /** Format: uuid */
             followUpId: string;
@@ -1730,23 +1895,6 @@ export interface components {
             cantAffiliateReason?: string;
             affiliatedAt?: string;
             comments?: string;
-        };
-        PatientSisAffiliationResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            patientId: string;
-            /** Format: uuid */
-            followUpId: string;
-            canAffiliate: boolean;
-            /** Format: date */
-            expectedDate: string | null;
-            cantAffiliateReason: string | null;
-            /** Format: date-time */
-            affiliatedAt: string | null;
-            comments: string | null;
-            /** Format: date-time */
-            createdAt: string;
         };
         CreatePatientTreatmentDto: {
             /** Format: uuid */
@@ -1762,30 +1910,6 @@ export interface components {
             changeReason?: string;
             notReceivingReason?: string;
             treatmentSituation?: string;
-        };
-        PatientTreatmentResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            patientId: string;
-            /** Format: uuid */
-            followUpId: string;
-            /** Format: uuid */
-            diagnosisId: string;
-            treatmentType: string;
-            treatmentFrequency: string | null;
-            /** Format: uuid */
-            healthCenterId: string | null;
-            /** Format: date */
-            startDate: string | null;
-            /** Format: date */
-            endDate: string | null;
-            isCurrent: boolean;
-            changeReason: string | null;
-            notReceivingReason: string | null;
-            treatmentSituation: string | null;
-            /** Format: date-time */
-            createdAt: string;
         };
         CreatePatientSymptomReportDto: {
             /** Format: uuid */
@@ -1807,30 +1931,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             specialty?: string;
-        };
-        PatientSymptomReportResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            patientId: string;
-            /** Format: uuid */
-            followUpId: string;
-            /** Format: uuid */
-            enrollmentId: string | null;
-            discomfortSeverity: string | null;
-            discomfortDescription: string | null;
-            symptomDuration: string | null;
-            symptomFrequency: string | null;
-            isPainPresent: boolean | null;
-            painIntensity: number | null;
-            painLocation: string | null;
-            painDescription: string | null;
-            hasSoughtMedicalConsultation: boolean;
-            /** Format: uuid */
-            healthCenterId: string | null;
-            specialty: string | null;
-            /** Format: date-time */
-            createdAt: string;
         };
         CreatePsychooncologyAppointmentDto: {
             /** Format: uuid */
@@ -4497,7 +4597,9 @@ export interface operations {
     };
     RemindersController_all: {
         parameters: {
-            query?: never;
+            query?: {
+                patientId?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
