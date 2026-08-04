@@ -1,0 +1,61 @@
+import type { components } from "./schema"
+import { api } from "./client"
+
+export type CreateReminderInput = components["schemas"]["CreateReminderDto"]
+export type UpdateReminderInput = components["schemas"]["UpdateReminderDto"]
+export type Reminder = components["schemas"]["ReminderResponseDto"]
+
+export class RemindersApiError extends Error {
+  readonly status: number
+
+  constructor(status: number) {
+    super("No se pudo completar la solicitud de recordatorios")
+    this.name = "RemindersApiError"
+    this.status = status
+  }
+}
+
+export const remindersApi = {
+  async list(): Promise<Reminder[]> {
+    const { data, response } = await api.GET("/reminders")
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async create(input: CreateReminderInput): Promise<Reminder> {
+    const { data, response } = await api.POST("/reminders", { body: input })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async update(id: string, input: UpdateReminderInput): Promise<Reminder> {
+    const { data, response } = await api.PATCH("/reminders/{id}", {
+      params: { path: { id } },
+      body: input,
+    })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async complete(id: string): Promise<Reminder> {
+    const { data, response } = await api.PATCH("/reminders/{id}/complete", {
+      params: { path: { id } },
+      body: {},
+    })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async dismiss(id: string): Promise<Reminder> {
+    const { data, response } = await api.PATCH("/reminders/{id}/dismiss", {
+      params: { path: { id } },
+    })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+}

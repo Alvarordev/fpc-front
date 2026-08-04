@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarPlus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { followUpsApi } from "@/api/follow-ups"
+import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
 import { ScheduleContactDialog, type ScheduleFormValues } from "../../_components/schedule-contact-dialog"
+import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
 
 const statusLabels: Record<string, string> = {
   SCHEDULED: "Agendado",
@@ -29,6 +31,7 @@ export function FollowUpContent() {
   const user = useAuthStore((state) => state.user)
   const [notes, setNotes] = useState("")
   const [nextOpen, setNextOpen] = useState(false)
+  const [psychooncologyOpen, setPsychooncologyOpen] = useState(false)
   const [reminderDescription, setReminderDescription] = useState("")
   const [reminderAt, setReminderAt] = useState("")
   const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
@@ -80,6 +83,17 @@ export function FollowUpContent() {
       toast.success("Recordatorio creado")
     },
     onError: (error: Error) => toast.error("No se pudo crear el recordatorio", { description: error.message }),
+  })
+  const psychooncologyMutation = useMutation({
+    mutationFn: psychooncologyAppointmentsApi.create,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] }),
+      ])
+      toast.success("Cita de psicooncología agendada")
+    },
+    onError: (error: Error) => toast.error("No se pudo agendar la cita", { description: error.message }),
   })
 
   if (!followUpId) {
@@ -154,6 +168,9 @@ export function FollowUpContent() {
             <Button variant="outline" className="gap-1.5" onClick={() => setNextOpen(true)}>
               <CalendarPlus className="size-4" />Agendar siguiente seguimiento
             </Button>
+            <Button variant="outline" className="gap-1.5" onClick={() => setPsychooncologyOpen(true)}>
+              <CalendarPlus className="size-4" />Derivar a psicooncología
+            </Button>
             <div className="space-y-3 border-t pt-4">
               <p className="text-sm font-medium">Crear recordatorio</p>
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -169,6 +186,16 @@ export function FollowUpContent() {
       )}
 
       <ScheduleContactDialog open={nextOpen} onOpenChange={setNextOpen} onSubmit={scheduleNext} isPending={nextMutation.isPending} agents={agentsQuery.data} requiresAgentSelection={requiresAgentSelection} />
+      <SchedulePsychooncologyDialog
+        open={psychooncologyOpen}
+        onOpenChange={setPsychooncologyOpen}
+        patientId={followUp.subjectPatientId}
+        followUpId={followUp.id}
+        isPending={psychooncologyMutation.isPending}
+        onSubmit={async (input) => {
+          await psychooncologyMutation.mutateAsync(input)
+        }}
+      />
     </div>
   )
 }

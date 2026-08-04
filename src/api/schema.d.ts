@@ -1284,7 +1284,7 @@ export interface components {
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: uuid */
-            followUpId: string;
+            followUpId: string | null;
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
             sessionNumber: number;
@@ -1647,7 +1647,7 @@ export interface components {
             /** Format: uuid */
             availabilityId: string;
             /** Format: uuid */
-            agentId?: string;
+            followUpId?: string;
             patientEmail?: string;
             isAdditionalSession?: boolean;
             /** @enum {string} */
@@ -1661,7 +1661,7 @@ export interface components {
             /** Format: uuid */
             volunteerId: string;
             /** Format: uuid */
-            followUpId: string;
+            followUpId: string | null;
             /** Format: uuid */
             availabilityId: string;
             /** Format: email */
@@ -3936,7 +3936,7 @@ export interface operations {
                     "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
                 };
             };
-            /** @description Required agent assignment is missing */
+            /** @description The follow-up does not belong to the patient */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3950,14 +3950,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agents cannot assign appointments to others */
+            /** @description Volunteers can only schedule appointments from their own availability */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Patient, availability slot, volunteer, or agent not found */
+            /** @description Patient, follow-up, availability slot, or volunteer not found */
             404: {
                 headers: {
                     [name: string]: unknown;

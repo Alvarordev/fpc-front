@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { usePatient } from "../_hooks/use-patient";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
+import { PsicoTab } from "./psico-tab";
+import { RecordatoriosTab } from "./recordatorios-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PatientStatus } from "@/types";
 
@@ -112,12 +114,20 @@ export function PatientDetailContent() {
         <TabsList className="mb-4">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
+          <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
+          <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
         </TabsList>
         <TabsContent value="resumen">
           <OverviewSection patient={patient} />
         </TabsContent>
         <TabsContent value="seguimiento">
           <SeguimientoTab pacienteId={patient.id} />
+        </TabsContent>
+        <TabsContent value="psicooncologia">
+          <PsicoTab pacienteId={patient.id} />
+        </TabsContent>
+        <TabsContent value="recordatorios">
+          <RecordatoriosTab pacienteId={patient.id} />
         </TabsContent>
       </Tabs>
     </div>
