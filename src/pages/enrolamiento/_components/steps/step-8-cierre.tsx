@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Clock, ClipboardCheck } from "lucide-react"
-import { patientsApi, agentsApi } from "@/lib/api"
+import { agentsApi } from "@/api/agents"
+import { enrollmentsApi } from "@/api/enrollments"
 import { useAuthStore } from "@/store/auth-store"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import { toast } from "sonner"
-import { buildEnrollmentPayload, resolveEnrollmentAgentId } from "./step-8-payload"
+import { buildEnrollmentPayload } from "./step-8-payload"
 
 export function Step8Cierre() {
   const { draft, updateDraft, prevStep, isComplete, completeEnrollment, resetEnrollment } = useEnrollmentStore()
@@ -19,7 +20,6 @@ export function Step8Cierre() {
   const meta = draft.enrollmentMetadata
   const now = new Date().toTimeString().slice(0,5)
 
-  // Resolve agentId: if user is ADMIN, use first agent; if AGENT, find by userId
   const { data: agents = [] } = useQuery({
     queryKey: ["agents"],
     queryFn: () => agentsApi.list(),
@@ -28,9 +28,15 @@ export function Step8Cierre() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const agentId = resolveEnrollmentAgentId(user, agents)
+      const agentId = user?.role === "AGENT"
+        ? agents.find((agent) => agent.userId === user.id)?.id
+        : meta.assignedAgentId
+      if (!agentId) throw new Error("Seleccione un agente responsable antes de finalizar")
+      if (meta.affiliationType === "FAMILY" && (!meta.nombreTercero?.trim() || !meta.telefonoTercero?.trim())) {
+        throw new Error("Ingrese el nombre y teléfono del familiar o acompañante")
+      }
       const payload = buildEnrollmentPayload({ draft, agentId })
-      await patientsApi.enroll(payload)
+      await enrollmentsApi.create(payload)
     },
     onSuccess: () => {
       completeEnrollment()
@@ -93,6 +99,15 @@ export function Step8Cierre() {
           </div>
         )}
       </section>
+      {user?.role !== "AGENT" && (
+        <section className="flex flex-col gap-2">
+          <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Agente responsable <span className="text-destructive">*</span></Label>
+          <Select value={meta.assignedAgentId ?? ""} onValueChange={(assignedAgentId) => updateDraft({ enrollmentMetadata: { ...meta, assignedAgentId: assignedAgentId ?? undefined } })}>
+            <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar agente..." /></SelectTrigger>
+            <SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.fullName ?? agent.id}</SelectItem>)}</SelectContent>
+          </Select>
+        </section>
+      )}
       <section className="flex flex-col gap-5"><SectionHeader icon={Clock} title="Registro de Tiempo" />
         <div className="flex flex-col gap-2"><Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Hora de fin <span className="text-destructive">*</span></Label><Input type="time" value={meta.endTime?.slice(0,5)??now} onChange={e=>updateDraft({enrollmentMetadata:{...meta,endTime:e.target.value}})} className="max-w-48 bg-card border" /></div>
       </section>

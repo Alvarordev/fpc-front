@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -20,9 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MapPin } from "lucide-react";
-import { useCreateHealthCenter } from "../_hooks/use-health-centers";
+import { healthCentersApi } from "@/api/health-centers";
+import type { CreateHealthCenterInput } from "@/api/health-centers";
 import { DEPARTMENTS } from "../_utils/departments";
-import type { PeruDepartment } from "@/types";
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
@@ -40,7 +41,11 @@ export function CreateHealthCenterDialog({
   open,
   onOpenChange,
 }: CreateHealthCenterDialogProps) {
-  const createMutation = useCreateHealthCenter();
+  const queryClient = useQueryClient();
+  const createMutation = useMutation({
+    mutationFn: healthCentersApi.create,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["healthCenters"] }),
+  });
 
   const {
     register,
@@ -64,7 +69,7 @@ export function CreateHealthCenterDialog({
   async function onSubmit(values: FormValues) {
     await createMutation.mutateAsync({
       name: values.name.toUpperCase(),
-      department: values.department as PeruDepartment,
+      department: values.department as CreateHealthCenterInput["department"],
     });
     handleClose();
   }

@@ -48,6 +48,15 @@ export function Step3Identificacion() {
                 className="bg-card border"
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Teléfono del familiar o acompañante <span className="text-destructive">*</span></Label>
+              <Input
+                value={meta.telefonoTercero ?? ""}
+                onChange={(e) => updateDraft({ enrollmentMetadata: { ...meta, telefonoTercero: e.target.value } })}
+                placeholder="999 000 777"
+                className="bg-card border"
+              />
+            </div>
           </>
         )}
         {!isParaMi && !isParaTercero && (

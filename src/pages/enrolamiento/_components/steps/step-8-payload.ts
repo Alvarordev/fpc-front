@@ -1,96 +1,142 @@
-import type { Agent, FullEnrollmentRequest, User } from "@/types";
-import type { EnrollmentDraft } from "../../_store/enrollment-store";
+import type { CreateEnrollmentInput } from "@/api/enrollments"
+import type { EnrollmentDraft } from "../../_store/enrollment-store"
 
 interface BuildEnrollmentPayloadOptions {
-  draft: EnrollmentDraft;
-  agentId?: string;
-  today?: string;
+  draft: EnrollmentDraft
+  agentId: string
+  today?: string
 }
 
-export function resolveEnrollmentAgentId(user: User | null, agents: Agent[]): string | undefined {
-  if (user?.role === "AGENT") {
-    return agents.find((agent) => agent.userId === user.id)?.id;
-  }
-
-  if (user?.role === "ADMIN") {
-    return agents[0]?.id;
-  }
-
-  return undefined;
+function value(value: string | null | undefined) {
+  return value?.trim() || undefined
 }
 
-export function buildEnrollmentPayload({
-  draft,
-  agentId,
-  today = new Date().toISOString().slice(0, 10),
-}: BuildEnrollmentPayloadOptions): FullEnrollmentRequest {
-  const meta = draft.enrollmentMetadata;
+function localDateTime(date: string, time: string | undefined) {
+  return time ? new Date(`${date}T${time}:00`).toISOString() : undefined
+}
 
-  const shouldSendTreatment =
-    !!draft.treatment.treatmentType ||
-    !!draft.treatment.treatmentFrequency ||
-    !!draft.treatment.healthCenterId ||
-    !!draft.treatment.treatmentSituation ||
-    !!draft.treatment.notReceivingReason ||
-    meta.currentlyReceivingTreatment === false;
-
-  const treatment = shouldSendTreatment
-    ? {
-        ...draft.treatment,
-        treatmentType:
-          draft.treatment.treatmentType ||
-          (meta.currentlyReceivingTreatment === false ? "No recibe tratamiento" : draft.treatment.treatmentType),
-      }
-    : undefined;
-
-  const medicalAppointments = (draft.medicalAppointments ?? []).filter(
-    (appointment) =>
-      !!appointment.healthCenterId ||
-      !!appointment.specialty ||
-      !!appointment.appointmentDate ||
-      !!appointment.nextAppointmentDate ||
-      !!appointment.difficulties ||
-      !!appointment.referredTo,
-  );
-
-  const familyPreventionTalkInterests = (draft.familyPreventionTalkInterests ?? []).filter(
-    (interest) =>
-      !!interest.talkName ||
-      !!interest.familyMemberName ||
-      !!interest.familyMemberPhone ||
-      !!interest.familyMemberEmail,
-  );
+export function buildEnrollmentPayload({ draft, agentId, today = new Date().toISOString().slice(0, 10) }: BuildEnrollmentPayloadOptions): CreateEnrollmentInput {
+  const meta = draft.enrollmentMetadata
+  const isFamily = meta.affiliationType === "FAMILY"
+  const hasDiagnosis = Boolean(value(draft.diagnosis.diagnosis))
+  const treatmentType = value(draft.treatment.treatmentType)
+  const appointment = draft.medicalAppointments.find((item) => value(item.specialty))
+  const talks = draft.familyPreventionTalkInterests
+    .filter((item) => value(item.talkName) && value(item.familyMemberName))
+    .map((item) => ({
+      talkName: item.talkName.trim(),
+      familyMemberName: item.familyMemberName.trim(),
+      familyMemberPhone: value(item.familyMemberPhone),
+      familyMemberEmail: value(item.familyMemberEmail),
+    }))
 
   return {
-    patientId: draft.patientId,
-    patientData: draft.patientData.fullName ? draft.patientData : undefined,
-    details: { ...draft.details },
-    insurance:
-      draft.insurance.insuranceType && draft.insurance.insuranceType !== "NONE"
-        ? { ...draft.insurance }
-        : undefined,
-    symptomReport: draft.symptomReport.hasDiscomfort !== undefined ? { ...draft.symptomReport } : null,
-    diagnosis: draft.diagnosis.diagnosis ? { ...draft.diagnosis } : undefined,
-    treatment,
-    sisAffiliation: draft.insurance.insuranceType === "NONE" ? { ...draft.sisAffiliation } : null,
-    medicalAppointments: medicalAppointments.length > 0 ? medicalAppointments : null,
-    familyPreventionTalkInterests:
-      familyPreventionTalkInterests.length > 0 ? familyPreventionTalkInterests : null,
-    companions: null,
-    enrollmentMetadata: {
-      caseComments: meta.comments || null,
-      startTime: meta.startTime ? `${today}T${meta.startTime}:00Z` : null,
-      endTime: meta.endTime ? `${today}T${meta.endTime}:00Z` : null,
-      dataPolicyAccepted: meta.dataPolicyAccepted,
-      informedConsentAccepted: meta.informedConsentAccepted,
-      isOncologicalPatient: meta.isOncologicalPatient,
-      programEntryPoint: meta.programEntryPoint || null,
-      currentlyAttendingConsultations: meta.currentlyAttendingConsultations ?? null,
-      currentlyReceivingTreatment: meta.currentlyReceivingTreatment ?? null,
-      surveyAccepted: meta.surveyAccepted,
-      surveyRating: meta.surveyRating ?? null,
+    ...(draft.patientId ? { patientId: draft.patientId } : {
+      patient: {
+        fullName: draft.patientData.fullName.trim(),
+        primaryPhone: draft.patientData.primaryPhone.trim(),
+        secondaryPhone: value(draft.patientData.secondaryPhone),
+        dni: value(draft.patientData.dni),
+        birthDate: value(draft.patientData.birthDate),
+        hasWhatsapp: draft.patientData.hasWhatsapp,
+      },
+    }),
+    followUp: {
+      type: "CALL",
       agentId,
-      affiliationType: (meta.affiliationType as "PATIENT" | "FAMILY" | undefined) || "PATIENT",
+      notes: value(meta.comments),
+      completedAt: localDateTime(today, meta.endTime),
     },
-  };
+    affiliationType: isFamily ? "FAMILY_FRIEND" : "SELF",
+    ...(isFamily ? {
+      companion: {
+        fullName: value(meta.nombreTercero) ?? "",
+        primaryPhone: value(meta.telefonoTercero) ?? "",
+        isPrimaryInformant: true,
+      },
+    } : {}),
+    details: {
+      birthDepartment: value(draft.details.birthDepartment),
+      currentAddress: value(draft.details.currentAddress),
+      currentDistrict: value(draft.details.currentDistrict),
+      currentDepartment: value(draft.details.currentDepartment),
+      dniMatchesAddress: draft.details.dniMatchesAddress ?? undefined,
+      travelTimeToHospital: value(draft.details.travelTimeToHospital),
+      emergencyContactName: value(draft.details.emergencyContactName),
+      emergencyContactPhone: value(draft.details.emergencyContactPhone),
+      zoneType: value(draft.details.zoneType),
+      emergencyContactGender: value(draft.details.emergencyContactGender),
+      educationLevel: draft.details.educationLevel ?? undefined,
+      nativeLanguage: value(draft.details.nativeLanguage),
+      requiresTranslation: draft.details.requiresTranslation ?? undefined,
+      referredToSocialWorker: draft.details.referredToSocialWorker ?? undefined,
+    },
+    ...(draft.insurance.insuranceType && draft.insurance.insuranceType !== "NONE" ? {
+      insurance: {
+        insuranceType: draft.insurance.insuranceType,
+        epsProvider: draft.insurance.epsProvider ?? undefined,
+      },
+    } : {}),
+    ...(draft.insurance.insuranceType === "NONE" && draft.sisAffiliation.canAffiliate !== undefined ? {
+      sisAffiliation: {
+        canAffiliate: draft.sisAffiliation.canAffiliate,
+        expectedDate: value(draft.sisAffiliation.expectedDate),
+        cantAffiliateReason: value(draft.sisAffiliation.cantAffiliateReason),
+      },
+    } : {}),
+    ...(hasDiagnosis ? {
+      diagnosis: {
+        diagnosis: draft.diagnosis.diagnosis.trim(),
+        cancerStage: draft.diagnosis.cancerStage ?? undefined,
+        diagnosisDate: value(draft.diagnosis.diagnosisDate),
+        healthCenterId: value(draft.diagnosis.healthCenterId),
+        diagnosisSpecialty: value(draft.diagnosis.diagnosisSpecialty),
+        symptomLeadingToCheckup: value(draft.diagnosis.symptomLeadingToCheckup),
+        waitTimeForDiagnosis: value(draft.diagnosis.waitTimeForDiagnosis),
+        hasMedicalReport: draft.diagnosis.hasMedicalReport ?? undefined,
+      },
+    } : {}),
+    ...(hasDiagnosis && (treatmentType || meta.currentlyReceivingTreatment === false) ? {
+      treatment: {
+        treatmentType: treatmentType ?? "No recibe tratamiento",
+        treatmentFrequency: value(draft.treatment.treatmentFrequency),
+        healthCenterId: value(draft.treatment.healthCenterId),
+        notReceivingReason: value(draft.treatment.notReceivingReason),
+        treatmentSituation: value(draft.treatment.treatmentSituation),
+      },
+    } : {}),
+    ...(appointment ? {
+      medicalAppointments: [{
+        specialty: appointment.specialty!.trim(),
+        healthCenterId: value(appointment.healthCenterId),
+        appointmentDate: value(appointment.appointmentDate),
+        nextAppointmentDate: value(appointment.nextAppointmentDate),
+        hasReferralSheet: appointment.hasReferralSheet ?? undefined,
+        referredTo: value(appointment.referredTo),
+        difficulties: value(appointment.difficulties),
+        isFirstConsultation: appointment.isFirstConsultation ?? undefined,
+      }],
+    } : {}),
+    ...(draft.symptomReport.hasDiscomfort !== undefined ? {
+      symptomReport: {
+        hasDiscomfort: draft.symptomReport.hasDiscomfort,
+        signsAndSymptoms: value(draft.symptomReport.signsAndSymptoms),
+        indicationsReceived: value(draft.symptomReport.indicationsReceived),
+        hasSoughtMedicalConsultation: draft.symptomReport.hasSoughtMedicalConsultation ?? undefined,
+        specialty: value(draft.symptomReport.specialty),
+      },
+    } : {}),
+    currentlyAttendingConsultations: meta.currentlyAttendingConsultations ?? undefined,
+    currentlyReceivingTreatment: meta.currentlyReceivingTreatment ?? undefined,
+    entrySource: value(meta.programEntryPoint),
+    consentToContact: meta.informedConsentAccepted ?? undefined,
+    consentToShareData: meta.dataPolicyAccepted ?? undefined,
+    isOncologicalPatient: meta.isOncologicalPatient ?? undefined,
+    surveyAccepted: meta.surveyAccepted ?? undefined,
+    followUpQualityRating: meta.surveyAccepted ? meta.surveyRating : undefined,
+    caseComments: value(meta.comments),
+    callStartedAt: localDateTime(today, meta.startTime),
+    callEndedAt: localDateTime(today, meta.endTime),
+    ...(talks.length ? { familyPreventionTalkInterests: talks } : {}),
+  }
 }

@@ -1066,6 +1066,7 @@ export interface components {
             educationLevel?: "INITIAL" | "PRIMARY_INCOMPLETE" | "PRIMARY" | "SECONDARY_INCOMPLETE" | "SECONDARY" | "TECHNICAL" | "TECHNICAL_INCOMPLETE" | "HIGHER" | "HIGHER_INCOMPLETE" | "NONE";
             nativeLanguage?: string;
             requiresTranslation?: boolean;
+            referredToSocialWorker?: boolean;
         };
         EnrollmentInsuranceDto: {
             /** @enum {string} */
@@ -1122,6 +1123,9 @@ export interface components {
         EnrollmentSymptomReportDto: {
             discomfortSeverity?: string;
             discomfortDescription?: string;
+            hasDiscomfort?: boolean;
+            signsAndSymptoms?: string;
+            indicationsReceived?: string;
             symptomDuration?: string;
             symptomFrequency?: string;
             isPainPresent?: boolean;
@@ -1132,6 +1136,12 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             specialty?: string;
+        };
+        CreateEnrollmentFamilyTalkInterestDto: {
+            talkName: string;
+            familyMemberName: string;
+            familyMemberPhone?: string;
+            familyMemberEmail?: string;
         };
         CreateEnrollmentDto: {
             /** Format: uuid */
@@ -1161,6 +1171,10 @@ export interface components {
             isOncologicalPatient?: boolean;
             surveyAccepted?: boolean;
             followUpQualityRating?: number;
+            caseComments?: string;
+            callStartedAt?: string;
+            callEndedAt?: string;
+            familyPreventionTalkInterests?: components["schemas"]["CreateEnrollmentFamilyTalkInterestDto"][];
         };
         EnrollmentResponseDto: {
             /** Format: uuid */
@@ -1183,6 +1197,11 @@ export interface components {
             hasMobilityIssues: boolean | null;
             isOncologicalPatient: boolean;
             surveyAccepted: boolean;
+            caseComments: string | null;
+            /** Format: date-time */
+            callStartedAt: string | null;
+            /** Format: date-time */
+            callEndedAt: string | null;
             followUpQualityRating: number | null;
             /** Format: date-time */
             createdAt: string;
@@ -1662,6 +1681,9 @@ export interface components {
             enrollmentId?: string;
             discomfortSeverity?: string;
             discomfortDescription?: string;
+            hasDiscomfort?: boolean;
+            signsAndSymptoms?: string;
+            indicationsReceived?: string;
             symptomDuration?: string;
             symptomFrequency?: string;
             isPainPresent?: boolean;

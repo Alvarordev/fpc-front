@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, Sele
 import { Button } from "@/components/ui/button"
 import { Activity, Stethoscope, HeartPulse, Building2, Plus, Users, Minus } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
-import { healthCentersApi } from "@/lib/api"
+import { healthCentersApi } from "@/api/health-centers"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
-import type { AddMedicalAppointmentRequest, CancerStage, HealthCenter } from "@/types"
+import type { AddMedicalAppointmentRequest, CancerStage } from "@/types"
+import type { HealthCenter } from "@/api/health-centers"
 
 const fl = "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
 const sc = "w-full bg-card border"

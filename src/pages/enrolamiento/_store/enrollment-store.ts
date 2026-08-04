@@ -51,6 +51,8 @@ export interface EnrollmentDraft {
     affiliationType?: string;
     isOncologicalPatient?: boolean;
     nombreTercero?: string;
+    telefonoTercero?: string;
+    assignedAgentId?: string;
   };
 }
 
