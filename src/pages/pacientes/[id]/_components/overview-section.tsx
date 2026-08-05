@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,14 +33,11 @@ import {
   IdCard,
   Info,
   Skull,
+  Edit,
 } from "lucide-react";
 import { patientsApi } from "@/lib/api";
-import type { Patient } from "@/types";
-
-// ============================================================
-// Labels & helpers
-// ============================================================
-
+import { EditAppointmentDialog } from "@/pages/citas/_components/edit-appointment-dialog";
+import type { Patient, MedicalAppointmentResponse } from "@/types";
 const statusLabels: Record<string, string> = {
   PROSPECT: "Prospecto",
   ENROLLED: "Enrolado",
@@ -132,6 +129,7 @@ interface OverviewSectionProps {
 
 export function OverviewSection({ patient }: OverviewSectionProps) {
   const queryClient = useQueryClient();
+  const [editingAppt, setEditingAppt] = useState<MedicalAppointmentResponse | null>(null);
   const autoRefreshPatientIdRef = useRef<string | null>(null);
   const d = patient.details;
   const summary = patient.summary;
@@ -688,52 +686,94 @@ export function OverviewSection({ patient }: OverviewSectionProps) {
             </p>
             {patient.medicalAppointments.length > 0 ? (
               <div className="space-y-2">
-                {patient.medicalAppointments.map((appt) => (
-                  <div
-                    key={appt.id}
-                    className="flex items-start gap-3 rounded-md border p-3"
-                  >
-                    <Calendar className="size-4 text-muted-foreground mt-0.5" />
-                    <div className="flex-1 text-sm">
-                      <p className="font-medium">
-                        {appt.specialty ?? "Cita médica"}
-                        {appt.hasReferralSheet && (
-                          <Badge variant="outline" className="text-[10px] ml-2">
-                            Con referencia
-                          </Badge>
-                        )}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-1">
-                        {appt.appointmentDate && <span>{fmtDate(appt.appointmentDate)}</span>}
-                        {appt.nextAppointmentDate && (
-                          <span className="flex items-center gap-0.5">
-                            <ArrowRight className="size-3" />
-                            Próxima: {fmtDate(appt.nextAppointmentDate)}
-                          </span>
-                        )}
-                        {appt.healthCenterName && (
-                          <span className="flex items-center gap-0.5">
-                            <Building2 className="size-3" />
-                            {appt.healthCenterName}
-                          </span>
-                        )}
+                {patient.medicalAppointments.map((appt) => {
+                  const fullAppt: MedicalAppointmentResponse = {
+                    ...appt,
+                    patientFullName: patient.fullName,
+                    patientDni: patient.dni,
+                    patientPhone: patient.primaryPhone,
+                  };
+
+                  return (
+                    <div
+                      key={appt.id}
+                      className="flex items-start justify-between gap-3 rounded-md border p-3 bg-card hover:bg-muted/20 transition-colors"
+                    >
+                      <div className="flex items-start gap-3 flex-1">
+                        <Calendar className="size-4 text-red-600 mt-0.5 shrink-0" />
+                        <div className="flex-1 text-sm">
+                          <p className="font-semibold text-foreground flex items-center gap-2">
+                            {appt.specialty ?? "Cita médica"}
+                            {appt.hasReferralSheet && (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-800 border-emerald-200">
+                                Con referencia
+                              </Badge>
+                            )}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground mt-1">
+                            {appt.appointmentDate && (
+                              <span className="font-bold text-red-600">
+                                📅 {fmtDate(appt.appointmentDate)}
+                              </span>
+                            )}
+                            {appt.appointmentTime && (
+                              <span className="font-semibold text-foreground flex items-center gap-0.5">
+                                <Clock className="size-3 text-red-600" />
+                                {appt.appointmentTime}
+                              </span>
+                            )}
+                            {appt.nextAppointmentDate && (
+                              <span className="flex items-center gap-0.5">
+                                <ArrowRight className="size-3" />
+                                Próxima: {fmtDate(appt.nextAppointmentDate)}
+                              </span>
+                            )}
+                            {appt.healthCenterName && (
+                              <span className="flex items-center gap-0.5">
+                                <Building2 className="size-3" />
+                                {appt.healthCenterName}
+                              </span>
+                            )}
+                          </div>
+                          {appt.referredTo && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Referido a: {appt.referredTo}
+                            </p>
+                          )}
+                          {appt.difficulties && (
+                            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 p-1.5 rounded mt-1.5 italic">
+                              Dificultades: {appt.difficulties}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {appt.referredTo && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Referido a: {appt.referredTo}
-                        </p>
-                      )}
-                      {appt.difficulties && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Dificultades: {appt.difficulties}
-                        </p>
-                      )}
+
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => setEditingAppt(fullAppt)}
+                        className="flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50 cursor-pointer shrink-0 font-semibold"
+                      >
+                        <Edit className="size-3" />
+                        Editar
+                      </Button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState message="No hay citas médicas registradas" />
+            )}
+
+            {/* Edit Appointment Modal */}
+            {editingAppt && (
+              <EditAppointmentDialog
+                appointment={editingAppt}
+                open={!!editingAppt}
+                onOpenChange={(open) => {
+                  if (!open) setEditingAppt(null);
+                }}
+              />
             )}
           </div>
 
