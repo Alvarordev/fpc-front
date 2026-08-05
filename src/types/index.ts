@@ -86,6 +86,7 @@ export interface CreatePatientRequest {
   hasWhatsapp?: boolean
   role?: PatientRole
   status?: PatientStatus | null
+  email?: string | null
 }
 
 export interface EnrollPatientDetailsRequest {

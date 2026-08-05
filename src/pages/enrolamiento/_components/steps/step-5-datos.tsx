@@ -110,6 +110,7 @@ export function Step5Datos() {
           <div className="flex flex-col gap-2"><Label className={fl}>Teléfono principal <span className="text-destructive">*</span></Label><Input placeholder="987654321" className={ic} value={pd.primaryPhone} onChange={e=>updateDraft({patientData:{...pd,primaryPhone:e.target.value}})} /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Teléfono secundario</Label><Input placeholder="999888777" className={ic} value={pd.secondaryPhone??""} onChange={e=>updateDraft({patientData:{...pd,secondaryPhone:e.target.value||null}})} /></div>
         </div>
+        <div className="flex flex-col gap-2"><Label className={fl}>Email</Label><Input type="email" placeholder="paciente@correo.com" className={ic} value={pd.email??""} onChange={e=>updateDraft({patientData:{...pd,email:e.target.value||null}})} /></div>
         <div className="flex flex-col gap-2"><Label className={fl}>¿Tiene WhatsApp?</Label>
           <Select value={pd.hasWhatsapp?"Sí":"No"} onValueChange={v=>updateDraft({patientData:{...pd,hasWhatsapp:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
         <div className="grid grid-cols-2 gap-4">

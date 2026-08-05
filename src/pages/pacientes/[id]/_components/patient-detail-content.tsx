@@ -1,10 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store";
 import { usePatient } from "../_hooks/use-patient";
 import { usePatientAlerts } from "../_hooks/use-patient-alerts";
+import { buildEnrollmentPrefill } from "../_utils/build-enrollment-prefill";
 import { AlertBanner } from "./alert-banner";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
@@ -26,6 +28,14 @@ export function PatientDetailContent() {
   const navigate = useNavigate();
   const { data: patient, isLoading, isError } = usePatient(id!);
   const { alerts } = usePatientAlerts(patient);
+  const { resetEnrollment, updateDraft } = useEnrollmentStore();
+
+  function handleEnroll() {
+    if (!patient) return;
+    resetEnrollment();
+    updateDraft(buildEnrollmentPrefill(patient));
+    navigate("/enrolamiento");
+  }
 
   if (isLoading) {
     return (
@@ -105,6 +115,12 @@ export function PatientDetailContent() {
           </div>
         </div>
 
+        {patient.status === "UNENROLLED" && (
+          <Button size="sm" className="shrink-0 gap-1.5" onClick={handleEnroll}>
+            <UserPlus className="size-4" />
+            Enrolar
+          </Button>
+        )}
       </div>
 
       {alerts.length > 0 && <AlertBanner alerts={alerts} />}

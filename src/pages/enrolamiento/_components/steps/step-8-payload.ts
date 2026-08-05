@@ -39,6 +39,7 @@ export function buildEnrollmentPayload({ draft, agentId, today = new Date().toIS
         dni: value(draft.patientData.dni),
         birthDate: value(draft.patientData.birthDate),
         hasWhatsapp: draft.patientData.hasWhatsapp,
+        email: value(draft.patientData.email),
       },
     }),
     followUp: {

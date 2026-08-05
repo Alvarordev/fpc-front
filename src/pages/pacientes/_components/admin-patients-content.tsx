@@ -47,6 +47,7 @@ export function AdminPatientsContent() {
         fullName: values.fullName,
         dni: values.dni || undefined,
         primaryPhone: values.phone,
+        email: values.email || undefined,
         hasWhatsapp: true,
       });
 
