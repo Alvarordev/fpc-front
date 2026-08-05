@@ -132,6 +132,18 @@ export const patientsApi = {
     return data
   },
 
+  async refreshSummary(id: string) {
+    const { data, response } = await api.POST("/patients/{id}/summary/refresh", {
+      params: { path: { id } },
+    })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
   async createDiagnosis(patientId: string, input: CreatePatientDiagnosisInput) {
     const { data, response } = await api.POST("/patients/{patientId}/diagnoses", {
       params: { path: { patientId } },

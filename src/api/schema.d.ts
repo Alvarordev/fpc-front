@@ -428,10 +428,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Generate or retrieve a patient summary */
+        /**
+         * Get a patient summary
+         * @description Returns the stored summary if one is already ready; otherwise generates it. Does not call the provider again once a summary is ready.
+         */
         get: operations["PatientsController_summary"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{id}/summary/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate a patient summary
+         * @description Always calls the provider again, even if a ready summary already exists.
+         */
+        post: operations["PatientsController_refreshSummary"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3536,6 +3559,46 @@ export interface operations {
         };
     };
     PatientsController_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSummaryResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_refreshSummary: {
         parameters: {
             query?: never;
             header?: never;

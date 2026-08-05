@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,22 @@ const roleLabels: Record<PatientDetailsResponse["role"], string> = {
   UNKNOWN: "Sin definir",
   PATIENT: "Paciente",
   COMPANION: "Acompañante",
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("La solicitud tardó demasiado")), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
 }
 
 function date(value: string | null) {
@@ -362,35 +378,53 @@ function AiSummarySection({
   patientId: string
   fallback: string | null
 }) {
-  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["patient-summary", patientId],
-    queryFn: () => patientsApi.getSummary(patientId),
+  const queryClient = useQueryClient()
+  const queryKey = ["patient-summary", patientId]
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey,
+    // On-demand generation can take a while (or queue behind the shared
+    // rate limit) — give up on the UI side after 10s so the user gets a
+    // retry button instead of an indefinite spinner. The backend call keeps
+    // running either way; a later visit/retry will pick up its result.
+    queryFn: () => withTimeout(patientsApi.getSummary(patientId), 10_000),
+    // The backend now serves a READY summary from cache and only calls the
+    // AI provider when there isn't one yet — safe to keep this around and
+    // avoid refetching just from remounts/focus.
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+
+  const refreshMutation = useMutation({
+    mutationFn: () => patientsApi.refreshSummary(patientId),
+    onSuccess: (result) => queryClient.setQueryData(queryKey, result),
   })
 
   const status = data?.status
   const summary = data?.summary ?? fallback
+  const isBusy = isLoading || refreshMutation.isPending
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
         <CardTitle className="text-sm">Resumen del caso (IA)</CardTitle>
-        {status && status !== "PENDING" && status !== "PROCESSING" && (
+        {status === "READY" && (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 px-2 text-xs"
-            onClick={() => refetch()}
-            disabled={isRefetching}
+            onClick={() => refreshMutation.mutate()}
+            disabled={isBusy}
           >
             <RefreshCw
-              className={cn("size-3.5", isRefetching && "animate-spin")}
+              className={cn("size-3.5", refreshMutation.isPending && "animate-spin")}
             />
             Actualizar
           </Button>
         )}
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isBusy ? (
           <p className="text-muted-foreground flex items-center gap-2 py-2 text-sm">
             <Loader2 className="size-3.5 animate-spin" />
             Generando resumen...
@@ -407,12 +441,7 @@ function AiSummarySection({
               Reintentar
             </Button>
           </div>
-        ) : status === "PENDING" || status === "PROCESSING" ? (
-          <p className="text-muted-foreground flex items-center gap-2 py-2 text-sm">
-            <Loader2 className="size-3.5 animate-spin" />
-            Generando resumen...
-          </p>
-        ) : status === "FAILED" ? (
+        ) : status === "PENDING" || status === "PROCESSING" || status === "FAILED" ? (
           <div className="space-y-2">
             <Empty>No se pudo generar el resumen.</Empty>
             <Button
