@@ -19,6 +19,10 @@ export type PatientMedicalAppointment = components["schemas"]["PatientMedicalApp
 export type PatientSisAffiliation = components["schemas"]["PatientSisAffiliationResponseDto"]
 export type PatientSymptomReport = components["schemas"]["PatientSymptomReportResponseDto"]
 export type PatientSummaryResponse = components["schemas"]["PatientSummaryResponseDto"]
+export type CreatePatientDiagnosisInput = components["schemas"]["CreatePatientDiagnosisDto"]
+export type CreatePatientTreatmentInput = components["schemas"]["CreatePatientTreatmentDto"]
+export type CreatePatientInsuranceInput = components["schemas"]["CreatePatientInsuranceDto"]
+export type CreatePatientSisAffiliationInput = components["schemas"]["CreatePatientSisAffiliationDto"]
 
 export class PatientsApiError extends Error {
   readonly status: number
@@ -119,6 +123,58 @@ export const patientsApi = {
   async getSummary(id: string) {
     const { data, response } = await api.GET("/patients/{id}/summary", {
       params: { path: { id } },
+    })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async createDiagnosis(patientId: string, input: CreatePatientDiagnosisInput) {
+    const { data, response } = await api.POST("/patients/{patientId}/diagnoses", {
+      params: { path: { patientId } },
+      body: input,
+    })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async createTreatment(patientId: string, input: CreatePatientTreatmentInput) {
+    const { data, response } = await api.POST("/patients/{patientId}/treatments", {
+      params: { path: { patientId } },
+      body: input,
+    })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async createInsurance(patientId: string, input: CreatePatientInsuranceInput) {
+    const { data, response } = await api.POST("/patients/{patientId}/insurance", {
+      params: { path: { patientId } },
+      body: input,
+    })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async createSisAffiliation(patientId: string, input: CreatePatientSisAffiliationInput) {
+    const { data, response } = await api.POST("/patients/{patientId}/sis-affiliations", {
+      params: { path: { patientId } },
+      body: input,
     })
 
     if (!data) {

@@ -1,19 +1,25 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CalendarPlus, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
+import { alertsApi } from "@/api/alerts"
 import { followUpsApi } from "@/api/follow-ups"
+import { patientsApi, type PatientDetailsInput } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
 import { ScheduleFollowUpDialog, type ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-dialog"
 import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
+import { ClinicalDataTabs } from "./clinical-data-tabs"
+import { DRAFT_DIAGNOSIS_ID, hasAnyClinicalDraft } from "./clinical-drafts"
+import { CreateAlertDialog } from "./create-alert-dialog"
+import { FollowUpAside } from "./follow-up-aside"
+import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 
 const statusLabels: Record<string, string> = {
   SCHEDULED: "Agendado",
@@ -30,8 +36,24 @@ export function FollowUpContent() {
   const [notes, setNotes] = useState("")
   const [nextOpen, setNextOpen] = useState(false)
   const [psychooncologyOpen, setPsychooncologyOpen] = useState(false)
+  const [alertOpen, setAlertOpen] = useState(false)
   const [reminderDescription, setReminderDescription] = useState("")
   const [reminderAt, setReminderAt] = useState("")
+  const [isCompleting, setIsCompleting] = useState(false)
+
+  const draftStore = useFollowUpDraftStore()
+  const {
+    clinical: clinicalDrafts,
+    psico: psicoDraft,
+    alert: alertDraft,
+    nextFollowUp: nextFollowUpDraft,
+    reminders: reminderDrafts,
+  } = draftStore
+
+  useEffect(() => {
+    if (followUpId) useFollowUpDraftStore.getState().ensureFollowUp(followUpId)
+  }, [followUpId])
+
   const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
   const requiresAgentSelection = user?.role === "ADMIN" || user?.role === "FOUNDATION"
 
@@ -49,50 +71,16 @@ export function FollowUpContent() {
   const updateMutation = useMutation({
     mutationFn: ({ status, completedAt }: { status: "COMPLETED" | "CANCELLED" | "NO_ANSWER"; completedAt?: string }) =>
       followUpsApi.update(followUpId!, { status, notes: notes || undefined, completedAt }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["follow-up", followUpId] }),
-        queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] }),
-      ])
-      toast.success("Seguimiento actualizado")
-    },
-    onError: (error: Error) => toast.error("No se pudo actualizar el seguimiento", { description: error.message }),
   })
-  const nextMutation = useMutation({
-    mutationFn: (input: Parameters<typeof followUpsApi.scheduleNext>[1]) => followUpsApi.scheduleNext(followUpId!, input),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] })
-      toast.success("Siguiente seguimiento agendado")
-    },
-    onError: (error: Error) => toast.error("No se pudo agendar el siguiente seguimiento", { description: error.message }),
-  })
-  const reminderMutation = useMutation({
-    mutationFn: () => followUpsApi.createReminder(followUpId!, {
-      subjectPatientId: followUpQuery.data!.subjectPatientId,
-      dueAt: new Date(reminderAt).toISOString(),
-      description: reminderDescription,
-      assignedAgentId: followUpQuery.data!.agentId,
-      createdFromFollowUpId: followUpId!,
-    }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] })
-      setReminderDescription("")
-      setReminderAt("")
-      toast.success("Recordatorio creado")
-    },
-    onError: (error: Error) => toast.error("No se pudo crear el recordatorio", { description: error.message }),
-  })
-  const psychooncologyMutation = useMutation({
-    mutationFn: psychooncologyAppointmentsApi.create,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
-        queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] }),
-      ])
-      toast.success("Cita de psicooncología agendada")
-    },
-    onError: (error: Error) => toast.error("No se pudo agendar la cita", { description: error.message }),
-  })
+
+  async function refreshAfterCompletion() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["follow-up", followUpId] }),
+      queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] }),
+      queryClient.invalidateQueries({ queryKey: ["patient-profile", patientId] }),
+      queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
+    ])
+  }
 
   if (!followUpId) {
     return <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
@@ -110,90 +98,221 @@ export function FollowUpContent() {
   if (followUp.subjectPatientId !== patientId) return <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
   const isOpen = followUp.status === "SCHEDULED"
 
-  async function scheduleNext(values: ScheduleFollowUpFormValues) {
+  function resolveNextFollowUpAgentId(values: ScheduleFollowUpFormValues) {
     const ownAgent = agentsQuery.data?.find((agent) => agent.userId === user?.id)
-    const agentId = requiresAgentSelection ? values.agentId : ownAgent?.id
+    return requiresAgentSelection ? values.agentId : ownAgent?.id
+  }
 
-    if (!agentId) {
-      throw new Error("No se encontró un agente asociado a tu cuenta")
+  /** Persist every drafted change, in order, when the follow-up is completed. */
+  async function commitDrafts() {
+    const details: PatientDetailsInput = { ...clinicalDrafts.details, ...clinicalDrafts.social }
+    if (Object.keys(details).length > 0) {
+      await patientsApi.updateDetails(patientId!, details)
     }
 
-    await nextMutation.mutateAsync({
-      subjectPatientId: followUp.subjectPatientId,
-      interlocutorId: followUp.interlocutorId,
-      agentId,
-      type: values.type,
-      purpose: values.purpose,
-      scheduledAt: `${values.date}T${values.time}:00`,
-      notes: values.notes || undefined,
-    })
+    let newDiagnosisId: string | undefined
+    if (clinicalDrafts.diagnosis) {
+      const created = await patientsApi.createDiagnosis(patientId!, { ...clinicalDrafts.diagnosis, followUpId: followUpId! })
+      newDiagnosisId = created.id
+    }
+
+    if (clinicalDrafts.treatment) {
+      const diagnosisId =
+        clinicalDrafts.treatment.diagnosisId === DRAFT_DIAGNOSIS_ID ? newDiagnosisId : clinicalDrafts.treatment.diagnosisId
+
+      if (diagnosisId) {
+        await patientsApi.createTreatment(patientId!, { ...clinicalDrafts.treatment, diagnosisId, followUpId: followUpId! })
+      }
+    }
+
+    if (clinicalDrafts.insurance) {
+      await patientsApi.createInsurance(patientId!, { ...clinicalDrafts.insurance, followUpId: followUpId! })
+    }
+    if (clinicalDrafts.sisAffiliation) {
+      await patientsApi.createSisAffiliation(patientId!, { ...clinicalDrafts.sisAffiliation, followUpId: followUpId! })
+    }
+
+    if (alertDraft) {
+      await alertsApi.create({
+        healthCenterId: alertDraft.healthCenterId,
+        followUpId: followUpId!,
+        subjectPatientId: followUp.subjectPatientId,
+        interlocutorId: followUp.interlocutorId,
+        title: alertDraft.title,
+        description: alertDraft.description,
+      })
+    }
+
+    if (psicoDraft) {
+      try {
+        await psychooncologyAppointmentsApi.create(psicoDraft)
+      } catch (error) {
+        toast.error("No se pudo agendar la cita de psicooncología", { description: (error as Error).message })
+      }
+    }
+
+    if (nextFollowUpDraft) {
+      const agentId = resolveNextFollowUpAgentId(nextFollowUpDraft)
+      if (agentId) {
+        await followUpsApi.scheduleNext(followUpId!, {
+          subjectPatientId: followUp.subjectPatientId,
+          interlocutorId: followUp.interlocutorId,
+          agentId,
+          type: nextFollowUpDraft.type,
+          purpose: nextFollowUpDraft.purpose,
+          scheduledAt: `${nextFollowUpDraft.date}T${nextFollowUpDraft.time}:00`,
+          notes: nextFollowUpDraft.notes || undefined,
+        })
+      }
+    }
+
+    for (const reminder of reminderDrafts) {
+      try {
+        await followUpsApi.createReminder(followUpId!, {
+          subjectPatientId: followUp.subjectPatientId,
+          dueAt: new Date(reminder.dueAt).toISOString(),
+          description: reminder.description,
+          assignedAgentId: followUp.agentId,
+          createdFromFollowUpId: followUpId,
+        })
+      } catch (error) {
+        toast.error("No se pudo crear un recordatorio", { description: (error as Error).message })
+      }
+    }
+  }
+
+  async function handleComplete() {
+    setIsCompleting(true)
+    try {
+      await updateMutation.mutateAsync({ status: "COMPLETED", completedAt: new Date().toISOString() })
+      await commitDrafts()
+      draftStore.reset()
+      await refreshAfterCompletion()
+      toast.success("Seguimiento completado")
+    } catch (error) {
+      toast.error("No se pudo completar el seguimiento", { description: (error as Error).message })
+    } finally {
+      setIsCompleting(false)
+    }
+  }
+
+  async function handleDiscardStatus(status: "CANCELLED" | "NO_ANSWER") {
+    try {
+      await updateMutation.mutateAsync({ status })
+      draftStore.reset()
+      await refreshAfterCompletion()
+      toast.success("Seguimiento actualizado")
+    } catch (error) {
+      toast.error("No se pudo actualizar el seguimiento", { description: (error as Error).message })
+    }
+  }
+
+  function addReminderDraft() {
+    draftStore.addReminder({ description: reminderDescription, dueAt: reminderAt })
+    setReminderDescription("")
+    setReminderAt("")
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5">
       <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(`/pacientes/${patientId}`)}>
         <ArrowLeft className="size-3.5" />Volver al paciente
       </Button>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between gap-3 text-base">
-            Registrar seguimiento
-            <span className="text-xs font-normal text-muted-foreground">{statusLabels[followUp.status]}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <span>Canal: {followUp.type.replaceAll("_", " ")}</span>
-            <span>Propósito: {followUp.purpose.replaceAll("_", " ")}</span>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="follow-up-notes">Notas</Label>
-            <Textarea id="follow-up-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={followUp.notes ?? "Registrá el resultado del seguimiento..."} disabled={!canManage || !isOpen} />
-          </div>
-          {canManage && isOpen && (
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => updateMutation.mutate({ status: "COMPLETED", completedAt: new Date().toISOString() })} disabled={updateMutation.isPending}>Completar</Button>
-              <Button variant="outline" onClick={() => updateMutation.mutate({ status: "NO_ANSWER" })} disabled={updateMutation.isPending}>No contestó</Button>
-              <Button variant="outline" onClick={() => updateMutation.mutate({ status: "CANCELLED" })} disabled={updateMutation.isPending}>Cancelar</Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {canManage && !isOpen && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Acciones posteriores</CardTitle></CardHeader>
-          <CardContent className="space-y-5">
-            <Button variant="outline" className="gap-1.5" onClick={() => setNextOpen(true)}>
-              <CalendarPlus className="size-4" />Agendar siguiente seguimiento
-            </Button>
-            <Button variant="outline" className="gap-1.5" onClick={() => setPsychooncologyOpen(true)}>
-              <CalendarPlus className="size-4" />Derivar a psicooncología
-            </Button>
-            <div className="space-y-3 border-t pt-4">
-              <p className="text-sm font-medium">Crear recordatorio</p>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                <Input value={reminderDescription} onChange={(event) => setReminderDescription(event.target.value)} placeholder="Descripción" />
-                <Input type="datetime-local" value={reminderAt} onChange={(event) => setReminderAt(event.target.value)} />
+      <div className="grid gap-5 xl:grid-cols-3">
+        <div className="space-y-5 xl:col-span-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between gap-3 text-base">
+                Registrar seguimiento
+                <span className="text-xs font-normal text-muted-foreground">{statusLabels[followUp.status]}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                <span>Canal: {followUp.type.replaceAll("_", " ")}</span>
+                <span>Propósito: {followUp.purpose.replaceAll("_", " ")}</span>
               </div>
-              <Button size="sm" variant="secondary" disabled={!reminderDescription || !reminderAt || reminderMutation.isPending} onClick={() => reminderMutation.mutate()}>
-                Crear recordatorio
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              <div className="space-y-2">
+                <Label htmlFor="follow-up-notes">Notas</Label>
+                <Textarea id="follow-up-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={followUp.notes ?? "Registrá el resultado del seguimiento..."} disabled={!canManage || !isOpen} />
+              </div>
+              {canManage && isOpen && (
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleComplete} disabled={isCompleting}>
+                    {isCompleting ? "Guardando..." : "Completar"}
+                  </Button>
+                  <Button variant="outline" onClick={() => handleDiscardStatus("NO_ANSWER")} disabled={isCompleting}>No contestó</Button>
+                  <Button variant="outline" onClick={() => handleDiscardStatus("CANCELLED")} disabled={isCompleting}>Cancelar</Button>
+                </div>
+              )}
+              {hasAnyClinicalDraft(clinicalDrafts) && isOpen && (
+                <p className="text-muted-foreground text-xs">
+                  Los cambios de la ficha clínica y las acciones posteriores se guardan localmente y recién se registran al presionar «Completar». Si cancelás o marcás «No contestó», se descartan.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-      <ScheduleFollowUpDialog open={nextOpen} onOpenChange={setNextOpen} onSubmit={scheduleNext} isPending={nextMutation.isPending} agents={agentsQuery.data} requiresAgentSelection={requiresAgentSelection} />
+          {canManage && isOpen && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Ficha clínica</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ClinicalDataTabs
+                  patientId={patientId!}
+                  drafts={clinicalDrafts}
+                  onDraftsChange={(updater) => draftStore.updateClinical(updater)}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {canManage && isOpen && (
+          <FollowUpAside
+            onPsicoOpen={() => setPsychooncologyOpen(true)}
+            hasPsicoDraft={Boolean(psicoDraft)}
+            onClearPsico={() => draftStore.clearPsico()}
+            onAlertOpen={() => setAlertOpen(true)}
+            hasAlertDraft={Boolean(alertDraft)}
+            onClearAlert={() => draftStore.clearAlert()}
+            onNextContactOpen={() => setNextOpen(true)}
+            hasNextContactDraft={Boolean(nextFollowUpDraft)}
+            onClearNextContact={() => draftStore.clearNextFollowUp()}
+            reminderDescription={reminderDescription}
+            onReminderDescriptionChange={setReminderDescription}
+            reminderAt={reminderAt}
+            onReminderAtChange={setReminderAt}
+            onAddReminder={addReminderDraft}
+            reminderDrafts={reminderDrafts}
+            onRemoveReminder={(index) => draftStore.removeReminder(index)}
+          />
+        )}
+      </div>
+
+      <ScheduleFollowUpDialog
+        open={nextOpen}
+        onOpenChange={setNextOpen}
+        onSubmit={async (values) => draftStore.setNextFollowUp(values)}
+        isPending={false}
+        agents={agentsQuery.data}
+        requiresAgentSelection={requiresAgentSelection}
+      />
       <SchedulePsychooncologyDialog
         open={psychooncologyOpen}
         onOpenChange={setPsychooncologyOpen}
         patientId={followUp.subjectPatientId}
         followUpId={followUp.id}
-        isPending={psychooncologyMutation.isPending}
-        onSubmit={async (input) => {
-          await psychooncologyMutation.mutateAsync(input)
-        }}
+        isPending={false}
+        onSubmit={async (input) => draftStore.setPsico(input)}
+      />
+      <CreateAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        isPending={false}
+        onSubmit={async (values) => draftStore.setAlert(values)}
       />
     </div>
   )

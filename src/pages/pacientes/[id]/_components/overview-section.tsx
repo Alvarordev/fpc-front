@@ -1,15 +1,28 @@
+import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
+  Building2,
   Calendar,
   HeartPulse,
+  Loader2,
   Phone,
   Pill,
+  RefreshCw,
   Shield,
   Stethoscope,
   Users,
 } from "lucide-react"
-import type { PatientDetailsResponse } from "@/api/patients"
+import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
+import { cn } from "@/lib/utils"
+import { cancerStageBadgeClass, cancerStageLabels, educationLabels, epsLabels, insuranceLabels } from "../_lib/clinical-labels"
+
+const roleLabels: Record<PatientDetailsResponse["role"], string> = {
+  UNKNOWN: "Sin definir",
+  PATIENT: "Paciente",
+  COMPANION: "Acompañante",
+}
 
 function date(value: string | null) {
   return value
@@ -48,19 +61,21 @@ export function OverviewSection({
   const details = patient.details
   return (
     <div className="space-y-4">
-      <Section title="Resumen del caso (IA)">
-        {patient.summary ? (
-          <p className="text-sm leading-6">{patient.summary}</p>
-        ) : (
-          <Empty>No hay resumen disponible.</Empty>
-        )}
-      </Section>
+      <AiSummarySection patientId={patient.id} fallback={patient.summary} />
       <Section title="Información general">
         <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="DNI" value={patient.dni} />
+          <Field label="Fecha de nacimiento" value={date(patient.birthDate)} />
           <Field label="Email" value={patient.email} />
           <Field label="Género" value={patient.gender} />
           <Field label="Teléfono" value={patient.primaryPhone} icon={Phone} />
+          <Field
+            label="Teléfono secundario"
+            value={patient.secondaryPhone}
+            icon={Phone}
+          />
           <Field label="WhatsApp" value={patient.hasWhatsapp ? "Sí" : "No"} />
+          <Field label="Rol" value={roleLabels[patient.role]} />
           <Field
             label="Estado de enrolamiento"
             value={patient.status === "ENROLLED" ? "Enrolado" : "Sin enrolar"}
@@ -86,7 +101,24 @@ export function OverviewSection({
               label="Departamento de nacimiento"
               value={details.birthDepartment}
             />
-            <Field label="Nivel educativo" value={details.educationLevel} />
+            <Field label="Zona" value={details.zoneType} />
+            <Field
+              label="Contacto de emergencia"
+              value={details.emergencyContactName}
+            />
+            <Field
+              label="Teléfono de emergencia"
+              value={details.emergencyContactPhone}
+              icon={Phone}
+            />
+            <Field
+              label="Género del contacto de emergencia"
+              value={details.emergencyContactGender}
+            />
+            <Field
+              label="Nivel educativo"
+              value={details.educationLevel ? educationLabels[details.educationLevel] : null}
+            />
             <Field label="Lengua nativa" value={details.nativeLanguage} />
             <Field
               label="Requiere traducción"
@@ -135,11 +167,29 @@ export function OverviewSection({
             icon={Stethoscope}
           >
             {patient.diagnoses.map((item) => (
-              <div key={item.id} className="rounded-md border p-3 text-sm">
-                <b>{item.diagnosis}</b>
-                <p className="text-muted-foreground mt-1">
-                  {item.cancerStage ?? "Estadio no registrado"} ·{" "}
+              <div key={item.id} className="space-y-1.5 rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <b>{item.diagnosis}</b>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {item.isCurrent && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Vigente
+                      </Badge>
+                    )}
+                    <Badge
+                      className={cn(
+                        "border text-[10px] font-medium",
+                        item.cancerStage ? cancerStageBadgeClass[item.cancerStage] : cancerStageBadgeClass.UNKNOWN,
+                      )}
+                    >
+                      {item.cancerStage ? cancerStageLabels[item.cancerStage] : "Etapa desconocida"}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+                  <Building2 className="size-3" />
                   {item.healthCenterName ?? "Centro no registrado"}
+                  {item.diagnosisDate && <>· {date(item.diagnosisDate)}</>}
                 </p>
               </div>
             ))}
@@ -150,12 +200,22 @@ export function OverviewSection({
             icon={Pill}
           >
             {patient.treatments.map((item) => (
-              <div key={item.id} className="rounded-md border p-3 text-sm">
-                <b>{item.treatmentType}</b>
-                <p className="text-muted-foreground mt-1">
-                  {item.diagnosisSummary?.diagnosis ??
-                    "Diagnóstico no registrado"}{" "}
-                  · {item.healthCenterName ?? "Centro no registrado"}
+              <div key={item.id} className="space-y-1.5 rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <b>{item.treatmentType}</b>
+                  {item.isCurrent && (
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">
+                      Vigente
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {item.diagnosisSummary?.diagnosis ?? "Diagnóstico no registrado"}
+                </p>
+                <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+                  <Building2 className="size-3" />
+                  {item.healthCenterName ?? "Centro no registrado"}
+                  {item.startDate && <>· desde {date(item.startDate)}</>}
                 </p>
               </div>
             ))}
@@ -170,12 +230,19 @@ export function OverviewSection({
             icon={Shield}
           >
             {patient.insurance.map((item) => (
-              <div key={item.id} className="rounded-md border p-3 text-sm">
-                <b>{item.insuranceType}</b>
-                {item.epsProvider && (
-                  <span className="text-muted-foreground ml-2">
-                    {item.epsProvider}
-                  </span>
+              <div key={item.id} className="flex items-center justify-between gap-2 rounded-md border p-3 text-sm">
+                <span>
+                  <b>{insuranceLabels[item.insuranceType]}</b>
+                  {item.epsProvider && (
+                    <span className="text-muted-foreground ml-2">
+                      {epsLabels[item.epsProvider]}
+                    </span>
+                  )}
+                </span>
+                {item.isCurrent && (
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    Vigente
+                  </Badge>
                 )}
               </div>
             ))}
@@ -286,4 +353,83 @@ function Records({
 }
 function bool(value: boolean | null) {
   return value === null ? "-" : value ? "Sí" : "No"
+}
+
+function AiSummarySection({
+  patientId,
+  fallback,
+}: {
+  patientId: string
+  fallback: string | null
+}) {
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
+    queryKey: ["patient-summary", patientId],
+    queryFn: () => patientsApi.getSummary(patientId),
+  })
+
+  const status = data?.status
+  const summary = data?.summary ?? fallback
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+        <CardTitle className="text-sm">Resumen del caso (IA)</CardTitle>
+        {status && status !== "PENDING" && status !== "PROCESSING" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+          >
+            <RefreshCw
+              className={cn("size-3.5", isRefetching && "animate-spin")}
+            />
+            Actualizar
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-muted-foreground flex items-center gap-2 py-2 text-sm">
+            <Loader2 className="size-3.5 animate-spin" />
+            Generando resumen...
+          </p>
+        ) : isError ? (
+          <div className="space-y-2">
+            <Empty>No se pudo generar el resumen.</Empty>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => refetch()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        ) : status === "PENDING" || status === "PROCESSING" ? (
+          <p className="text-muted-foreground flex items-center gap-2 py-2 text-sm">
+            <Loader2 className="size-3.5 animate-spin" />
+            Generando resumen...
+          </p>
+        ) : status === "FAILED" ? (
+          <div className="space-y-2">
+            <Empty>No se pudo generar el resumen.</Empty>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => refetch()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        ) : summary ? (
+          <p className="text-sm leading-6">{summary}</p>
+        ) : (
+          <Empty>No hay resumen disponible.</Empty>
+        )}
+      </CardContent>
+    </Card>
+  )
 }

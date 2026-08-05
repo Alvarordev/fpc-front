@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { usePatient } from "../_hooks/use-patient";
+import { usePatientAlerts } from "../_hooks/use-patient-alerts";
+import { AlertBanner } from "./alert-banner";
 import { OverviewSection } from "./overview-section";
 import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
@@ -23,6 +25,7 @@ export function PatientDetailContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: patient, isLoading, isError } = usePatient(id!);
+  const { alerts } = usePatientAlerts(patient);
 
   if (isLoading) {
     return (
@@ -103,6 +106,8 @@ export function PatientDetailContent() {
         </div>
 
       </div>
+
+      {alerts.length > 0 && <AlertBanner alerts={alerts} />}
 
       <Tabs defaultValue="resumen">
         <TabsList className="mb-4">
