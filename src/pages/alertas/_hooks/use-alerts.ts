@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { alertsApi } from "@/lib/api";
-import type { Alert } from "@/types";
+import type { Alert, CreateAlertRequest } from "@/types";
 
 type AlertFilter = "ACTIVE" | "RESOLVED" | "all";
 
@@ -10,6 +10,16 @@ export function useAlerts(filter: AlertFilter = "all") {
     queryFn: () =>
       alertsApi.list(filter !== "all" ? { status: filter } : undefined),
     staleTime: 15 * 1000,
+  });
+}
+
+export function useCreateAlert() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateAlertRequest) => alertsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    },
   });
 }
 
