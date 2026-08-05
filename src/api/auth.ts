@@ -1,6 +1,6 @@
 import type { components } from "./schema"
 import { api } from "./client"
-import { setAccessToken } from "@/lib/api-client"
+import { setAccessToken } from "@/lib/auth-session"
 
 export type AuthUser = components["schemas"]["AuthenticatedUserResponseDto"]
 export type LoginCredentials = components["schemas"]["LoginDto"]

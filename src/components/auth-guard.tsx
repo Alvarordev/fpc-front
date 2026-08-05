@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect } from "react"
-import { getAccessToken, isAccessTokenExpired } from "@/lib/api-client"
+import { getAccessToken, isAccessTokenExpired } from "@/lib/auth-session"
 import { useAuthStore } from "@/store/auth-store"
 
 interface AuthGuardProps {

@@ -59,10 +59,10 @@ async function login() {
 
 async function fetchAll(token) {
   console.log("[fetch] Loading patients, agents, health-centers...");
-  const [patients, agents, hospitals] = await Promise.all([
-    apiFetch(token, "/api/patients"),
+  const [{ data: patients }, agents, hospitals] = await Promise.all([
+    apiFetch(token, "/patients?limit=1000"),
     apiFetch(token, "/agents"),
-    apiFetch(token, "/api/health-centers"),
+    apiFetch(token, "/health-centers"),
   ]);
 
   const rebagliati = hospitals.find((h) =>
@@ -82,31 +82,31 @@ async function fetchAll(token) {
   };
 }
 
-// ─── Create a contact (needed for diagnosis linking) ────────────────────────
+// ─── Create a follow-up (needed for diagnosis linking) ──────────────────────
 
-async function createContact(token, patientId, agentId, date, purpose, notes) {
+async function createFollowUp(token, patientId, agentId, date, purpose, notes) {
   const scheduledAt = `${date}T10:00:00Z`;
   const completedAt = `${date}T10:15:00Z`;
-  const contact = await apiFetch(token, "/api/contacts", {
+  const followUp = await apiFetch(token, "/follow-ups", {
     method: "POST",
     body: JSON.stringify({
-      patientId,
+      subjectPatientId: patientId,
+      interlocutorId: patientId,
       agentId,
       type: "CALL",
-      status: "COMPLETED",
       purpose,
       scheduledAt,
       completedAt,
       notes: notes || null,
     }),
   });
-  return contact.id;
+  return followUp.id;
 }
 
 // ─── Add a diagnosis record ─────────────────────────────────────────────────
 
-async function addDiagnosis(token, patientId, contactId, diagnosis) {
-  await apiFetch(token, `/api/patients/${patientId}/diagnoses`, {
+async function addDiagnosis(token, patientId, diagnosis) {
+  await apiFetch(token, `/patients/${patientId}/diagnoses`, {
     method: "POST",
     body: JSON.stringify(diagnosis),
   });
@@ -140,18 +140,18 @@ async function main() {
 
   // Pick 10 distinct women (avoid ones that already have Cáncer de mama)
   const mamaCandidates = women.filter((p) => {
-    const currentDx = p.diagnoses?.find((d) => d.isCurrent)?.diagnosis || "";
+    const currentDx = p.currentDiagnosis?.diagnosis || "";
     return !currentDx.toLowerCase().includes("mama");
   });
 
   const toMama = mamaCandidates.slice(0, 10);
 
   console.log(`[mama] Changing ${toMama.length} patients to Cáncer de mama:`);
-  toMama.forEach((p) => console.log(`  - ${p.fullName} (current: ${p.diagnoses?.[0]?.diagnosis || "none"})`));
+  toMama.forEach((p) => console.log(`  - ${p.fullName} (current: ${p.currentDiagnosis?.diagnosis || "none"})`));
 
   // ── 2. Pick 5 for Rebagliati ──
   const rebagliatiCandidates = patients.filter((p) => {
-    const currentHospId = p.diagnoses?.find((d) => d.isCurrent)?.healthCenterId;
+    const currentHospId = p.currentDiagnosis?.healthCenterId;
     return currentHospId !== rebagliatiId;
   });
 
@@ -194,29 +194,28 @@ async function main() {
     console.log(`[${idx}/${allUpdates.size}] ${p.fullName}`);
 
     try {
-      // Create contact for this diagnosis update
+      // Create the follow-up this diagnosis update is linked to
       const purpose = info.mama ? "FOLLOW_UP" : "ENROLLMENT";
       const notes = info.mama
         ? "Actualización de diagnóstico: confirmado cáncer de mama."
         : "Reasignación a Hospital Rebagliati.";
-      const contactId = await createContact(accessToken, patientId, agentId, date, purpose, notes);
+      const followUpId = await createFollowUp(accessToken, patientId, agentId, date, purpose, notes);
       await delay(150);
 
       // Build diagnosis payload
-      const dxName = info.mama ? "Cáncer de mama" : (p.diagnoses?.find((d) => d.isCurrent)?.diagnosis || "Cáncer de mama");
-      const hospId = info.rebagliati ? rebagliatiId : (p.diagnoses?.find((d) => d.isCurrent)?.healthCenterId || rebagliatiId);
+      const dxName = info.mama ? "Cáncer de mama" : (p.currentDiagnosis?.diagnosis || "Cáncer de mama");
+      const hospId = info.rebagliati ? rebagliatiId : (p.currentDiagnosis?.healthCenterId || rebagliatiId);
       const stage = randomItem(stages);
 
-      await addDiagnosis(accessToken, patientId, contactId, {
+      await addDiagnosis(accessToken, patientId, {
+        followUpId,
         diagnosis: dxName,
         cancerStage: stage,
         diagnosisDate: date,
         healthCenterId: hospId,
-        isCurrent: true,
         hasMedicalReport: true,
         symptomLeadingToCheckup: "Bulto palpable en seno",
         diagnosisSpecialty: "ONCOLOGY",
-        contactId,
       });
 
       const flags = [];
@@ -233,18 +232,18 @@ async function main() {
     await delay(300);
   }
 
-  // ── 4. Add historical contacts to ALL patients (date dispersion) ──
-  console.log(`\n[dates] Adding historical FOLLOW_UP contacts to 15 random patients for timeline dispersion...`);
+  // ── 4. Add historical follow-ups to ALL patients (date dispersion) ──
+  console.log(`\n[dates] Adding historical FOLLOW_UP entries to 15 random patients for timeline dispersion...`);
 
   const shuffled = [...patients].sort(() => Math.random() - 0.5);
   const forHistory = shuffled.slice(0, 15);
   const purposes = ["FOLLOW_UP", "FOLLOW_UP", "FOLLOW_UP", "PSYCHOONCOLOGY_REFERRAL", "ENROLLMENT"];
-  const contactDates = [
+  const followUpDates = [
     "2024-03-10", "2024-06-15", "2024-09-20", "2024-12-01",
     "2025-02-14", "2025-05-08", "2025-08-22", "2025-10-15",
     "2026-01-08", "2026-02-20", "2026-04-05",
   ];
-  const contactNotes = [
+  const followUpNotes = [
     "Seguimiento rutinario. Paciente estable.",
     "Control post-tratamiento. Sin novedades.",
     "Llamada de seguimiento mensual.",
@@ -255,12 +254,12 @@ async function main() {
 
   let historyAdded = 0;
   for (const [i, p] of forHistory.entries()) {
-    const date = contactDates[i % contactDates.length];
+    const date = followUpDates[i % followUpDates.length];
     const purpose = randomItem(purposes);
-    const notes = randomItem(contactNotes);
+    const notes = randomItem(followUpNotes);
 
     try {
-      await createContact(accessToken, p.id, agentId, date, purpose, notes);
+      await createFollowUp(accessToken, p.id, agentId, date, purpose, notes);
       historyAdded++;
       await delay(150);
     } catch (e) {
@@ -270,7 +269,7 @@ async function main() {
 
   console.log(`\n=== UPDATE COMPLETE ===`);
   console.log(`Diagnosis updates: ${updated}`);
-  console.log(`Historical contacts added: ${historyAdded}`);
+  console.log(`Historical follow-ups added: ${historyAdded}`);
   console.log(`Errors: ${errors}`);
 }
 

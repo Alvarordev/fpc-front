@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch"
-import { getAccessToken } from "@/lib/api-client"
+import { expireAuthSession, getAccessToken } from "@/lib/auth-session"
 import type { paths } from "./schema"
 
 export const api = createClient<paths>({
@@ -22,5 +22,13 @@ api.use({
     headers.set("Authorization", `Bearer ${accessToken}`)
 
     return new Request(request, { headers })
+  },
+  onResponse({ request, response }) {
+    // /auth/* handles its own error states (invalid credentials, failed refresh).
+    if (response.status === 401 && !new URL(request.url).pathname.startsWith("/auth/")) {
+      expireAuthSession()
+    }
+
+    return response
   },
 })

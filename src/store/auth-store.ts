@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { authApi } from "@/api/auth"
-import { clearAccessToken, registerAuthExpiredHandler } from "@/lib/api-client"
+import { clearAccessToken, registerAuthExpiredHandler } from "@/lib/auth-session"
 import type { LoginRequest, User } from "@/types"
 
 interface AuthState {

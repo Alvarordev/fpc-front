@@ -75,8 +75,8 @@ async function fetchResources(token) {
   console.log("[fetch] Getting agents, volunteers, hospitals...");
   const [agents, volunteers, hospitals] = await Promise.all([
     apiFetch(token, "/agents"),
-    apiFetch(token, "/api/volunteers"),
-    apiFetch(token, "/api/health-centers"),
+    apiFetch(token, "/volunteers"),
+    apiFetch(token, "/health-centers"),
   ]);
 
   const activeVolunteers = volunteers.filter((v) => v.isActive);
@@ -107,17 +107,24 @@ async function fetchResources(token) {
 // ─── Enrollment ─────────────────────────────────────────────────────────────
 
 async function enrollPatient(token, agentId, hospital, patient) {
+  const startTime = `${patient.enrollmentDate}T${String(randomInt(8, 11)).padStart(2, "0")}:00:00Z`;
+  const endTime = `${patient.enrollmentDate}T${String(randomInt(16, 18)).padStart(2, "0")}:00:00Z`;
+
   const body = {
-    patientId: null,
-    patientData: {
+    patient: {
       fullName: patient.fullName,
       dni: patient.dni,
       birthDate: patient.birthDate,
       primaryPhone: patient.primaryPhone,
-      secondaryPhone: patient.secondaryPhone || null,
+      secondaryPhone: patient.secondaryPhone || undefined,
       hasWhatsapp: patient.hasWhatsapp ?? true,
-      role: "PATIENT",
     },
+    followUp: {
+      type: "CALL",
+      agentId,
+      completedAt: endTime,
+    },
+    affiliationType: "SELF",
     details: {
       currentAddress: patient.address,
       currentDistrict: patient.district,
@@ -126,51 +133,43 @@ async function enrollPatient(token, agentId, hospital, patient) {
       educationLevel: patient.educationLevel || "SECONDARY",
       nativeLanguage: patient.nativeLanguage || "Español",
       requiresTranslation: patient.requiresTranslation ?? false,
-      emergencyContactName: patient.emergencyContactName || null,
-      emergencyContactPhone: patient.emergencyContactPhone || null,
+      emergencyContactName: patient.emergencyContactName || undefined,
+      emergencyContactPhone: patient.emergencyContactPhone || undefined,
     },
-    insurance: patient.insurance
+    ...(patient.insurance
       ? {
-          insuranceType: patient.insurance,
-          epsProvider: patient.insurance === "EPS" ? randomItem(["PACIFICO", "RIMAC", "MAPFRE"]) : null,
-          isCurrent: true,
-          startDate: patient.enrollmentDate,
+          insurance: {
+            insuranceType: patient.insurance,
+            epsProvider: patient.insurance === "EPS" ? randomItem(["PACIFICO", "RIMAC", "MAPFRE"]) : undefined,
+          },
         }
-      : null,
+      : {}),
     diagnosis: {
       diagnosis: patient.primaryDiagnosis.name,
       cancerStage: patient.primaryDiagnosis.stage || "UNKNOWN",
       diagnosisDate: patient.primaryDiagnosis.diagnosisDate || patient.enrollmentDate,
       healthCenterId: hospital.id,
-      isCurrent: true,
       hasMedicalReport: randomBool(),
-      symptomLeadingToCheckup: patient.primaryDiagnosis.symptom || null,
+      symptomLeadingToCheckup: patient.primaryDiagnosis.symptom || undefined,
       diagnosisSpecialty: patient.primaryDiagnosis.specialty || "ONCOLOGY",
     },
-    treatment: patient.primaryTreatment
+    ...(patient.primaryTreatment
       ? {
-          diagnosisId: "00000000-0000-0000-0000-000000000000",
-          treatmentType: patient.primaryTreatment.type,
-          treatmentFrequency: patient.primaryTreatment.frequency || null,
-          healthCenterId: hospital.id,
-          startDate: patient.primaryTreatment.startDate || patient.enrollmentDate,
-          isCurrent: true,
+          treatment: {
+            treatmentType: patient.primaryTreatment.type,
+            treatmentFrequency: patient.primaryTreatment.frequency || undefined,
+            healthCenterId: hospital.id,
+          },
         }
-      : null,
-    enrollmentMetadata: {
-      caseComments: null,
-      startTime: `${patient.enrollmentDate}T${String(randomInt(8, 11)).padStart(2, "0")}:00:00Z`,
-      endTime: `${patient.enrollmentDate}T${String(randomInt(16, 18)).padStart(2, "0")}:00:00Z`,
-      dataPolicyAccepted: true,
-      informedConsentAccepted: true,
-      isOncologicalPatient: true,
-      surveyAccepted: true,
-      agentId,
-      affiliationType: "PATIENT",
-    },
+      : {}),
+    isOncologicalPatient: true,
+    surveyAccepted: true,
+    caseComments: undefined,
+    callStartedAt: startTime,
+    callEndedAt: endTime,
   };
 
-  const data = await apiFetch(token, "/api/patients/enroll", {
+  const data = await apiFetch(token, "/enrollments", {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -179,54 +178,52 @@ async function enrollPatient(token, agentId, hospital, patient) {
 
 // ─── Add extra diagnosis ────────────────────────────────────────────────────
 
-async function addDiagnosis(token, patientId, contactId, hospitalId, diagnosis, date) {
-  await apiFetch(token, `/api/patients/${patientId}/diagnoses`, {
+async function addDiagnosis(token, patientId, followUpId, hospitalId, diagnosis, date) {
+  await apiFetch(token, `/patients/${patientId}/diagnoses`, {
     method: "POST",
     body: JSON.stringify({
+      followUpId,
       diagnosis: diagnosis.name,
       cancerStage: diagnosis.stage || "UNKNOWN",
       diagnosisDate: diagnosis.diagnosisDate || date,
       healthCenterId: hospitalId,
-      isCurrent: diagnosis.isCurrent ?? false,
       hasMedicalReport: randomBool(),
       symptomLeadingToCheckup: diagnosis.symptom || null,
       diagnosisSpecialty: diagnosis.specialty || "ONCOLOGY",
-      contactId,
     }),
   });
 }
 
 // ─── Add extra treatment ────────────────────────────────────────────────────
 
-async function addTreatment(token, patientId, contactId, diagnosisId, hospitalId, treatment, date) {
-  await apiFetch(token, `/api/patients/${patientId}/treatments`, {
+async function addTreatment(token, patientId, followUpId, diagnosisId, hospitalId, treatment, date) {
+  await apiFetch(token, `/patients/${patientId}/treatments`, {
     method: "POST",
     body: JSON.stringify({
+      followUpId,
       diagnosisId,
       treatmentType: treatment.type,
       treatmentFrequency: treatment.frequency || null,
       healthCenterId: hospitalId,
       startDate: treatment.startDate || date,
-      isCurrent: treatment.isCurrent ?? true,
-      contactId,
     }),
   });
 }
 
-// ─── Create contact ─────────────────────────────────────────────────────────
+// ─── Create follow-up ───────────────────────────────────────────────────────
 
-async function createContact(token, patientId, agentId, contact) {
-  const data = await apiFetch(token, "/api/contacts", {
+async function createFollowUp(token, patientId, agentId, followUp) {
+  const data = await apiFetch(token, "/follow-ups", {
     method: "POST",
     body: JSON.stringify({
-      patientId,
+      subjectPatientId: patientId,
+      interlocutorId: patientId,
       agentId,
-      type: contact.type,
-      status: contact.status,
-      purpose: contact.purpose,
-      scheduledAt: contact.scheduledAt,
-      completedAt: contact.completedAt || null,
-      notes: contact.notes || null,
+      type: followUp.type,
+      purpose: followUp.purpose,
+      scheduledAt: followUp.scheduledAt,
+      completedAt: followUp.completedAt || null,
+      notes: followUp.notes || null,
     }),
   });
   return data;
@@ -235,7 +232,7 @@ async function createContact(token, patientId, agentId, contact) {
 // ─── Create availability slot ───────────────────────────────────────────────
 
 async function createAvailability(token, volunteerId, date, startTime, endTime) {
-  const data = await apiFetch(token, `/api/volunteers/${volunteerId}/availability`, {
+  const data = await apiFetch(token, `/volunteers/${volunteerId}/availability`, {
     method: "POST",
     body: JSON.stringify({ date, startTime, endTime }),
   });
@@ -256,38 +253,31 @@ async function createAppointment(token, appointment) {
     return null;
   }
 
-  await apiFetch(token, "/api/psychooncology-appointments", {
+  const created = await apiFetch(token, "/psychooncology-appointments", {
     method: "POST",
     body: JSON.stringify({
       patientId: appointment.patientId,
-      volunteerId: appointment.volunteerId,
-      contactId: appointment.contactId,
+      followUpId: appointment.followUpId,
       availabilityId,
-      sessionNumber: appointment.sessionNumber,
       isAdditionalSession: appointment.isAdditionalSession ?? false,
       modality: randomItem(["CALL", "VIDEO_CALL"]),
-      status: appointment.status,
-      scheduledAt: appointment.scheduledAt,
-      completedAt: appointment.status === "COMPLETED" ? (appointment.completedAt || appointment.scheduledAt) : null,
-      topicAddressed: appointment.topicAddressed || null,
-      sessionDetails: appointment.sessionDetails || null,
-      additionalObservations: appointment.additionalObservations || null,
-      recommendations: appointment.recommendations || null,
     }),
   });
-}
 
-// ─── Activate patient ───────────────────────────────────────────────────────
-
-async function activatePatient(token, patientId) {
-  try {
-    await apiFetch(token, `/api/patients/${patientId}/status`, {
+  if (appointment.status === "COMPLETED") {
+    await apiFetch(token, `/psychooncology-appointments/${created.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ newStatus: "ACTIVE" }),
+      body: JSON.stringify({
+        status: "COMPLETED",
+        topicAddressed: appointment.topicAddressed || undefined,
+        sessionDetails: appointment.sessionDetails || undefined,
+        additionalObservations: appointment.additionalObservations || undefined,
+        recommendations: appointment.recommendations || undefined,
+      }),
     });
-  } catch {
-    // Non-critical
   }
+
+  return created;
 }
 
 // ─── Main seeder ────────────────────────────────────────────────────────────
@@ -2351,17 +2341,17 @@ async function seed() {
       // ---- ENROLL ----
       console.log("  Enrolling...");
       const enrolled = await enrollPatient(accessToken, agentId, hospital, patient);
-      const patientId = enrolled.id;
-      const primaryDiagnosisId = enrolled.diagnoses?.[0]?.id || null;
+      const patientId = enrolled.patientId;
       console.log(`  -> patientId: ${patientId}`);
 
-      // ---- ACTIVATE ----
-      await activatePatient(accessToken, patientId);
+      // Fetch the diagnosis created as part of enrollment (needed to link extra treatments).
+      const diagnoses = await apiFetch(accessToken, `/patients/${patientId}/diagnoses`);
+      const primaryDiagnosisId = diagnoses.find((d) => d.isCurrent)?.id || diagnoses[0]?.id || null;
 
-      // ---- CONTACTS ----
+      // ---- FOLLOW-UPS ----
       for (const c of patient.contacts) {
-        const contact = await createContact(accessToken, patientId, agentId, c);
-        c._id = contact.id;
+        const followUp = await createFollowUp(accessToken, patientId, agentId, c);
+        c._id = followUp.id;
         totalContacts++;
         await delay(150);
       }
@@ -2369,9 +2359,9 @@ async function seed() {
       // ---- EXTRA DIAGNOSES ----
       if (patient.extraDiagnoses && patient.extraDiagnoses.length > 0) {
         for (const dx of patient.extraDiagnoses) {
-          const contactId = patient.contacts.length > 0 ? randomItem(patient.contacts)._id : null;
-          if (contactId) {
-            await addDiagnosis(accessToken, patientId, contactId, hospital.id, dx, patient.enrollmentDate);
+          const followUpId = patient.contacts.length > 0 ? randomItem(patient.contacts)._id : null;
+          if (followUpId) {
+            await addDiagnosis(accessToken, patientId, followUpId, hospital.id, dx, patient.enrollmentDate);
             totalDiagnoses++;
             await delay(150);
           }
@@ -2379,12 +2369,11 @@ async function seed() {
       }
 
       // ---- EXTRA TREATMENTS ----
-      if (patient.extraTreatments && patient.extraTreatments.length > 0) {
-        const diagId = primaryDiagnosisId || "00000000-0000-0000-0000-000000000000";
+      if (patient.extraTreatments && patient.extraTreatments.length > 0 && primaryDiagnosisId) {
         for (const tx of patient.extraTreatments) {
-          const contactId = patient.contacts.length > 0 ? randomItem(patient.contacts)._id : null;
-          if (contactId) {
-            await addTreatment(accessToken, patientId, contactId, diagId, hospital.id, tx, patient.enrollmentDate);
+          const followUpId = patient.contacts.length > 0 ? randomItem(patient.contacts)._id : null;
+          if (followUpId) {
+            await addTreatment(accessToken, patientId, followUpId, primaryDiagnosisId, hospital.id, tx, patient.enrollmentDate);
             totalTreatments++;
             await delay(150);
           }
@@ -2396,13 +2385,13 @@ async function seed() {
         for (const appt of patient.appointments) {
           const volunteerIdx = Math.min(appt.volunteerIdx || 0, volunteers.length - 1);
           const volunteer = volunteers[volunteerIdx];
-          const contactId = patient.contacts.length > 0 ? randomItem(patient.contacts)._id : null;
-          if (volunteer && contactId) {
+          const followUpId = patient.contacts.length > 0 ? randomItem(patient.contacts)._id : null;
+          if (volunteer && followUpId) {
             try {
               await createAppointment(accessToken, {
                 patientId,
                 volunteerId: volunteer.id,
-                contactId,
+                followUpId,
                 ...appt,
               });
               totalAppointments++;

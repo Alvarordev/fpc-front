@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => {
   const proxy = apiTarget
     ? {
         "/auth": { target: apiTarget, changeOrigin: true },
-        "/api": { target: apiTarget, changeOrigin: true },
         "/users": { target: apiTarget, changeOrigin: true },
         "/agents": { target: apiTarget, changeOrigin: true },
       }
