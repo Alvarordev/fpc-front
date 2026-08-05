@@ -1,6 +1,8 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import type {
   Alert,
+  AlertEvent,
+  AddAlertEventRequest,
   AlertStatus,
   CreateAlertRequest,
   UpdateAlertRequest,
@@ -25,6 +27,10 @@ export const alertsApi = {
     return apiGet<Alert>(`/api/alerts/${id}`);
   },
 
+  getByTicketNumber(ticketNumber: string): Promise<{ alert: Alert; events: AlertEvent[]; totalTimelineEvents: number }> {
+    return apiGet(`/api/alerts/ticket/${ticketNumber}`);
+  },
+
   create(data: CreateAlertRequest): Promise<Alert> {
     return apiPost<Alert>("/api/alerts", data);
   },
@@ -39,5 +45,17 @@ export const alertsApi = {
 
   resolve(id: string, data: ResolveAlertRequest): Promise<Alert> {
     return apiPost<Alert>(`/api/alerts/${id}/resolve`, data);
+  },
+
+  getEvents(id: string): Promise<AlertEvent[]> {
+    return apiGet<AlertEvent[]>(`/api/alerts/${id}/events`);
+  },
+
+  addEvent(id: string, data: AddAlertEventRequest): Promise<AlertEvent> {
+    return apiPost<AlertEvent>(`/api/alerts/${id}/events`, data);
+  },
+
+  generateAISummary(id: string): Promise<Alert> {
+    return apiPost<Alert>(`/api/alerts/${id}/ai-summary`);
   },
 };

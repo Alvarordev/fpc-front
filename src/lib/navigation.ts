@@ -22,9 +22,10 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       ],
     },
     {
-      label: "Seguimiento",
+      label: "Operaciones",
       items: [
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Citas Médicas", url: "/citas", icon: CalendarDays },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -53,6 +54,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Operaciones",
       items: [
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Citas Médicas", url: "/citas", icon: CalendarDays },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -68,6 +70,7 @@ export const pathTitles: Record<string, string> = {
   "/disponibilidad": "Disponibilidad",
   "/voluntarios": "Voluntarios",
   "/alertas": "Alertas",
+  "/citas": "Citas Médicas",
   "/hospitales": "Hospitales",
   "/usuarios": "Usuarios",
 };

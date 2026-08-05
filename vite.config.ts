@@ -33,6 +33,10 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    server: proxy ? { proxy } : undefined,
+    server: {
+      port: 5173,
+      strictPort: true,
+      ...(proxy ? { proxy } : {}),
+    },
   };
 });

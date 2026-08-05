@@ -299,16 +299,46 @@ export interface TreatmentRecordResponse {
 export interface MedicalAppointmentResponse {
   id: string;
   patientId: string;
+  patientFullName?: string;
+  patientDni?: string | null;
+  patientPhone?: string | null;
   healthCenterId: string | null;
   healthCenterName: string | null;
   specialty: string | null;
   appointmentDate: string | null;
+  appointmentTime?: string | null;
   nextAppointmentDate: string | null;
   hasReferralSheet: boolean;
   referredTo: string | null;
   difficulties: string | null;
+  isFirstConsultation?: boolean;
   createdAt: string;
   contact: ContactSummary;
+}
+
+export interface CreateStandaloneAppointmentRequest {
+  patientId: string;
+  healthCenterId?: string | null;
+  specialty?: string | null;
+  appointmentDate?: string | null;
+  appointmentTime?: string | null;
+  nextAppointmentDate?: string | null;
+  hasReferralSheet?: boolean;
+  referredTo?: string | null;
+  difficulties?: string | null;
+  isFirstConsultation?: boolean;
+}
+
+export interface UpdateMedicalAppointmentRequest {
+  healthCenterId?: string | null;
+  specialty?: string | null;
+  appointmentDate?: string | null;
+  appointmentTime?: string | null;
+  nextAppointmentDate?: string | null;
+  hasReferralSheet?: boolean;
+  referredTo?: string | null;
+  difficulties?: string | null;
+  isFirstConsultation?: boolean;
 }
 
 export interface SisAffiliationResponse {
@@ -752,16 +782,54 @@ export interface UpdateHealthCenterRequest {
 // Alerts
 // ============================================================
 
+export type AlertSeverity = "HIGH" | "MEDIUM" | "LOW";
+
+export type AlertEventType =
+  | "CREATED"
+  | "STATUS_CHANGED"
+  | "DERIVED"
+  | "COMMENT"
+  | "AI_SUMMARY_GENERATED"
+  | "RESOLVED";
+
+export interface AlertEvent {
+  id: string;
+  alertId: string;
+  agentId: string | null;
+  agentName: string | null;
+  eventType: AlertEventType;
+  title: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface AddAlertEventRequest {
+  agentId?: string | null;
+  title: string;
+  description?: string | null;
+}
+
 export interface Alert {
   id: string;
+  ticketNumber?: string | null;
   healthCenterId: string;
   healthCenterName: string;
   contactId: string;
+  patientId?: string | null;
+  patientFullName?: string | null;
+  patientDni?: string | null;
+  patientPhone?: string | null;
   createdByAgentId: string;
   createdByAgentName: string;
   title: string;
   description: string;
   status: AlertStatus;
+  severity: AlertSeverity;
+  category: string;
+  underReview: boolean;
+  derivedTo: string | null;
+  derivationNotes: string | null;
+  aiSummary: string | null;
   resolvedAt: string | null;
   resolvedByAgentId: string | null;
   resolvedByAgentName: string | null;
@@ -771,8 +839,9 @@ export interface Alert {
 
 export interface CreateAlertRequest {
   healthCenterId: string;
-  contactId: string;
-  createdByAgentId: string;
+  contactId?: string | null;
+  patientId?: string | null;
+  createdByAgentId?: string | null;
   title: string;
   description: string;
 }
