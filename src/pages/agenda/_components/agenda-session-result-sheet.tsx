@@ -24,10 +24,7 @@ import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments
 import { toast } from "sonner";
 import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments";
 import type { ReferralType } from "@/types";
-import {
-  DistressThermometer,
-  type DistressFormValues,
-} from "./distress-thermometer";
+import { DistressThermometer } from "./distress-thermometer";
 
 const STORAGE_PREFIX = "agenda-session-form-";
 
@@ -176,7 +173,7 @@ export function AgendaSessionResultSheet({
     handleOpenChange(false);
   }
 
-  function handleTestSubmit(_testValues: DistressFormValues) {
+  function handleTestSubmit() {
     if (savedSessionValues && appointment) {
       completeMutation.mutate({
         id: appointment.id,

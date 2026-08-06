@@ -33,8 +33,8 @@ export function Step2Consent() {
         <div className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Afiliación para usted o para un familiar? <span className="text-destructive">*</span></Label>
           <Select
-            value={meta.affiliationType ?? "" as any}
-            onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, affiliationType: v }, patientData: { ...draft.patientData, role: v === "PATIENT" ? "PATIENT" : "COMPANION" } })}
+            value={meta.affiliationType ?? ""}
+            onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, affiliationType: v as "PATIENT" | "FAMILY" | undefined }, patientData: { ...draft.patientData, role: v === "PATIENT" ? "PATIENT" : "COMPANION" } })}
           >
             <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
             <SelectContent><SelectItem value="PATIENT">Para mí — soy el paciente</SelectItem><SelectItem value="FAMILY">Para un tercero — familiar o amigo</SelectItem></SelectContent>

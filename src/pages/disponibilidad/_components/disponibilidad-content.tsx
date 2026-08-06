@@ -48,7 +48,7 @@ export function DisponibilidadContent() {
     }
   }
 
-  function handleDayClick(date: Date, _anchor: HTMLElement) {
+  function handleDayClick(date: Date) {
     setSelectedDate(date.toISOString().slice(0, 10));
     setSelectedWeekday(date.getDay());
     setSheetOpen(true);
