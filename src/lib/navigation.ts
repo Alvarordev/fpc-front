@@ -8,6 +8,7 @@ import {
   Building2,
   Headset,
   ShieldUser,
+  Calendar,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -26,6 +27,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Seguimiento",
       items: [
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Citas Médicas", url: "/citas", icon: Calendar },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -55,6 +57,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Call center", url: "/callcenter", icon: Headset },
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Citas Médicas", url: "/citas", icon: Calendar },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -80,6 +83,7 @@ export const pathTitles: Record<string, string> = {
   "/disponibilidad": "Disponibilidad",
   "/voluntarios": "Voluntarios",
   "/alertas": "Alertas",
+  "/citas": "Citas Médicas",
   "/hospitales": "Hospitales",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",
