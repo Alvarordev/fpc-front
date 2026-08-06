@@ -22,6 +22,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/alerts/ticket/{ticketNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Look up an alert by ticket number (WhatsApp bot tracking)
+         * @description Unauthenticated on purpose so the WhatsApp bot can resolve a ticket for the patient who reported it. Returns patient name, DNI, and phone number without requiring a session — do not link this from anywhere a bystander could reach.
+         */
+        get: operations["AlertsController_findByTicket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/alerts/{id}": {
         parameters: {
             query?: never;
@@ -33,10 +53,15 @@ export interface paths {
         get: operations["AlertsController_findOne"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an alert */
+        delete: operations["AlertsController_remove"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update an alert
+         * @description Patch semantics: omitted fields are left unchanged. Explicit null is only accepted for derivedTo and derivationNotes. Use PATCH /alerts/:id/resolve to resolve an alert — setting status to RESOLVED here is rejected.
+         */
+        patch: operations["AlertsController_update"];
         trace?: never;
     };
     "/alerts/{id}/resolve": {
@@ -54,6 +79,47 @@ export interface paths {
         head?: never;
         /** Resolve an alert */
         patch: operations["AlertsController_resolve"];
+        trace?: never;
+    };
+    "/alerts/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List an alert timeline events */
+        get: operations["AlertsController_findEvents"];
+        put?: never;
+        /**
+         * Add a comment event to an alert timeline
+         * @description The event type is always COMMENT; it cannot be set.
+         */
+        post: operations["AlertsController_addEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/{id}/ai-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate an executive summary for an alert
+         * @description Deterministic Spanish template, not a model call. Re-running overwrites the stored summary and appends another AI_SUMMARY_GENERATED timeline event.
+         */
+        post: operations["AlertsController_aiSummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/call-center/workload": {
@@ -349,6 +415,50 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/medical-appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List medical appointments across all patients
+         * @description Returns only current (non-superseded) appointments by default. Volunteers only see appointments for patients they are assigned to.
+         */
+        get: operations["MedicalAppointmentsController_findAll"];
+        put?: never;
+        /**
+         * Create a standalone medical appointment
+         * @description Reuses the patient's most recent follow-up if one exists, otherwise creates a minimal one.
+         */
+        post: operations["MedicalAppointmentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/medical-appointments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a medical appointment
+         * @description Creates a new current version and marks the previous one as superseded; the returned id differs from the path id. specialty cannot be changed — create a new appointment instead. changeReason is required.
+         */
+        patch: operations["MedicalAppointmentsController_update"];
         trace?: never;
     };
     "/patients": {
@@ -959,6 +1069,10 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         CreateAlertDto: {
+            /** @enum {string} */
+            severity?: "HIGH" | "MEDIUM" | "LOW";
+            /** @enum {string} */
+            category?: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER";
             /** Format: uuid */
             healthCenterId: string;
             /** Format: uuid */
@@ -976,6 +1090,8 @@ export interface components {
         AlertResponseDto: {
             /** Format: uuid */
             id: string;
+            /** @description Auto-generated on create, e.g. ALT-2026-1001. Null only for legacy rows that predate ticketing. */
+            ticketNumber: string | null;
             /** Format: uuid */
             healthCenterId: string;
             healthCenterName: string;
@@ -984,10 +1100,23 @@ export interface components {
             /** Format: uuid */
             createdById: string;
             createdByName: string;
+            /** Format: uuid */
+            patientId: string;
+            patientFullName: string;
+            patientDni: string | null;
+            patientPhone: string;
             title: string;
             description: string;
             /** @enum {string} */
             status: "ACTIVE" | "RESOLVED";
+            /** @enum {string} */
+            severity: "HIGH" | "MEDIUM" | "LOW";
+            /** @enum {string} */
+            category: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER";
+            underReview: boolean;
+            derivedTo: string | null;
+            derivationNotes: string | null;
+            aiSummary: string | null;
             /** Format: date-time */
             resolvedAt: string | null;
             /** Format: uuid */
@@ -999,6 +1128,47 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        AlertEventResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            alertId: string;
+            /** Format: uuid */
+            agentId: string | null;
+            agentName: string | null;
+            /** @enum {string} */
+            eventType: "CREATED" | "STATUS_CHANGED" | "DERIVED" | "COMMENT" | "AI_SUMMARY_GENERATED" | "RESOLVED";
+            title: string;
+            description: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AlertTicketLookupResponseDto: {
+            alert: components["schemas"]["AlertResponseDto"];
+            events: components["schemas"]["AlertEventResponseDto"][];
+            totalTimelineEvents: number;
+        };
+        UpdateAlertDto: {
+            title?: string | null;
+            description?: string | null;
+            /** Format: uuid */
+            healthCenterId?: string | null;
+            /** Format: uuid */
+            followUpId?: string | null;
+            /** @enum {string|null} */
+            status?: "ACTIVE" | "RESOLVED" | null;
+            underReview?: boolean | null;
+            derivedTo?: string | null;
+            derivationNotes?: string | null;
+            /** @enum {string|null} */
+            severity?: "HIGH" | "MEDIUM" | "LOW" | null;
+            /** @enum {string|null} */
+            category?: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER" | null;
+        };
+        CreateAlertEventDto: {
+            title: string;
+            description?: string;
         };
         CallCenterAgentDto: {
             /** Format: uuid */
@@ -1257,6 +1427,7 @@ export interface components {
             healthCenterId?: string;
             specialty: string;
             appointmentDate?: string;
+            appointmentTime?: string;
             nextAppointmentDate?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
@@ -1454,6 +1625,64 @@ export interface components {
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
             isActive?: boolean;
+        };
+        CreateMedicalAppointmentDto: {
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+            specialty: string;
+            appointmentDate?: string;
+            appointmentTime?: string;
+            nextAppointmentDate?: string;
+            hasReferralSheet?: boolean;
+            referredTo?: string;
+            difficulties?: string;
+            isFirstConsultation?: boolean;
+        };
+        MedicalAppointmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            patientFullName: string;
+            patientDni: string | null;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName: string | null;
+            specialty: string;
+            /** Format: date */
+            appointmentDate: string | null;
+            /** @description HH:mm or HH:mm:ss */
+            appointmentTime: string | null;
+            /** Format: date */
+            nextAppointmentDate: string | null;
+            hasReferralSheet: boolean;
+            referredTo: string | null;
+            difficulties: string | null;
+            isFirstConsultation: boolean;
+            isCurrent: boolean;
+            changeReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        MedicalAppointmentListResponseDto: {
+            data: components["schemas"]["MedicalAppointmentResponseDto"][];
+            total: number;
+        };
+        UpdateMedicalAppointmentDto: {
+            /** Format: uuid */
+            healthCenterId?: string;
+            appointmentDate?: string;
+            appointmentTime?: string;
+            nextAppointmentDate?: string;
+            hasReferralSheet?: boolean;
+            referredTo?: string;
+            difficulties?: string;
+            isFirstConsultation?: boolean;
+            changeReason: string;
         };
         FollowUpTimelineEventDto: {
             /** Format: uuid */
@@ -1758,6 +1987,8 @@ export interface components {
             specialty: string;
             /** Format: date */
             appointmentDate: string | null;
+            /** @description HH:mm or HH:mm:ss */
+            appointmentTime: string | null;
             /** Format: date */
             nextAppointmentDate: string | null;
             hasReferralSheet: boolean;
@@ -1903,6 +2134,7 @@ export interface components {
             healthCenterId?: string;
             specialty: string;
             appointmentDate?: string;
+            appointmentTime?: string;
             nextAppointmentDate?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
@@ -2162,6 +2394,10 @@ export interface operations {
                 status?: "ACTIVE" | "RESOLVED";
                 healthCenterId?: string;
                 createdById?: string;
+                severity?: "HIGH" | "MEDIUM" | "LOW";
+                category?: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER";
+                underReview?: boolean;
+                ticketNumber?: string;
             };
             header?: never;
             path?: never;
@@ -2230,6 +2466,41 @@ export interface operations {
             };
         };
     };
+    AlertsController_findByTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertTicketLookupResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AlertsController_findOne: {
         parameters: {
             query?: never;
@@ -2257,6 +2528,99 @@ export interface operations {
                 content?: never;
             };
             /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAlertDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertResponseDto"];
+                };
+            };
+            /** @description A non-nullable field was set to null, or status was set to RESOLVED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator, agent, or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert, health center, or follow-up not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2314,6 +2678,129 @@ export interface operations {
             };
             /** @description Alert is already resolved */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_findEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertEventResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_addEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAlertEventDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertEventResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator, agent, or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_aiSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or agent role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3314,6 +3801,150 @@ export interface operations {
                         };
                     };
                 };
+            };
+        };
+    };
+    MedicalAppointmentsController_findAll: {
+        parameters: {
+            query?: {
+                patientId?: string;
+                specialty?: string;
+                healthCenterId?: string;
+                from?: string;
+                to?: string;
+                /** @description Include superseded (non-current) versions. Default false. */
+                includeHistory?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicalAppointmentListResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MedicalAppointmentsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMedicalAppointmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicalAppointmentResponseDto"];
+                };
+            };
+            /** @description Invalid payload, or the authenticated user has no agent profile */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MedicalAppointmentsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMedicalAppointmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicalAppointmentResponseDto"];
+                };
+            };
+            /** @description Invalid payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Medical appointment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
