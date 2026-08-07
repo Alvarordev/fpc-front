@@ -32,8 +32,11 @@ export function Step8Cierre() {
         ? agents.find((agent) => agent.userId === user.id)?.id
         : meta.assignedAgentId
       if (!agentId) throw new Error("Seleccione un agente responsable antes de finalizar")
-      if (meta.affiliationType === "FAMILY" && (!meta.nombreTercero?.trim() || !meta.telefonoTercero?.trim())) {
-        throw new Error("Ingrese el nombre y teléfono del familiar o acompañante")
+      if (
+        meta.affiliationType === "FAMILY" &&
+        (!draft.companion.fullName.trim() || !draft.companion.primaryPhone.trim() || !draft.companion.relationship?.trim())
+      ) {
+        throw new Error("Ingrese el nombre, teléfono y parentesco del familiar o acompañante")
       }
       const payload = buildEnrollmentPayload({ draft, agentId })
       await enrollmentsApi.create(payload)

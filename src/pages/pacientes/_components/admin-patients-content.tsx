@@ -17,6 +17,7 @@ import {
 export function AdminPatientsContent() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"UNENROLLED" | "ENROLLED" | null>(null);
+  const [roleFilter, setRoleFilter] = useState<"COMPANION" | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -33,8 +34,9 @@ export function AdminPatientsContent() {
       (p.dni && p.dni.includes(search));
 
     const matchesStatus = !statusFilter || p.status === statusFilter;
+    const matchesRole = !roleFilter || p.role === roleFilter;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
   async function handleProspectSubmit(values: AddProspectFormValues) {
@@ -93,6 +95,8 @@ export function AdminPatientsContent() {
         onSearchChange={setSearch}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        roleFilter={roleFilter}
+        onRoleFilterChange={setRoleFilter}
       />
 
       <PatientsTable

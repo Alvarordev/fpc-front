@@ -162,6 +162,7 @@ export function ScheduleFollowUpDialog({
             <div className="space-y-2">
               <Label>Agente responsable</Label>
               <Select
+                items={agents.map((agent) => ({ value: agent.id, label: agent.fullName }))}
                 value={selectedAgentId}
                 onValueChange={(value) => setValue("agentId", value ?? undefined, { shouldValidate: true })}
               >

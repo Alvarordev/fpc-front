@@ -81,6 +81,7 @@ export interface CreatePatientRequest {
   fullName: string
   dni?: string | null
   birthDate?: string | null
+  gender?: string | null
   primaryPhone: string
   secondaryPhone?: string | null
   hasWhatsapp?: boolean

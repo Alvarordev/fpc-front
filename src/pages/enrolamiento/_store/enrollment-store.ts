@@ -30,6 +30,18 @@ export type CategoriaClinica = "signos" | "diagnostico" | null;
 
 export type RejectionReason = "q3_no" | "q8_no";
 
+export interface CompanionDraft {
+  fullName: string;
+  primaryPhone: string;
+  secondaryPhone?: string;
+  dni?: string;
+  birthDate?: string;
+  gender?: string;
+  email?: string;
+  hasWhatsapp?: boolean;
+  relationship?: string;
+}
+
 export interface EnrollmentDraft {
   patientId: string | null;
   patientData: CreatePatientRequest;
@@ -41,7 +53,7 @@ export interface EnrollmentDraft {
   medicalAppointments: AddMedicalAppointmentRequest[];
   familyPreventionTalkInterests: FamilyPreventionTalkInterestRequest[];
   sisAffiliation: AddSisAffiliationRequest;
-  companions: never[];
+  companion: CompanionDraft;
   enrollmentMetadata: EnrollmentMetadataRequest & {
     startTime?: string;
     endTime?: string;
@@ -50,8 +62,6 @@ export interface EnrollmentDraft {
     surveyRating?: number;
     affiliationType?: string;
     isOncologicalPatient?: boolean;
-    nombreTercero?: string;
-    telefonoTercero?: string;
     assignedAgentId?: string;
   };
 }
@@ -69,11 +79,24 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   medicalAppointments: [],
   familyPreventionTalkInterests: [],
   sisAffiliation: { canAffiliate: true },
-  companions: [],
+  companion: { fullName: "", primaryPhone: "" },
   enrollmentMetadata: {},
 };
 
 function normalizeDraft(draft: Partial<EnrollmentDraft> | undefined): EnrollmentDraft {
+  // Legacy drafts (persisted before the companion step was expanded) stored the
+  // companion's name/phone as loose strings on enrollmentMetadata — migrate them
+  // into `companion` so in-progress work isn't lost.
+  const legacyMeta = draft?.enrollmentMetadata as
+    | (EnrollmentDraft["enrollmentMetadata"] & { nombreTercero?: string; telefonoTercero?: string })
+    | undefined;
+  const migratedCompanion: Partial<CompanionDraft> = {};
+  if (!draft?.companion && legacyMeta?.nombreTercero) migratedCompanion.fullName = legacyMeta.nombreTercero;
+  if (!draft?.companion && legacyMeta?.telefonoTercero) migratedCompanion.primaryPhone = legacyMeta.telefonoTercero;
+  const restMeta = { ...legacyMeta };
+  delete restMeta.nombreTercero;
+  delete restMeta.telefonoTercero;
+
   return {
     ...DEFAULT_DRAFT,
     ...draft,
@@ -86,10 +109,10 @@ function normalizeDraft(draft: Partial<EnrollmentDraft> | undefined): Enrollment
     medicalAppointments: draft?.medicalAppointments ?? [],
     familyPreventionTalkInterests: draft?.familyPreventionTalkInterests ?? [],
     sisAffiliation: { ...DEFAULT_DRAFT.sisAffiliation, ...draft?.sisAffiliation },
-    companions: [],
+    companion: { ...DEFAULT_DRAFT.companion, ...migratedCompanion, ...draft?.companion },
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
-      ...draft?.enrollmentMetadata,
+      ...restMeta,
     },
   };
 }

@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CreditCard, MapPin, Phone, GraduationCap, ShieldCheck, LogIn } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import type { InsuranceType, EpsProvider, EducationLevel } from "@/types"
+import { genderLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
+import { isMinor } from "../../_utils/patient-age"
 
 const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"; const ic="bg-card border"
 const sc="w-full bg-card border"
@@ -31,9 +33,10 @@ const NATIVE_LANGUAGES = [
 ] as const
 
 export function Step5Datos() {
-  const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
+  const { draft, updateDraft, nextStep, prevStep, goToStep } = useEnrollmentStore()
   const pd = draft.patientData; const d = draft.details; const ins = draft.insurance
   const meta = draft.enrollmentMetadata
+  const patientIsMinor = isMinor(pd.birthDate)
 
   const saved = meta.programEntryPoint
 
@@ -94,6 +97,23 @@ export function Step5Datos() {
           <div className="flex flex-col gap-2"><Label className={fl}>Fecha de nacimiento <span className="text-destructive">*</span></Label><Input type="date" className={ic} value={pd.birthDate??""} onChange={e=>updateDraft({patientData:{...pd,birthDate:e.target.value||null}})} /></div>
         </div>
         <div className="flex flex-col gap-2"><Label className={fl}>Nombre completo <span className="text-destructive">*</span></Label><Input placeholder="Tal como aparece en el DNI" className={ic} value={pd.fullName} onChange={e=>updateDraft({patientData:{...pd,fullName:e.target.value}})} /></div>
+        <div className="flex flex-col gap-2"><Label className={fl}>Género</Label>
+          <Select items={Object.entries(genderLabels).map(([value,label])=>({value,label}))} value={pd.gender??""} onValueChange={v=>updateDraft({patientData:{...pd,gender:v||null}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(genderLabels).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
+        {patientIsMinor && (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-700/80">Paciente menor de edad</p>
+            <p className="text-sm text-foreground/70">
+              Complete los datos del acompañante o tutor en el paso 3 (Identificación del Llamante).
+            </p>
+            <button
+              type="button"
+              onClick={() => goToStep(3)}
+              className="mt-2 text-sm font-medium text-amber-700 underline underline-offset-2"
+            >
+              Ir al paso 3
+            </button>
+          </div>
+        )}
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos Demográficos" />
         <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={d.currentAddress??""} onChange={e=>updateDraft({details:{...d,currentAddress:e.target.value||null}})} /></div>
@@ -120,7 +140,7 @@ export function Step5Datos() {
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={GraduationCap} title="Perfil Socioeducativo" />
         <div className="flex flex-col gap-2"><Label className={fl}>Nivel educativo</Label>
-          <Select value={d.educationLevel??""} onValueChange={v=>updateDraft({details:{...d,educationLevel:v as EducationLevel}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EDU).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
+          <Select items={Object.entries(EDU).map(([value,label])=>({value,label}))} value={d.educationLevel??""} onValueChange={v=>updateDraft({details:{...d,educationLevel:v as EducationLevel}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EDU).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2"><Label className={fl}>Lengua nativa</Label>
             <Select value={nativeLanguage} onValueChange={v=>handleNativeLanguageChange(v??"")}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
@@ -141,9 +161,9 @@ export function Step5Datos() {
             <SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
         {hasInsurance&&<>
           <div className="flex flex-col gap-2"><Label className={fl}>Tipo de seguro <span className="text-destructive">*</span></Label>
-            <Select value={ins.insuranceType} onValueChange={v=>{updateDraft({insurance:{...ins,insuranceType:v as InsuranceType,epsProvider:v!=="EPS"?undefined:ins.epsProvider}});if(v==="NONE")updateDraft({sisAffiliation:{canAffiliate:true}})}}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent>{Object.entries(INS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>
+            <Select items={Object.entries(INS).map(([value,label])=>({value,label}))} value={ins.insuranceType} onValueChange={v=>{updateDraft({insurance:{...ins,insuranceType:v as InsuranceType,epsProvider:v!=="EPS"?undefined:ins.epsProvider}});if(v==="NONE")updateDraft({sisAffiliation:{canAffiliate:true}})}}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent>{Object.entries(INS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>
           {ins.insuranceType==="EPS"&&<div className="flex flex-col gap-2"><Label className={fl}>Proveedor EPS</Label>
-            <Select value={ins.epsProvider??""} onValueChange={v=>updateDraft({insurance:{...ins,epsProvider:v as EpsProvider}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EPS_LABELS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>}
+            <Select items={Object.entries(EPS_LABELS).map(([value,label])=>({value,label}))} value={ins.epsProvider??""} onValueChange={v=>updateDraft({insurance:{...ins,epsProvider:v as EpsProvider}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EPS_LABELS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>}
           <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio del seguro</Label><Input type="date" className={ic} value={ins.startDate??""} onChange={e=>updateDraft({insurance:{...ins,startDate:e.target.value||null}})} /></div>
         </>}
       </section>

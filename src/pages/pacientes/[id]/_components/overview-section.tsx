@@ -2,27 +2,39 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
+  AlertTriangle,
+  ArrowRight,
+  Briefcase,
   Building2,
   Calendar,
+  Clock,
+  FileText,
+  FileX,
+  Flame,
+  GraduationCap,
+  Heart,
   HeartPulse,
+  IdCard,
+  Info,
+  Languages,
   Loader2,
+  LogOut,
+  MapPin,
   Phone,
   Pill,
   RefreshCw,
   Shield,
   Stethoscope,
+  User,
   Users,
 } from "lucide-react"
 import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
 import { cn } from "@/lib/utils"
-import { cancerStageBadgeClass, cancerStageLabels, educationLabels, epsLabels, insuranceLabels } from "../_lib/clinical-labels"
-
-const roleLabels: Record<PatientDetailsResponse["role"], string> = {
-  UNKNOWN: "Sin definir",
-  PATIENT: "Paciente",
-  COMPANION: "Acompañante",
-}
+import { cancerStageLabels, educationLabels, epsLabels, insuranceLabels, relationshipLabels, roleLabels } from "../_lib/clinical-labels"
+import { usePatientAccompanies } from "../_hooks/use-patient-accompanies"
+import { Link } from "react-router-dom"
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -68,6 +80,14 @@ function Section({
 function Empty({ children }: { children: string }) {
   return <p className="text-muted-foreground py-2 text-sm">{children}</p>
 }
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+      <FileX className="size-4" />
+      {message}
+    </div>
+  )
+}
 
 export function OverviewSection({
   patient,
@@ -75,169 +95,268 @@ export function OverviewSection({
   patient: PatientDetailsResponse
 }) {
   const details = patient.details
+  const { data: accompanies } = usePatientAccompanies(patient.id, patient.role === "COMPANION")
   return (
     <div className="space-y-4">
-      <AiSummarySection patientId={patient.id} fallback={patient.summary} />
-      <Section title="Información general">
-        <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="DNI" value={patient.dni} />
-          <Field label="Fecha de nacimiento" value={date(patient.birthDate)} />
-          <Field label="Email" value={patient.email} />
-          <Field label="Género" value={patient.gender} />
-          <Field label="Teléfono" value={patient.primaryPhone} icon={Phone} />
-          <Field
-            label="Teléfono secundario"
-            value={patient.secondaryPhone}
-            icon={Phone}
-          />
-          <Field label="WhatsApp" value={patient.hasWhatsapp ? "Sí" : "No"} />
-          <Field label="Rol" value={roleLabels[patient.role]} />
-          <Field
-            label="Estado de enrolamiento"
-            value={patient.status === "ENROLLED" ? "Enrolado" : "Sin enrolar"}
-          />
-          <Field
-            label="Estado del paciente"
-            value={patient.isActive ? "Activo" : "Inactivo"}
-          />
-          <Field
-            label="Motivo de desactivación"
-            value={patient.deactivationReason}
-          />
-          <Field label="Fallecimiento" value={date(patient.deceasedAt)} />
-        </div>
-      </Section>
-      <Section title="Datos demográficos">
-        {details ? (
-          <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Dirección" value={details.currentAddress} />
-            <Field label="Distrito" value={details.currentDistrict} />
-            <Field label="Departamento" value={details.currentDepartment} />
-            <Field
-              label="Departamento de nacimiento"
-              value={details.birthDepartment}
-            />
-            <Field label="Zona" value={details.zoneType} />
-            <Field
-              label="Contacto de emergencia"
-              value={details.emergencyContactName}
-            />
-            <Field
-              label="Teléfono de emergencia"
-              value={details.emergencyContactPhone}
-              icon={Phone}
-            />
-            <Field
-              label="Género del contacto de emergencia"
-              value={details.emergencyContactGender}
-            />
-            <Field
-              label="Nivel educativo"
-              value={details.educationLevel ? educationLabels[details.educationLevel] : null}
-            />
-            <Field label="Lengua nativa" value={details.nativeLanguage} />
-            <Field
-              label="Requiere traducción"
-              value={details.requiresTranslation ? "Sí" : "No"}
-            />
-            <Field
-              label="Derivado a trabajo social"
-              value={bool(details.referredToSocialWorker)}
-            />
-            <Field
-              label="Violencia doméstica"
-              value={bool(details.evidenceOfDomesticViolence)}
-            />
-            <Field label="Cocina a leña" value={bool(details.usesWoodStove)} />
-            <Field label="Situación laboral" value={bool(details.isWorking)} />
-            <Field
-              label="Apoyo económico"
-              value={bool(details.receivesFinancialSupport)}
-            />
-            <Field
-              label="Carnet CONADIS"
-              value={bool(details.hasConadisCard)}
-            />
-            <Field
-              label="Conoce FISSAL"
-              value={bool(details.knowsAboutFissal)}
-            />
-            <Field
-              label="Abandono del programa"
-              value={date(details.programDropoutDate)}
-            />
-            <Field
-              label="Motivo de abandono"
-              value={details.programDropoutReason}
-            />
-          </div>
-        ) : (
-          <Empty>No hay datos demográficos registrados.</Empty>
-        )}
-      </Section>
-      <Section title="Diagnósticos y tratamientos">
-        <div className="space-y-5">
-          <Records
-            title="Diagnósticos"
-            count={patient.diagnoses.length}
-            icon={Stethoscope}
-          >
-            {patient.diagnoses.map((item) => (
-              <div key={item.id} className="space-y-1.5 rounded-md border p-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <b>{item.diagnosis}</b>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {item.isCurrent && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Vigente
-                      </Badge>
+      {patient.role === "COMPANION" && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm text-amber-800">
+              <Users className="size-4" />
+              Pacientes que acompaña
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {accompanies?.length ? (
+              <div className="space-y-2">
+                {accompanies.map((item) => (
+                  <Link
+                    key={item.patientId}
+                    to={`/pacientes/${item.patientId}`}
+                    className="block rounded-md border bg-card p-3 text-sm hover:bg-muted/50"
+                  >
+                    {item.patient?.fullName ?? "Paciente"}{" "}
+                    {item.relationship && (
+                      <span className="text-muted-foreground">
+                        ({relationshipLabels[item.relationship] ?? item.relationship})
+                      </span>
+                    )}{" "}
+                    {item.isPrimaryInformant && (
+                      <Badge className="ml-2">Informante principal</Badge>
                     )}
-                    <Badge
-                      className={cn(
-                        "border text-[10px] font-medium",
-                        item.cancerStage ? cancerStageBadgeClass[item.cancerStage] : cancerStageBadgeClass.UNKNOWN,
-                      )}
-                    >
-                      {item.cancerStage ? cancerStageLabels[item.cancerStage] : "Etapa desconocida"}
-                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Empty>No acompaña a ningún paciente.</Empty>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      <AiSummarySection patientId={patient.id} fallback={patient.summary} />
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <User className="size-4" />
+            Información general
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+            <Field label="Nombre completo" value={patient.fullName} />
+            <Field label="DNI" value={patient.dni} />
+            <Field label="Fecha de nacimiento" value={date(patient.birthDate)} />
+            {patient.role !== "COMPANION" ? (
+              <Field
+                label="Estado de enrolamiento"
+                value={
+                  <Badge variant="secondary" className="text-xs">
+                    {patient.status === "ENROLLED" ? "Enrolado" : "Sin enrolar"}
+                  </Badge>
+                }
+              />
+            ) : (
+              <Field label="Rol" value={roleLabels[patient.role]} icon={User} />
+            )}
+            {patient.role !== "COMPANION" && (
+              <Field
+                label="Estado del paciente"
+                value={
+                  <Badge variant="secondary" className="text-xs">
+                    {patient.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
+                }
+              />
+            )}
+            <Field label="Teléfono principal" value={patient.primaryPhone} icon={Phone} />
+            <Field label="Teléfono secundario" value={patient.secondaryPhone} icon={Phone} />
+            <Field
+              label="WhatsApp"
+              value={
+                <Badge variant={patient.hasWhatsapp ? "default" : "outline"} className="text-xs">
+                  {patient.hasWhatsapp ? "Sí" : "No"}
+                </Badge>
+              }
+            />
+            <Field label="Email" value={patient.email} />
+            <Field label="Género" value={patient.gender} />
+            {patient.deactivationReason && (
+              <Field label="Motivo de desactivación" value={patient.deactivationReason} />
+            )}
+            {patient.deceasedAt && <Field label="Fallecimiento" value={date(patient.deceasedAt)} />}
+          </div>
+
+          {details && (
+            <>
+              <Separator />
+              <p className="text-xs font-medium text-muted-foreground">Datos demográficos</p>
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                <Field label="Dirección actual" value={details.currentAddress} icon={MapPin} />
+                <Field label="Distrito" value={details.currentDistrict} />
+                <Field label="Departamento" value={details.currentDepartment} />
+                <Field label="Departamento de nacimiento" value={details.birthDepartment} />
+                <Field label="Zona" value={details.zoneType} icon={MapPin} />
+                <Field label="Coincide dirección DNI" value={bool(details.dniMatchesAddress)} />
+                <Field label="Tiempo al hospital" value={details.travelTimeToHospital} icon={Clock} />
+                <Field
+                  label="Nivel educativo"
+                  value={details.educationLevel ? educationLabels[details.educationLevel] : null}
+                  icon={GraduationCap}
+                />
+                <Field label="Lengua nativa" value={details.nativeLanguage} icon={Languages} />
+                <Field
+                  label="Requiere traducción"
+                  value={details.requiresTranslation ? "Sí" : "No"}
+                  icon={Languages}
+                />
+              </div>
+
+              {(details.emergencyContactName || details.emergencyContactPhone || details.emergencyContactGender) && (
+                <>
+                  <Separator />
+                  <p className="text-xs font-medium text-muted-foreground">Contacto de emergencia</p>
+                  <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
+                    <Field label="Nombre" value={details.emergencyContactName} />
+                    <Field label="Teléfono" value={details.emergencyContactPhone} icon={Phone} />
+                    <Field label="Género" value={details.emergencyContactGender} icon={User} />
                   </div>
-                </div>
-                <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-                  <Building2 className="size-3" />
-                  {item.healthCenterName ?? "Centro no registrado"}
-                  {item.diagnosisDate && <>· {date(item.diagnosisDate)}</>}
-                </p>
+                </>
+              )}
+
+              <Separator />
+              <p className="text-xs font-medium text-muted-foreground">Datos de seguimiento social</p>
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                <Field label="Violencia doméstica" value={bool(details.evidenceOfDomesticViolence)} icon={AlertTriangle} />
+                <Field label="Usa cocina a leña" value={bool(details.usesWoodStove)} icon={Flame} />
+                <Field label="Trabaja actualmente" value={bool(details.isWorking)} icon={Briefcase} />
+                <Field label="Recibe apoyo económico" value={bool(details.receivesFinancialSupport)} icon={Heart} />
+                <Field label="Derivado a trabajo social" value={bool(details.referredToSocialWorker)} icon={ArrowRight} />
+                <Field label="Tiene carnet CONADIS" value={bool(details.hasConadisCard)} icon={IdCard} />
+                <Field label="Conoce FISSAL" value={bool(details.knowsAboutFissal)} icon={Info} />
+                {details.programDropoutDate && (
+                  <Field label="Fecha de abandono" value={date(details.programDropoutDate)} icon={Calendar} />
+                )}
+                {details.programDropoutReason && (
+                  <Field label="Motivo de abandono" value={details.programDropoutReason} icon={LogOut} />
+                )}
               </div>
-            ))}
-          </Records>
-          <Records
-            title="Tratamientos"
-            count={patient.treatments.length}
-            icon={Pill}
-          >
-            {patient.treatments.map((item) => (
-              <div key={item.id} className="space-y-1.5 rounded-md border p-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <b>{item.treatmentType}</b>
-                  {item.isCurrent && (
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      Vigente
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {item.diagnosisSummary?.diagnosis ?? "Diagnóstico no registrado"}
-                </p>
-                <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-                  <Building2 className="size-3" />
-                  {item.healthCenterName ?? "Centro no registrado"}
-                  {item.startDate && <>· desde {date(item.startDate)}</>}
-                </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Stethoscope className="size-4" />
+            Evolución: diagnósticos y tratamientos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div>
+            <p className="mb-3 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <FileText className="size-3" />
+              Diagnósticos ({patient.diagnoses.length})
+            </p>
+            {patient.diagnoses.length > 0 ? (
+              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+                {patient.diagnoses.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-w-[320px] max-w-[380px] flex-shrink-0 space-y-3 rounded-lg border bg-card p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1.5 size-2.5 shrink-0 rounded-full bg-primary" />
+                      <div>
+                        <p className="text-sm font-semibold">{item.diagnosis}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {item.cancerStage && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {cancerStageLabels[item.cancerStage]}
+                            </Badge>
+                          )}
+                          <Badge variant={item.isCurrent ? "default" : "outline"} className="text-[10px]">
+                            {item.isCurrent ? "Actual" : "Histórico"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <Field label="Fecha de diagnóstico" value={date(item.diagnosisDate)} icon={Calendar} />
+                      <Field label="Especialidad" value={item.diagnosisSpecialty} />
+                      <Field label="Centro de salud" value={item.healthCenterName ?? null} icon={Building2} />
+                      <Field label="Tiene informe médico" value={item.hasMedicalReport ? "Sí" : "No"} />
+                      {item.symptomLeadingToCheckup && (
+                        <Field label="Síntoma que llevó al chequeo" value={item.symptomLeadingToCheckup} icon={AlertTriangle} />
+                      )}
+                      {item.waitTimeForDiagnosis && (
+                        <Field label="Tiempo de espera" value={item.waitTimeForDiagnosis} icon={Clock} />
+                      )}
+                      {item.changeReason && <Field label="Motivo de cambio" value={item.changeReason} />}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </Records>
-        </div>
-      </Section>
+            ) : (
+              <EmptyState message="No hay diagnósticos registrados." />
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <p className="mb-3 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <Pill className="size-3" />
+              Tratamientos ({patient.treatments.length})
+            </p>
+            {patient.treatments.length > 0 ? (
+              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+                {patient.treatments.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-w-[300px] max-w-[360px] flex-shrink-0 space-y-3 rounded-lg border bg-card p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Pill className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <div>
+                        <p className="text-sm font-semibold">{item.treatmentType}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <Badge variant={item.isCurrent ? "default" : "outline"} className="text-[10px]">
+                            {item.isCurrent ? "En curso" : "Finalizado"}
+                          </Badge>
+                          {item.diagnosisSummary?.diagnosis && (
+                            <span className="text-xs text-muted-foreground">
+                              ← {item.diagnosisSummary.diagnosis}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <Field label="Frecuencia" value={item.treatmentFrequency} />
+                      <Field
+                        label="Período"
+                        value={
+                          item.startDate
+                            ? `Desde ${date(item.startDate)}${item.endDate ? ` hasta ${date(item.endDate)}` : " (en curso)"}`
+                            : null
+                        }
+                        icon={Calendar}
+                      />
+                      <Field label="Centro de salud" value={item.healthCenterName ?? null} icon={Building2} />
+                      {item.notReceivingReason && (
+                        <Field label="Motivo de no recibir" value={item.notReceivingReason} icon={AlertTriangle} />
+                      )}
+                      {item.changeReason && <Field label="Motivo de cambio" value={item.changeReason} />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="No hay tratamientos registrados." />
+            )}
+          </div>
+        </CardContent>
+      </Card>
       <Section title="Datos complementarios">
         <div className="space-y-5">
           <Records
@@ -314,6 +433,11 @@ export function OverviewSection({
                 className="rounded-md border p-3 text-sm"
               >
                 {item.companion?.fullName ?? "Acompañante"}{" "}
+                {item.relationship && (
+                  <span className="text-muted-foreground">
+                    ({relationshipLabels[item.relationship] ?? item.relationship})
+                  </span>
+                )}{" "}
                 {item.isPrimaryInformant && (
                   <Badge className="ml-2">Informante principal</Badge>
                 )}
@@ -331,7 +455,7 @@ function Field({
   icon: Icon,
 }: {
   label: string
-  value: string | null
+  value: React.ReactNode
   icon?: typeof Phone
 }) {
   return (
@@ -340,7 +464,7 @@ function Field({
         {Icon && <Icon className="size-3" />}
         {label}
       </p>
-      <p className="mt-0.5 font-medium">{value ?? "-"}</p>
+      <div className="mt-0.5 font-medium">{value ?? "-"}</div>
     </div>
   )
 }
@@ -369,6 +493,13 @@ function Records({
 }
 function bool(value: boolean | null) {
   return value === null ? "-" : value ? "Sí" : "No"
+}
+
+const summaryStatusLabels: Record<"PENDING" | "PROCESSING" | "READY" | "FAILED", string> = {
+  PENDING: "Pendiente",
+  PROCESSING: "Procesando",
+  READY: "Listo",
+  FAILED: "Error",
 }
 
 function AiSummarySection({
@@ -406,22 +537,32 @@ function AiSummarySection({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-        <CardTitle className="text-sm">Resumen del caso (IA)</CardTitle>
-        {status === "READY" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs"
-            onClick={() => refreshMutation.mutate()}
-            disabled={isBusy}
-          >
-            <RefreshCw
-              className={cn("size-3.5", refreshMutation.isPending && "animate-spin")}
-            />
-            Actualizar
-          </Button>
-        )}
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Stethoscope className="size-4 text-primary" />
+            Resumen del caso (IA)
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {status && (
+              <Badge variant={status === "READY" ? "secondary" : "outline"} className="text-[10px]">
+                {isBusy ? "Actualizando" : summaryStatusLabels[status]}
+              </Badge>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              onClick={() => refreshMutation.mutate()}
+              disabled={isBusy}
+              aria-label="Refrescar resumen del caso"
+              title="Refrescar resumen"
+            >
+              <RefreshCw className={cn("size-3.5", refreshMutation.isPending && "animate-spin")} />
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {isBusy ? (

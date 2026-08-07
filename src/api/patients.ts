@@ -23,6 +23,7 @@ export type CreatePatientDiagnosisInput = components["schemas"]["CreatePatientDi
 export type CreatePatientTreatmentInput = components["schemas"]["CreatePatientTreatmentDto"]
 export type CreatePatientInsuranceInput = components["schemas"]["CreatePatientInsuranceDto"]
 export type CreatePatientSisAffiliationInput = components["schemas"]["CreatePatientSisAffiliationDto"]
+export type CompanionPatient = components["schemas"]["CompanionPatientResponseDto"]
 
 export class PatientsApiError extends Error {
   readonly status: number
@@ -187,6 +188,18 @@ export const patientsApi = {
     const { data, response } = await api.POST("/patients/{patientId}/sis-affiliations", {
       params: { path: { patientId } },
       body: input,
+    })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async accompanies(id: string) {
+    const { data, response } = await api.GET("/patients/{id}/accompanies", {
+      params: { path: { id } },
     })
 
     if (!data) {

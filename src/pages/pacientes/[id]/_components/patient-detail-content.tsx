@@ -13,6 +13,7 @@ import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
 import { RecordatoriosTab } from "./recordatorios-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { roleLabels } from "../_lib/clinical-labels";
 const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
   UNENROLLED: "Sin enrolar",
   ENROLLED: "Enrolado",
@@ -93,14 +94,20 @@ export function PatientDetailContent() {
             <h1 className="text-foreground text-xl font-semibold tracking-tight">
               {patient.fullName}
             </h1>
-            <Badge
-              className={cn(
-                "border text-xs font-medium",
-                statusStyles[patient.status],
-              )}
-            >
-              {statusLabels[patient.status]}
-            </Badge>
+            {patient.role === "COMPANION" ? (
+              <Badge className="border bg-amber-50 text-amber-700 text-xs font-medium">
+                {roleLabels[patient.role]}
+              </Badge>
+            ) : (
+              <Badge
+                className={cn(
+                  "border text-xs font-medium",
+                  statusStyles[patient.status],
+                )}
+              >
+                {statusLabels[patient.status]}
+              </Badge>
+            )}
           </div>
           <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-4 text-sm">
             <span>{patient.dni ? `DNI ${patient.dni}` : "Sin DNI"}</span>

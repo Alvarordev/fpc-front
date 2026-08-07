@@ -1,4 +1,4 @@
-import type { CreatePatientDiagnosisInput, CreatePatientInsuranceInput, PatientDetailsInput } from "@/api/patients"
+import type { CreatePatientDiagnosisInput, CreatePatientInsuranceInput, PatientDetailsInput, PatientDetailsResponse } from "@/api/patients"
 
 export type CancerStage = NonNullable<CreatePatientDiagnosisInput["cancerStage"]>
 export type InsuranceType = CreatePatientInsuranceInput["insuranceType"]
@@ -57,5 +57,24 @@ export const epsLabels: Record<EpsProvider, string> = {
 export const genderLabels: Record<string, string> = {
   M: "Masculino",
   F: "Femenino",
+  OTHER: "Otro",
+}
+
+export const roleLabels: Record<PatientDetailsResponse["role"], string> = {
+  UNKNOWN: "Sin definir",
+  PATIENT: "Paciente",
+  COMPANION: "Acompañante",
+}
+
+export const relationshipLabels: Record<string, string> = {
+  MOTHER: "Madre",
+  FATHER: "Padre",
+  SON_DAUGHTER: "Hijo/a",
+  SIBLING: "Hermano/a",
+  SPOUSE: "Cónyuge",
+  GRANDPARENT: "Abuelo/a",
+  UNCLE_AUNT: "Tío/a",
+  LEGAL_GUARDIAN: "Tutor legal",
+  FRIEND: "Amigo/a",
   OTHER: "Otro",
 }

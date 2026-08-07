@@ -16,7 +16,7 @@ function draft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
     enrollmentMetadata: { ...DEFAULT_DRAFT.enrollmentMetadata, ...overrides.enrollmentMetadata },
     medicalAppointments: overrides.medicalAppointments ?? [],
     familyPreventionTalkInterests: overrides.familyPreventionTalkInterests ?? [],
-    companions: [],
+    companion: { ...DEFAULT_DRAFT.companion, ...overrides.companion },
   }
 }
 
@@ -56,12 +56,13 @@ describe("step 8 Nest enrollment payload", () => {
         insurance: { insuranceType: "NONE", isCurrent: true },
         symptomReport: { hasDiscomfort: true, signsAndSymptoms: "Dolor abdominal", indicationsReceived: "Control", hasSoughtMedicalConsultation: false },
         sisAffiliation: { canAffiliate: false, cantAffiliateReason: "Documento pendiente" },
-        enrollmentMetadata: { affiliationType: "FAMILY", nombreTercero: "Ana Test", telefonoTercero: "999000333" },
+        enrollmentMetadata: { affiliationType: "FAMILY" },
+        companion: { fullName: "Ana Test", primaryPhone: "999000333", relationship: "MOTHER" },
       }),
     })
 
     expect(payload.affiliationType).toBe("FAMILY_FRIEND")
-    expect(payload.companion).toMatchObject({ fullName: "Ana Test", primaryPhone: "999000333", isPrimaryInformant: true })
+    expect(payload.companion).toMatchObject({ fullName: "Ana Test", primaryPhone: "999000333", relationship: "MOTHER", isPrimaryInformant: true })
     expect(payload.insurance).toBeUndefined()
     expect(payload.sisAffiliation).toMatchObject({ canAffiliate: false, cantAffiliateReason: "Documento pendiente" })
     expect(payload.symptomReport).toMatchObject({ hasDiscomfort: true, signsAndSymptoms: "Dolor abdominal", indicationsReceived: "Control" })

@@ -16,6 +16,7 @@ export function buildEnrollmentPrefill(patient: PatientDetailsResponse): Partial
       fullName: patient.fullName,
       dni: patient.dni,
       birthDate: patient.birthDate,
+      gender: patient.gender,
       primaryPhone: patient.primaryPhone,
       secondaryPhone: patient.secondaryPhone,
       hasWhatsapp: patient.hasWhatsapp,

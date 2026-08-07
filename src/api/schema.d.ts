@@ -1355,6 +1355,7 @@ export interface components {
             /** Format: email */
             email?: string;
             isPrimaryInformant?: boolean;
+            relationship?: string;
         };
         UpsertPatientDetailsDto: {
             birthDepartment?: string;
@@ -1772,6 +1773,7 @@ export interface components {
             /** Format: uuid */
             existingCompanionId: string;
             isPrimaryInformant?: boolean;
+            relationship?: string;
         };
         CompanionPatientResponseDto: {
             /** Format: uuid */
@@ -1781,6 +1783,7 @@ export interface components {
             /** Format: uuid */
             patientId: string;
             isPrimaryInformant: boolean;
+            relationship: string | null;
             companionDisplayName: string | null;
             /** Format: date-time */
             createdAt: string;

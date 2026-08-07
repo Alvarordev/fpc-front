@@ -8,6 +8,8 @@ interface PatientsToolbarProps {
   onSearchChange: (value: string) => void;
   statusFilter: "UNENROLLED" | "ENROLLED" | null;
   onStatusFilterChange: (status: "UNENROLLED" | "ENROLLED" | null) => void;
+  roleFilter: "COMPANION" | null;
+  onRoleFilterChange: (role: "COMPANION" | null) => void;
 }
 
 const statuses: { value: "UNENROLLED" | "ENROLLED"; label: string }[] = [
@@ -20,11 +22,21 @@ const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
   ENROLLED: "Enrolado",
 };
 
+const roles: { value: "COMPANION"; label: string }[] = [
+  { value: "COMPANION", label: "Acompañante" },
+];
+
+const roleLabels: Record<"COMPANION", string> = {
+  COMPANION: "Acompañante",
+};
+
 export function PatientsToolbar({
   search,
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  roleFilter,
+  onRoleFilterChange,
 }: PatientsToolbarProps) {
   return (
     <div className="space-y-3">
@@ -55,7 +67,23 @@ export function PatientsToolbar({
           ))}
         </div>
 
-        {(search || statusFilter) && (
+        <div className="flex items-center gap-1.5">
+          {roles.map(({ value, label }) => (
+            <Button
+              key={value}
+              variant={roleFilter === value ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() =>
+                onRoleFilterChange(roleFilter === value ? null : value)
+              }
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+
+        {(search || statusFilter || roleFilter) && (
           <Button
             variant="ghost"
             size="sm"
@@ -63,6 +91,7 @@ export function PatientsToolbar({
             onClick={() => {
               onSearchChange("");
               onStatusFilterChange(null);
+              onRoleFilterChange(null);
             }}
           >
             <X className="size-3.5" />
@@ -71,17 +100,29 @@ export function PatientsToolbar({
         )}
       </div>
 
-      {statusFilter && (
+      {(statusFilter || roleFilter) && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Estado:</span>
-          <Badge
-            variant="outline"
-            className="gap-1 h-6 px-2 text-xs font-normal cursor-pointer hover:bg-muted"
-            onClick={() => onStatusFilterChange(null)}
-          >
-            {statusLabels[statusFilter]}
-            <X className="size-3" />
-          </Badge>
+          <span className="text-xs text-muted-foreground">Filtros:</span>
+          {statusFilter && (
+            <Badge
+              variant="outline"
+              className="gap-1 h-6 px-2 text-xs font-normal cursor-pointer hover:bg-muted"
+              onClick={() => onStatusFilterChange(null)}
+            >
+              {statusLabels[statusFilter]}
+              <X className="size-3" />
+            </Badge>
+          )}
+          {roleFilter && (
+            <Badge
+              variant="outline"
+              className="gap-1 h-6 px-2 text-xs font-normal cursor-pointer hover:bg-muted"
+              onClick={() => onRoleFilterChange(null)}
+            >
+              {roleLabels[roleFilter]}
+              <X className="size-3" />
+            </Badge>
+          )}
         </div>
       )}
     </div>
