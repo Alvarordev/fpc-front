@@ -18,6 +18,11 @@ API.md
 enrolment.md
 AGENTS.md
 MANUAL_USUARIO.md
+AUDITORIA_MIGRACION.md
+MIGRACION_NEST_PENDIENTE.md
+
+# Claude Code local config
+.claude/
 
 # Editor directories and files
 .vscode/*
