@@ -16,6 +16,8 @@ dist-ssr
 # Project docs (local only)
 API.md
 enrolment.md
+AGENTS.md
+MANUAL_USUARIO.md
 
 # Editor directories and files
 .vscode/*
