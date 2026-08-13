@@ -2,6 +2,7 @@ import { Brain, TriangleAlert, Bell, CalendarPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 export interface ReminderDraft {
   description: string
@@ -25,6 +26,7 @@ interface FollowUpAsideProps {
   onAddReminder: () => void
   reminderDrafts: ReminderDraft[]
   onRemoveReminder: (index: number) => void
+  className?: string
 }
 
 export function FollowUpAside({
@@ -44,36 +46,75 @@ export function FollowUpAside({
   onAddReminder,
   reminderDrafts,
   onRemoveReminder,
+  className,
 }: FollowUpAsideProps) {
   return (
-    <Card className="border-border/60 sticky top-4">
+    <Card
+      size="sm"
+      className={cn(
+        "border-border/60 self-start xl:sticky xl:top-4",
+        className,
+      )}
+    >
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Acciones posteriores</CardTitle>
-        <p className="text-muted-foreground text-xs">Se registran al completar el seguimiento.</p>
+        <CardTitle className="text-base">Acciones</CardTitle>
+        <p className="text-muted-foreground text-xs">
+          Se registran al completar el seguimiento.
+        </p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={onPsicoOpen}>
+      <CardContent className="space-y-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-10 w-full justify-start gap-2"
+          onClick={onPsicoOpen}
+        >
           <Brain className="size-4 text-violet-500" />
           Derivar a psicooncología
         </Button>
         {hasPsicoDraft && (
-          <DraftChip color="violet" text="Psicosesión lista para guardar." onClear={onClearPsico} />
+          <DraftChip
+            color="violet"
+            text="Psicosesión lista para guardar."
+            onClear={onClearPsico}
+          />
         )}
 
-        <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={onAlertOpen}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-10 w-full justify-start gap-2"
+          onClick={onAlertOpen}
+        >
           <TriangleAlert className="size-4 text-amber-500" />
-          Reportar alerta hospitalaria
+          Reportar incidencia hospitalaria
         </Button>
         {hasAlertDraft && (
-          <DraftChip color="amber" text="Alerta lista para registrar." onClear={onClearAlert} />
+          <DraftChip
+            color="amber"
+            text="Alerta lista para registrar."
+            onClear={onClearAlert}
+          />
         )}
 
-        <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={onNextContactOpen}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-10 w-full justify-start gap-2"
+          onClick={onNextContactOpen}
+        >
           <CalendarPlus className="size-4 text-sky-500" />
           Agendar siguiente seguimiento
         </Button>
         {hasNextContactDraft && (
-          <DraftChip color="sky" text="Siguiente seguimiento listo para guardar." onClear={onClearNextContact} />
+          <DraftChip
+            color="sky"
+            text="Siguiente seguimiento listo para guardar."
+            onClear={onClearNextContact}
+          />
         )}
 
         <div className="border-border/60 space-y-3 border-t pt-4">
@@ -83,7 +124,9 @@ export function FollowUpAside({
           </p>
           <Input
             value={reminderDescription}
-            onChange={(event) => onReminderDescriptionChange(event.target.value)}
+            onChange={(event) =>
+              onReminderDescriptionChange(event.target.value)
+            }
             placeholder="Descripción"
           />
           <Input
@@ -108,8 +151,14 @@ export function FollowUpAside({
                   key={`${reminder.description}-${index}`}
                   className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
                 >
-                  <span className="text-xs text-amber-700">{reminder.description}</span>
-                  <button type="button" onClick={() => onRemoveReminder(index)} className="shrink-0 text-amber-500 hover:text-amber-700">
+                  <span className="text-xs text-amber-700">
+                    {reminder.description}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveReminder(index)}
+                    className="shrink-0 text-amber-500 hover:text-amber-700"
+                  >
                     <X className="size-3.5" />
                   </button>
                 </li>
@@ -122,7 +171,15 @@ export function FollowUpAside({
   )
 }
 
-function DraftChip({ color, text, onClear }: { color: "violet" | "amber" | "sky"; text: string; onClear: () => void }) {
+function DraftChip({
+  color,
+  text,
+  onClear,
+}: {
+  color: "violet" | "amber" | "sky"
+  text: string
+  onClear: () => void
+}) {
   const classes = {
     violet: "border-violet-200 bg-violet-50 text-violet-700",
     amber: "border-amber-200 bg-amber-50 text-amber-700",
@@ -130,9 +187,15 @@ function DraftChip({ color, text, onClear }: { color: "violet" | "amber" | "sky"
   }[color]
 
   return (
-    <div className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${classes}`}>
+    <div
+      className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${classes}`}
+    >
       <span className="text-xs">{text}</span>
-      <button type="button" onClick={onClear} className="shrink-0 opacity-70 hover:opacity-100">
+      <button
+        type="button"
+        onClick={onClear}
+        className="shrink-0 opacity-70 hover:opacity-100"
+      >
         <X className="size-3.5" />
       </button>
     </div>

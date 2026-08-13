@@ -1,5 +1,19 @@
 import type { PatientDetailsResponse } from "@/api/patients"
 import type { EnrollmentDraft } from "@/pages/enrolamiento/_store/enrollment-store"
+import type { DurationDraft } from "@/types/duration"
+
+function durationDraft(value: PatientDetailsResponse["details"] extends infer Details
+  ? Details extends { travelTimeToHospital: infer Duration }
+    ? Duration
+    : never
+  : never): DurationDraft | undefined {
+  if (!value) return undefined
+  return {
+    valueMin: value.valueMin,
+    ...(value.valueMax !== null ? { valueMax: value.valueMax } : {}),
+    unit: value.unit,
+  }
+}
 
 /**
  * Builds a partial enrollment draft from an existing (unenrolled) patient,
@@ -27,11 +41,8 @@ export function buildEnrollmentPrefill(patient: PatientDetailsResponse): Partial
   if (details) {
     prefill.details = {
       birthDepartment: details.birthDepartment,
-      currentAddress: details.currentAddress,
-      currentDistrict: details.currentDistrict,
-      currentDepartment: details.currentDepartment,
-      dniMatchesAddress: details.dniMatchesAddress,
-      travelTimeToHospital: details.travelTimeToHospital,
+      primaryHealthCenterId: details.primaryHealthCenterId ?? undefined,
+      travelTimeToHospital: durationDraft(details.travelTimeToHospital),
       emergencyContactName: details.emergencyContactName,
       emergencyContactPhone: details.emergencyContactPhone,
       zoneType: details.zoneType,

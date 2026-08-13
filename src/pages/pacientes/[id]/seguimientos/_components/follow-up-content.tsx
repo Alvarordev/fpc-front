@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { alertsApi } from "@/api/alerts"
@@ -13,13 +13,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
-import { ScheduleFollowUpDialog, type ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-dialog"
+import {
+  ScheduleFollowUpDialog,
+  type ScheduleFollowUpFormValues,
+} from "../../_components/schedule-follow-up-dialog"
 import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
 import { ClinicalDataTabs } from "./clinical-data-tabs"
 import { DRAFT_DIAGNOSIS_ID, hasAnyClinicalDraft } from "./clinical-drafts"
 import { CreateAlertDialog } from "./create-alert-dialog"
 import { FollowUpAside } from "./follow-up-aside"
 import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
+import { toDurationInput } from "@/types/duration"
 
 const statusLabels: Record<string, string> = {
   SCHEDULED: "Agendado",
@@ -28,8 +32,28 @@ const statusLabels: Record<string, string> = {
   NO_ANSWER: "No contestó",
 }
 
+const followUpTypeLabels: Record<string, string> = {
+  CALL: "Llamada",
+  WHATSAPP: "WhatsApp",
+  VIDEO_CALL: "Videollamada",
+  EMAIL: "Correo electrónico",
+  IN_PERSON: "Presencial",
+  FACEBOOK: "Facebook",
+}
+
+const followUpPurposeLabels: Record<string, string> = {
+  FIRST_CONTACT: "Primer contacto",
+  ENROLLMENT: "Enrolamiento",
+  FOLLOW_UP: "Seguimiento",
+  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
+  OTHER: "Otro",
+}
+
 export function FollowUpContent() {
-  const { id: patientId, followUpId } = useParams<{ id: string; followUpId: string }>()
+  const { id: patientId, followUpId } = useParams<{
+    id: string
+    followUpId: string
+  }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
@@ -54,8 +78,12 @@ export function FollowUpContent() {
     if (followUpId) useFollowUpDraftStore.getState().ensureFollowUp(followUpId)
   }, [followUpId])
 
-  const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
-  const requiresAgentSelection = user?.role === "ADMIN" || user?.role === "FOUNDATION"
+  const canManage =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT"
+  const requiresAgentSelection =
+    user?.role === "ADMIN" || user?.role === "FOUNDATION"
 
   const followUpQuery = useQuery({
     queryKey: ["follow-up", followUpId],
@@ -69,67 +97,158 @@ export function FollowUpContent() {
     staleTime: 60_000,
   })
   const updateMutation = useMutation({
-    mutationFn: ({ status, completedAt }: { status: "COMPLETED" | "CANCELLED" | "NO_ANSWER"; completedAt?: string }) =>
-      followUpsApi.update(followUpId!, { status, notes: notes || undefined, completedAt }),
+    mutationFn: ({
+      status,
+      completedAt,
+    }: {
+      status: "COMPLETED" | "CANCELLED" | "NO_ANSWER"
+      completedAt?: string
+    }) =>
+      followUpsApi.update(followUpId!, {
+        status,
+        notes: notes || undefined,
+        completedAt,
+      }),
   })
 
   async function refreshAfterCompletion() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["follow-up", followUpId] }),
-      queryClient.invalidateQueries({ queryKey: ["patient-timeline", patientId] }),
-      queryClient.invalidateQueries({ queryKey: ["patient-profile", patientId] }),
-      queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-timeline", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-profile", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-addresses", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-appointments"],
+      }),
     ])
   }
 
   if (!followUpId) {
-    return <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+    return (
+      <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+    )
   }
 
   if (followUpQuery.isLoading) {
-    return <div className="flex h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin" />Cargando seguimiento...</div>
+    return (
+      <div className="text-muted-foreground flex h-64 items-center justify-center text-sm">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        Cargando seguimiento...
+      </div>
+    )
   }
 
   if (followUpQuery.isError || !followUpQuery.data) {
-    return <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+    return (
+      <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+    )
   }
 
   const followUp = followUpQuery.data
-  if (followUp.subjectPatientId !== patientId) return <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+  if (followUp.subjectPatientId !== patientId)
+    return (
+      <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+    )
   const isOpen = followUp.status === "SCHEDULED"
 
   function resolveNextFollowUpAgentId(values: ScheduleFollowUpFormValues) {
-    const ownAgent = agentsQuery.data?.find((agent) => agent.userId === user?.id)
+    const ownAgent = agentsQuery.data?.find(
+      (agent) => agent.userId === user?.id,
+    )
     return requiresAgentSelection ? values.agentId : ownAgent?.id
   }
 
   /** Persist every drafted change, in order, when the follow-up is completed. */
   async function commitDrafts() {
-    const details: PatientDetailsInput = { ...clinicalDrafts.details, ...clinicalDrafts.social }
+    const details: PatientDetailsInput = {
+      ...clinicalDrafts.details,
+      ...clinicalDrafts.social,
+    }
     if (Object.keys(details).length > 0) {
       await patientsApi.updateDetails(patientId!, details)
     }
 
     let newDiagnosisId: string | undefined
     if (clinicalDrafts.diagnosis) {
-      const created = await patientsApi.createDiagnosis(patientId!, { ...clinicalDrafts.diagnosis, followUpId: followUpId! })
+      const { waitTimeForDiagnosisManuallyEdited, ...diagnosisDraft } =
+        clinicalDrafts.diagnosis
+      const waitTimeForDiagnosis = waitTimeForDiagnosisManuallyEdited
+        ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
+        : diagnosisDraft.firstSymptomsDate && diagnosisDraft.diagnosisDate
+          ? undefined
+          : toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
+      if (
+        diagnosisDraft.waitTimeForDiagnosis?.valueMin !== undefined &&
+        !waitTimeForDiagnosis
+      )
+        throw new Error(
+          "Completa correctamente el tiempo de espera para el diagnóstico",
+        )
+
+      const created = await patientsApi.createDiagnosis(patientId!, {
+        ...diagnosisDraft,
+        waitTimeForDiagnosis,
+        followUpId: followUpId!,
+      })
       newDiagnosisId = created.id
     }
 
     if (clinicalDrafts.treatment) {
       const diagnosisId =
-        clinicalDrafts.treatment.diagnosisId === DRAFT_DIAGNOSIS_ID ? newDiagnosisId : clinicalDrafts.treatment.diagnosisId
+        clinicalDrafts.treatment.diagnosisId === DRAFT_DIAGNOSIS_ID
+          ? newDiagnosisId
+          : clinicalDrafts.treatment.diagnosisId
 
       if (diagnosisId) {
-        await patientsApi.createTreatment(patientId!, { ...clinicalDrafts.treatment, diagnosisId, followUpId: followUpId! })
+        await patientsApi.createTreatment(patientId!, {
+          ...clinicalDrafts.treatment,
+          diagnosisId,
+          followUpId: followUpId!,
+        })
       }
     }
 
+    if (clinicalDrafts.symptomReport) {
+      const { symptomDuration, symptomFrequency, ...symptomReportDraft } =
+        clinicalDrafts.symptomReport
+      const normalizedDuration = toDurationInput(symptomDuration)
+      const normalizedFrequency = toDurationInput(symptomFrequency)
+      if (symptomDuration?.valueMin !== undefined && !normalizedDuration)
+        throw new Error("Completa correctamente la duración de los síntomas")
+      if (symptomFrequency?.valueMin !== undefined && !normalizedFrequency)
+        throw new Error("Completa correctamente la frecuencia de los síntomas")
+
+      await patientsApi.createSymptomReport(patientId!, {
+        ...symptomReportDraft,
+        symptomDuration: normalizedDuration,
+        symptomFrequency: normalizedFrequency,
+        followUpId: followUpId!,
+      })
+    }
+
     if (clinicalDrafts.insurance) {
-      await patientsApi.createInsurance(patientId!, { ...clinicalDrafts.insurance, followUpId: followUpId! })
+      await patientsApi.createInsurance(patientId!, {
+        ...clinicalDrafts.insurance,
+        followUpId: followUpId!,
+      })
     }
     if (clinicalDrafts.sisAffiliation) {
-      await patientsApi.createSisAffiliation(patientId!, { ...clinicalDrafts.sisAffiliation, followUpId: followUpId! })
+      await patientsApi.createSisAffiliation(patientId!, {
+        ...clinicalDrafts.sisAffiliation,
+        followUpId: followUpId!,
+      })
+    }
+    if (clinicalDrafts.address) {
+      await patientsApi.createAddress(patientId!, {
+        ...clinicalDrafts.address,
+        followUpId: followUpId!,
+      })
     }
 
     if (alertDraft) {
@@ -140,6 +259,8 @@ export function FollowUpContent() {
         interlocutorId: followUp.interlocutorId,
         title: alertDraft.title,
         description: alertDraft.description,
+        severity: alertDraft.severity,
+        category: alertDraft.category,
       })
     }
 
@@ -147,7 +268,9 @@ export function FollowUpContent() {
       try {
         await psychooncologyAppointmentsApi.create(psicoDraft)
       } catch (error) {
-        toast.error("No se pudo agendar la cita de psicooncología", { description: (error as Error).message })
+        toast.error("No se pudo agendar la cita de psicooncología", {
+          description: (error as Error).message,
+        })
       }
     }
 
@@ -176,7 +299,9 @@ export function FollowUpContent() {
           createdFromFollowUpId: followUpId,
         })
       } catch (error) {
-        toast.error("No se pudo crear un recordatorio", { description: (error as Error).message })
+        toast.error("No se pudo crear un recordatorio", {
+          description: (error as Error).message,
+        })
       }
     }
   }
@@ -184,13 +309,18 @@ export function FollowUpContent() {
   async function handleComplete() {
     setIsCompleting(true)
     try {
-      await updateMutation.mutateAsync({ status: "COMPLETED", completedAt: new Date().toISOString() })
       await commitDrafts()
+      await updateMutation.mutateAsync({
+        status: "COMPLETED",
+        completedAt: new Date().toISOString(),
+      })
       draftStore.reset()
       await refreshAfterCompletion()
       toast.success("Seguimiento completado")
     } catch (error) {
-      toast.error("No se pudo completar el seguimiento", { description: (error as Error).message })
+      toast.error("No se pudo completar el seguimiento", {
+        description: (error as Error).message,
+      })
     } finally {
       setIsCompleting(false)
     }
@@ -203,75 +333,124 @@ export function FollowUpContent() {
       await refreshAfterCompletion()
       toast.success("Seguimiento actualizado")
     } catch (error) {
-      toast.error("No se pudo actualizar el seguimiento", { description: (error as Error).message })
+      toast.error("No se pudo actualizar el seguimiento", {
+        description: (error as Error).message,
+      })
     }
   }
 
   function addReminderDraft() {
-    draftStore.addReminder({ description: reminderDescription, dueAt: reminderAt })
+    draftStore.addReminder({
+      description: reminderDescription,
+      dueAt: reminderAt,
+    })
     setReminderDescription("")
     setReminderAt("")
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
-      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(`/pacientes/${patientId}`)}>
-        <ArrowLeft className="size-3.5" />Volver al paciente
+    <div className="mx-auto max-w-[90rem] space-y-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2 gap-1.5 text-xs"
+        onClick={() => navigate(`/pacientes/${patientId}`)}
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver al paciente
       </Button>
 
-      <div className="grid gap-5 xl:grid-cols-3">
-        <div className="space-y-5 xl:col-span-2">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between gap-3 text-base">
-                Registrar seguimiento
-                <span className="text-xs font-normal text-muted-foreground">{statusLabels[followUp.status]}</span>
-              </CardTitle>
+      <Card size="sm" className="border-border/60">
+        <CardHeader className="border-border/60 border-b pb-4">
+          <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
+            <span>Registrar seguimiento</span>
+            <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
+              {statusLabels[followUp.status]}
+            </span>
+          </CardTitle>
+          <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <span>
+              <b className="text-foreground font-medium">Canal</b>{" "}
+              {followUpTypeLabels[followUp.type] ?? "Sin especificar"}
+            </span>
+            <span>
+              <b className="text-foreground font-medium">Propósito</b>{" "}
+              {followUpPurposeLabels[followUp.purpose] ?? "Sin especificar"}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+            <Textarea
+              id="follow-up-notes"
+              className="min-h-20 resize-y"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder={
+                followUp.notes ?? "Registrá el resultado del seguimiento..."
+              }
+              disabled={!canManage || !isOpen}
+            />
+          </div>
+          {canManage && isOpen && (
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <Button
+                onClick={handleComplete}
+                disabled={isCompleting}
+                className="gap-1.5"
+              >
+                <CheckCircle2 className="size-4" />
+                {isCompleting ? "Guardando..." : "Completar"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleDiscardStatus("NO_ANSWER")}
+                disabled={isCompleting}
+              >
+                No contestó
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleDiscardStatus("CANCELLED")}
+                disabled={isCompleting}
+              >
+                Cancelar
+              </Button>
+            </div>
+          )}
+          {hasAnyClinicalDraft(clinicalDrafts) && isOpen && (
+            <p className="text-muted-foreground text-xs lg:col-span-2">
+              Los cambios se guardan al completar el seguimiento. Si lo cancelás
+              o marcás «No contestó», se descartan.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {canManage && isOpen ? (
+        <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <Card
+            size="sm"
+            className="border-border/60 h-[min(52rem,calc(100dvh-14rem))] min-h-[30rem] overflow-hidden"
+          >
+            <CardHeader className="border-border/60 shrink-0 border-b pb-4">
+              <CardTitle className="text-base">Ficha clínica</CardTitle>
+              <p className="text-muted-foreground text-xs">
+                Seleccioná una sección. El contenido se conserva al cambiar de
+                sección.
+              </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                <span>Canal: {followUp.type.replaceAll("_", " ")}</span>
-                <span>Propósito: {followUp.purpose.replaceAll("_", " ")}</span>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="follow-up-notes">Notas</Label>
-                <Textarea id="follow-up-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={followUp.notes ?? "Registrá el resultado del seguimiento..."} disabled={!canManage || !isOpen} />
-              </div>
-              {canManage && isOpen && (
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleComplete} disabled={isCompleting}>
-                    {isCompleting ? "Guardando..." : "Completar"}
-                  </Button>
-                  <Button variant="outline" onClick={() => handleDiscardStatus("NO_ANSWER")} disabled={isCompleting}>No contestó</Button>
-                  <Button variant="outline" onClick={() => handleDiscardStatus("CANCELLED")} disabled={isCompleting}>Cancelar</Button>
-                </div>
-              )}
-              {hasAnyClinicalDraft(clinicalDrafts) && isOpen && (
-                <p className="text-muted-foreground text-xs">
-                  Los cambios de la ficha clínica y las acciones posteriores se guardan localmente y recién se registran al presionar «Completar». Si cancelás o marcás «No contestó», se descartan.
-                </p>
-              )}
+            <CardContent className="min-h-0 flex-1 overflow-hidden px-4 pt-4 pb-4">
+              <ClinicalDataTabs
+                patientId={patientId!}
+                drafts={clinicalDrafts}
+                onDraftsChange={(updater) => draftStore.updateClinical(updater)}
+              />
             </CardContent>
           </Card>
-
-          {canManage && isOpen && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Ficha clínica</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ClinicalDataTabs
-                  patientId={patientId!}
-                  drafts={clinicalDrafts}
-                  onDraftsChange={(updater) => draftStore.updateClinical(updater)}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {canManage && isOpen && (
           <FollowUpAside
+            className="order-first xl:order-last"
             onPsicoOpen={() => setPsychooncologyOpen(true)}
             hasPsicoDraft={Boolean(psicoDraft)}
             onClearPsico={() => draftStore.clearPsico()}
@@ -289,8 +468,8 @@ export function FollowUpContent() {
             reminderDrafts={reminderDrafts}
             onRemoveReminder={(index) => draftStore.removeReminder(index)}
           />
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <ScheduleFollowUpDialog
         open={nextOpen}
@@ -321,8 +500,18 @@ export function FollowUpContent() {
 function MissingFollowUp({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={onBack}><ArrowLeft className="size-3.5" />Volver al paciente</Button>
-      <p className="text-sm text-muted-foreground">No se encontró el seguimiento solicitado.</p>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-xs"
+        onClick={onBack}
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver al paciente
+      </Button>
+      <p className="text-muted-foreground text-sm">
+        No se encontró el seguimiento solicitado.
+      </p>
     </div>
   )
 }

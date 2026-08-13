@@ -4,7 +4,7 @@ import type { EnrollmentDraft } from "../_store/enrollment-store";
 function step5Conditionals(draft: EnrollmentDraft): string {
   const parts: string[] = [];
 
-  if (draft.details.dniMatchesAddress === false) {
+  if (draft.addresses[0]?.dniMatchesAddress === false) {
     parts.push(
       "Información adicional si no coincide con su domicilio: Le recomendamos acercarse a RENIEC para actualizar la dirección registrada en su DNI, ya que en caso requiera ser referido a un establecimiento de salud de mayor complejidad, podría ser derivado a uno que no se encuentre cercano a su domicilio actual. Para ello deberá presentar su DNI vigente y un recibo de servicios (agua o luz) con una antigüedad no mayor a seis meses. En RENIEC le indicarán los procedimientos correspondientes. Asimismo, puede comunicarse a la línea 113, opción 4, para obtener mayor información.",
     );

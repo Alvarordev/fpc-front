@@ -4,15 +4,44 @@ import { Label } from "@/components/ui/label"; import { Input } from "@/componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreditCard, MapPin, Phone, GraduationCap, ShieldCheck, LogIn } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
-import type { InsuranceType, EpsProvider, EducationLevel } from "@/types"
+import type { EnrollmentAddressRequest, InsuranceType, EpsProvider, EducationLevel, PeruDepartment } from "@/types"
 import { genderLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { isMinor } from "../../_utils/patient-age"
+import { DurationInput } from "@/components/duration-input"
 
 const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"; const ic="bg-card border"
 const sc="w-full bg-card border"
 const EDU:Record<EducationLevel,string>={NONE:"Sin estudios",INITIAL:"Inicial",PRIMARY_INCOMPLETE:"Primaria incompleta",PRIMARY:"Primaria",SECONDARY_INCOMPLETE:"Secundaria incompleta",SECONDARY:"Secundaria",TECHNICAL_INCOMPLETE:"Técnica incompleta",TECHNICAL:"Técnica",HIGHER_INCOMPLETE:"Superior incompleta",HIGHER:"Superior"}
 const INS:Record<InsuranceType,string>={SIS:"SIS",ESSALUD:"EsSalud",EPS:"EPS",FUERZAS_ARMADAS:"Fuerzas Armadas",SALUDPOL:"SaludPol",NONE:"Ninguno"}
 const EPS_LABELS:Record<EpsProvider,string>={PACIFICO:"Pacífico",RIMAC:"Rímac",MAPFRE:"Mapfre",LA_POSITIVA:"La Positiva",SANITAS:"Sanitas",ONCOSALUD:"Oncosalud",OTHER:"Otro"}
+
+const PERU_DEPARTMENTS: Array<{ value: PeruDepartment; label: string }> = [
+  { value: "AMAZONAS", label: "Amazonas" },
+  { value: "ANCASH", label: "Áncash" },
+  { value: "APURIMAC", label: "Apurímac" },
+  { value: "AREQUIPA", label: "Arequipa" },
+  { value: "AYACUCHO", label: "Ayacucho" },
+  { value: "CAJAMARCA", label: "Cajamarca" },
+  { value: "CALLAO", label: "Callao" },
+  { value: "CUSCO", label: "Cusco" },
+  { value: "HUANCAVELICA", label: "Huancavelica" },
+  { value: "HUANUCO", label: "Huánuco" },
+  { value: "ICA", label: "Ica" },
+  { value: "JUNIN", label: "Junín" },
+  { value: "LA_LIBERTAD", label: "La Libertad" },
+  { value: "LAMBAYEQUE", label: "Lambayeque" },
+  { value: "LIMA", label: "Lima" },
+  { value: "LORETO", label: "Loreto" },
+  { value: "MADRE_DE_DIOS", label: "Madre de Dios" },
+  { value: "MOQUEGUA", label: "Moquegua" },
+  { value: "PASCO", label: "Pasco" },
+  { value: "PIURA", label: "Piura" },
+  { value: "PUNO", label: "Puno" },
+  { value: "SAN_MARTIN", label: "San Martín" },
+  { value: "TACNA", label: "Tacna" },
+  { value: "TUMBES", label: "Tumbes" },
+  { value: "UCAYALI", label: "Ucayali" },
+]
 
 const ENTRY_POINTS = [
   "Llamada directa",
@@ -35,8 +64,13 @@ const NATIVE_LANGUAGES = [
 export function Step5Datos() {
   const { draft, updateDraft, nextStep, prevStep, goToStep } = useEnrollmentStore()
   const pd = draft.patientData; const d = draft.details; const ins = draft.insurance
+  const address: EnrollmentAddressRequest = draft.addresses[0] ?? { type: "PERMANENT", isPrimary: true }
   const meta = draft.enrollmentMetadata
   const patientIsMinor = isMinor(pd.birthDate)
+
+  function updateAddress(partial: Partial<typeof address>) {
+    updateDraft({ addresses: [{ ...address, ...partial }, ...draft.addresses.slice(1)] })
+  }
 
   const saved = meta.programEntryPoint
 
@@ -116,14 +150,18 @@ export function Step5Datos() {
         )}
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos Demográficos" />
-        <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={d.currentAddress??""} onChange={e=>updateDraft({details:{...d,currentAddress:e.target.value||null}})} /></div>
+        <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={address.address??""} onChange={e=>updateAddress({address:e.target.value||undefined})} /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={d.currentDistrict??""} onChange={e=>updateDraft({details:{...d,currentDistrict:e.target.value||null}})} /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label><Input placeholder="Lima" className={ic} value={d.currentDepartment??""} onChange={e=>updateDraft({details:{...d,currentDepartment:e.target.value||null}})} /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={address.district??""} onChange={e=>updateAddress({district:e.target.value||undefined})} /></div>
+          <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={address.province??""} onChange={e=>updateAddress({province:e.target.value||undefined})} /></div>
         </div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Tiempo de viaje al hospital</Label><Input placeholder="30 minutos" className={ic} value={d.travelTimeToHospital??""} onChange={e=>updateDraft({details:{...d,travelTimeToHospital:e.target.value||null}})} /></div>
+        <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label>
+          <Select items={PERU_DEPARTMENTS} value={address.department??""} onValueChange={v=>updateAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{PERU_DEPARTMENTS.map((department)=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
+        </div>
+        <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={address.reference??""} onChange={e=>updateAddress({reference:e.target.value||undefined})} /></div>
+        <DurationInput label="Tiempo de viaje al hospital" units={["MINUTE", "HOUR", "DAY"]} defaultUnit="HOUR" singleValue value={d.travelTimeToHospital} onChange={travelTimeToHospital=>updateDraft({details:{...d,travelTimeToHospital}})} />
         <div className="flex flex-col gap-2"><Label className={fl}>¿Dirección DNI coincide con actual?</Label>
-          <Select value={d.dniMatchesAddress===true?"Sí":d.dniMatchesAddress===false?"No":""} onValueChange={v=>updateDraft({details:{...d,dniMatchesAddress:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+          <Select value={address.dniMatchesAddress===true?"Sí":address.dniMatchesAddress===false?"No":""} onValueChange={v=>updateAddress({dniMatchesAddress:v==="Sí"})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={Phone} title="Contacto" />
         <div className="grid grid-cols-2 gap-4">

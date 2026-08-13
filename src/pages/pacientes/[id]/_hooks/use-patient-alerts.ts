@@ -7,11 +7,16 @@ import type { PatientDetailsResponse } from "@/api/patients"
 function collectPatientHealthCenterIds(patient: PatientDetailsResponse): Set<string> {
   const ids = new Set<string>()
 
+  if (patient.details?.primaryHealthCenterId) {
+    ids.add(patient.details.primaryHealthCenterId)
+  }
+
   for (const dx of patient.diagnoses) {
     if (dx.healthCenterId) ids.add(dx.healthCenterId)
   }
   for (const tx of patient.treatments) {
-    if (tx.healthCenterId) ids.add(tx.healthCenterId)
+    if (tx.sourceHealthCenterId) ids.add(tx.sourceHealthCenterId)
+    if (tx.receivingHealthCenterId) ids.add(tx.receivingHealthCenterId)
   }
   for (const appt of patient.medicalAppointments) {
     if (appt.healthCenterId) ids.add(appt.healthCenterId)

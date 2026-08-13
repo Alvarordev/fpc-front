@@ -1,8 +1,22 @@
-import type { CreatePatientDiagnosisInput, CreatePatientInsuranceInput, PatientDetailsInput, PatientDetailsResponse } from "@/api/patients"
+import type {
+  CreatePatientDiagnosisInput,
+  CreatePatientInsuranceInput,
+  PatientDetailsInput,
+  PatientDetailsResponse,
+} from "@/api/patients"
+import type {
+  MedicationDoseUnit,
+  MedicationRoute,
+  TreatmentSituation,
+} from "@/types"
 
-export type CancerStage = NonNullable<CreatePatientDiagnosisInput["cancerStage"]>
+export type CancerStage = NonNullable<
+  CreatePatientDiagnosisInput["cancerStage"]
+>
 export type InsuranceType = CreatePatientInsuranceInput["insuranceType"]
-export type EpsProvider = NonNullable<CreatePatientInsuranceInput["epsProvider"]>
+export type EpsProvider = NonNullable<
+  CreatePatientInsuranceInput["epsProvider"]
+>
 export type EducationLevel = NonNullable<PatientDetailsInput["educationLevel"]>
 
 export const educationLabels: Record<EducationLevel, string> = {
@@ -77,4 +91,30 @@ export const relationshipLabels: Record<string, string> = {
   LEGAL_GUARDIAN: "Tutor legal",
   FRIEND: "Amigo/a",
   OTHER: "Otro",
+}
+
+export const treatmentSituationLabels: Record<TreatmentSituation, string> = {
+  EN_CURSO: "En curso",
+  PENDIENTE_DE_INICIO: "Pendiente de inicio",
+  INTERRUMPIDO: "Interrumpido",
+  FINALIZADO: "Finalizado",
+}
+
+export const medicationDoseUnitLabels: Record<MedicationDoseUnit, string> = {
+  MG: "mg",
+  G: "g",
+  ML: "ml",
+  UI: "UI",
+  TABLET: "Tableta",
+  DROP: "Gota",
+  OTHER: "Otra unidad",
+}
+
+export const medicationRouteLabels: Record<MedicationRoute, string> = {
+  ORAL: "Oral",
+  IV: "Intravenosa",
+  IM: "Intramuscular",
+  SUBCUTANEOUS: "Subcutánea",
+  TOPICAL: "Tópica",
+  OTHER: "Otra vía",
 }

@@ -1,7 +1,10 @@
-import { useMemo } from "react";
-import { useEnrollmentStore } from "../_store/enrollment-store";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import { getEnrollmentNotes, useEnrollmentStore } from "../_store/enrollment-store";
 import { EnrollmentStepper } from "./enrollment-stepper";
 import { EnrollmentAside } from "./enrollment-aside";
+import { EnrollmentNotesSheet } from "./enrollment-notes-sheet";
 import { EnrollmentRejection } from "./enrollment-rejection";
 import { Step1Inicio } from "./steps/step-1-inicio";
 import { Step2Consent } from "./steps/step-2-consent";
@@ -13,9 +16,15 @@ import { Step7Atencion } from "./steps/step-7-atencion";
 import { Step8Cierre } from "./steps/step-8-cierre";
 import { resolveAsideContent } from "../_utils/aside-resolver";
 
-function CurrentStep({ step }: { step: number }) {
+interface CurrentStepProps {
+  step: number;
+  onOpenNotes: () => void;
+  notesCount: number;
+}
+
+function CurrentStep({ step, onOpenNotes, notesCount }: CurrentStepProps) {
   switch (step) {
-    case 1: return <Step1Inicio />;
+    case 1: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} />;
     case 2: return <Step2Consent />;
     case 3: return <Step3Identificacion />;
     case 4: return <Step4Consentimiento />;
@@ -23,13 +32,22 @@ function CurrentStep({ step }: { step: number }) {
     case 6: return <Step6Categoria />;
     case 7: return <Step7Atencion />;
     case 8: return <Step8Cierre />;
-    default: return <Step1Inicio />;
+    default: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} />;
   }
 }
 
 export function EnrollmentShell() {
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesResetKey, setNotesResetKey] = useState(0);
   const { currentStep, rejectionReason, resetEnrollment, prevStep, clearRejection, draft, categoriaClinica } =
     useEnrollmentStore();
+  const notesCount = getEnrollmentNotes(draft.enrollmentMetadata).length;
+
+  function handleReset() {
+    setNotesOpen(false);
+    setNotesResetKey((key) => key + 1);
+    resetEnrollment();
+  }
 
   const asideContent = useMemo(
     () => resolveAsideContent(currentStep, draft, categoriaClinica),
@@ -47,20 +65,47 @@ export function EnrollmentShell() {
             {rejectionReason ? (
               <EnrollmentRejection
                 reason={rejectionReason}
-                onReset={resetEnrollment}
+                onReset={handleReset}
                 onBack={() => { clearRejection(); prevStep(); }}
               />
             ) : (
-              <CurrentStep step={currentStep} />
+              <CurrentStep
+                step={currentStep}
+                onOpenNotes={() => setNotesOpen(true)}
+                notesCount={notesCount}
+              />
             )}
           </div>
         </div>
         <div className="hidden w-80 shrink-0 overflow-y-auto border-l border-border/50 bg-muted/30 lg:block xl:w-96">
           <div className="px-6 py-8">
-            <EnrollmentAside content={asideContent} onReset={resetEnrollment} />
+            <EnrollmentAside
+              content={asideContent}
+              onOpenNotes={() => setNotesOpen(true)}
+              notesCount={notesCount}
+              onReset={handleReset}
+            />
           </div>
         </div>
       </div>
+      <div className="pointer-events-none fixed bottom-5 right-5 z-40 lg:hidden">
+        <Button
+          type="button"
+          size="lg"
+          className="pointer-events-auto gap-2 rounded-full px-4 shadow-xl"
+          onClick={() => setNotesOpen(true)}
+          aria-label="Abrir notas del enrolamiento"
+        >
+          <FileText className="size-4" />
+          <span>Notas</span>
+          {notesCount > 0 && (
+            <span className="flex size-5 items-center justify-center rounded-full bg-primary-foreground/15 text-xs">
+              {notesCount}
+            </span>
+          )}
+        </Button>
+      </div>
+      <EnrollmentNotesSheet key={notesResetKey} open={notesOpen} onOpenChange={setNotesOpen} />
     </div>
   );
 }

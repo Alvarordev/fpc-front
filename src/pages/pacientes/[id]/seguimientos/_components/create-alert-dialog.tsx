@@ -26,7 +26,35 @@ const alertSchema = z.object({
   healthCenterId: z.string().min(1, "Seleccioná un establecimiento"),
   title: z.string().min(3, "Título requerido"),
   description: z.string().min(5, "Detallá el problema reportado"),
+  severity: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  category: z.enum([
+    "GENERAL",
+    "MEDICATION_SHORTAGE",
+    "APPOINTMENT_DELAY",
+    "INSURANCE_COVERAGE",
+    "TRANSPORT",
+    "ADMINISTRATIVE",
+    "PSYCHOSOCIAL",
+    "OTHER",
+  ]),
 })
+
+const SEVERITY_OPTIONS = [
+  { value: "HIGH", label: "Alta" },
+  { value: "MEDIUM", label: "Media" },
+  { value: "LOW", label: "Baja" },
+] as const
+
+const CATEGORY_OPTIONS = [
+  { value: "GENERAL", label: "General" },
+  { value: "MEDICATION_SHORTAGE", label: "Falta de medicamentos" },
+  { value: "APPOINTMENT_DELAY", label: "Demora en una cita" },
+  { value: "INSURANCE_COVERAGE", label: "Cobertura del seguro" },
+  { value: "TRANSPORT", label: "Transporte" },
+  { value: "ADMINISTRATIVE", label: "Administrativo" },
+  { value: "PSYCHOSOCIAL", label: "Psicosocial" },
+  { value: "OTHER", label: "Otro" },
+] as const
 
 export type CreateAlertFormValues = z.infer<typeof alertSchema>
 
@@ -47,7 +75,13 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
 
   const form = useForm<CreateAlertFormValues>({
     resolver: zodResolver(alertSchema),
-    defaultValues: { healthCenterId: "", title: "", description: "" },
+    defaultValues: {
+      healthCenterId: "",
+      title: "",
+      description: "",
+      severity: "HIGH",
+      category: "GENERAL",
+    },
   })
 
   function handleClose() {
@@ -62,9 +96,9 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Reportar alerta hospitalaria</DialogTitle>
+          <DialogTitle>Reportar incidencia hospitalaria</DialogTitle>
           <DialogDescription>
             Se registrará ligada a este seguimiento.
           </DialogDescription>
@@ -119,6 +153,34 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
             {form.formState.errors.description && (
               <p className="text-destructive text-xs">{form.formState.errors.description.message}</p>
             )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Prioridad</Label>
+              <Controller
+                name="severity"
+                control={form.control}
+                render={({ field }) => (
+                  <Select items={SEVERITY_OPTIONS} value={field.value} onValueChange={(value) => field.onChange(value)}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{SEVERITY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <Controller
+                name="category"
+                control={form.control}
+                render={({ field }) => (
+                  <Select items={CATEGORY_OPTIONS} value={field.value} onValueChange={(value) => field.onChange(value)}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{CATEGORY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>

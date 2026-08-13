@@ -10,7 +10,16 @@ import { Activity, Stethoscope, HeartPulse, Building2, Plus, Users, Minus } from
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import { healthCentersApi } from "@/api/health-centers"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
-import type { AddMedicalAppointmentRequest, CancerStage } from "@/types"
+import { DurationInput } from "@/components/duration-input"
+import { calculateDurationBetweenDates } from "@/types/duration"
+import type {
+  AddMedicalAppointmentRequest,
+  AddTreatmentMedicationRequest,
+  CancerStage,
+  MedicationDoseUnit,
+  MedicationRoute,
+  TreatmentSituation,
+} from "@/types"
 import type { HealthCenter } from "@/api/health-centers"
 
 const fl = "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
@@ -45,14 +54,31 @@ const DIAGNOSIS_OPTIONS = [
   "Cáncer de endometrio",
 ] as const
 
-const TREATMENT_SITUATIONS = [
-  "En curso",
-  "Por iniciar",
-  "Suspendido temporalmente",
-  "Finalizado",
-  "En evaluación",
-  "No recibe tratamiento",
-] as const
+const TREATMENT_SITUATIONS: Array<{ value: TreatmentSituation; label: string }> = [
+  { value: "EN_CURSO", label: "En curso" },
+  { value: "PENDIENTE_DE_INICIO", label: "Pendiente de inicio" },
+  { value: "INTERRUMPIDO", label: "Interrumpido" },
+  { value: "FINALIZADO", label: "Finalizado" },
+]
+
+const DOSE_UNITS: Array<{ value: MedicationDoseUnit; label: string }> = [
+  { value: "MG", label: "mg" },
+  { value: "G", label: "g" },
+  { value: "ML", label: "ml" },
+  { value: "UI", label: "UI" },
+  { value: "TABLET", label: "Tableta" },
+  { value: "DROP", label: "Gota" },
+  { value: "OTHER", label: "Otro" },
+]
+
+const MEDICATION_ROUTES: Array<{ value: MedicationRoute; label: string }> = [
+  { value: "ORAL", label: "Oral" },
+  { value: "IV", label: "Intravenosa" },
+  { value: "IM", label: "Intramuscular" },
+  { value: "SUBCUTANEOUS", label: "Subcutánea" },
+  { value: "TOPICAL", label: "Tópica" },
+  { value: "OTHER", label: "Otra" },
+]
 
 const TALK_TOPICS = [
   "Prevención del cáncer de mama",
@@ -106,9 +132,14 @@ export function Step7Atencion() {
       : ""
 
   const medicalAppointments = draft.medicalAppointments ?? []
+  const medications = tx.medications ?? []
   const familyPreventionTalkInterests = draft.familyPreventionTalkInterests ?? []
   const appointment = medicalAppointments[0] ?? EMPTY_APPOINTMENT
   const ft = familyPreventionTalkInterests
+  const calculatedWaitTime = calculateDurationBetweenDates(dx.firstSymptomsDate, dx.diagnosisDate)
+  const visibleWaitTime = dx.waitTimeForDiagnosisManuallyEdited
+    ? dx.waitTimeForDiagnosis
+    : calculatedWaitTime ?? dx.waitTimeForDiagnosis
   const [showFamilyTalks, setShowFamilyTalks] = useState(ft.length > 0)
   const [talkOtherIndices, setTalkOtherIndices] = useState<Set<number>>(() => {
     const topics = TALK_TOPICS as readonly string[]
@@ -133,6 +164,46 @@ export function Step7Atencion() {
 
   function clearAppointment() {
     updateDraft({ medicalAppointments: [] })
+  }
+
+  function updateDiagnosisDate(field: "diagnosisDate" | "firstSymptomsDate", date: string) {
+    const nextDiagnosis = { ...dx, [field]: date || null }
+    updateDraft({
+      diagnosis: {
+        ...nextDiagnosis,
+        waitTimeForDiagnosis: calculateDurationBetweenDates(nextDiagnosis.firstSymptomsDate, nextDiagnosis.diagnosisDate),
+        waitTimeForDiagnosisManuallyEdited: false,
+      },
+    })
+  }
+
+  function updateMedication(index: number, partial: Partial<AddTreatmentMedicationRequest>) {
+    updateDraft({
+      treatment: {
+        ...tx,
+        medications: medications.map((medication, medicationIndex) =>
+          medicationIndex === index ? { ...medication, ...partial } : medication,
+        ),
+      },
+    })
+  }
+
+  function addMedication() {
+    updateDraft({
+      treatment: {
+        ...tx,
+        medications: [...medications, { name: "", isActive: true }],
+      },
+    })
+  }
+
+  function removeMedication(index: number) {
+    updateDraft({
+      treatment: {
+        ...tx,
+        medications: medications.filter((_, medicationIndex) => medicationIndex !== index),
+      },
+    })
   }
 
   function setTalkOther(idx: number, isOther: boolean) {
@@ -176,8 +247,13 @@ export function Step7Atencion() {
       <StepHeader step={7} title="Atención Especializada" description={`Rama activa: ${label}${!tieneSeguroReal ? " · Sin seguro" : ""}`} />
       <div className="bg-card rounded-xl px-4 py-3">
         <p className="text-muted-foreground/60 text-[10px] font-bold tracking-widest uppercase">Categoría</p>
-        <p className="text-foreground mt-0.5 text-sm font-semibold">{label} · {tieneSeguroReal ? "Con seguro" : "Sin seguro"}</p>
-      </div>
+       <p className="text-foreground mt-0.5 text-sm font-semibold">{label} · {tieneSeguroReal ? "Con seguro" : "Sin seguro"}</p>
+       </div>
+
+       <section className="flex flex-col gap-3"><SectionHeader icon={Building2} title="Establecimiento principal del paciente" />
+         <p className="text-xs text-muted-foreground">Opcional. Selecciónalo si el paciente ya tiene un hospital principal definido.</p>
+         <Select items={activeCenters.map(c => ({ value: c.id, label: `${c.name} — ${c.department}` }))} value={details.primaryHealthCenterId ?? ""} onValueChange={v => updateDraft({ details: { ...details, primaryHealthCenterId: v || undefined } })}><SelectTrigger className={sc}><SelectValue placeholder="No definido" /></SelectTrigger><SelectContent>{activeCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent></Select>
+       </section>
 
       {esSignos && (
         <section className="flex flex-col gap-5"><SectionHeader icon={Activity} title="Signos y Síntomas" />
@@ -187,8 +263,10 @@ export function Step7Atencion() {
           <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente ha sacado o asistido a una cita médica?</Label>
             <Select value={sr.hasSoughtMedicalConsultation === true ? "Sí" : sr.hasSoughtMedicalConsultation === false ? "No" : ""} onValueChange={v => updateDraft({ symptomReport: { ...sr, hasSoughtMedicalConsultation: v === "Sí" } })}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Especialidad consultada</Label><Input value={sr.specialty ?? ""} onChange={e => updateDraft({ symptomReport: { ...sr, specialty: e.target.value || null } })} placeholder="Ej: Oncología" className="bg-card border" /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>Indicaciones recibidas</Label><Input value={sr.indicationsReceived ?? ""} onChange={e => updateDraft({ symptomReport: { ...sr, indicationsReceived: e.target.value || null } })} placeholder="Indicaciones de la consulta" className="bg-card border" /></div>
-        </section>
+           <div className="flex flex-col gap-2"><Label className={fl}>Indicaciones recibidas</Label><Input value={sr.indicationsReceived ?? ""} onChange={e => updateDraft({ symptomReport: { ...sr, indicationsReceived: e.target.value || null } })} placeholder="Indicaciones de la consulta" className="bg-card border" /></div>
+           <DurationInput label="¿Desde hace cuánto presenta los síntomas?" units={["DAY", "WEEK", "MONTH", "YEAR"]} defaultUnit="DAY" singleValue value={sr.symptomDuration} onChange={symptomDuration => updateDraft({ symptomReport: { ...sr, symptomDuration } })} />
+           <DurationInput label="¿Cada cuánto se presentan?" units={["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]} defaultUnit="WEEK" singleValue value={sr.symptomFrequency} onChange={symptomFrequency => updateDraft({ symptomReport: { ...sr, symptomFrequency } })} />
+         </section>
       )}
 
       {esDx && (
@@ -203,10 +281,33 @@ export function Step7Atencion() {
             </div>
             {isOtherDiagnosis && <div className="flex flex-col gap-2"><Label className={fl}>Especifique el diagnóstico</Label><Input value={dx.diagnosis} onChange={e => updateDraft({ diagnosis: { ...dx, diagnosis: e.target.value } })} placeholder="Describa el diagnóstico oncológico..." className="bg-card border" /></div>}
             <div className="flex flex-col gap-2"><Label className={fl}>¿Qué síntoma lo llevó a realizarse su chequeo médico?</Label><Textarea value={dx.symptomLeadingToCheckup ?? ""} onChange={e => updateDraft({ diagnosis: { ...dx, symptomLeadingToCheckup: e.target.value || null } })} placeholder="Motivo o síntoma principal" className="bg-card border min-h-20" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2"><Label className={fl}>¿Cuándo fue diagnosticado?</Label><Input type="date" value={dx.diagnosisDate ?? ""} onChange={e => updateDraft({ diagnosis: { ...dx, diagnosisDate: e.target.value || null } })} className="bg-card border" /></div>
-              <div className="flex flex-col gap-2"><Label className={fl}>¿Cuánto tiempo esperó para el diagnóstico?</Label><Input value={dx.waitTimeForDiagnosis ?? ""} onChange={e => updateDraft({ diagnosis: { ...dx, waitTimeForDiagnosis: e.target.value || null } })} placeholder="Ej: 6 semanas" className="bg-card border" /></div>
-            </div>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="flex flex-col gap-2"><Label className={fl}>¿Cuándo fue diagnosticado?</Label><Input type="date" value={dx.diagnosisDate ?? ""} onChange={e => updateDiagnosisDate("diagnosisDate", e.target.value)} className="bg-card border" /></div>
+               <div className="flex flex-col gap-2"><Label className={fl}>¿Cuándo aparecieron los primeros síntomas?</Label><Input type="date" value={dx.firstSymptomsDate ?? ""} onChange={e => updateDiagnosisDate("firstSymptomsDate", e.target.value)} className="bg-card border" /></div>
+             </div>
+              {dx.firstSymptomsDate && dx.diagnosisDate && (
+                <p className="text-xs text-muted-foreground">
+                  {calculatedWaitTime
+                   ? dx.waitTimeForDiagnosisManuallyEdited
+                     ? "Tiempo ajustado manualmente. Puedes cambiarlo cuando quieras."
+                     : "Tiempo calculado automáticamente a partir de las fechas. Puedes editarlo."
+                    : "Las fechas deben estar en orden para calcular el tiempo de espera."}
+                </p>
+              )}
+              <DurationInput
+                label="Tiempo de espera para el diagnóstico"
+               units={["DAY", "WEEK", "MONTH", "YEAR"]}
+               defaultUnit="DAY"
+               singleValue
+               value={visibleWaitTime}
+               onChange={waitTimeForDiagnosis => updateDraft({
+                 diagnosis: {
+                   ...dx,
+                   waitTimeForDiagnosis,
+                   waitTimeForDiagnosisManuallyEdited: waitTimeForDiagnosis !== undefined,
+                 },
+               })}
+             />
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2"><Label className={fl}>¿Dónde fue diagnosticado?</Label>
                 <div className="flex gap-2"><Select items={activeCenters.map(c => ({ value: c.id, label: `${c.name} — ${c.department}` }))} value={dx.healthCenterId ?? ""} onValueChange={v => updateDraft({ diagnosis: { ...dx, healthCenterId: v || null } })}><SelectTrigger className="flex-1 bg-card border"><SelectValue placeholder="Seleccionar establecimiento..." /></SelectTrigger><SelectContent>{activeCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent></Select><Button type="button" variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setNewHospitalOpen(true)}><Building2 className="size-3.5" /><Plus className="size-3" /></Button></div>
@@ -232,25 +333,61 @@ export function Step7Atencion() {
             )}
           </section>
 
-          <section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Tratamiento" />
-            <div className="flex flex-col gap-2"><Label className={fl}>¿En qué establecimiento de salud se atiende actualmente?</Label>
-              <div className="flex gap-2"><Select items={activeCenters.map(c => ({ value: c.id, label: `${c.name} — ${c.department}` }))} value={tx.healthCenterId ?? ""} onValueChange={v => updateDraft({ treatment: { ...tx, healthCenterId: v || null } })}><SelectTrigger className="flex-1 bg-card border"><SelectValue placeholder="Seleccionar establecimiento..." /></SelectTrigger><SelectContent>{activeCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent></Select><Button type="button" variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setNewHospitalOpen(true)}><Building2 className="size-3.5" /><Plus className="size-3" /></Button></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente recibe tratamiento médico?</Label>
-                <Select value={meta.currentlyReceivingTreatment === true ? "Sí" : meta.currentlyReceivingTreatment === false ? "No" : ""} onValueChange={v => { const receives = v === "Sí"; updateDraft({ enrollmentMetadata: { ...meta, currentlyReceivingTreatment: receives }, treatment: { ...tx, isCurrent: receives } }) }}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-              <div className="flex flex-col gap-2"><Label className={fl}>Situación del tratamiento</Label><Select value={tx.treatmentSituation ?? ""} onValueChange={v => updateDraft({ treatment: { ...tx, treatmentSituation: v || null } })}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{TREATMENT_SITUATIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-            </div>
+           <section className="flex flex-col gap-5"><SectionHeader icon={HeartPulse} title="Tratamiento" />
+             <div className="flex flex-col gap-2"><Label className={fl}>¿Recibe este tratamiento por derivación?</Label>
+                <Select value={tx.isReferred === true ? "Sí" : "No"} onValueChange={v => { const isReferred = v === "Sí"; updateDraft({ treatment: { ...tx, isReferred, sourceHealthCenterId: isReferred ? tx.sourceHealthCenterId ?? details.primaryHealthCenterId ?? undefined : undefined } }) }}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select>
+             </div>
+             {tx.isReferred ? (
+               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                 <div className="flex flex-col gap-2"><Label className={fl}>Hospital de origen <span className="text-destructive">*</span></Label><Select items={activeCenters.map(c => ({ value: c.id, label: `${c.name} — ${c.department}` }))} value={tx.sourceHealthCenterId ?? ""} onValueChange={v => updateDraft({ treatment: { ...tx, sourceHealthCenterId: v || undefined } })}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar origen..." /></SelectTrigger><SelectContent>{activeCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent></Select></div>
+                 <div className="flex flex-col gap-2"><Label className={fl}>Hospital receptor <span className="text-destructive">*</span></Label><div className="flex gap-2"><Select items={activeCenters.map(c => ({ value: c.id, label: `${c.name} — ${c.department}` }))} value={tx.receivingHealthCenterId ?? ""} onValueChange={v => updateDraft({ treatment: { ...tx, receivingHealthCenterId: v || undefined } })}><SelectTrigger className="flex-1 bg-card border"><SelectValue placeholder="Seleccionar receptor..." /></SelectTrigger><SelectContent>{activeCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent></Select><Button type="button" variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setNewHospitalOpen(true)}><Building2 className="size-3.5" /><Plus className="size-3" /></Button></div></div>
+               </div>
+             ) : (
+               <div className="flex flex-col gap-2"><Label className={fl}>Hospital donde recibe el tratamiento</Label><div className="flex gap-2"><Select items={activeCenters.map(c => ({ value: c.id, label: `${c.name} — ${c.department}` }))} value={tx.receivingHealthCenterId ?? ""} onValueChange={v => updateDraft({ treatment: { ...tx, receivingHealthCenterId: v || undefined } })}><SelectTrigger className="flex-1 bg-card border"><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{activeCenters.map(c => <SelectItem key={c.id} value={c.id}>{c.name} — {c.department}</SelectItem>)}</SelectContent></Select><Button type="button" variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setNewHospitalOpen(true)}><Building2 className="size-3.5" /><Plus className="size-3" /></Button></div></div>
+             )}
+               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                 <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente recibe tratamiento médico?</Label>
+                   <Select value={meta.currentlyReceivingTreatment === true ? "Sí" : meta.currentlyReceivingTreatment === false ? "No" : ""} onValueChange={v => { const receives = v === "Sí"; updateDraft({ enrollmentMetadata: { ...meta, currentlyReceivingTreatment: receives }, treatment: { ...tx, isCurrent: receives } }) }}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+                   <div className="flex flex-col gap-2"><Label className={fl}>Situación del tratamiento</Label><Select items={TREATMENT_SITUATIONS} value={tx.treatmentSituation ?? ""} onValueChange={v => updateDraft({ treatment: { ...tx, treatmentSituation: (v || undefined) as TreatmentSituation | undefined } })}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{TREATMENT_SITUATIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select></div>
+               </div>
             {meta.currentlyReceivingTreatment !== false && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-2"><Label className={fl}>¿Qué tipo de tratamiento recibe?</Label><Input value={tx.treatmentType} onChange={e => updateDraft({ treatment: { ...tx, treatmentType: e.target.value } })} placeholder="Ej: Quimioterapia" className="bg-card border" /></div>
-                <div className="flex flex-col gap-2"><Label className={fl}>Frecuencia del tratamiento</Label><Input value={tx.treatmentFrequency ?? ""} onChange={e => updateDraft({ treatment: { ...tx, treatmentFrequency: e.target.value || null } })} placeholder="Ej: Cada 3 semanas" className="bg-card border" /></div>
-              </div>
+               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                 <div className="flex flex-col gap-2"><Label className={fl}>¿Qué tipo de tratamiento recibe?</Label><Input value={tx.treatmentType} onChange={e => updateDraft({ treatment: { ...tx, treatmentType: e.target.value } })} placeholder="Ej: Quimioterapia" className="bg-card border" /></div>
+                  <DurationInput label="Frecuencia del tratamiento" units={["DAY", "WEEK", "MONTH", "YEAR"]} defaultUnit="WEEK" singleValue value={tx.treatmentFrequency} onChange={treatmentFrequency => updateDraft({ treatment: { ...tx, treatmentFrequency } })} />
+                  <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio</Label><Input type="date" value={tx.startDate ?? ""} onChange={e => updateDraft({ treatment: { ...tx, startDate: e.target.value || null } })} className="bg-card border" /></div>
+                  <div className="flex flex-col gap-2"><Label className={fl}>Fecha de fin (opcional)</Label><Input type="date" value={tx.endDate ?? ""} min={tx.startDate ?? undefined} onChange={e => updateDraft({ treatment: { ...tx, endDate: e.target.value || null } })} className="bg-card border" /></div>
+               </div>
             )}
-            {meta.currentlyReceivingTreatment === false && (
-              <div className="flex flex-col gap-2"><Label className={fl}>Tipo y frecuencia de tratamiento / motivo si no recibe</Label><Textarea value={tx.notReceivingReason ?? ""} onChange={e => updateDraft({ treatment: { ...tx, notReceivingReason: e.target.value || null } })} placeholder="Motivo si no recibe tratamiento" className="bg-card border min-h-20" /></div>
-            )}
-          </section>
+             {meta.currentlyReceivingTreatment === false && (
+               <div className="flex flex-col gap-2"><Label className={fl}>Tipo y frecuencia de tratamiento / motivo si no recibe</Label><Textarea value={tx.notReceivingReason ?? ""} onChange={e => updateDraft({ treatment: { ...tx, notReceivingReason: e.target.value || null } })} placeholder="Motivo si no recibe tratamiento" className="bg-card border min-h-20" /></div>
+             )}
+             <div className="flex flex-col gap-4">
+               <div className="flex items-center justify-between gap-3">
+                 <div>
+                   <p className="text-sm font-medium">Medicamentos actuales</p>
+                   <p className="text-xs text-muted-foreground">Registra la medicación asociada al tratamiento. La frecuencia usa la misma estructura de duración.</p>
+                 </div>
+                 <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={addMedication}><Plus className="size-3.5" />Agregar</Button>
+               </div>
+               {medications.map((medication, index) => (
+                 <div key={index} className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+                   <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold text-muted-foreground">Medicamento {index + 1}</p><Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground/60 hover:text-destructive" onClick={() => removeMedication(index)}><Minus className="size-3.5" /></Button></div>
+                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                     <div className="flex flex-col gap-2"><Label className={fl}>Nombre <span className="text-destructive">*</span></Label><Input value={medication.name} onChange={e => updateMedication(index, { name: e.target.value })} placeholder="Ej: Tamoxifeno" className="bg-card border" /></div>
+                     <div className="flex flex-col gap-2"><Label className={fl}>Descripción de dosis</Label><Input value={medication.doseDescription ?? ""} onChange={e => updateMedication(index, { doseDescription: e.target.value || undefined })} placeholder="Ej: 2 tabletas" className="bg-card border" /></div>
+                     <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2"><Label className={fl}>Cantidad</Label><Input type="text" inputMode="decimal" defaultValue={medication.doseAmount ?? ""} onBlur={e => { const raw = e.target.value.trim().replace(",", "."); if (!raw) { updateMedication(index, { doseAmount: undefined }); return } const parsed = Number(raw); if (!Number.isFinite(parsed) || parsed < 0) { e.currentTarget.value = medication.doseAmount?.toString() ?? ""; return } updateMedication(index, { doseAmount: parsed }) }} className="bg-card border" /></div>
+                       <div className="flex flex-col gap-2"><Label className={fl}>Unidad</Label><Select items={DOSE_UNITS} value={medication.doseUnit ?? ""} onValueChange={v => updateMedication(index, { doseUnit: (v || undefined) as MedicationDoseUnit | undefined })}><SelectTrigger className="bg-card border"><SelectValue placeholder="Unidad" /></SelectTrigger><SelectContent>{DOSE_UNITS.map(unit => <SelectItem key={unit.value} value={unit.value}>{unit.label}</SelectItem>)}</SelectContent></Select></div>
+                     </div>
+                     <div className="flex flex-col gap-2"><Label className={fl}>Vía de administración</Label><Select items={MEDICATION_ROUTES} value={medication.route ?? ""} onValueChange={v => updateMedication(index, { route: (v || undefined) as MedicationRoute | undefined })}><SelectTrigger className="bg-card border"><SelectValue placeholder="Seleccionar vía" /></SelectTrigger><SelectContent>{MEDICATION_ROUTES.map(route => <SelectItem key={route.value} value={route.value}>{route.label}</SelectItem>)}</SelectContent></Select></div>
+                   </div>
+                   <DurationInput label="Frecuencia del medicamento" units={["HOUR", "DAY", "WEEK", "MONTH"]} defaultUnit="HOUR" singleValue value={medication.frequency} onChange={frequency => updateMedication(index, { frequency })} />
+                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2"><div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio</Label><Input type="date" value={medication.startDate ?? ""} onChange={e => updateMedication(index, { startDate: e.target.value || undefined })} className="bg-card border" /></div><div className="flex flex-col gap-2"><Label className={fl}>Fecha de fin</Label><Input type="date" value={medication.endDate ?? ""} onChange={e => updateMedication(index, { endDate: e.target.value || undefined })} className="bg-card border" /></div></div>
+                   <div className="flex flex-col gap-2"><Label className={fl}>Notas</Label><Textarea value={medication.notes ?? ""} onChange={e => updateMedication(index, { notes: e.target.value || undefined })} placeholder="Indicaciones o notas adicionales" className="bg-card border min-h-16" /></div>
+                 </div>
+               ))}
+             </div>
+           </section>
         </>
       )}
 

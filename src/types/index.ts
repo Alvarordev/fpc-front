@@ -2,6 +2,10 @@
 // Enums — exact matches to backend Java enums
 // ============================================================
 
+import type { DurationDraft } from "./duration"
+
+export type { DurationDraft, DurationInput, DurationUnit } from "./duration"
+
 export type PatientRole = "UNKNOWN" | "PATIENT" | "COMPANION"
 
 export type PatientStatus = "PROSPECT" | "ENROLLED" | "ACTIVE" | "INACTIVE"
@@ -55,6 +59,35 @@ export type UserRole = "ADMIN" | "FOUNDATION" | "AGENT" | "VOLUNTEER"
 
 export type AffiliationType = "PATIENT" | "FAMILY"
 
+export type AddressType = "PERMANENT" | "TEMPORARY"
+
+export type PeruDepartment =
+  | "AMAZONAS"
+  | "ANCASH"
+  | "APURIMAC"
+  | "AREQUIPA"
+  | "AYACUCHO"
+  | "CAJAMARCA"
+  | "CALLAO"
+  | "CUSCO"
+  | "HUANCAVELICA"
+  | "HUANUCO"
+  | "ICA"
+  | "JUNIN"
+  | "LA_LIBERTAD"
+  | "LAMBAYEQUE"
+  | "LIMA"
+  | "LORETO"
+  | "MADRE_DE_DIOS"
+  | "MOQUEGUA"
+  | "PASCO"
+  | "PIURA"
+  | "PUNO"
+  | "SAN_MARTIN"
+  | "TACNA"
+  | "TUMBES"
+  | "UCAYALI"
+
 // ============================================================
 // Auth
 // ============================================================
@@ -92,11 +125,8 @@ export interface CreatePatientRequest {
 
 export interface EnrollPatientDetailsRequest {
   birthDepartment?: string | null
-  currentAddress?: string | null
-  currentDistrict?: string | null
-  currentDepartment?: string | null
-  dniMatchesAddress?: boolean | null
-  travelTimeToHospital?: string | null
+  primaryHealthCenterId?: string | null
+  travelTimeToHospital?: DurationDraft
   emergencyContactName?: string | null
   emergencyContactPhone?: string | null
   zoneType?: string | null
@@ -129,26 +159,54 @@ export interface AddDiagnosisRequest {
   diagnosis: string
   cancerStage?: CancerStage | null
   diagnosisDate?: string | null
+  firstSymptomsDate?: string | null
   healthCenterId?: string | null
   diagnosisSpecialty?: string | null
   symptomLeadingToCheckup?: string | null
-  waitTimeForDiagnosis?: string | null
+  waitTimeForDiagnosis?: DurationDraft
   hasMedicalReport?: boolean
   isCurrent: boolean
   changeReason?: string | null
 }
 
+export type TreatmentSituation =
+  | "EN_CURSO"
+  | "PENDIENTE_DE_INICIO"
+  | "INTERRUMPIDO"
+  | "FINALIZADO"
+
+export type MedicationDoseUnit = "MG" | "G" | "ML" | "UI" | "TABLET" | "DROP" | "OTHER"
+export type MedicationRoute = "ORAL" | "IV" | "IM" | "SUBCUTANEOUS" | "TOPICAL" | "OTHER"
+
+export interface AddTreatmentMedicationRequest {
+  name: string
+  doseAmount?: number
+  doseUnit?: MedicationDoseUnit
+  doseDescription?: string
+  route?: MedicationRoute
+  frequency?: DurationDraft
+  startDate?: string
+  endDate?: string
+  isActive?: boolean
+  notes?: string
+}
+
 export interface AddTreatmentRequest {
   diagnosisId: string
   treatmentType: string
-  treatmentFrequency?: string | null
-  healthCenterId?: string | null
+  treatmentFrequency?: DurationDraft
+  isReferred?: boolean
+  sourceHealthCenterId?: string
+  receivingHealthCenterId?: string
   startDate?: string | null
   endDate?: string | null
   isCurrent: boolean
   changeReason?: string | null
   notReceivingReason?: string | null
-  treatmentSituation?: string | null
+  treatmentSituation?: TreatmentSituation | null
+  hasLatestPrescription?: boolean
+  latestPrescriptionDate?: string | null
+  medications?: AddTreatmentMedicationRequest[]
 }
 
 export interface AddMedicalAppointmentRequest {
@@ -187,11 +245,26 @@ export interface EnrollmentMetadataRequest {
 export interface SymptomReportRequest {
   hasDiscomfort?: boolean
   signsAndSymptoms?: string | null
+  symptomDuration?: DurationDraft
+  symptomFrequency?: DurationDraft
   hasSoughtMedicalConsultation?: boolean
   healthCenterId?: string | null
   specialty?: string | null
   firstConsultationDetails?: string | null
   indicationsReceived?: string | null
+}
+
+export interface EnrollmentAddressRequest {
+  type: AddressType
+  department?: PeruDepartment
+  isPrimary?: boolean
+  address?: string
+  district?: string
+  province?: string
+  reference?: string
+  dniMatchesAddress?: boolean
+  validFrom?: string
+  validTo?: string
 }
 
 export interface FamilyPreventionTalkInterestRequest {

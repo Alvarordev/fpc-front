@@ -25,6 +25,12 @@ import {
   useGenerateAISummary,
 } from "../_hooks/use-alert-timeline";
 
+const severityLabels: Record<Alert["severity"], string> = {
+  HIGH: "Alta",
+  MEDIUM: "Media",
+  LOW: "Baja",
+};
+
 interface AlertTimelineDrawerProps {
   alert: Alert | null;
   onClose: () => void;
@@ -127,7 +133,7 @@ export function AlertTimelineDrawer({ alert, onClose }: AlertTimelineDrawerProps
                 {isActive ? "Activa" : "Resuelta"}
               </Badge>
               <Badge variant="outline" className="text-xs">
-                Prioridad: {alert.severity}
+                Prioridad: {severityLabels[alert.severity]}
               </Badge>
 
               {alert.ticketNumber && (

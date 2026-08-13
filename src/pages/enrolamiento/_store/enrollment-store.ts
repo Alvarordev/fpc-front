@@ -9,9 +9,11 @@ import type {
   AddTreatmentRequest,
   AddMedicalAppointmentRequest,
   AddSisAffiliationRequest,
+  EnrollmentAddressRequest,
   FamilyPreventionTalkInterestRequest,
   EnrollmentMetadataRequest,
 } from "@/types";
+import { normalizeDuration } from "@/types/duration";
 
 export const TOTAL_STEPS = 8;
 
@@ -42,28 +44,61 @@ export interface CompanionDraft {
   relationship?: string;
 }
 
+export interface EnrollmentNoteDraft {
+  text: string;
+}
+
+export type EnrollmentMetadataDraft = EnrollmentMetadataRequest & {
+  startTime?: string;
+  endTime?: string;
+  comments?: string;
+  enrollmentNotes?: EnrollmentNoteDraft[];
+  surveyAccepted?: boolean;
+  affiliationType?: string;
+  isOncologicalPatient?: boolean;
+  assignedAgentId?: string;
+};
+
 export interface EnrollmentDraft {
   patientId: string | null;
   patientData: CreatePatientRequest;
   details: EnrollPatientDetailsRequest;
   insurance: AddInsuranceRequest;
   symptomReport: SymptomReportRequest;
-  diagnosis: AddDiagnosisRequest;
+  diagnosis: EnrollmentDiagnosisDraft;
   treatment: AddTreatmentRequest;
+  addresses: EnrollmentAddressRequest[];
   medicalAppointments: AddMedicalAppointmentRequest[];
   familyPreventionTalkInterests: FamilyPreventionTalkInterestRequest[];
   sisAffiliation: AddSisAffiliationRequest;
   companion: CompanionDraft;
-  enrollmentMetadata: EnrollmentMetadataRequest & {
-    startTime?: string;
-    endTime?: string;
-    comments?: string;
-    surveyAccepted?: boolean;
-    affiliationType?: string;
-    isOncologicalPatient?: boolean;
-    assignedAgentId?: string;
-  };
+  enrollmentMetadata: EnrollmentMetadataDraft;
 }
+
+export function serializeEnrollmentNotes(notes: EnrollmentNoteDraft[]) {
+  return notes
+    .map((note) => note.text.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function getEnrollmentNotes(metadata: EnrollmentMetadataDraft) {
+  if (metadata.enrollmentNotes?.length) return metadata.enrollmentNotes;
+
+  const legacyComment = metadata.comments?.trim();
+  return legacyComment ? [{ text: legacyComment }] : [];
+}
+
+export function getEnrollmentComments(metadata: EnrollmentMetadataDraft) {
+  const serializedNotes = metadata.enrollmentNotes?.length
+    ? serializeEnrollmentNotes(metadata.enrollmentNotes)
+    : "";
+  return serializedNotes || metadata.comments?.trim() || undefined;
+}
+
+export type EnrollmentDiagnosisDraft = AddDiagnosisRequest & {
+  waitTimeForDiagnosisManuallyEdited?: boolean;
+};
 
 const PLACEHOLDER_DIAGNOSIS_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -75,6 +110,7 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   symptomReport: {},
   diagnosis: { diagnosis: "", isCurrent: true },
   treatment: { diagnosisId: PLACEHOLDER_DIAGNOSIS_ID, treatmentType: "", isCurrent: true },
+  addresses: [],
   medicalAppointments: [],
   familyPreventionTalkInterests: [],
   sisAffiliation: { canAffiliate: true },
@@ -87,7 +123,7 @@ function normalizeDraft(draft: Partial<EnrollmentDraft> | undefined): Enrollment
   // companion's name/phone as loose strings on enrollmentMetadata — migrate them
   // into `companion` so in-progress work isn't lost.
   const legacyMeta = draft?.enrollmentMetadata as
-    | (EnrollmentDraft["enrollmentMetadata"] & { nombreTercero?: string; telefonoTercero?: string })
+    | (EnrollmentDraft["enrollmentMetadata"] & { nombreTercero?: string; telefonoTercero?: string; surveyRating?: number })
     | undefined;
   const migratedCompanion: Partial<CompanionDraft> = {};
   if (!draft?.companion && legacyMeta?.nombreTercero) migratedCompanion.fullName = legacyMeta.nombreTercero;
@@ -95,16 +131,110 @@ function normalizeDraft(draft: Partial<EnrollmentDraft> | undefined): Enrollment
   const restMeta = { ...legacyMeta };
   delete restMeta.nombreTercero;
   delete restMeta.telefonoTercero;
+  delete restMeta.surveyRating;
+  const enrollmentNotes = normalizeEnrollmentNotes(legacyMeta?.enrollmentNotes, legacyMeta?.comments);
+
+  const legacyDetails = draft?.details as (EnrollmentDraft["details"] & {
+    currentAddress?: string | null;
+    currentDistrict?: string | null;
+    currentDepartment?: string | null;
+    dniMatchesAddress?: boolean | null;
+    travelTimeToHospital?: unknown;
+  }) | undefined;
+  const migratedAddresses = draft?.addresses ?? (
+    legacyDetails?.currentAddress ||
+    legacyDetails?.currentDistrict ||
+    legacyDetails?.currentDepartment
+      ? [{
+          type: "PERMANENT" as const,
+          isPrimary: true,
+          address: legacyDetails.currentAddress ?? undefined,
+          district: legacyDetails.currentDistrict ?? undefined,
+          department: undefined,
+          dniMatchesAddress: legacyDetails.dniMatchesAddress ?? undefined,
+        }]
+      : []
+  );
+  const legacyDiagnosis = draft?.diagnosis as (EnrollmentDraft["diagnosis"] & {
+    waitTimeForDiagnosis?: unknown;
+  }) | undefined;
+  const legacyTreatment = draft?.treatment as (EnrollmentDraft["treatment"] & {
+    healthCenterId?: unknown;
+    treatmentFrequency?: unknown;
+    treatmentSituation?: unknown;
+    medications?: Array<{
+      name?: unknown;
+      doseAmount?: unknown;
+      doseUnit?: unknown;
+      doseDescription?: unknown;
+      route?: unknown;
+      frequency?: unknown;
+      startDate?: unknown;
+      endDate?: unknown;
+      isActive?: unknown;
+      notes?: unknown;
+    }>;
+  }) | undefined;
+  const legacySymptoms = draft?.symptomReport as (EnrollmentDraft["symptomReport"] & {
+    symptomDuration?: unknown;
+    symptomFrequency?: unknown;
+  }) | undefined;
+  const oldTreatmentSituation: Record<string, EnrollmentDraft["treatment"]["treatmentSituation"]> = {
+    "En curso": "EN_CURSO",
+    "Por iniciar": "PENDIENTE_DE_INICIO",
+    "Suspendido temporalmente": "INTERRUMPIDO",
+    "Finalizado": "FINALIZADO",
+    "En evaluación": "PENDIENTE_DE_INICIO",
+  };
+  type MedicationDraft = NonNullable<EnrollmentDraft["treatment"]["medications"]>[number];
+  const migratedMedications: MedicationDraft[] | undefined = legacyTreatment?.medications?.map((medication) => ({
+    name: typeof medication.name === "string" ? medication.name : "",
+    doseAmount: typeof medication.doseAmount === "number" ? medication.doseAmount : undefined,
+    doseUnit: medication.doseUnit as MedicationDraft["doseUnit"],
+    doseDescription: typeof medication.doseDescription === "string" ? medication.doseDescription : undefined,
+    route: medication.route as MedicationDraft["route"],
+    frequency: normalizeDuration(medication.frequency),
+    startDate: typeof medication.startDate === "string" ? medication.startDate : undefined,
+    endDate: typeof medication.endDate === "string" ? medication.endDate : undefined,
+    isActive: typeof medication.isActive === "boolean" ? medication.isActive : undefined,
+    notes: typeof medication.notes === "string" ? medication.notes : undefined,
+  }));
 
   return {
     ...DEFAULT_DRAFT,
     ...draft,
     patientData: { ...DEFAULT_DRAFT.patientData, ...draft?.patientData },
-    details: { ...DEFAULT_DRAFT.details, ...draft?.details },
+    details: {
+      ...DEFAULT_DRAFT.details,
+      ...draft?.details,
+      travelTimeToHospital: normalizeDuration(legacyDetails?.travelTimeToHospital),
+    },
     insurance: { ...DEFAULT_DRAFT.insurance, ...draft?.insurance },
-    symptomReport: { ...DEFAULT_DRAFT.symptomReport, ...draft?.symptomReport },
-    diagnosis: { ...DEFAULT_DRAFT.diagnosis, ...draft?.diagnosis },
-    treatment: { ...DEFAULT_DRAFT.treatment, ...draft?.treatment },
+    symptomReport: {
+      ...DEFAULT_DRAFT.symptomReport,
+      ...draft?.symptomReport,
+      symptomDuration: normalizeDuration(legacySymptoms?.symptomDuration),
+      symptomFrequency: normalizeDuration(legacySymptoms?.symptomFrequency),
+    },
+    diagnosis: {
+      ...DEFAULT_DRAFT.diagnosis,
+      ...draft?.diagnosis,
+      waitTimeForDiagnosis: normalizeDuration(legacyDiagnosis?.waitTimeForDiagnosis),
+    },
+    treatment: {
+      ...DEFAULT_DRAFT.treatment,
+      ...draft?.treatment,
+      ...(typeof legacyTreatment?.healthCenterId === "string" &&
+      legacyTreatment.receivingHealthCenterId === undefined
+        ? { receivingHealthCenterId: legacyTreatment.healthCenterId }
+        : {}),
+      treatmentFrequency: normalizeDuration(legacyTreatment?.treatmentFrequency),
+      treatmentSituation:
+        oldTreatmentSituation[String(legacyTreatment?.treatmentSituation)] ??
+        (legacyTreatment?.treatmentSituation as EnrollmentDraft["treatment"]["treatmentSituation"] | undefined),
+      medications: migratedMedications,
+    },
+    addresses: migratedAddresses,
     medicalAppointments: draft?.medicalAppointments ?? [],
     familyPreventionTalkInterests: draft?.familyPreventionTalkInterests ?? [],
     sisAffiliation: { ...DEFAULT_DRAFT.sisAffiliation, ...draft?.sisAffiliation },
@@ -112,8 +242,32 @@ function normalizeDraft(draft: Partial<EnrollmentDraft> | undefined): Enrollment
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
       ...restMeta,
+      comments: enrollmentNotes.length ? serializeEnrollmentNotes(enrollmentNotes) : restMeta.comments,
+      enrollmentNotes,
     },
   };
+}
+
+function normalizeEnrollmentNotes(notes: unknown, legacyComments: unknown): EnrollmentNoteDraft[] {
+  const normalizedNotes = Array.isArray(notes)
+    ? notes.flatMap((note) => {
+        if (!note || typeof note !== "object") return [];
+        const record = note as Record<string, unknown>;
+        if (typeof record.text !== "string" || !record.text.trim()) return [];
+        return [{ text: record.text.trim() }];
+      })
+    : [];
+
+  if (normalizedNotes.length) return normalizedNotes;
+  if (typeof legacyComments === "string" && legacyComments.trim()) {
+    return legacyComments
+      .trim()
+      .split(/\n\n+/)
+      .map((comment) => comment.replace(/^\[[^\]\n]+\]\n/, "").trim())
+      .filter(Boolean)
+      .map((text) => ({ text }));
+  }
+  return [];
 }
 
 interface EnrollmentState {

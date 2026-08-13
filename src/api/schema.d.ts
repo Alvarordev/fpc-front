@@ -767,6 +767,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/treatments/{treatmentId}/medications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List medications for a treatment */
+        get: operations["TreatmentMedicationsController_findAll"];
+        put?: never;
+        /** Add a medication to a treatment */
+        post: operations["TreatmentMedicationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/treatments/{treatmentId}/medications/{medicationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deactivate a treatment medication */
+        delete: operations["TreatmentMedicationsController_deactivate"];
+        options?: never;
+        head?: never;
+        /** Update a treatment medication */
+        patch: operations["TreatmentMedicationsController_update"];
+        trace?: never;
+    };
+    "/patients/{patientId}/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient addresses */
+        get: operations["PatientAddressesController_findAll"];
+        put?: never;
+        /** Add a patient address */
+        post: operations["PatientAddressesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/addresses/{addressId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deactivate a patient address */
+        delete: operations["PatientAddressesController_deactivate"];
+        options?: never;
+        head?: never;
+        /** Update a patient address */
+        patch: operations["PatientAddressesController_update"];
+        trace?: never;
+    };
     "/patients/{patientId}/symptom-reports": {
         parameters: {
             query?: never;
@@ -1291,10 +1363,12 @@ export interface components {
             distributions: components["schemas"]["DashboardDistributionsDto"];
             /** @description A zero-filled enrollment and session series for the selected period. */
             trend: components["schemas"]["DashboardTrendPointDto"][];
-            /** @description Up to eight hospitals using current medical appointment, treatment, then diagnosis precedence. */
+            /** @description Up to eight hospitals using primary health center, then current medical appointment, treatment, and diagnosis precedence. */
             hospitals: components["schemas"]["DashboardTableItemDto"][];
-            /** @description Up to eight regions using hospital department, then current and birth department precedence. */
+            /** @description Up to eight regions using primary health center department, then primary address, then birth department precedence. */
             regions: components["schemas"]["DashboardTableItemDto"][];
+            /** @description Up to eight treatment referral pairs (origin → destination). */
+            referrals: components["schemas"]["DashboardTableItemDto"][];
         };
         CreateAgentDto: {
             /** Format: email */
@@ -1374,13 +1448,18 @@ export interface components {
             isPrimaryInformant?: boolean;
             relationship?: string;
         };
+        DurationDto: {
+            valueMin: number;
+            valueMax?: number;
+            /** @enum {string} */
+            unit: "MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR";
+            label?: string;
+        };
         UpsertPatientDetailsDto: {
             birthDepartment?: string;
-            currentAddress?: string;
-            currentDistrict?: string;
-            currentDepartment?: string;
-            dniMatchesAddress?: boolean;
-            travelTimeToHospital?: string;
+            /** Format: uuid */
+            primaryHealthCenterId?: string;
+            travelTimeToHospital?: components["schemas"]["DurationDto"];
             emergencyContactName?: string;
             emergencyContactPhone?: string;
             zoneType?: string;
@@ -1421,24 +1500,48 @@ export interface components {
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
             diagnosisDate?: string;
+            firstSymptomsDate?: string;
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
             symptomLeadingToCheckup?: string;
-            waitTimeForDiagnosis?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             changeReason?: string;
         };
+        CreateTreatmentMedicationDto: {
+            name: string;
+            doseAmount?: number;
+            /** @enum {string} */
+            doseUnit?: "MG" | "G" | "ML" | "UI" | "TABLET" | "DROP" | "OTHER";
+            doseDescription?: string;
+            /** @enum {string} */
+            route?: "ORAL" | "IV" | "IM" | "SUBCUTANEOUS" | "TOPICAL" | "OTHER";
+            frequency?: components["schemas"]["DurationDto"];
+            startDate?: string;
+            endDate?: string;
+            isActive?: boolean;
+            notes?: string;
+        };
         EnrollmentTreatmentDto: {
-            treatmentType: string;
-            treatmentFrequency?: string;
             /** Format: uuid */
-            healthCenterId?: string;
+            seriesId?: string;
+            treatmentType: string;
+            treatmentFrequency?: components["schemas"]["DurationDto"];
+            isReferred?: boolean;
+            /** Format: uuid */
+            sourceHealthCenterId?: string;
+            /** Format: uuid */
+            receivingHealthCenterId?: string;
             startDate?: string;
             endDate?: string;
             changeReason?: string;
             notReceivingReason?: string;
-            treatmentSituation?: string;
+            /** @enum {string} */
+            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO";
+            hasLatestPrescription?: boolean;
+            latestPrescriptionDate?: string;
+            medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
         };
         EnrollmentMedicalAppointmentDto: {
             /** Format: uuid */
@@ -1453,14 +1556,28 @@ export interface components {
             isFirstConsultation?: boolean;
             changeReason?: string;
         };
+        EnrollmentAddressDto: {
+            /** @enum {string} */
+            department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** @enum {string} */
+            type: "PERMANENT" | "TEMPORARY";
+            isPrimary?: boolean;
+            address?: string;
+            district?: string;
+            province?: string;
+            reference?: string;
+            dniMatchesAddress?: boolean;
+            validFrom?: string;
+            validTo?: string;
+        };
         EnrollmentSymptomReportDto: {
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
-            symptomDuration?: string;
-            symptomFrequency?: string;
+            symptomDuration?: components["schemas"]["DurationDto"];
+            symptomFrequency?: components["schemas"]["DurationDto"];
             isPainPresent?: boolean;
             painIntensity?: number;
             painLocation?: string;
@@ -1490,8 +1607,9 @@ export interface components {
             insurance?: components["schemas"]["EnrollmentInsuranceDto"];
             sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
             diagnosis?: components["schemas"]["EnrollmentDiagnosisDto"];
-            treatment?: components["schemas"]["EnrollmentTreatmentDto"];
+            treatments?: components["schemas"]["EnrollmentTreatmentDto"][];
             medicalAppointments?: components["schemas"]["EnrollmentMedicalAppointmentDto"][];
+            addresses?: components["schemas"]["EnrollmentAddressDto"][];
             symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
             currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
@@ -1883,17 +2001,23 @@ export interface components {
             data: (components["schemas"]["FollowUpTimelineEventDto"] | components["schemas"]["ReminderTimelineEventDto"] | components["schemas"]["PsychooncologyAppointmentTimelineEventDto"])[];
             total: number;
         };
+        DurationResponseDto: {
+            valueMin: number;
+            valueMax: number | null;
+            /** @enum {string} */
+            unit: "MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR";
+            label: string | null;
+        };
         PatientDetailsResponseDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             patientId: string;
             birthDepartment: string | null;
-            currentAddress: string | null;
-            currentDistrict: string | null;
-            currentDepartment: string | null;
-            dniMatchesAddress: boolean | null;
-            travelTimeToHospital: string | null;
+            /** Format: uuid */
+            primaryHealthCenterId: string | null;
+            primaryHealthCenterName?: string | null;
+            travelTimeToHospital: components["schemas"]["DurationResponseDto"] | null;
             emergencyContactName: string | null;
             emergencyContactPhone: string | null;
             zoneType: string | null;
@@ -1929,12 +2053,16 @@ export interface components {
             cancerStage: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN" | null;
             /** Format: date */
             diagnosisDate: string | null;
+            /** Format: date */
+            firstSymptomsDate: string | null;
             /** Format: uuid */
             healthCenterId: string | null;
             healthCenterName?: string | null;
             diagnosisSpecialty: string | null;
             symptomLeadingToCheckup: string | null;
-            waitTimeForDiagnosis: string | null;
+            /** @enum {string|null} */
+            waitTimeSource: "COMPUTED" | "REPORTED" | null;
+            waitTimeForDiagnosis: components["schemas"]["DurationResponseDto"] | null;
             hasMedicalReport: boolean;
             isCurrent: boolean;
             changeReason: string | null;
@@ -1959,11 +2087,17 @@ export interface components {
             followUpId: string;
             /** Format: uuid */
             diagnosisId: string;
-            treatmentType: string;
-            treatmentFrequency: string | null;
             /** Format: uuid */
-            healthCenterId: string | null;
-            healthCenterName?: string | null;
+            seriesId: string;
+            treatmentType: string;
+            treatmentFrequency: components["schemas"]["DurationResponseDto"] | null;
+            isReferred: boolean;
+            /** Format: uuid */
+            sourceHealthCenterId: string | null;
+            sourceHealthCenterName?: string | null;
+            /** Format: uuid */
+            receivingHealthCenterId: string | null;
+            receivingHealthCenterName?: string | null;
             diagnosisSummary?: components["schemas"]["PatientDiagnosisSummaryDto"] | null;
             /** Format: date */
             startDate: string | null;
@@ -1972,7 +2106,11 @@ export interface components {
             isCurrent: boolean;
             changeReason: string | null;
             notReceivingReason: string | null;
-            treatmentSituation: string | null;
+            /** @enum {string|null} */
+            treatmentSituation: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | null;
+            hasLatestPrescription: boolean | null;
+            /** Format: date */
+            latestPrescriptionDate: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2053,8 +2191,8 @@ export interface components {
             hasDiscomfort: boolean | null;
             signsAndSymptoms: string | null;
             indicationsReceived: string | null;
-            symptomDuration: string | null;
-            symptomFrequency: string | null;
+            symptomDuration: components["schemas"]["DurationResponseDto"] | null;
+            symptomFrequency: components["schemas"]["DurationResponseDto"] | null;
             isPainPresent: boolean | null;
             painIntensity: number | null;
             painLocation: string | null;
@@ -2130,11 +2268,12 @@ export interface components {
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
             diagnosisDate?: string;
+            firstSymptomsDate?: string;
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
             symptomLeadingToCheckup?: string;
-            waitTimeForDiagnosis?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             changeReason?: string;
         };
@@ -2178,15 +2317,118 @@ export interface components {
             followUpId: string;
             /** Format: uuid */
             diagnosisId: string;
-            treatmentType: string;
-            treatmentFrequency?: string;
             /** Format: uuid */
-            healthCenterId?: string;
+            seriesId?: string;
+            treatmentType: string;
+            treatmentFrequency?: components["schemas"]["DurationDto"];
+            isReferred?: boolean;
+            /** Format: uuid */
+            sourceHealthCenterId?: string;
+            /** Format: uuid */
+            receivingHealthCenterId?: string;
             startDate?: string;
             endDate?: string;
             changeReason?: string;
             notReceivingReason?: string;
-            treatmentSituation?: string;
+            /** @enum {string} */
+            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO";
+            hasLatestPrescription?: boolean;
+            latestPrescriptionDate?: string;
+            medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
+        };
+        TreatmentMedicationResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            treatmentId: string;
+            /** Format: uuid */
+            patientId: string;
+            name: string;
+            doseAmount: number | null;
+            /** @enum {string|null} */
+            doseUnit: "MG" | "G" | "ML" | "UI" | "TABLET" | "DROP" | "OTHER" | null;
+            doseDescription: string | null;
+            /** @enum {string|null} */
+            route: "ORAL" | "IV" | "IM" | "SUBCUTANEOUS" | "TOPICAL" | "OTHER" | null;
+            frequency: components["schemas"]["DurationResponseDto"] | null;
+            /** Format: date */
+            startDate: string | null;
+            /** Format: date */
+            endDate: string | null;
+            isActive: boolean;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UpdateTreatmentMedicationDto: {
+            name?: string;
+            doseAmount?: number;
+            /** @enum {string} */
+            doseUnit?: "MG" | "G" | "ML" | "UI" | "TABLET" | "DROP" | "OTHER";
+            doseDescription?: string;
+            /** @enum {string} */
+            route?: "ORAL" | "IV" | "IM" | "SUBCUTANEOUS" | "TOPICAL" | "OTHER";
+            frequency?: components["schemas"]["DurationDto"];
+            startDate?: string;
+            endDate?: string;
+            isActive?: boolean;
+            notes?: string;
+        };
+        CreatePatientAddressDto: {
+            /** @enum {string} */
+            department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** Format: uuid */
+            followUpId?: string;
+            /** @enum {string} */
+            type: "PERMANENT" | "TEMPORARY";
+            isPrimary?: boolean;
+            address?: string;
+            district?: string;
+            province?: string;
+            reference?: string;
+            dniMatchesAddress?: boolean;
+            validFrom?: string;
+            validTo?: string;
+        };
+        PatientAddressResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string | null;
+            /** @enum {string} */
+            type: "PERMANENT" | "TEMPORARY";
+            isPrimary: boolean;
+            address: string | null;
+            district: string | null;
+            province: string | null;
+            department: string | null;
+            reference: string | null;
+            dniMatchesAddress: boolean | null;
+            /** Format: date */
+            validFrom: string | null;
+            /** Format: date */
+            validTo: string | null;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UpdatePatientAddressDto: {
+            /** @enum {string} */
+            department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** Format: uuid */
+            followUpId?: string;
+            /** @enum {string} */
+            type?: "PERMANENT" | "TEMPORARY";
+            isPrimary?: boolean;
+            address?: string;
+            district?: string;
+            province?: string;
+            reference?: string;
+            dniMatchesAddress?: boolean;
+            validFrom?: string;
+            validTo?: string;
         };
         CreatePatientSymptomReportDto: {
             /** Format: uuid */
@@ -2198,8 +2440,8 @@ export interface components {
             hasDiscomfort?: boolean;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
-            symptomDuration?: string;
-            symptomFrequency?: string;
+            symptomDuration?: components["schemas"]["DurationDto"];
+            symptomFrequency?: components["schemas"]["DurationDto"];
             isPainPresent?: boolean;
             painIntensity?: number;
             painLocation?: string;
@@ -5027,6 +5269,346 @@ export interface operations {
             };
             /** @description Diagnosis does not belong to the patient */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TreatmentMedicationsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                treatmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreatmentMedicationResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TreatmentMedicationsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                treatmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTreatmentMedicationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreatmentMedicationResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Treatment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TreatmentMedicationsController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                treatmentId: string;
+                medicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Medication not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TreatmentMedicationsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                treatmentId: string;
+                medicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTreatmentMedicationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreatmentMedicationResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Medication not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientAddressesController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAddressResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientAddressesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientAddressDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAddressResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientAddressesController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                addressId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Address not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientAddressesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                addressId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientAddressDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientAddressResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Address not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

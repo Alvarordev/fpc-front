@@ -41,7 +41,9 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
     : isReminder
       ? "Recordatorio"
       : `Sesión de psicooncología ${event.sessionNumber}`
-  const statusLabel = isReminder ? reminderStatusLabels[event.status] : followUpStatusLabels[event.status]
+  const statusLabel = isReminder
+    ? reminderStatusLabels[event.status]
+    : followUpStatusLabels[event.status]
   const accent = isFollowUp ? "border-l-blue-400" : isReminder ? "border-l-amber-400" : "border-l-purple-400"
   const iconColor = isFollowUp ? "bg-blue-50 text-blue-600" : isReminder ? "bg-amber-50 text-amber-600" : "bg-purple-50 text-purple-600"
 
