@@ -62,7 +62,7 @@ export function Step8Cierre() {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="flex flex-col gap-8">
-      <StepHeader step={8} title="Cierre de Llamada" description="Registre el cierre y confirme la encuesta de satisfacción." />
+      <StepHeader step={8} title="Cierre de Llamada" description="Registre el cierre y la respuesta sobre la encuesta de satisfacción." />
       <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-5"><p className="mb-3 text-[10px] font-bold tracking-widest text-emerald-700/80 uppercase">Resumen</p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <span className="text-muted-foreground/60 text-[10px] font-bold tracking-wide uppercase">Paciente</span><span className="font-medium">{draft.patientData.fullName || "—"}</span>
@@ -73,39 +73,20 @@ export function Step8Cierre() {
       </div>
       <section className="flex flex-col gap-5"><SectionHeader icon={ClipboardCheck} title="Encuesta de Satisfacción" />
         <div className="flex flex-col gap-2"><Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿El paciente acepta la encuesta? <span className="text-destructive">*</span></Label>
-          <Select value={meta.surveyAccepted?"Sí":"No"} onValueChange={v=>updateDraft({enrollmentMetadata:{...meta,surveyAccepted:v==="Sí"}})}><SelectTrigger className="w-full bg-card border"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí, acepta</SelectItem><SelectItem value="No">No desea</SelectItem></SelectContent></Select></div>
-        {meta.surveyAccepted && (
-          <div className="flex flex-col gap-2 pt-1">
-            <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Calificación (1 al 5)</Label>
-            <Select
-              value={meta.surveyRating ? String(meta.surveyRating) : ""}
-              onValueChange={(v) =>
-                updateDraft({
-                  enrollmentMetadata: {
-                    ...meta,
-                    surveyRating: v ? Number(v) : undefined,
-                  },
-                })
-              }
-            >
-              <SelectTrigger className="max-w-48 bg-card border">
-                <SelectValue placeholder="Sin calificar" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1 — Muy mala</SelectItem>
-                <SelectItem value="2">2 — Mala</SelectItem>
-                <SelectItem value="3">3 — Regular</SelectItem>
-                <SelectItem value="4">4 — Buena</SelectItem>
-                <SelectItem value="5">5 — Muy buena</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+          <Select
+            items={[{ value: "Sí", label: "Sí, acepta" }, { value: "No", label: "No desea" }]}
+            value={meta.surveyAccepted ? "Sí" : "No"}
+            onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, surveyAccepted: v === "Sí" } })}
+          >
+            <SelectTrigger className="w-full bg-card border"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="Sí">Sí, acepta</SelectItem><SelectItem value="No">No desea</SelectItem></SelectContent>
+          </Select>
+        </div>
       </section>
       {user?.role !== "AGENT" && (
         <section className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Agente responsable <span className="text-destructive">*</span></Label>
-          <Select value={meta.assignedAgentId ?? ""} onValueChange={(assignedAgentId) => updateDraft({ enrollmentMetadata: { ...meta, assignedAgentId: assignedAgentId ?? undefined } })}>
+          <Select items={agents.map((agent) => ({ value: agent.id, label: agent.fullName ?? agent.id }))} value={meta.assignedAgentId ?? ""} onValueChange={(assignedAgentId) => updateDraft({ enrollmentMetadata: { ...meta, assignedAgentId: assignedAgentId ?? undefined } })}>
             <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar agente..." /></SelectTrigger>
             <SelectContent>{agents.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.fullName ?? agent.id}</SelectItem>)}</SelectContent>
           </Select>

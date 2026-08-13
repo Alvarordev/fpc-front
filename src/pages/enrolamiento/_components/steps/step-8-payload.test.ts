@@ -33,7 +33,7 @@ describe("step 8 Nest enrollment payload", () => {
         treatment: { diagnosisId: "legacy", treatmentType: "Quimioterapia", isCurrent: true },
         medicalAppointments: [{ specialty: "Oncología", healthCenterId: null, appointmentDate: null, nextAppointmentDate: null, difficulties: null, hasReferralSheet: false, isFirstConsultation: false }],
         familyPreventionTalkInterests: [{ talkName: "Prevención", familyMemberName: "Rosa Test", familyMemberPhone: "999000111", familyMemberEmail: "rosa@example.com" }],
-        enrollmentMetadata: { affiliationType: "PATIENT", comments: "Caso diagnóstico", startTime: "09:00", endTime: "09:45", dataPolicyAccepted: true, informedConsentAccepted: true, surveyAccepted: true, surveyRating: 5 },
+        enrollmentMetadata: { affiliationType: "PATIENT", comments: "Caso diagnóstico", startTime: "09:00", endTime: "09:45", dataPolicyAccepted: true, informedConsentAccepted: true, surveyAccepted: true },
       }),
     })
 
@@ -45,6 +45,8 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.details?.referredToSocialWorker).toBe(true)
     expect(payload.familyPreventionTalkInterests).toHaveLength(1)
     expect(payload.callStartedAt).toMatch(/^2026-06-25T/)
+    expect(payload.surveyAccepted).toBe(true)
+    expect("followUpQualityRating" in payload).toBe(false)
   })
 
   it("maps the signs branch, SIS request, and family companion", () => {

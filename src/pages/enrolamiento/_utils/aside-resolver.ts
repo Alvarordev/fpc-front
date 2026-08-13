@@ -128,7 +128,7 @@ export function resolveAsideContent(
     case 8:
       return {
         script:
-          "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos por WhatsApp una breve encuesta de satisfacción sobre la presente llamada, en la que usted deberá marcar una calificación del 1 al 5.\n\nRecuerde que para cualquier duda o consulta puede comunicarse con nuestro Programa SEPA de lunes a viernes de 8:30 a.m. a 5:30 p.m. y los sábados de 8:30 a.m. a 12:00 p.m. al 0800 74012.",
+          "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos por WhatsApp una breve encuesta de satisfacción sobre la presente llamada. La calificación podrá registrarse posteriormente desde el perfil del paciente.\n\nRecuerde que para cualquier duda o consulta puede comunicarse con nuestro Programa SEPA de lunes a viernes de 8:30 a.m. a 5:30 p.m. y los sábados de 8:30 a.m. a 12:00 p.m. al 0800 74012.",
         reference: "SEPA Protocol — Cierre de Sesión v4.2",
       };
 

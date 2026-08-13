@@ -142,7 +142,6 @@ export function buildEnrollmentPayload({ draft, agentId, today = new Date().toIS
     consentToShareData: meta.dataPolicyAccepted ?? undefined,
     isOncologicalPatient: meta.isOncologicalPatient ?? undefined,
     surveyAccepted: meta.surveyAccepted ?? undefined,
-    followUpQualityRating: meta.surveyAccepted ? meta.surveyRating : undefined,
     caseComments: value(meta.comments),
     callStartedAt: localDateTime(today, meta.startTime),
     callEndedAt: localDateTime(today, meta.endTime),

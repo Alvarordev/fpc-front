@@ -9,6 +9,7 @@ import { usePatientAlerts } from "../_hooks/use-patient-alerts";
 import { buildEnrollmentPrefill } from "../_utils/build-enrollment-prefill";
 import { AlertBanner } from "./alert-banner";
 import { OverviewSection } from "./overview-section";
+import { EnrollmentRatingCard } from "./enrollment-rating-card";
 import { SeguimientoTab } from "./seguimiento-tab";
 import { PsicoTab } from "./psico-tab";
 import { RecordatoriosTab } from "./recordatorios-tab";
@@ -140,7 +141,13 @@ export function PatientDetailContent() {
           <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
         </TabsList>
         <TabsContent value="resumen">
-          <OverviewSection patient={patient} />
+          <div className="space-y-4">
+            <OverviewSection patient={patient} />
+            <EnrollmentRatingCard
+              patientId={patient.id}
+              enabled={patient.role !== "COMPANION" && patient.status === "ENROLLED"}
+            />
+          </div>
         </TabsContent>
         <TabsContent value="seguimiento">
           <SeguimientoTab pacienteId={patient.id} />

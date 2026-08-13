@@ -181,7 +181,6 @@ export interface EnrollmentMetadataRequest {
   currentlyAttendingConsultations?: boolean | null
   currentlyReceivingTreatment?: boolean | null
   surveyAccepted?: boolean
-  surveyRating?: number | null
   agentId?: string | null
 }
 

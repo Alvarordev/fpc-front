@@ -59,7 +59,6 @@ export interface EnrollmentDraft {
     endTime?: string;
     comments?: string;
     surveyAccepted?: boolean;
-    surveyRating?: number;
     affiliationType?: string;
     isOncologicalPatient?: boolean;
     assignedAgentId?: string;
