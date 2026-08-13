@@ -22,3 +22,12 @@ export function useTreatmentMedications(
     staleTime: 30 * 1000,
   })
 }
+
+export function usePatientSocialNotes(patientId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["patient-social-notes", patientId],
+    queryFn: () => patientsApi.listSocialNotes(patientId),
+    enabled: Boolean(patientId) && enabled,
+    staleTime: 30 * 1000,
+  })
+}

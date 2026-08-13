@@ -124,6 +124,9 @@ export function FollowUpContent() {
         queryKey: ["patient-addresses", patientId],
       }),
       queryClient.invalidateQueries({
+        queryKey: ["patient-social-notes", patientId],
+      }),
+      queryClient.invalidateQueries({
         queryKey: ["psychooncology-appointments"],
       }),
     ])
@@ -199,19 +202,62 @@ export function FollowUpContent() {
       newDiagnosisId = created.id
     }
 
-    if (clinicalDrafts.treatment) {
+    for (const treatmentDraft of clinicalDrafts.treatments ?? []) {
       const diagnosisId =
-        clinicalDrafts.treatment.diagnosisId === DRAFT_DIAGNOSIS_ID
+        treatmentDraft.diagnosisId === DRAFT_DIAGNOSIS_ID
           ? newDiagnosisId
-          : clinicalDrafts.treatment.diagnosisId
+          : treatmentDraft.diagnosisId
 
-      if (diagnosisId) {
-        await patientsApi.createTreatment(patientId!, {
-          ...clinicalDrafts.treatment,
-          diagnosisId,
-          followUpId: followUpId!,
-        })
+      if (!diagnosisId) continue
+      if (treatmentDraft.mode === "REPLACE" && !treatmentDraft.seriesId) {
+        throw new Error("Selecciona el tratamiento que deseas actualizar")
       }
+
+      const normalizedFrequency = toDurationInput(
+        treatmentDraft.treatmentFrequency,
+      )
+      if (treatmentDraft.treatmentFrequency && !normalizedFrequency) {
+        throw new Error("Completa correctamente la frecuencia del tratamiento")
+      }
+
+      const normalizedMedications = treatmentDraft.medications?.map(
+        (medication) => ({
+          ...medication,
+          frequency: toDurationInput(medication.frequency),
+        }),
+      )
+
+      await patientsApi.createTreatment(patientId!, {
+        diagnosisId,
+        treatmentType: treatmentDraft.treatmentType,
+        followUpId: followUpId!,
+        seriesId:
+          treatmentDraft.mode === "REPLACE"
+            ? treatmentDraft.seriesId
+            : undefined,
+        isReferred: treatmentDraft.isReferred,
+        sourceHealthCenterId: treatmentDraft.sourceHealthCenterId,
+        receivingHealthCenterId: treatmentDraft.receivingHealthCenterId,
+        startDate: treatmentDraft.startDate,
+        endDate: treatmentDraft.endDate,
+        changeReason: treatmentDraft.changeReason,
+        notReceivingReason: treatmentDraft.notReceivingReason,
+        treatmentSituation: treatmentDraft.treatmentSituation,
+        hasLatestPrescription: treatmentDraft.hasLatestPrescription,
+        latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
+        treatmentFrequency: normalizedFrequency,
+        ...(normalizedMedications?.length
+          ? { medications: normalizedMedications }
+          : {}),
+      })
+    }
+
+    for (const note of clinicalDrafts.socialNotes ?? []) {
+      await patientsApi.createSocialNote(patientId!, {
+        followUpId: followUpId!,
+        type: note.type,
+        note: note.note,
+      })
     }
 
     if (clinicalDrafts.symptomReport) {
@@ -430,10 +476,7 @@ export function FollowUpContent() {
 
       {canManage && isOpen ? (
         <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <Card
-            size="sm"
-            className="border-border/60 h-[min(52rem,calc(100dvh-14rem))] min-h-[30rem] overflow-hidden"
-          >
+          <Card size="sm" className="border-border/60">
             <CardHeader className="border-border/60 shrink-0 border-b pb-4">
               <CardTitle className="text-base">Ficha clínica</CardTitle>
               <p className="text-muted-foreground text-xs">
@@ -441,7 +484,7 @@ export function FollowUpContent() {
                 sección.
               </p>
             </CardHeader>
-            <CardContent className="min-h-0 flex-1 overflow-hidden px-4 pt-4 pb-4">
+            <CardContent className="px-4 pt-4 pb-4">
               <ClinicalDataTabs
                 patientId={patientId!}
                 drafts={clinicalDrafts}
@@ -450,7 +493,7 @@ export function FollowUpContent() {
             </CardContent>
           </Card>
           <FollowUpAside
-            className="order-first xl:order-last"
+            className="order-last xl:order-last"
             onPsicoOpen={() => setPsychooncologyOpen(true)}
             hasPsicoDraft={Boolean(psicoDraft)}
             onClearPsico={() => draftStore.clearPsico()}

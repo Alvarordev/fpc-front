@@ -12,14 +12,35 @@ import type { DurationDraft } from "@/types/duration"
 /** Sentinel diagnosisId meaning "link to the diagnosis draft in this same batch". */
 export const DRAFT_DIAGNOSIS_ID = "__DRAFT_DIAGNOSIS__"
 
-export type DiagnosisDraft = Omit<CreatePatientDiagnosisInput, "followUpId" | "waitTimeForDiagnosis"> & {
+export type DiagnosisDraft = Omit<
+  CreatePatientDiagnosisInput,
+  "followUpId" | "waitTimeForDiagnosis"
+> & {
   waitTimeForDiagnosis?: DurationDraft
   waitTimeForDiagnosisManuallyEdited?: boolean
 }
-export type TreatmentDraft = Omit<CreatePatientTreatmentInput, "followUpId">
+export type TreatmentDecisionMode = "REPLACE" | "PARALLEL"
+export type TreatmentDraft = Omit<
+  CreatePatientTreatmentInput,
+  "followUpId" | "seriesId"
+> & {
+  mode: TreatmentDecisionMode
+  seriesId?: string
+}
+export type SocialNoteType = "SOCIAL_WORKER" | "CONADIS" | "FISSAL"
+export type SocialNoteDraft = {
+  type: SocialNoteType
+  note: string
+}
 export type InsuranceDraft = Omit<CreatePatientInsuranceInput, "followUpId">
-export type SisAffiliationDraft = Omit<CreatePatientSisAffiliationInput, "followUpId">
-export type SymptomReportDraft = Omit<CreatePatientSymptomReportInput, "followUpId" | "symptomDuration" | "symptomFrequency"> & {
+export type SisAffiliationDraft = Omit<
+  CreatePatientSisAffiliationInput,
+  "followUpId"
+>
+export type SymptomReportDraft = Omit<
+  CreatePatientSymptomReportInput,
+  "followUpId" | "symptomDuration" | "symptomFrequency"
+> & {
   symptomDuration?: DurationDraft
   symptomFrequency?: DurationDraft
 }
@@ -28,7 +49,8 @@ export interface ClinicalDrafts {
   details?: PatientDetailsInput
   social?: PatientDetailsInput
   diagnosis?: DiagnosisDraft
-  treatment?: TreatmentDraft
+  treatments?: TreatmentDraft[]
+  socialNotes?: SocialNoteDraft[]
   symptomReport?: SymptomReportDraft
   insurance?: InsuranceDraft
   sisAffiliation?: SisAffiliationDraft
@@ -37,6 +59,14 @@ export interface ClinicalDrafts {
 
 export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
   return Boolean(
-    drafts.details || drafts.social || drafts.diagnosis || drafts.treatment || drafts.symptomReport || drafts.insurance || drafts.sisAffiliation || drafts.address,
+    drafts.details ||
+    drafts.social ||
+    drafts.diagnosis ||
+    drafts.treatments?.length ||
+    drafts.socialNotes?.length ||
+    drafts.symptomReport ||
+    drafts.insurance ||
+    drafts.sisAffiliation ||
+    drafts.address,
   )
 }

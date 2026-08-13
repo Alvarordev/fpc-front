@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,7 @@ import {
   MapPin,
   Phone,
   Pill,
+  Pencil,
   RefreshCw,
   Shield,
   Stethoscope,
@@ -45,6 +47,9 @@ import { Link } from "react-router-dom"
 import { DURATION_UNIT_LABELS } from "@/types/duration"
 import { PatientRecordsSection } from "./patient-records-section"
 import { TreatmentCard } from "./treatment-card"
+import { PatientProfileDialog } from "./patient-profile-dialog"
+import { useAuthStore } from "@/store/auth-store"
+import { usePatientSocialNotes } from "../_hooks/use-patient-records"
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -127,6 +132,12 @@ export function OverviewSection({
 }: {
   patient: PatientDetailsResponse
 }) {
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const user = useAuthStore((state) => state.user)
+  const canEditProfile =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT"
   const details = patient.details
   const { data: accompanies } = usePatientAccompanies(
     patient.id,
@@ -135,6 +146,10 @@ export function OverviewSection({
   const currentTreatments = patient.treatments.filter((item) => item.isCurrent)
   const historicalTreatments = patient.treatments.filter(
     (item) => !item.isCurrent,
+  )
+  const { data: socialNotes = [] } = usePatientSocialNotes(
+    patient.id,
+    patient.role !== "COMPANION",
   )
   return (
     <div className="space-y-4">
@@ -179,10 +194,24 @@ export function OverviewSection({
       <AiSummarySection patientId={patient.id} fallback={patient.summary} />
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <User className="size-4" />
-            Información general
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <User className="size-4" />
+              Información general
+            </CardTitle>
+            {canEditProfile && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                onClick={() => setProfileDialogOpen(true)}
+              >
+                <Pencil className="size-3" />
+                Editar
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
@@ -358,6 +387,29 @@ export function OverviewSection({
                   value={bool(details.knowsAboutFissal)}
                   icon={Info}
                 />
+                {socialNotes.length > 0 && (
+                  <div className="bg-muted/20 col-span-full rounded-lg border p-3 md:col-span-2">
+                    <p className="text-sm font-medium">
+                      Últimas notas sociales
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {socialNotes.slice(0, 3).map((note) => (
+                        <div
+                          key={note.id}
+                          className="bg-card rounded-md border p-2 text-xs"
+                        >
+                          <p className="text-muted-foreground mb-1">
+                            {note.type === "SOCIAL_WORKER"
+                              ? "Trabajo social"
+                              : note.type}{" "}
+                            · {date(note.createdAt)}
+                          </p>
+                          <p>{note.note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {details.programDropoutDate && (
                   <Field
                     label="Fecha de abandono"
@@ -377,6 +429,13 @@ export function OverviewSection({
           )}
         </CardContent>
       </Card>
+      {canEditProfile && (
+        <PatientProfileDialog
+          patient={patient}
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+        />
+      )}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">

@@ -857,6 +857,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/social-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient social notes */
+        get: operations["PatientSocialNotesController_findAll"];
+        put?: never;
+        /** Record a patient social note */
+        post: operations["PatientSocialNotesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/psychooncology-appointments": {
         parameters: {
             query?: never;
@@ -1876,6 +1894,24 @@ export interface components {
             modality: "CALL" | "VIDEO_CALL";
             sessionNumber: number;
         };
+        SocialNoteTimelineEventDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "SOCIAL_NOTE";
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            type: "SOCIAL_WORKER" | "CONADIS" | "FISSAL";
+            note: string;
+            /** Format: uuid */
+            authorId: string;
+        };
         PatientResponseDto: {
             /** Format: uuid */
             id: string;
@@ -1998,7 +2034,7 @@ export interface components {
         };
         Object: Record<string, never>;
         PatientTimelineResponseDto: {
-            data: (components["schemas"]["FollowUpTimelineEventDto"] | components["schemas"]["ReminderTimelineEventDto"] | components["schemas"]["PsychooncologyAppointmentTimelineEventDto"])[];
+            data: (components["schemas"]["FollowUpTimelineEventDto"] | components["schemas"]["ReminderTimelineEventDto"] | components["schemas"]["PsychooncologyAppointmentTimelineEventDto"] | components["schemas"]["SocialNoteTimelineEventDto"])[];
             total: number;
         };
         DurationResponseDto: {
@@ -2450,6 +2486,28 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             specialty?: string;
+        };
+        CreatePatientSocialNoteDto: {
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            type: "SOCIAL_WORKER" | "CONADIS" | "FISSAL";
+            note: string;
+        };
+        PatientSocialNoteResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            type: "SOCIAL_WORKER" | "CONADIS" | "FISSAL";
+            note: string;
+            /** Format: uuid */
+            authorId: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         CreatePsychooncologyAppointmentDto: {
             /** Format: uuid */
@@ -5692,6 +5750,97 @@ export interface operations {
                 content?: never;
             };
             /** @description Patient, follow-up, or enrollment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientSocialNotesController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSocialNoteResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientSocialNotesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientSocialNoteDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSocialNoteResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or follow-up not found */
             404: {
                 headers: {
                     [name: string]: unknown;

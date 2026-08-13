@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useEffect, useState } from "react"
+import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -24,17 +24,25 @@ import type {
   CreatePatientSymptomReportInput,
   PatientAddress,
   PatientDetailsInput,
+  PatientDetailsResponse,
+  PatientSocialNote,
+  PatientTreatment,
 } from "@/api/patients"
 import {
   calculateDurationBetweenDates,
   toDurationInput,
   type DurationDraft,
 } from "@/types/duration"
-import { usePatientAddresses } from "../../_hooks/use-patient-records"
+import {
+  usePatientAddresses,
+  usePatientSocialNotes,
+  useTreatmentMedications,
+} from "../../_hooks/use-patient-records"
 import {
   Activity,
   MapPin,
   Minus,
+  Pencil,
   Pill,
   Plus,
   ShieldCheck,
@@ -62,11 +70,20 @@ import {
   type SisAffiliationDraft,
   type SymptomReportDraft,
   type TreatmentDraft,
+  type TreatmentDecisionMode,
+  type SocialNoteDraft,
+  type SocialNoteType,
 } from "./clinical-drafts"
 
 // ── Tri-state Sí/No/— select ──
 
 const TRI_UNSET = "SIN_DATO"
+
+const TRI_OPTIONS = [
+  { value: TRI_UNSET, label: "—" },
+  { value: "SI", label: "Sí" },
+  { value: "NO", label: "No" },
+] as const
 
 const TREATMENT_SITUATIONS = [
   { value: "EN_CURSO", label: "En curso" },
@@ -114,6 +131,7 @@ function TriSelect({
     <div className="space-y-2">
       <Label>{label}</Label>
       <Select
+        items={TRI_OPTIONS}
         value={raw}
         onValueChange={(v) =>
           onChange(v === TRI_UNSET ? undefined : v === "SI")
@@ -160,6 +178,7 @@ export function ClinicalDataTabs({
     staleTime: 5 * 60 * 1000,
   })
   const { data: addresses = [] } = usePatientAddresses(patientId)
+  const { data: socialNotes = [] } = usePatientSocialNotes(patientId)
 
   const diagnoses = patient?.diagnoses ?? []
   const currentDiagnosis = diagnoses.find((d) => d.isCurrent)
@@ -169,7 +188,7 @@ export function ClinicalDataTabs({
       orientation="vertical"
       value={activeTab}
       onValueChange={(value) => setActiveTab(String(value))}
-      className="min-h-0 flex-1 flex-col items-stretch gap-3 lg:flex-row"
+      className="flex-col items-stretch gap-3 lg:flex-row"
     >
       <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-48 lg:flex-col lg:overflow-visible">
         <TabsTrigger
@@ -177,7 +196,7 @@ export function ClinicalDataTabs({
           className="min-h-10 flex-none justify-start gap-2"
         >
           <UserRound className="size-4 text-sky-600" />
-          <span>Datos generales</span>
+          <span>Datos clínicos</span>
           {drafts.details && <DraftDot />}
         </TabsTrigger>
         <TabsTrigger
@@ -209,8 +228,8 @@ export function ClinicalDataTabs({
           className="min-h-10 flex-none justify-start gap-2"
         >
           <Pill className="size-4 text-amber-600" />
-          <span>Tratamiento</span>
-          {drafts.treatment && <DraftDot />}
+          <span>Tratamientos</span>
+          {drafts.treatments?.length ? <DraftDot /> : null}
         </TabsTrigger>
         <TabsTrigger
           value="seguro"
@@ -226,25 +245,18 @@ export function ClinicalDataTabs({
         >
           <Users className="size-4 text-orange-600" />
           <span>Seguimiento social</span>
-          {drafts.social && <DraftDot />}
+          {(drafts.social || drafts.socialNotes?.length) && <DraftDot />}
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent
-        value="datos"
-        keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
-      >
+      <TabsContent value="datos" keepMounted className="min-w-0 flex-1 pr-1">
         <DatosGeneralesForm
           draft={drafts.details}
+          currentDetails={patient?.details ?? null}
           onSave={(details) => onDraftsChange((prev) => ({ ...prev, details }))}
         />
       </TabsContent>
-      <TabsContent
-        value="sintomas"
-        keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
-      >
+      <TabsContent value="sintomas" keepMounted className="min-w-0 flex-1 pr-1">
         <SintomasForm
           draft={drafts.symptomReport}
           hospitals={hospitals}
@@ -256,7 +268,7 @@ export function ClinicalDataTabs({
       <TabsContent
         value="direcciones"
         keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+        className="min-w-0 flex-1 pr-1"
       >
         <AddressForm
           draft={drafts.address}
@@ -267,7 +279,7 @@ export function ClinicalDataTabs({
       <TabsContent
         value="diagnostico"
         keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+        className="min-w-0 flex-1 pr-1"
       >
         <DiagnosticoForm
           draft={drafts.diagnosis}
@@ -281,23 +293,20 @@ export function ClinicalDataTabs({
       <TabsContent
         value="tratamiento"
         keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+        className="min-w-0 flex-1 pr-1"
       >
-        <TratamientoForm
-          draft={drafts.treatment}
+        <TratamientosForm
+          draft={drafts.treatments}
           hospitals={hospitals}
           diagnoses={diagnoses}
+          treatments={patient?.treatments ?? []}
           hasDraftDiagnosis={Boolean(drafts.diagnosis)}
-          onSave={(treatment) =>
-            onDraftsChange((prev) => ({ ...prev, treatment }))
+          onSave={(treatments) =>
+            onDraftsChange((prev) => ({ ...prev, treatments }))
           }
         />
       </TabsContent>
-      <TabsContent
-        value="seguro"
-        keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
-      >
+      <TabsContent value="seguro" keepMounted className="min-w-0 flex-1 pr-1">
         <SeguroForm
           insuranceDraft={drafts.insurance}
           sisDraft={drafts.sisAffiliation}
@@ -306,14 +315,15 @@ export function ClinicalDataTabs({
           }
         />
       </TabsContent>
-      <TabsContent
-        value="social"
-        keepMounted
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1"
-      >
+      <TabsContent value="social" keepMounted className="min-w-0 flex-1 pr-1">
         <SeguimientoSocialForm
           draft={drafts.social}
-          onSave={(social) => onDraftsChange((prev) => ({ ...prev, social }))}
+          currentDetails={patient?.details ?? null}
+          existingNotes={socialNotes}
+          noteDrafts={drafts.socialNotes}
+          onSave={(social, notes) =>
+            onDraftsChange((prev) => ({ ...prev, social, socialNotes: notes }))
+          }
         />
       </TabsContent>
     </Tabs>
@@ -327,6 +337,26 @@ function DraftDot() {
       aria-label="Cambios pendientes"
     />
   )
+}
+
+function asDurationDraft(
+  value:
+    | {
+        valueMin: number
+        valueMax?: number | null
+        unit: NonNullable<DurationDraft["unit"]>
+      }
+    | null
+    | undefined,
+): DurationDraft | undefined {
+  if (!value) return undefined
+  return {
+    valueMin: value.valueMin,
+    ...(value.valueMax !== undefined && value.valueMax !== null
+      ? { valueMax: value.valueMax }
+      : {}),
+    unit: value.unit,
+  }
 }
 
 // ── Direcciones ──
@@ -569,25 +599,65 @@ interface DatosGeneralesValues {
 
 function DatosGeneralesForm({
   draft,
+  currentDetails,
   onSave,
 }: {
   draft: PatientDetailsInput | undefined
+  currentDetails: PatientDetailsResponse["details"] | null
   onSave: (details: PatientDetailsInput) => void
 }) {
-  const { register, handleSubmit, watch, setValue } =
+  const { register, handleSubmit, watch, setValue, reset } =
     useForm<DatosGeneralesValues>({
       defaultValues: {
-        emergencyContactName: draft?.emergencyContactName ?? "",
-        emergencyContactPhone: draft?.emergencyContactPhone ?? "",
-        nativeLanguage: draft?.nativeLanguage ?? "",
-        educationLevel: draft?.educationLevel,
-        requiresTranslation: draft?.requiresTranslation ?? false,
-        travelTimeToHospital: draft?.travelTimeToHospital,
+        emergencyContactName:
+          draft?.emergencyContactName ??
+          currentDetails?.emergencyContactName ??
+          "",
+        emergencyContactPhone:
+          draft?.emergencyContactPhone ??
+          currentDetails?.emergencyContactPhone ??
+          "",
+        nativeLanguage:
+          draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
+        educationLevel:
+          draft?.educationLevel ?? currentDetails?.educationLevel ?? undefined,
+        requiresTranslation:
+          draft?.requiresTranslation ??
+          currentDetails?.requiresTranslation ??
+          false,
+        travelTimeToHospital: asDurationDraft(
+          draft?.travelTimeToHospital ?? currentDetails?.travelTimeToHospital,
+        ),
       },
     })
 
   const educationLevel = watch("educationLevel")
   const travelTimeToHospital = watch("travelTimeToHospital")
+
+  useEffect(() => {
+    if (!currentDetails && !draft) return
+    reset({
+      emergencyContactName:
+        draft?.emergencyContactName ??
+        currentDetails?.emergencyContactName ??
+        "",
+      emergencyContactPhone:
+        draft?.emergencyContactPhone ??
+        currentDetails?.emergencyContactPhone ??
+        "",
+      nativeLanguage:
+        draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
+      educationLevel:
+        draft?.educationLevel ?? currentDetails?.educationLevel ?? undefined,
+      requiresTranslation:
+        draft?.requiresTranslation ??
+        currentDetails?.requiresTranslation ??
+        false,
+      travelTimeToHospital: asDurationDraft(
+        draft?.travelTimeToHospital ?? currentDetails?.travelTimeToHospital,
+      ),
+    })
+  }, [currentDetails, draft, reset])
 
   function onSubmit(values: DatosGeneralesValues) {
     onSave({
@@ -628,17 +698,17 @@ function DatosGeneralesForm({
         <div className="space-y-2">
           <Label>Nivel educativo</Label>
           <Select
+            items={Object.entries(educationOptions).map(([value, label]) => ({
+              value,
+              label,
+            }))}
             value={educationLevel}
             onValueChange={(v) =>
               setValue("educationLevel", v as EducationLevel)
             }
           >
             <SelectTrigger>
-              {educationLevel ? (
-                educationOptions[educationLevel]
-              ) : (
-                <SelectValue placeholder="Seleccionar" />
-              )}
+              <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(educationOptions).map(([k, v]) => (
@@ -879,6 +949,7 @@ interface DiagnosisFormValues {
   waitTimeForDiagnosis: DurationDraft | undefined
   waitTimeForDiagnosisManuallyEdited: boolean
   hasMedicalReport: boolean
+  changeReason: string
 }
 
 function DiagnosticoForm({
@@ -905,6 +976,7 @@ function DiagnosticoForm({
         waitTimeForDiagnosisManuallyEdited:
           draft?.waitTimeForDiagnosisManuallyEdited ?? false,
         hasMedicalReport: draft?.hasMedicalReport ?? false,
+        changeReason: draft?.changeReason ?? "",
       },
     })
 
@@ -944,6 +1016,10 @@ function DiagnosticoForm({
       toast.error("Ingresá el diagnóstico")
       return
     }
+    if (currentDiagnosis && !values.changeReason.trim()) {
+      toast.error("Indica el motivo del reemplazo del diagnóstico")
+      return
+    }
 
     const normalizedWaitTime = values.waitTimeForDiagnosisManuallyEdited
       ? toDurationInput(values.waitTimeForDiagnosis)
@@ -969,6 +1045,7 @@ function DiagnosticoForm({
       waitTimeForDiagnosisManuallyEdited:
         values.waitTimeForDiagnosisManuallyEdited,
       hasMedicalReport: values.hasMedicalReport,
+      changeReason: values.changeReason.trim() || undefined,
     })
     toast.success("Diagnóstico guardado en el borrador")
   }
@@ -987,13 +1064,28 @@ function DiagnosticoForm({
           <Label>Diagnóstico</Label>
           <Input {...register("diagnosis")} placeholder="Ej: Cáncer de mama" />
         </div>
+        {currentDiagnosis && (
+          <div className="space-y-2 md:col-span-2">
+            <Label>Motivo del reemplazo</Label>
+            <Textarea
+              {...register("changeReason")}
+              placeholder="Explica por qué se actualiza el diagnóstico..."
+            />
+          </div>
+        )}
         <div className="space-y-2">
           <Label>Etapa</Label>
           <Select
+            items={Object.entries(cancerStageOptions).map(([value, label]) => ({
+              value,
+              label,
+            }))}
             value={cancerStage}
             onValueChange={(v) => setValue("cancerStage", v as CancerStage)}
           >
-            <SelectTrigger>{cancerStageOptions[cancerStage]}</SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar etapa" />
+            </SelectTrigger>
             <SelectContent>
               {Object.entries(cancerStageOptions).map(([k, v]) => (
                 <SelectItem key={k} value={k}>
@@ -1026,6 +1118,10 @@ function DiagnosticoForm({
         <div className="space-y-2">
           <Label>Establecimiento de salud</Label>
           <Select
+            items={hospitals.map((hospital) => ({
+              value: hospital.id,
+              label: hospital.name,
+            }))}
             value={healthCenterId}
             onValueChange={(v) => setValue("healthCenterId", v ?? undefined)}
           >
@@ -1122,49 +1218,203 @@ interface TreatmentFormValues {
   >
 }
 
-function TratamientoForm({
+function TratamientosForm({
   draft,
   hospitals,
   diagnoses,
+  treatments,
   hasDraftDiagnosis,
   onSave,
 }: {
-  draft: TreatmentDraft | undefined
+  draft: TreatmentDraft[] | undefined
   hospitals: Array<{ id: string; name: string }>
   diagnoses: Array<{ id: string; diagnosis: string }>
+  treatments: PatientTreatment[]
   hasDraftDiagnosis: boolean
-  onSave: (treatment: TreatmentDraft) => void
+  onSave: (treatments: TreatmentDraft[]) => void
 }) {
-  const { register, handleSubmit, watch, setValue } =
+  const initial = draft?.[0]
+  const { register, handleSubmit, setValue, reset, control } =
     useForm<TreatmentFormValues>({
       defaultValues: {
-        diagnosisId: draft?.diagnosisId,
-        treatmentType: draft?.treatmentType ?? "",
-        treatmentFrequency: draft?.treatmentFrequency,
-        treatmentSituation: draft?.treatmentSituation,
-        isReferred: draft?.isReferred ?? false,
-        sourceHealthCenterId: draft?.sourceHealthCenterId ?? undefined,
-        receivingHealthCenterId: draft?.receivingHealthCenterId ?? undefined,
-        startDate: draft?.startDate ?? "",
-        endDate: draft?.endDate ?? "",
-        notReceivingReason: draft?.notReceivingReason ?? "",
-        changeReason: draft?.changeReason ?? "",
-        hasLatestPrescription: draft?.hasLatestPrescription ?? undefined,
-        latestPrescriptionDate: draft?.latestPrescriptionDate ?? "",
-        medications: draft?.medications ?? [],
+        diagnosisId: initial?.diagnosisId,
+        treatmentType: initial?.treatmentType ?? "",
+        treatmentFrequency: initial?.treatmentFrequency,
+        treatmentSituation: initial?.treatmentSituation,
+        isReferred: initial?.isReferred ?? false,
+        sourceHealthCenterId: initial?.sourceHealthCenterId ?? undefined,
+        receivingHealthCenterId: initial?.receivingHealthCenterId ?? undefined,
+        startDate: initial?.startDate ?? "",
+        endDate: initial?.endDate ?? "",
+        notReceivingReason: initial?.notReceivingReason ?? "",
+        changeReason: initial?.changeReason ?? "",
+        hasLatestPrescription: initial?.hasLatestPrescription ?? undefined,
+        latestPrescriptionDate: initial?.latestPrescriptionDate ?? "",
+        medications: initial?.medications ?? [],
       },
     })
-
-  const diagnosisId = watch("diagnosisId")
-  const isReferred = watch("isReferred")
-  const sourceHealthCenterId = watch("sourceHealthCenterId")
-  const receivingHealthCenterId = watch("receivingHealthCenterId")
-  const treatmentFrequency = watch("treatmentFrequency")
-  const treatmentSituation = watch("treatmentSituation")
-  const startDate = watch("startDate")
-  const hasLatestPrescription = watch("hasLatestPrescription")
-  const medications = watch("medications") ?? []
+  const {
+    fields: medicationFields,
+    append,
+    remove,
+    replace,
+    update,
+  } = useFieldArray({
+    control,
+    name: "medications",
+  })
+  const watched = useWatch({ control })
+  const diagnosisId = watched.diagnosisId
+  const isReferred = watched.isReferred ?? false
+  const sourceHealthCenterId = watched.sourceHealthCenterId
+  const receivingHealthCenterId = watched.receivingHealthCenterId
+  const treatmentFrequency = watched.treatmentFrequency
+  const treatmentSituation = watched.treatmentSituation
+  const startDate = watched.startDate ?? ""
+  const hasLatestPrescription = watched.hasLatestPrescription
+  const medications = watched.medications ?? []
   const canPickDiagnosis = diagnoses.length > 0 || hasDraftDiagnosis
+  const [mode, setMode] = useState<TreatmentDecisionMode>(
+    initial?.mode ?? "PARALLEL",
+  )
+  const [selectedSeriesId, setSelectedSeriesId] = useState(
+    initial?.seriesId ?? "",
+  )
+  const [decisions, setDecisions] = useState<TreatmentDraft[]>(draft ?? [])
+  const [editingDecisionIndex, setEditingDecisionIndex] = useState<
+    number | null
+  >(null)
+  const currentTreatments = treatments.filter((item) => item.isCurrent)
+  const selectedTreatment = currentTreatments.find(
+    (item) => item.seriesId === selectedSeriesId,
+  )
+  const { data: selectedTreatmentMedications } = useTreatmentMedications(
+    selectedTreatment?.patientId ?? "",
+    selectedTreatment?.id ?? "",
+    mode === "REPLACE" &&
+      Boolean(selectedTreatment) &&
+      editingDecisionIndex === null,
+  )
+  const diagnosisItems = [
+    ...(hasDraftDiagnosis
+      ? [
+          {
+            value: DRAFT_DIAGNOSIS_ID,
+            label: "Diagnóstico de este seguimiento",
+          },
+        ]
+      : []),
+    ...diagnoses.map((item) => ({ value: item.id, label: item.diagnosis })),
+  ]
+  const decisionModeItems = [
+    { value: "PARALLEL", label: "Agregar tratamiento en paralelo" },
+    { value: "REPLACE", label: "Actualizar tratamiento existente" },
+  ] as const
+  const yesNoItems = [
+    { value: "SI", label: "Sí" },
+    { value: "NO", label: "No" },
+  ] as const
+
+  function valuesFromTreatment(
+    treatment: PatientTreatment,
+  ): TreatmentFormValues {
+    return {
+      diagnosisId: treatment.diagnosisId,
+      treatmentType: treatment.treatmentType,
+      treatmentFrequency: treatment.treatmentFrequency
+        ? {
+            valueMin: treatment.treatmentFrequency.valueMin,
+            ...(treatment.treatmentFrequency.valueMax !== null
+              ? { valueMax: treatment.treatmentFrequency.valueMax }
+              : {}),
+            unit: treatment.treatmentFrequency.unit,
+          }
+        : undefined,
+      treatmentSituation: treatment.treatmentSituation ?? undefined,
+      isReferred: treatment.isReferred,
+      sourceHealthCenterId: treatment.sourceHealthCenterId ?? undefined,
+      receivingHealthCenterId: treatment.receivingHealthCenterId ?? undefined,
+      startDate: treatment.startDate ?? "",
+      endDate: treatment.endDate ?? "",
+      notReceivingReason: treatment.notReceivingReason ?? "",
+      changeReason: "",
+      hasLatestPrescription: treatment.hasLatestPrescription ?? undefined,
+      latestPrescriptionDate: treatment.latestPrescriptionDate ?? "",
+      medications: [],
+    }
+  }
+
+  function selectTreatment(seriesId: string) {
+    setSelectedSeriesId(seriesId)
+    const treatment = currentTreatments.find(
+      (item) => item.seriesId === seriesId,
+    )
+    if (treatment) reset(valuesFromTreatment(treatment))
+  }
+
+  useEffect(() => {
+    if (
+      mode !== "REPLACE" ||
+      !selectedSeriesId ||
+      editingDecisionIndex !== null ||
+      !selectedTreatmentMedications
+    ) {
+      return
+    }
+
+    replace(
+      selectedTreatmentMedications.map((medication) => ({
+        name: medication.name,
+        doseAmount: medication.doseAmount ?? undefined,
+        doseUnit: medication.doseUnit ?? undefined,
+        doseDescription: medication.doseDescription ?? undefined,
+        route: medication.route ?? undefined,
+        frequency: medication.frequency
+          ? {
+              valueMin: medication.frequency.valueMin,
+              ...(medication.frequency.valueMax !== null
+                ? { valueMax: medication.frequency.valueMax }
+                : {}),
+              unit: medication.frequency.unit,
+            }
+          : undefined,
+        startDate: medication.startDate ?? undefined,
+        endDate: medication.endDate ?? undefined,
+        isActive: medication.isActive,
+        notes: medication.notes ?? undefined,
+      })),
+    )
+  }, [
+    editingDecisionIndex,
+    mode,
+    replace,
+    selectedSeriesId,
+    selectedTreatmentMedications,
+  ])
+
+  function editDecision(index: number) {
+    const decision = decisions[index]
+    if (!decision) return
+    setEditingDecisionIndex(index)
+    setMode(decision.mode)
+    setSelectedSeriesId(decision.seriesId ?? "")
+    reset({
+      diagnosisId: decision.diagnosisId,
+      treatmentType: decision.treatmentType,
+      treatmentFrequency: decision.treatmentFrequency,
+      treatmentSituation: decision.treatmentSituation,
+      isReferred: decision.isReferred ?? false,
+      sourceHealthCenterId: decision.sourceHealthCenterId,
+      receivingHealthCenterId: decision.receivingHealthCenterId,
+      startDate: decision.startDate ?? "",
+      endDate: decision.endDate ?? "",
+      notReceivingReason: decision.notReceivingReason ?? "",
+      changeReason: decision.changeReason ?? "",
+      hasLatestPrescription: decision.hasLatestPrescription,
+      latestPrescriptionDate: decision.latestPrescriptionDate ?? "",
+      medications: decision.medications ?? [],
+    })
+  }
 
   function diagnosisLabel(id: string) {
     if (id === DRAFT_DIAGNOSIS_ID)
@@ -1176,23 +1426,17 @@ function TratamientoForm({
     index: number,
     partial: Partial<TreatmentFormValues["medications"][number]>,
   ) {
-    setValue(
-      "medications",
-      medications.map((medication, medicationIndex) =>
-        medicationIndex === index ? { ...medication, ...partial } : medication,
-      ),
-    )
+    const current = medications[index]
+    if (!current) return
+    update(index, {
+      ...current,
+      ...partial,
+      name: partial.name ?? current.name ?? "",
+    })
   }
 
   function addMedication() {
-    setValue("medications", [...medications, { name: "", isActive: true }])
-  }
-
-  function removeMedication(index: number) {
-    setValue(
-      "medications",
-      medications.filter((_, medicationIndex) => medicationIndex !== index),
-    )
+    append({ name: "", isActive: true })
   }
 
   function onSubmit(values: TreatmentFormValues) {
@@ -1263,7 +1507,7 @@ function TratamientoForm({
       })
     }
 
-    onSave({
+    const nextDecision: TreatmentDraft = {
       diagnosisId: values.diagnosisId,
       treatmentType: values.treatmentType.trim(),
       treatmentFrequency: normalizedFrequency,
@@ -1282,136 +1526,313 @@ function TratamientoForm({
       ...(normalizedMedications.length
         ? { medications: normalizedMedications }
         : {}),
+      mode,
+      ...(mode === "REPLACE" && selectedSeriesId
+        ? { seriesId: selectedSeriesId }
+        : {}),
+    }
+    if (mode === "REPLACE" && !selectedSeriesId) {
+      toast.error("Seleccioná el tratamiento que deseas actualizar")
+      return
+    }
+    if (
+      mode === "REPLACE" &&
+      decisions.some(
+        (decision, index) =>
+          index !== editingDecisionIndex &&
+          decision.seriesId === selectedSeriesId,
+      )
+    ) {
+      toast.error("Ya agregaste una actualización para ese tratamiento")
+      return
+    }
+    if (mode === "REPLACE" && !values.changeReason.trim()) {
+      toast.error("Indica el motivo de actualización del tratamiento")
+      return
+    }
+    const nextDecisions = [...decisions]
+    if (editingDecisionIndex === null) nextDecisions.push(nextDecision)
+    else nextDecisions[editingDecisionIndex] = nextDecision
+    setDecisions(nextDecisions)
+    onSave(nextDecisions)
+    reset({
+      diagnosisId: undefined,
+      treatmentType: "",
+      treatmentFrequency: undefined,
+      treatmentSituation: undefined,
+      isReferred: false,
+      sourceHealthCenterId: undefined,
+      receivingHealthCenterId: undefined,
+      startDate: "",
+      endDate: "",
+      notReceivingReason: "",
+      changeReason: "",
+      hasLatestPrescription: undefined,
+      latestPrescriptionDate: "",
+      medications: [],
     })
+    setMode("PARALLEL")
+    setSelectedSeriesId("")
+    setEditingDecisionIndex(null)
     toast.success("Tratamiento guardado en el borrador")
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Diagnóstico asociado</Label>
-          <Select
-            value={diagnosisId}
-            onValueChange={(v) => setValue("diagnosisId", v ?? undefined)}
-          >
-            <SelectTrigger>
-              {diagnosisId ? (
-                diagnosisLabel(diagnosisId)
-              ) : (
-                <SelectValue placeholder="Seleccionar diagnóstico" />
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {hasDraftDiagnosis && (
-                <SelectItem value={DRAFT_DIAGNOSIS_ID}>
-                  El diagnóstico que estoy guardando en este seguimiento
-                </SelectItem>
-              )}
-              {diagnoses.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.diagnosis}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {!canPickDiagnosis && (
-            <p className="text-muted-foreground text-xs">
-              Primero registrá un diagnóstico.
-            </p>
-          )}
+      {decisions.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Cambios pendientes</p>
+            <span className="text-muted-foreground text-xs">
+              {decisions.length}
+            </span>
+          </div>
+          {decisions.map((decision, index) => (
+            <div
+              key={`${decision.seriesId ?? "parallel"}-${index}`}
+              className="bg-card flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+            >
+              <span>
+                <b>{decision.treatmentType}</b>
+                <span className="text-muted-foreground ml-2 text-xs">
+                  {decision.mode === "REPLACE" ? "Actualización" : "Paralelo"}
+                </span>
+              </span>
+              <span className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => editDecision(index)}
+                  aria-label="Editar cambio"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    const next = decisions.filter(
+                      (_, itemIndex) => itemIndex !== index,
+                    )
+                    setDecisions(next)
+                    onSave(next)
+                  }}
+                  aria-label="Quitar cambio"
+                >
+                  <Minus className="size-3.5" />
+                </Button>
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="space-y-2">
-          <Label>Tipo de tratamiento</Label>
-          <Input
-            {...register("treatmentType")}
-            placeholder="Ej: Quimioterapia"
-          />
+      )}
+      <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">
+            {editingDecisionIndex === null
+              ? "Nueva decisión de tratamiento"
+              : "Editar decisión de tratamiento"}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Actualiza una línea existente o registra una línea simultánea.
+          </p>
         </div>
-        <DurationInput
-          label="Frecuencia del tratamiento"
-          units={["DAY", "WEEK", "MONTH", "YEAR"]}
-          defaultUnit="WEEK"
-          singleValue
-          value={treatmentFrequency}
-          onChange={(value) => setValue("treatmentFrequency", value)}
-        />
-        <div className="space-y-2">
-          <Label>Situación del tratamiento</Label>
-          <Select
-            items={TREATMENT_SITUATIONS}
-            value={treatmentSituation ?? ""}
-            onValueChange={(value) =>
-              setValue(
-                "treatmentSituation",
-                value as TreatmentFormValues["treatmentSituation"],
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar situación" />
-            </SelectTrigger>
-            <SelectContent>
-              {TREATMENT_SITUATIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Fecha de inicio</Label>
-          <Input type="date" {...register("startDate")} />
-        </div>
-        <div className="space-y-2">
-          <Label>Fecha de fin (opcional)</Label>
-          <Input
-            type="date"
-            min={startDate || undefined}
-            {...register("endDate")}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>¿Recibe este tratamiento por derivación?</Label>
-          <Select
-            value={isReferred ? "Sí" : "No"}
-            onValueChange={(v) => setValue("isReferred", v === "Sí")}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Sí">Sí</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {isReferred ? (
-          <>
-            <div className="space-y-2">
-              <Label>Hospital de origen</Label>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Tipo de decisión</Label>
+            <Select
+              items={decisionModeItems}
+              value={mode}
+              onValueChange={(value) => {
+                const nextMode = (value || "PARALLEL") as TreatmentDecisionMode
+                setMode(nextMode)
+                if (nextMode === "PARALLEL") setSelectedSeriesId("")
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {decisionModeItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {mode === "REPLACE" && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Línea de tratamiento a actualizar</Label>
               <Select
-                items={hospitals.map((h) => ({ value: h.id, label: h.name }))}
-                value={sourceHealthCenterId ?? ""}
-                onValueChange={(v) =>
-                  setValue("sourceHealthCenterId", v ?? undefined)
-                }
+                items={currentTreatments.map((item) => ({
+                  value: item.seriesId,
+                  label: `${item.treatmentType} · ${item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}`,
+                }))}
+                value={selectedSeriesId}
+                onValueChange={(value) => selectTreatment(value ?? "")}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar origen" />
+                  <SelectValue placeholder="Seleccionar tratamiento actual" />
                 </SelectTrigger>
                 <SelectContent>
-                  {hospitals.map((h) => (
-                    <SelectItem key={h.id} value={h.id}>
-                      {h.name}
+                  {currentTreatments.map((item) => (
+                    <SelectItem key={item.seriesId} value={item.seriesId}>
+                      {item.treatmentType} ·{" "}
+                      {item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Diagnóstico asociado</Label>
+            <Select
+              items={diagnosisItems}
+              value={diagnosisId}
+              onValueChange={(v) => setValue("diagnosisId", v ?? undefined)}
+            >
+              <SelectTrigger>
+                {diagnosisId ? (
+                  diagnosisLabel(diagnosisId)
+                ) : (
+                  <SelectValue placeholder="Seleccionar diagnóstico" />
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                {diagnosisItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!canPickDiagnosis && (
+              <p className="text-muted-foreground text-xs">
+                Primero registrá un diagnóstico.
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>Tipo de tratamiento</Label>
+            <Input
+              {...register("treatmentType")}
+              placeholder="Ej: Quimioterapia"
+            />
+          </div>
+          <DurationInput
+            label="Frecuencia del tratamiento"
+            units={["DAY", "WEEK", "MONTH", "YEAR"]}
+            defaultUnit="WEEK"
+            singleValue
+            value={treatmentFrequency}
+            onChange={(value) => setValue("treatmentFrequency", value)}
+          />
+          <div className="space-y-2">
+            <Label>Situación del tratamiento</Label>
+            <Select
+              items={TREATMENT_SITUATIONS}
+              value={treatmentSituation ?? ""}
+              onValueChange={(value) =>
+                setValue(
+                  "treatmentSituation",
+                  value as TreatmentFormValues["treatmentSituation"],
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar situación" />
+              </SelectTrigger>
+              <SelectContent>
+                {TREATMENT_SITUATIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Fecha de inicio</Label>
+            <Input type="date" {...register("startDate")} />
+          </div>
+          <div className="space-y-2">
+            <Label>Fecha de fin (opcional)</Label>
+            <Input
+              type="date"
+              min={startDate || undefined}
+              {...register("endDate")}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>¿Recibe este tratamiento por derivación?</Label>
+            <Select
+              items={yesNoItems}
+              value={isReferred ? "SI" : "NO"}
+              onValueChange={(v) => setValue("isReferred", v === "SI")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SI">Sí</SelectItem>
+                <SelectItem value="NO">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {isReferred ? (
+            <>
+              <div className="space-y-2">
+                <Label>Hospital de origen</Label>
+                <Select
+                  items={hospitals.map((h) => ({ value: h.id, label: h.name }))}
+                  value={sourceHealthCenterId ?? ""}
+                  onValueChange={(v) =>
+                    setValue("sourceHealthCenterId", v ?? undefined)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hospitals.map((h) => (
+                      <SelectItem key={h.id} value={h.id}>
+                        {h.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Hospital receptor</Label>
+                <Select
+                  items={hospitals.map((h) => ({ value: h.id, label: h.name }))}
+                  value={receivingHealthCenterId ?? ""}
+                  onValueChange={(v) =>
+                    setValue("receivingHealthCenterId", v ?? undefined)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar receptor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hospitals.map((h) => (
+                      <SelectItem key={h.id} value={h.id}>
+                        {h.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          ) : (
             <div className="space-y-2">
-              <Label>Hospital receptor</Label>
+              <Label>Hospital donde recibe el tratamiento</Label>
               <Select
                 items={hospitals.map((h) => ({ value: h.id, label: h.name }))}
                 value={receivingHealthCenterId ?? ""}
@@ -1420,7 +1841,7 @@ function TratamientoForm({
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar receptor" />
+                  <SelectValue placeholder="Opcional" />
                 </SelectTrigger>
                 <SelectContent>
                   {hospitals.map((h) => (
@@ -1431,239 +1852,227 @@ function TratamientoForm({
                 </SelectContent>
               </Select>
             </div>
-          </>
-        ) : (
-          <div className="space-y-2">
-            <Label>Hospital donde recibe el tratamiento</Label>
-            <Select
-              items={hospitals.map((h) => ({ value: h.id, label: h.name }))}
-              value={receivingHealthCenterId ?? ""}
-              onValueChange={(v) =>
-                setValue("receivingHealthCenterId", v ?? undefined)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Opcional" />
-              </SelectTrigger>
-              <SelectContent>
-                {hospitals.map((h) => (
-                  <SelectItem key={h.id} value={h.id}>
-                    {h.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <TriSelect
-          label="¿Tiene la receta más reciente?"
-          value={hasLatestPrescription}
-          onChange={(value) => setValue("hasLatestPrescription", value)}
-        />
-        {hasLatestPrescription && (
-          <div className="space-y-2">
-            <Label>Fecha de la receta más reciente</Label>
-            <Input type="date" {...register("latestPrescriptionDate")} />
-          </div>
-        )}
-        <div className="space-y-2 md:col-span-2">
-          <Label>Motivo de no recibir tratamiento</Label>
-          <Textarea
-            {...register("notReceivingReason")}
-            placeholder="Completa si corresponde..."
+          )}
+          <TriSelect
+            label="¿Tiene la receta más reciente?"
+            value={hasLatestPrescription}
+            onChange={(value) => setValue("hasLatestPrescription", value)}
           />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Motivo del cambio</Label>
-          <Input
-            {...register("changeReason")}
-            placeholder="Completa si corresponde..."
-          />
-        </div>
-      </div>
-      <div className="space-y-3 border-t pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">Medicamentos</p>
-            <p className="text-muted-foreground text-xs">
-              Se guardarán junto con el tratamiento al completar el seguimiento.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1"
-            onClick={addMedication}
-          >
-            <Plus className="size-3.5" />
-            Agregar
-          </Button>
-        </div>
-        {medications.map((medication, index) => (
-          <div
-            key={index}
-            className="bg-muted/20 space-y-4 rounded-md border p-3"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">Medicamento {index + 1}</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-destructive size-8"
-                onClick={() => removeMedication(index)}
-              >
-                <Minus className="size-3.5" />
-              </Button>
+          {hasLatestPrescription && (
+            <div className="space-y-2">
+              <Label>Fecha de la receta más reciente</Label>
+              <Input type="date" {...register("latestPrescriptionDate")} />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Nombre</Label>
-                <Input
-                  value={medication.name}
-                  onChange={(event) =>
-                    updateMedication(index, { name: event.target.value })
+          )}
+          <div className="space-y-2 md:col-span-2">
+            <Label>Motivo de no recibir tratamiento</Label>
+            <Textarea
+              {...register("notReceivingReason")}
+              placeholder="Completa si corresponde..."
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>
+              {mode === "REPLACE"
+                ? "Motivo de actualización"
+                : "Motivo del cambio"}
+            </Label>
+            <Input
+              {...register("changeReason")}
+              placeholder="Completa si corresponde..."
+            />
+          </div>
+        </div>
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Medicamentos</p>
+              <p className="text-muted-foreground text-xs">
+                Se guardarán junto con el tratamiento al completar el
+                seguimiento.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={addMedication}
+            >
+              <Plus className="size-3.5" />
+              Agregar
+            </Button>
+          </div>
+          {medicationFields.map((field, index) => {
+            const medication = medications[index] ?? field
+            return (
+              <div
+                key={field.id}
+                className="bg-muted/20 space-y-4 rounded-md border p-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">Medicamento {index + 1}</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive size-8"
+                    onClick={() => remove(index)}
+                  >
+                    <Minus className="size-3.5" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Nombre</Label>
+                    <Input
+                      value={medication.name}
+                      onChange={(event) =>
+                        updateMedication(index, { name: event.target.value })
+                      }
+                      placeholder="Ej: Tamoxifeno"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descripción de dosis</Label>
+                    <Input
+                      value={medication.doseDescription ?? ""}
+                      onChange={(event) =>
+                        updateMedication(index, {
+                          doseDescription: event.target.value || undefined,
+                        })
+                      }
+                      placeholder="Ej: 2 tabletas"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Cantidad</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={medication.doseAmount ?? ""}
+                        onChange={(event) =>
+                          updateMedication(index, {
+                            doseAmount: event.target.value
+                              ? Number(event.target.value)
+                              : undefined,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Unidad</Label>
+                      <Select
+                        items={DOSE_UNITS}
+                        value={medication.doseUnit ?? ""}
+                        onValueChange={(value) =>
+                          updateMedication(index, {
+                            doseUnit: value as NonNullable<
+                              CreateTreatmentMedicationInput["doseUnit"]
+                            >,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Unidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DOSE_UNITS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vía de administración</Label>
+                    <Select
+                      items={MEDICATION_ROUTES}
+                      value={medication.route ?? ""}
+                      onValueChange={(value) =>
+                        updateMedication(index, {
+                          route: value as NonNullable<
+                            CreateTreatmentMedicationInput["route"]
+                          >,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar vía" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MEDICATION_ROUTES.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DurationInput
+                  label="Frecuencia del medicamento"
+                  units={["HOUR", "DAY", "WEEK", "MONTH"]}
+                  defaultUnit="HOUR"
+                  singleValue
+                  value={medication.frequency}
+                  onChange={(frequency) =>
+                    updateMedication(index, { frequency })
                   }
-                  placeholder="Ej: Tamoxifeno"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Descripción de dosis</Label>
-                <Input
-                  value={medication.doseDescription ?? ""}
-                  onChange={(event) =>
-                    updateMedication(index, {
-                      doseDescription: event.target.value || undefined,
-                    })
-                  }
-                  placeholder="Ej: 2 tabletas"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Fecha de inicio</Label>
+                    <Input
+                      type="date"
+                      value={medication.startDate ?? ""}
+                      onChange={(event) =>
+                        updateMedication(index, {
+                          startDate: event.target.value || undefined,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fecha de fin</Label>
+                    <Input
+                      type="date"
+                      min={medication.startDate ?? undefined}
+                      value={medication.endDate ?? ""}
+                      onChange={(event) =>
+                        updateMedication(index, {
+                          endDate: event.target.value || undefined,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label>Cantidad</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={medication.doseAmount ?? ""}
+                  <Label>Notas</Label>
+                  <Textarea
+                    value={medication.notes ?? ""}
                     onChange={(event) =>
                       updateMedication(index, {
-                        doseAmount: event.target.value
-                          ? Number(event.target.value)
-                          : undefined,
+                        notes: event.target.value || undefined,
                       })
                     }
+                    placeholder="Indicaciones adicionales"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Unidad</Label>
-                  <Select
-                    items={DOSE_UNITS}
-                    value={medication.doseUnit ?? ""}
-                    onValueChange={(value) =>
-                      updateMedication(index, {
-                        doseUnit: value as NonNullable<
-                          CreateTreatmentMedicationInput["doseUnit"]
-                        >,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Unidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DOSE_UNITS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Vía de administración</Label>
-                <Select
-                  items={MEDICATION_ROUTES}
-                  value={medication.route ?? ""}
-                  onValueChange={(value) =>
-                    updateMedication(index, {
-                      route: value as NonNullable<
-                        CreateTreatmentMedicationInput["route"]
-                      >,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar vía" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEDICATION_ROUTES.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DurationInput
-              label="Frecuencia del medicamento"
-              units={["HOUR", "DAY", "WEEK", "MONTH"]}
-              defaultUnit="HOUR"
-              singleValue
-              value={medication.frequency}
-              onChange={(frequency) => updateMedication(index, { frequency })}
-            />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Fecha de inicio</Label>
-                <Input
-                  type="date"
-                  value={medication.startDate ?? ""}
-                  onChange={(event) =>
-                    updateMedication(index, {
-                      startDate: event.target.value || undefined,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de fin</Label>
-                <Input
-                  type="date"
-                  min={medication.startDate ?? undefined}
-                  value={medication.endDate ?? ""}
-                  onChange={(event) =>
-                    updateMedication(index, {
-                      endDate: event.target.value || undefined,
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Notas</Label>
-              <Textarea
-                value={medication.notes ?? ""}
-                onChange={(event) =>
-                  updateMedication(index, {
-                    notes: event.target.value || undefined,
-                  })
-                }
-                placeholder="Indicaciones adicionales"
-              />
-            </div>
-          </div>
-        ))}
+            )
+          })}
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" disabled={!canPickDiagnosis}>
           Guardar tratamiento
         </Button>
-        <DraftBadge saved={Boolean(draft)} />
+        <DraftBadge saved={Boolean(draft?.length)} />
       </div>
     </form>
   )
@@ -1739,15 +2148,15 @@ function SeguroForm({
         <div className="space-y-2">
           <Label>Tipo de seguro</Label>
           <Select
+            items={Object.entries(insuranceOptions).map(([value, label]) => ({
+              value,
+              label,
+            }))}
             value={insuranceType}
             onValueChange={(v) => setValue("insuranceType", v as InsuranceType)}
           >
             <SelectTrigger>
-              {insuranceType ? (
-                insuranceOptions[insuranceType]
-              ) : (
-                <SelectValue placeholder="Seleccionar" />
-              )}
+              <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(insuranceOptions).map(([k, v]) => (
@@ -1762,15 +2171,15 @@ function SeguroForm({
           <div className="space-y-2">
             <Label>Proveedor EPS</Label>
             <Select
+              items={Object.entries(epsOptions).map(([value, label]) => ({
+                value,
+                label,
+              }))}
               value={epsProvider}
               onValueChange={(v) => setValue("epsProvider", v as EpsProvider)}
             >
               <SelectTrigger>
-                {epsProvider ? (
-                  epsOptions[epsProvider]
-                ) : (
-                  <SelectValue placeholder="Seleccionar" />
-                )}
+                <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(epsOptions).map(([k, v]) => (
@@ -1840,47 +2249,151 @@ interface SocialFormValues {
   programDropoutReason: string
 }
 
+const SOCIAL_NOTE_SECTIONS: Array<{
+  type: SocialNoteType
+  title: string
+  description: string
+  placeholder: string
+}> = [
+  {
+    type: "SOCIAL_WORKER",
+    title: "Derivación a trabajo social",
+    description:
+      "Registra qué ocurrió con la derivación y si ayudó al paciente.",
+    placeholder: "Ej: Se logró contactar al área social; orientaron sobre...",
+  },
+  {
+    type: "CONADIS",
+    title: "Carnet CONADIS",
+    description: "Registra avances, dificultades o información pendiente.",
+    placeholder: "Ej: Inició el trámite; falta presentar...",
+  },
+  {
+    type: "FISSAL",
+    title: "FISSAL",
+    description: "Registra orientación recibida, trámite o resultado.",
+    placeholder: "Ej: Conoce el beneficio; se le explicó cómo...",
+  },
+]
+
 function SeguimientoSocialForm({
   draft,
+  currentDetails,
+  existingNotes,
+  noteDrafts,
   onSave,
 }: {
   draft: PatientDetailsInput | undefined
-  onSave: (social: PatientDetailsInput) => void
+  currentDetails: PatientDetailsResponse["details"] | null
+  existingNotes: PatientSocialNote[]
+  noteDrafts: SocialNoteDraft[] | undefined
+  onSave: (social: PatientDetailsInput, notes: SocialNoteDraft[]) => void
 }) {
-  const { register, handleSubmit, watch, setValue } = useForm<SocialFormValues>(
-    {
+  const { register, handleSubmit, watch, setValue, reset } =
+    useForm<SocialFormValues>({
       defaultValues: {
-        zoneType: draft?.zoneType ?? "",
-        emergencyContactGender: draft?.emergencyContactGender,
-        evidenceOfDomesticViolence: draft?.evidenceOfDomesticViolence,
-        usesWoodStove: draft?.usesWoodStove,
-        isWorking: draft?.isWorking,
-        receivesFinancialSupport: draft?.receivesFinancialSupport,
-        referredToSocialWorker: draft?.referredToSocialWorker,
-        hasConadisCard: draft?.hasConadisCard,
-        knowsAboutFissal: draft?.knowsAboutFissal,
-        programDropoutDate: draft?.programDropoutDate ?? "",
-        programDropoutReason: draft?.programDropoutReason ?? "",
+        zoneType: draft?.zoneType ?? currentDetails?.zoneType ?? "",
+        emergencyContactGender:
+          draft?.emergencyContactGender ??
+          currentDetails?.emergencyContactGender ??
+          undefined,
+        evidenceOfDomesticViolence:
+          draft?.evidenceOfDomesticViolence ??
+          currentDetails?.evidenceOfDomesticViolence ??
+          undefined,
+        usesWoodStove:
+          draft?.usesWoodStove ?? currentDetails?.usesWoodStove ?? undefined,
+        isWorking: draft?.isWorking ?? currentDetails?.isWorking ?? undefined,
+        receivesFinancialSupport:
+          draft?.receivesFinancialSupport ??
+          currentDetails?.receivesFinancialSupport ??
+          undefined,
+        referredToSocialWorker:
+          draft?.referredToSocialWorker ??
+          currentDetails?.referredToSocialWorker ??
+          undefined,
+        hasConadisCard:
+          draft?.hasConadisCard ?? currentDetails?.hasConadisCard ?? undefined,
+        knowsAboutFissal:
+          draft?.knowsAboutFissal ??
+          currentDetails?.knowsAboutFissal ??
+          undefined,
+        programDropoutDate:
+          draft?.programDropoutDate ?? currentDetails?.programDropoutDate ?? "",
+        programDropoutReason:
+          draft?.programDropoutReason ??
+          currentDetails?.programDropoutReason ??
+          "",
       },
-    },
-  )
+    })
+  const [notes, setNotes] = useState<Record<SocialNoteType, string>>(() => ({
+    SOCIAL_WORKER:
+      noteDrafts?.find((note) => note.type === "SOCIAL_WORKER")?.note ?? "",
+    CONADIS: noteDrafts?.find((note) => note.type === "CONADIS")?.note ?? "",
+    FISSAL: noteDrafts?.find((note) => note.type === "FISSAL")?.note ?? "",
+  }))
+
+  useEffect(() => {
+    if (!currentDetails && !draft) return
+    reset({
+      zoneType: draft?.zoneType ?? currentDetails?.zoneType ?? "",
+      emergencyContactGender:
+        draft?.emergencyContactGender ??
+        currentDetails?.emergencyContactGender ??
+        undefined,
+      evidenceOfDomesticViolence:
+        draft?.evidenceOfDomesticViolence ??
+        currentDetails?.evidenceOfDomesticViolence ??
+        undefined,
+      usesWoodStove:
+        draft?.usesWoodStove ?? currentDetails?.usesWoodStove ?? undefined,
+      isWorking: draft?.isWorking ?? currentDetails?.isWorking ?? undefined,
+      receivesFinancialSupport:
+        draft?.receivesFinancialSupport ??
+        currentDetails?.receivesFinancialSupport ??
+        undefined,
+      referredToSocialWorker:
+        draft?.referredToSocialWorker ??
+        currentDetails?.referredToSocialWorker ??
+        undefined,
+      hasConadisCard:
+        draft?.hasConadisCard ?? currentDetails?.hasConadisCard ?? undefined,
+      knowsAboutFissal:
+        draft?.knowsAboutFissal ??
+        currentDetails?.knowsAboutFissal ??
+        undefined,
+      programDropoutDate:
+        draft?.programDropoutDate ?? currentDetails?.programDropoutDate ?? "",
+      programDropoutReason:
+        draft?.programDropoutReason ??
+        currentDetails?.programDropoutReason ??
+        "",
+    })
+  }, [currentDetails, draft, reset])
 
   const emergencyContactGender = watch("emergencyContactGender")
 
   function onSubmit(values: SocialFormValues) {
-    onSave({
-      zoneType: values.zoneType || undefined,
-      emergencyContactGender: values.emergencyContactGender,
-      evidenceOfDomesticViolence: values.evidenceOfDomesticViolence,
-      usesWoodStove: values.usesWoodStove,
-      isWorking: values.isWorking,
-      receivesFinancialSupport: values.receivesFinancialSupport,
-      referredToSocialWorker: values.referredToSocialWorker,
-      hasConadisCard: values.hasConadisCard,
-      knowsAboutFissal: values.knowsAboutFissal,
-      programDropoutDate: values.programDropoutDate || undefined,
-      programDropoutReason: values.programDropoutReason || undefined,
+    const nextNotes = SOCIAL_NOTE_SECTIONS.flatMap(({ type }) => {
+      const note = notes[type].trim()
+      return note ? [{ type, note }] : []
     })
+    onSave(
+      {
+        zoneType: values.zoneType || undefined,
+        emergencyContactGender: values.emergencyContactGender,
+        evidenceOfDomesticViolence: values.evidenceOfDomesticViolence,
+        usesWoodStove: values.usesWoodStove,
+        isWorking: values.isWorking,
+        receivesFinancialSupport: values.receivesFinancialSupport,
+        referredToSocialWorker: values.referredToSocialWorker,
+        hasConadisCard: values.hasConadisCard,
+        knowsAboutFissal: values.knowsAboutFissal,
+        programDropoutDate: values.programDropoutDate || undefined,
+        programDropoutReason: values.programDropoutReason || undefined,
+      },
+      nextNotes,
+    )
     toast.success("Seguimiento social guardado en el borrador")
   }
 
@@ -1894,18 +2407,17 @@ function SeguimientoSocialForm({
         <div className="space-y-2">
           <Label>Género del contacto de emergencia</Label>
           <Select
+            items={Object.entries(genderOptions).map(([value, label]) => ({
+              value,
+              label,
+            }))}
             value={emergencyContactGender}
             onValueChange={(v) =>
               setValue("emergencyContactGender", v ?? undefined)
             }
           >
             <SelectTrigger>
-              {emergencyContactGender ? (
-                (genderOptions[emergencyContactGender] ??
-                emergencyContactGender)
-              ) : (
-                <SelectValue placeholder="Seleccionar" />
-              )}
+              <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(genderOptions).map(([k, v]) => (
@@ -1965,11 +2477,67 @@ function SeguimientoSocialForm({
           />
         </div>
       </div>
+      <div className="space-y-3 border-t pt-4">
+        <div>
+          <p className="text-sm font-medium">Notas de estado</p>
+          <p className="text-muted-foreground text-xs">
+            Las notas se agregan al historial de cada tema al completar este
+            seguimiento.
+          </p>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {SOCIAL_NOTE_SECTIONS.map((section) => {
+            const history = existingNotes.filter(
+              (note) => note.type === section.type,
+            )
+            return (
+              <div
+                key={section.type}
+                className="bg-muted/20 space-y-2 rounded-lg border p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium">{section.title}</p>
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    {section.description}
+                  </p>
+                </div>
+                {history[0] && (
+                  <div className="bg-card rounded-md border p-2 text-xs">
+                    <p className="text-muted-foreground mb-1">
+                      Última nota ·{" "}
+                      {new Date(history[0].createdAt).toLocaleDateString(
+                        "es-PE",
+                      )}
+                    </p>
+                    <p>{history[0].note}</p>
+                  </div>
+                )}
+                <Textarea
+                  value={notes[section.type]}
+                  onChange={(event) =>
+                    setNotes((current) => ({
+                      ...current,
+                      [section.type]: event.target.value,
+                    }))
+                  }
+                  placeholder={section.placeholder}
+                  rows={4}
+                />
+                {history.length > 1 && (
+                  <p className="text-muted-foreground text-xs">
+                    {history.length} notas anteriores en el historial.
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm">
           Guardar seguimiento social
         </Button>
-        <DraftBadge saved={Boolean(draft)} />
+        <DraftBadge saved={Boolean(draft || noteDrafts?.length)} />
       </div>
     </form>
   )

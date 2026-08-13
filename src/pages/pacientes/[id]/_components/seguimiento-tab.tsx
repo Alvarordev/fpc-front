@@ -8,7 +8,10 @@ import { agentsApi } from "@/api/agents"
 import { followUpsApi } from "@/api/follow-ups"
 import { patientTimelineApi } from "@/api/patient-timeline"
 import { useAuthStore } from "@/store/auth-store"
-import { ScheduleFollowUpDialog, type ScheduleFollowUpFormValues } from "./schedule-follow-up-dialog"
+import {
+  ScheduleFollowUpDialog,
+  type ScheduleFollowUpFormValues,
+} from "./schedule-follow-up-dialog"
 import { TimelineEventCard } from "./timeline-event-card"
 
 interface SeguimientoTabProps {
@@ -28,8 +31,12 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
-  const requiresAgentSelection = user?.role === "ADMIN" || user?.role === "FOUNDATION"
+  const canManage =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT"
+  const requiresAgentSelection =
+    user?.role === "ADMIN" || user?.role === "FOUNDATION"
 
   const timelineQuery = useQuery({
     queryKey: ["patient-timeline", pacienteId],
@@ -45,22 +52,33 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
   const scheduleMutation = useMutation({
     mutationFn: followUpsApi.create,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["patient-timeline", pacienteId] })
+      await queryClient.invalidateQueries({
+        queryKey: ["patient-timeline", pacienteId],
+      })
       toast.success("Seguimiento agendado correctamente")
     },
-    onError: (error: Error) => toast.error("No se pudo agendar el seguimiento", { description: error.message }),
+    onError: (error: Error) =>
+      toast.error("No se pudo agendar el seguimiento", {
+        description: error.message,
+      }),
   })
 
   const events = timelineQuery.data?.data ?? []
   const followUps = events.filter((event) => event.kind === "FOLLOW_UP")
-  const completedFollowUps = followUps.filter((event) => event.status === "COMPLETED")
+  const completedFollowUps = followUps.filter(
+    (event) => event.status === "COMPLETED",
+  )
   const nextScheduled = followUps
     .filter((event) => event.status === "SCHEDULED")
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))[0]
-  const lastCompleted = [...completedFollowUps].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0]
+  const lastCompleted = [...completedFollowUps].sort((a, b) =>
+    b.occurredAt.localeCompare(a.occurredAt),
+  )[0]
 
   async function schedule(values: ScheduleFollowUpFormValues) {
-    const ownAgent = agentsQuery.data?.find((agent) => agent.userId === user?.id)
+    const ownAgent = agentsQuery.data?.find(
+      (agent) => agent.userId === user?.id,
+    )
     const agentId = requiresAgentSelection ? values.agentId : ownAgent?.id
 
     if (!agentId) {
@@ -81,7 +99,8 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
   function openSchedule() {
     if (nextScheduled) {
       toast.error("Ya existe un seguimiento agendado", {
-        description: "Completá, cancelá o marcá como no contestado el seguimiento actual antes de agendar otro.",
+        description:
+          "Completá, cancelá o marcá como no contestado el seguimiento actual antes de agendar otro.",
       })
       return
     }
@@ -98,19 +117,25 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
               <Phone className="size-4 text-blue-600" />
             </div>
             <div>
-              <p className="font-medium text-foreground">{completedFollowUps.length}</p>
-              <p className="text-xs text-muted-foreground">seguimientos completados</p>
+              <p className="text-foreground font-medium">
+                {completedFollowUps.length}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                seguimientos completados
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <div className="flex size-8 items-center justify-center rounded-full bg-muted">
-              <PhoneCall className="size-4 text-muted-foreground" />
+            <div className="bg-muted flex size-8 items-center justify-center rounded-full">
+              <PhoneCall className="text-muted-foreground size-4" />
             </div>
             <div>
-              <p className="font-medium text-foreground">
-                {lastCompleted ? formatShortDate(lastCompleted.occurredAt) : "Sin contactos"}
+              <p className="text-foreground font-medium">
+                {lastCompleted
+                  ? formatShortDate(lastCompleted.occurredAt)
+                  : "Sin contactos"}
               </p>
-              <p className="text-xs text-muted-foreground">último contacto</p>
+              <p className="text-muted-foreground text-xs">último contacto</p>
             </div>
           </div>
         </div>
@@ -125,7 +150,11 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       {nextScheduled && (
         <button
           type="button"
-          onClick={() => navigate(`/pacientes/${pacienteId}/seguimientos/${nextScheduled.followUpId}`)}
+          onClick={() =>
+            navigate(
+              `/pacientes/${pacienteId}/seguimientos/${nextScheduled.followUpId}`,
+            )
+          }
           className="flex w-full items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition-colors hover:bg-amber-100"
         >
           <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
@@ -133,21 +162,31 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-amber-900">
-              Seguimiento agendado para {formatShortDate(nextScheduled.occurredAt)}
+              Seguimiento agendado para{" "}
+              {formatShortDate(nextScheduled.occurredAt)}
             </p>
-            <p className="text-xs text-amber-700/80">Abrílo para registrar el resultado</p>
+            <p className="text-xs text-amber-700/80">
+              Abrílo para registrar el resultado
+            </p>
           </div>
         </button>
       )}
 
       {timelineQuery.isLoading ? (
-        <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Cargando historial...</div>
+        <div className="text-muted-foreground flex h-48 items-center justify-center text-sm">
+          Cargando historial...
+        </div>
       ) : timelineQuery.isError ? (
-        <div className="flex h-48 items-center justify-center text-sm text-destructive">No se pudo cargar el historial.</div>
+        <div className="text-destructive flex h-48 items-center justify-center text-sm">
+          No se pudo cargar el historial.
+        </div>
       ) : events.length === 0 ? (
         <div className="flex h-48 flex-col items-center justify-center gap-2">
           <p className="text-sm font-medium">Sin historial de seguimiento</p>
-          <p className="text-xs text-muted-foreground">Los seguimientos, recordatorios y sesiones aparecerán aquí.</p>
+          <p className="text-muted-foreground text-xs">
+            Los seguimientos, notas sociales, recordatorios y sesiones
+            aparecerán aquí.
+          </p>
         </div>
       ) : (
         <div className="space-y-3 pt-2">
@@ -155,7 +194,14 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
             <TimelineEventCard
               key={`${event.kind}-${event.id}`}
               event={event}
-              onClick={event.kind === "FOLLOW_UP" ? () => navigate(`/pacientes/${pacienteId}/seguimientos/${event.followUpId}`) : undefined}
+              onClick={
+                event.kind === "FOLLOW_UP"
+                  ? () =>
+                      navigate(
+                        `/pacientes/${pacienteId}/seguimientos/${event.followUpId}`,
+                      )
+                  : undefined
+              }
             />
           ))}
         </div>
