@@ -329,6 +329,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/follow-ups/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create multiple future follow-ups */
+        post: operations["FollowUpsController_createBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/follow-ups/{id}": {
         parameters: {
             query?: never;
@@ -1720,10 +1737,14 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        CreateFollowUpsBatchDto: {
+            followUps: components["schemas"]["CreateFollowUpDto"][];
+        };
         UpdateFollowUpDto: {
             notes?: string;
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            scheduledAt?: string;
             completedAt?: string;
         };
         CreateReminderDto: {
@@ -3673,6 +3694,57 @@ export interface operations {
                 };
             };
             /** @description Required agent assignment is missing */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agents can only assign follow-ups to themselves */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or agent not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FollowUpsController_createBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFollowUpsBatchDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpResponseDto"][];
+                };
+            };
+            /** @description The batch must contain future follow-ups for the same patient */
             400: {
                 headers: {
                     [name: string]: unknown;
