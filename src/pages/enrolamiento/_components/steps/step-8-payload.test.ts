@@ -39,6 +39,13 @@ describe("step 8 Nest enrollment payload", () => {
           province: "Lima",
           department: "LIMA",
           dniMatchesAddress: false,
+        }, {
+          type: "TEMPORARY",
+          isPrimary: false,
+          address: "Jr. Temporal 456",
+          district: "Miraflores",
+          province: "Lima",
+          department: "LIMA",
         }],
         insurance: { insuranceType: "EPS", epsProvider: "RIMAC", isCurrent: true },
          diagnosis: {
@@ -81,6 +88,8 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.treatments?.[0]?.medications?.[0]?.frequency).toEqual({ valueMin: 1, unit: "DAY" })
     expect(payload.details?.travelTimeToHospital).toEqual({ valueMin: 45, unit: "MINUTE" })
     expect(payload.addresses?.[0]).toMatchObject({ type: "PERMANENT", department: "LIMA", dniMatchesAddress: false })
+    expect(payload.addresses).toHaveLength(2)
+    expect(payload.addresses?.[1]).toMatchObject({ type: "TEMPORARY", isPrimary: false, address: "Jr. Temporal 456" })
     expect(payload.details?.referredToSocialWorker).toBe(true)
     expect(payload.familyPreventionTalkInterests).toHaveLength(1)
     expect(payload.callStartedAt).toMatch(/^2026-06-25T/)

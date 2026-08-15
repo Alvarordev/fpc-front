@@ -65,11 +65,46 @@ export function Step5Datos() {
   const { draft, updateDraft, nextStep, prevStep, goToStep } = useEnrollmentStore()
   const pd = draft.patientData; const d = draft.details; const ins = draft.insurance
   const address: EnrollmentAddressRequest = draft.addresses[0] ?? { type: "PERMANENT", isPrimary: true }
+  const hasTemporaryAddress = draft.addresses.length > 1
+  const temporaryAddress: EnrollmentAddressRequest = {
+    ...(draft.addresses[1] ?? { type: "TEMPORARY", isPrimary: false }),
+    type: "TEMPORARY",
+    isPrimary: false,
+  }
   const meta = draft.enrollmentMetadata
   const patientIsMinor = isMinor(pd.birthDate)
 
   function updateAddress(partial: Partial<typeof address>) {
     updateDraft({ addresses: [{ ...address, ...partial }, ...draft.addresses.slice(1)] })
+  }
+
+  function updateTemporaryAddress(partial: Partial<typeof temporaryAddress>) {
+    updateDraft({
+      addresses: [
+        address,
+        { ...temporaryAddress, ...partial, type: "TEMPORARY", isPrimary: false },
+        ...draft.addresses.slice(2),
+      ],
+    })
+  }
+
+  function handleTemporaryAddressChange(value: string | null) {
+    if (value === "Sí") {
+      updateDraft({
+        addresses: [
+          address,
+          temporaryAddress,
+          ...draft.addresses.slice(2),
+        ],
+      })
+      return
+    }
+
+    updateDraft({
+      addresses: draft.addresses.length > 1
+        ? [address, ...draft.addresses.slice(2)]
+        : draft.addresses,
+    })
   }
 
   const saved = meta.programEntryPoint
@@ -151,7 +186,7 @@ export function Step5Datos() {
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos Demográficos" />
         <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={address.address??""} onChange={e=>updateAddress({address:e.target.value||undefined})} /></div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={address.district??""} onChange={e=>updateAddress({district:e.target.value||undefined})} /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={address.province??""} onChange={e=>updateAddress({province:e.target.value||undefined})} /></div>
         </div>
@@ -159,6 +194,37 @@ export function Step5Datos() {
           <Select items={PERU_DEPARTMENTS} value={address.department??""} onValueChange={v=>updateAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{PERU_DEPARTMENTS.map((department)=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
         </div>
         <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={address.reference??""} onChange={e=>updateAddress({reference:e.target.value||undefined})} /></div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Cuenta con una vivienda provisional adicional?</Label>
+          <Select value={hasTemporaryAddress ? "Sí" : "No"} onValueChange={handleTemporaryAddressChange}>
+            <SelectTrigger className={sc}><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Si vive en otra ciudad durante parte del año, registre aquí esa segunda dirección.
+          </p>
+        </div>
+        {hasTemporaryAddress && (
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+            <div className="mb-4">
+              <p className="text-sm font-semibold">Vivienda provisional</p>
+              <p className="text-xs text-muted-foreground">
+                Por ejemplo, una vivienda en Lima si su domicilio habitual está en provincia.
+              </p>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2"><Label className={fl}>Dirección</Label><Input placeholder="Av. Principal 123" className={ic} value={temporaryAddress.address??""} onChange={e=>updateTemporaryAddress({address:e.target.value||undefined})} /></div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={temporaryAddress.district??""} onChange={e=>updateTemporaryAddress({district:e.target.value||undefined})} /></div>
+                <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={temporaryAddress.province??""} onChange={e=>updateTemporaryAddress({province:e.target.value||undefined})} /></div>
+              </div>
+              <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label>
+                <Select items={PERU_DEPARTMENTS} value={temporaryAddress.department??""} onValueChange={v=>updateTemporaryAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{PERU_DEPARTMENTS.map((department)=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={temporaryAddress.reference??""} onChange={e=>updateTemporaryAddress({reference:e.target.value||undefined})} /></div>
+            </div>
+          </div>
+        )}
         <DurationInput label="Tiempo de viaje al hospital" units={["MINUTE", "HOUR", "DAY"]} defaultUnit="HOUR" singleValue value={d.travelTimeToHospital} onChange={travelTimeToHospital=>updateDraft({details:{...d,travelTimeToHospital}})} />
         <div className="flex flex-col gap-2"><Label className={fl}>¿Dirección DNI coincide con actual?</Label>
           <Select value={address.dniMatchesAddress===true?"Sí":address.dniMatchesAddress===false?"No":""} onValueChange={v=>updateAddress({dniMatchesAddress:v==="Sí"})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>

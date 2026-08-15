@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 interface AuthResponse { accessToken: string }
 interface Agent { id: string }
 interface HealthCenter { id: string; isActive: boolean }
+interface PatientAddress { type: string; isPrimary: boolean; address: string | null }
 interface Enrollment { id: string; patientId: string; followUpId: string; caseComments: string | null }
 
 const API_URL = process.env.FPC_E2E_API_URL?.replace(/\/+$/, "")
@@ -45,6 +46,13 @@ runDescribe("enrollment flow against Nest", () => {
           district: "Lima",
           province: "Lima",
           department: "LIMA",
+        }, {
+          type: "TEMPORARY",
+          isPrimary: false,
+          address: "Jr. Temporal 456",
+          district: "Miraflores",
+          province: "Lima",
+          department: "LIMA",
         }],
         insurance: { insuranceType: "EPS", epsProvider: "RIMAC" },
         diagnosis: { diagnosis: "Cáncer de mama", healthCenterId: healthCenter?.id },
@@ -72,5 +80,11 @@ runDescribe("enrollment flow against Nest", () => {
     expect(enrollment.patientId).toBeTruthy()
     expect(enrollment.followUpId).toBeTruthy()
     expect(enrollment.caseComments).toBe("Prueba del wizard Nest")
+
+    const addresses = await request<PatientAddress[]>(`/patients/${enrollment.patientId}/addresses`, {}, token)
+    expect(addresses).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "PERMANENT", isPrimary: true, address: "Av. Test 123" }),
+      expect.objectContaining({ type: "TEMPORARY", isPrimary: false, address: "Jr. Temporal 456" }),
+    ]))
   }, 30_000)
 })
