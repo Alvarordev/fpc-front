@@ -9,7 +9,13 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { formatAgendaTime, toDateKey, type AgendaEvent } from "../_lib/agenda"
+import {
+  filterAgendaEvents,
+  formatAgendaTime,
+  toDateKey,
+  type AgendaEvent,
+  type AgendaEventFilters,
+} from "../_lib/agenda"
 
 interface AgentAgendaCalendarProps {
   events: AgendaEvent[]
@@ -38,12 +44,17 @@ export function AgentAgendaCalendar({
   onSelectEvent,
 }: AgentAgendaCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [filters, setFilters] = useState<AgendaEventFilters>({
+    "follow-up": true,
+    reminder: true,
+  })
+  const visibleEvents = filterAgendaEvents(events, filters)
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const firstDayIndex = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const todayKey = toDateKey(new Date())
-  const eventsByDate = events.reduce<Record<string, AgendaEvent[]>>(
+  const eventsByDate = visibleEvents.reduce<Record<string, AgendaEvent[]>>(
     (groups, event) => {
       const dateKey = toDateKey(event.startsAt)
       if (!dateKey) return groups
@@ -78,7 +89,7 @@ export function AgentAgendaCalendar({
               {monthNames[month]} {year}
             </h2>
             <p className="text-muted-foreground text-xs">
-              {events.length} tarea{events.length === 1 ? "" : "s"} en tu agenda
+              {visibleEvents.length} tarea{visibleEvents.length === 1 ? "" : "s"} en tu agenda
             </p>
           </div>
         </div>
@@ -114,8 +125,20 @@ export function AgentAgendaCalendar({
       </div>
 
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs">
-        <Legend color="bg-amber-500" icon={Phone} label="Seguimientos" />
-        <Legend color="bg-violet-500" icon={Bell} label="Recordatorios" />
+        <Legend
+          color="bg-amber-500"
+          icon={Phone}
+          label="Seguimientos"
+          active={filters["follow-up"]}
+          onToggle={() => setFilters((current) => ({ ...current, "follow-up": !current["follow-up"] }))}
+        />
+        <Legend
+          color="bg-violet-500"
+          icon={Bell}
+          label="Recordatorios"
+          active={filters.reminder}
+          onToggle={() => setFilters((current) => ({ ...current, reminder: !current.reminder }))}
+        />
         <span className="ml-auto hidden items-center gap-1.5 sm:flex">
           <span className="bg-primary size-2 rounded-full" /> Hoy
         </span>
@@ -198,17 +221,32 @@ function Legend({
   color,
   icon: Icon,
   label,
+  active,
+  onToggle,
 }: {
   color: string
   icon: typeof Phone
   label: string
+  active: boolean
+  onToggle: () => void
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={cn("size-2 rounded-full", color)} />
+    <button
+      type="button"
+      aria-pressed={active}
+      aria-label={`${active ? "Ocultar" : "Mostrar"} ${label.toLowerCase()}`}
+      onClick={onToggle}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-opacity",
+        active
+          ? "text-foreground"
+          : "text-muted-foreground/50 opacity-60",
+      )}
+    >
+      <span className={cn("size-2 rounded-full", color, !active && "opacity-40")} />
       <Icon className="size-3.5" />
       {label}
-    </span>
+    </button>
   )
 }
 

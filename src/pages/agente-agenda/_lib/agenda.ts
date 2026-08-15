@@ -40,6 +40,15 @@ export type AgendaEvent =
       reminder: Reminder
     }
 
+export type AgendaEventFilters = Record<AgendaEvent["kind"], boolean>
+
+export function filterAgendaEvents(
+  events: AgendaEvent[],
+  filters: AgendaEventFilters,
+) {
+  return events.filter((event) => filters[event.kind])
+}
+
 export function toDateKey(value: string | Date | null | undefined) {
   if (!value) return ""
   const date = value instanceof Date ? value : new Date(value)

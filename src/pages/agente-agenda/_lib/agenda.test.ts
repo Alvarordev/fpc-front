@@ -3,6 +3,7 @@ import type { FollowUp } from "@/api/follow-ups"
 import type { Reminder } from "@/api/reminders"
 import {
   buildAgendaEvents,
+  filterAgendaEvents,
   toDateKey,
   toIsoDateTime,
   toLocalDateTimeParts,
@@ -55,6 +56,18 @@ describe("agent agenda helpers", () => {
     expect(events.map((event) => event.kind)).toEqual(["reminder", "follow-up"])
     expect(events[0]?.patientName).toBe("Luis Perez")
     expect(events[1]?.title).toBe("Llamada")
+  })
+
+  it("filters calendar events by type", () => {
+    const events = buildAgendaEvents(
+      [followUp()],
+      [reminder()],
+      new Map([["patient-2", "Luis Perez"]]),
+    )
+
+    expect(filterAgendaEvents(events, { "follow-up": true, reminder: false }).map((event) => event.kind)).toEqual(["follow-up"])
+    expect(filterAgendaEvents(events, { "follow-up": false, reminder: true }).map((event) => event.kind)).toEqual(["reminder"])
+    expect(filterAgendaEvents(events, { "follow-up": false, reminder: false })).toEqual([])
   })
 
   it("uses the local calendar date and converts edit values to ISO", () => {
