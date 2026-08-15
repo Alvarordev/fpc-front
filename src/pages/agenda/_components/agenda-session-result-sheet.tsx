@@ -1,16 +1,16 @@
-import { useEffect, useCallback, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { ExternalLink, FlaskConical } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { useEffect, useCallback, useState } from "react"
+import { useForm, Controller } from "react-hook-form"
+import { ExternalLink, FlaskConical } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"
 import {
   Sheet,
   SheetContent,
@@ -18,15 +18,16 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from "@/components/ui/sheet";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments";
-import { toast } from "sonner";
-import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments";
-import type { ReferralType } from "@/types";
-import { DistressThermometer } from "./distress-thermometer";
+} from "@/components/ui/sheet"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
+import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
+import { toast } from "sonner"
+import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments"
+import type { ReferralType } from "@/types"
+import { DistressThermometer } from "./distress-thermometer"
 
-const STORAGE_PREFIX = "agenda-session-form-";
+const STORAGE_PREFIX = "agenda-session-form-"
 
 const referralLabels: Record<ReferralType, string> = {
   PSYCHIATRY: "Psiquiatría",
@@ -34,27 +35,27 @@ const referralLabels: Record<ReferralType, string> = {
   CONTINUE_PSYCHOLOGY: "Continuar psicología",
   PSYCHOONCOLOGIST: "Derivar a psicooncólogo",
   NONE: "Ninguna",
-};
+}
 
-type Outcome = "COMPLETED" | "CANCELLED";
+type Outcome = "COMPLETED" | "CANCELLED"
 
 interface FormValues {
-  outcome: Outcome;
-  topicAddressed: string;
-  sessionDetails: string;
-  additionalObservations: string;
-  recommendations: string;
-  referral: ReferralType | "";
-  showTest: boolean;
+  outcome: Outcome
+  topicAddressed: string
+  sessionDetails: string
+  additionalObservations: string
+  recommendations: string
+  referral: ReferralType | ""
+  showTest: boolean
 }
 
 interface AgendaSessionResultSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  appointment: PsychooncologyAppointment | null;
-  patientName: string;
-  patientId: string;
-  volunteerId: string | undefined;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  appointment: PsychooncologyAppointment | null
+  patientName: string
+  patientId: string
+  volunteerId: string | undefined
 }
 
 export function AgendaSessionResultSheet({
@@ -64,19 +65,22 @@ export function AgendaSessionResultSheet({
   patientName,
   patientId,
 }: AgendaSessionResultSheetProps) {
-  const queryClient = useQueryClient();
-  const storageKey = appointment ? `${STORAGE_PREFIX}${appointment.id}` : "";
-  const [wizardStep, setWizardStep] = useState<"session" | "test">("session");
-  const [savedSessionValues, setSavedSessionValues] = useState<FormValues | null>(null);
+  const queryClient = useQueryClient()
+  const storageKey = appointment ? `${STORAGE_PREFIX}${appointment.id}` : ""
+  const [wizardStep, setWizardStep] = useState<"session" | "test">("session")
+  const [savedSessionValues, setSavedSessionValues] =
+    useState<FormValues | null>(null)
 
   const loadDraft = useCallback((): FormValues => {
-    if (!appointment) return getDefaults();
+    if (!appointment) return getDefaults()
     try {
-      const raw = sessionStorage.getItem(storageKey);
-      if (raw) return JSON.parse(raw) as FormValues;
-    } catch { /* ignore corrupt data */ }
-    return getDefaults();
-  }, [appointment, storageKey]);
+      const raw = sessionStorage.getItem(storageKey)
+      if (raw) return JSON.parse(raw) as FormValues
+    } catch {
+      /* ignore corrupt data */
+    }
+    return getDefaults()
+  }, [appointment, storageKey])
 
   const {
     control,
@@ -87,24 +91,24 @@ export function AgendaSessionResultSheet({
     formState: { isSubmitting },
   } = useForm<FormValues>({
     defaultValues: getDefaults(),
-  });
+  })
 
   // Save draft to sessionStorage on every change
-  const watchedValues = watch();
+  const watchedValues = watch()
   useEffect(() => {
-    if (!appointment || !open) return;
-    sessionStorage.setItem(storageKey, JSON.stringify(watchedValues));
-  }, [watchedValues, appointment, open, storageKey]);
+    if (!appointment || !open) return
+    sessionStorage.setItem(storageKey, JSON.stringify(watchedValues))
+  }, [watchedValues, appointment, open, storageKey])
 
   // Restore draft when opening
   useEffect(() => {
     if (open && appointment) {
-      reset(loadDraft());
+      reset(loadDraft())
     }
-  }, [open, appointment, reset, loadDraft]);
+  }, [open, appointment, reset, loadDraft])
 
-  const outcome = watch("outcome");
-  const isCompleting = outcome === "COMPLETED";
+  const outcome = watch("outcome")
+  const isCompleting = outcome === "COMPLETED"
 
   const completeMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormValues }) =>
@@ -117,60 +121,60 @@ export function AgendaSessionResultSheet({
         referral: (data.referral as ReferralType) || undefined,
       }),
     onSuccess: () => {
-      toast.success("Sesión registrada correctamente");
-      queryClient.invalidateQueries({ queryKey: ["agenda"] });
-      clearDraft();
+      toast.success("Sesión registrada correctamente")
+      queryClient.invalidateQueries({ queryKey: ["agenda"] })
+      clearDraft()
     },
     onError: () => {
-      toast.error("Error al registrar la sesión");
+      toast.error("Error al registrar la sesión")
     },
-  });
+  })
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => psychooncologyAppointmentsApi.cancel(id),
     onSuccess: () => {
-      toast.success("Sesión cancelada");
-      queryClient.invalidateQueries({ queryKey: ["agenda"] });
-      clearDraft();
+      toast.success("Sesión cancelada")
+      queryClient.invalidateQueries({ queryKey: ["agenda"] })
+      clearDraft()
     },
     onError: () => {
-      toast.error("Error al cancelar la sesión");
+      toast.error("Error al cancelar la sesión")
     },
-  });
+  })
 
   function clearDraft() {
-    if (storageKey) sessionStorage.removeItem(storageKey);
+    if (storageKey) sessionStorage.removeItem(storageKey)
   }
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
-      reset(getDefaults());
-      clearDraft();
-      setWizardStep("session");
+      reset(getDefaults())
+      clearDraft()
+      setWizardStep("session")
     }
-    onOpenChange(nextOpen);
+    onOpenChange(nextOpen)
   }
 
   async function onSubmit(values: FormValues) {
-    if (!appointment) return;
+    if (!appointment) return
 
     if (values.outcome === "CANCELLED") {
-      await cancelMutation.mutateAsync(appointment.id);
-      handleOpenChange(false);
-      return;
+      await cancelMutation.mutateAsync(appointment.id)
+      handleOpenChange(false)
+      return
     }
 
     if (values.showTest) {
-      setSavedSessionValues(values);
-      setWizardStep("test");
-      return;
+      setSavedSessionValues(values)
+      setWizardStep("test")
+      return
     }
 
     await completeMutation.mutateAsync({
       id: appointment.id,
       data: values,
-    });
-    handleOpenChange(false);
+    })
+    handleOpenChange(false)
   }
 
   function handleTestSubmit() {
@@ -178,17 +182,17 @@ export function AgendaSessionResultSheet({
       completeMutation.mutate({
         id: appointment.id,
         data: savedSessionValues,
-      });
+      })
     }
-    handleOpenChange(false);
+    handleOpenChange(false)
   }
 
   function handleTestCancel() {
-    handleOpenChange(false);
+    handleOpenChange(false)
   }
 
-  const isPending = completeMutation.isPending || cancelMutation.isPending;
-  const timeDisplay = appointment?.scheduledAt.slice(11, 16) ?? "";
+  const isPending = completeMutation.isPending || cancelMutation.isPending
+  const timeDisplay = appointment?.scheduledAt.slice(11, 16) ?? ""
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -198,17 +202,17 @@ export function AgendaSessionResultSheet({
       >
         {wizardStep === "session" ? (
           <>
-            <SheetHeader className="border-border/60 border-b px-4 py-4 shrink-0">
+            <SheetHeader className="border-border/60 shrink-0 border-b px-4 py-4">
               <SheetTitle>Registrar sesión</SheetTitle>
-              <SheetDescription className="flex items-center gap-2 mt-1">
+              <SheetDescription className="mt-1 flex items-center gap-2">
                 <span>
                   {patientName} · {timeDisplay}
                 </span>
                 <a
-                  href={`/pacientes/${patientId}`}
+                  href={patientTabUrl(patientId, "psicooncologia")}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+                  className="text-primary inline-flex shrink-0 items-center gap-1 text-xs hover:underline"
                 >
                   Ver ficha
                   <ExternalLink className="size-3" />
@@ -242,9 +246,7 @@ export function AgendaSessionResultSheet({
                           <SelectValue placeholder="Seleccionar..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="COMPLETED">
-                            Sí, asistió
-                          </SelectItem>
+                          <SelectItem value="COMPLETED">Sí, asistió</SelectItem>
                           <SelectItem value="CANCELLED">
                             No asistió / cancelar
                           </SelectItem>
@@ -262,21 +264,21 @@ export function AgendaSessionResultSheet({
                       name="showTest"
                       control={control}
                       render={({ field }) => (
-                        <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-border/60 bg-muted/20 p-4">
+                        <label className="border-border/60 bg-muted/20 flex cursor-pointer items-start gap-3 rounded-xl border p-4">
                           <input
                             type="checkbox"
                             checked={field.value}
                             onChange={(e) => field.onChange(e.target.checked)}
-                            className="mt-0.5 size-4 rounded accent-primary cursor-pointer"
+                            className="accent-primary mt-0.5 size-4 cursor-pointer rounded"
                           />
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <FlaskConical className="size-3.5 text-muted-foreground" />
+                              <FlaskConical className="text-muted-foreground size-3.5" />
                               <span className="text-sm font-medium">
                                 Aplicar Termómetro de Distrés
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
+                            <p className="text-muted-foreground text-xs leading-relaxed">
                               Test de screening rápido (NCCN). Evalúa el nivel
                               de malestar en la última semana.
                             </p>
@@ -332,9 +334,11 @@ export function AgendaSessionResultSheet({
                             onValueChange={field.onChange}
                           >
                             <SelectTrigger className="w-full">
-                              {field.value
-                                ? referralLabels[field.value as ReferralType]
-                                : <SelectValue placeholder="Seleccionar derivación (opcional)" />}
+                              {field.value ? (
+                                referralLabels[field.value as ReferralType]
+                              ) : (
+                                <SelectValue placeholder="Seleccionar derivación (opcional)" />
+                              )}
                             </SelectTrigger>
                             <SelectContent>
                               {Object.entries(referralLabels).map(([k, v]) => (
@@ -351,7 +355,7 @@ export function AgendaSessionResultSheet({
                 )}
               </div>
 
-              <SheetFooter className="border-border/60 shrink-0 border-t p-4 flex items-center justify-between">
+              <SheetFooter className="border-border/60 flex shrink-0 items-center justify-between border-t p-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -361,9 +365,7 @@ export function AgendaSessionResultSheet({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={
-                    isPending || isSubmitting || !appointment
-                  }
+                  disabled={isPending || isSubmitting || !appointment}
                 >
                   {isPending
                     ? "Guardando..."
@@ -376,10 +378,10 @@ export function AgendaSessionResultSheet({
           </>
         ) : (
           <>
-            <SheetHeader className="border-border/60 border-b px-4 py-4 shrink-0">
+            <SheetHeader className="border-border/60 shrink-0 border-b px-4 py-4">
               <SheetTitle>Termómetro de Distrés</SheetTitle>
               <SheetDescription className="mt-1">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {patientName}
                 </span>
               </SheetDescription>
@@ -393,7 +395,7 @@ export function AgendaSessionResultSheet({
         )}
       </SheetContent>
     </Sheet>
-  );
+  )
 }
 
 function getDefaults(): FormValues {
@@ -405,5 +407,5 @@ function getDefaults(): FormValues {
     recommendations: "",
     referral: "",
     showTest: false,
-  };
+  }
 }

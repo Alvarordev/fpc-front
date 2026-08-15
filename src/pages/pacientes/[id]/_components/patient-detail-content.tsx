@@ -1,42 +1,54 @@
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Clock, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store";
-import { usePatient } from "../_hooks/use-patient";
-import { usePatientAlerts } from "../_hooks/use-patient-alerts";
-import { buildEnrollmentPrefill } from "../_utils/build-enrollment-prefill";
-import { AlertBanner } from "./alert-banner";
-import { OverviewSection } from "./overview-section";
-import { EnrollmentRatingCard } from "./enrollment-rating-card";
-import { SeguimientoTab } from "./seguimiento-tab";
-import { PsicoTab } from "./psico-tab";
-import { RecordatoriosTab } from "./recordatorios-tab";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { roleLabels } from "../_lib/clinical-labels";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { ArrowLeft, Clock, UserPlus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
+import { usePatient } from "../_hooks/use-patient"
+import { usePatientAlerts } from "../_hooks/use-patient-alerts"
+import { buildEnrollmentPrefill } from "../_utils/build-enrollment-prefill"
+import { AlertBanner } from "./alert-banner"
+import { OverviewSection } from "./overview-section"
+import { EnrollmentRatingCard } from "./enrollment-rating-card"
+import { SeguimientoTab } from "./seguimiento-tab"
+import { PsicoTab } from "./psico-tab"
+import { RecordatoriosTab } from "./recordatorios-tab"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { roleLabels } from "../_lib/clinical-labels"
+import {
+  getPatientTab,
+  isPatientTab,
+  withPatientTab,
+} from "../_lib/patient-tabs"
 const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
   UNENROLLED: "Sin enrolar",
   ENROLLED: "Enrolado",
-};
+}
 
 const statusStyles: Record<"UNENROLLED" | "ENROLLED", string> = {
   UNENROLLED: "bg-violet-50 text-violet-700 border-violet-200",
   ENROLLED: "bg-blue-50 text-blue-700 border-blue-200",
-};
+}
 
 export function PatientDetailContent() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { data: patient, isLoading, isError } = usePatient(id!);
-  const { alerts } = usePatientAlerts(patient);
-  const { resetEnrollment, updateDraft } = useEnrollmentStore();
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = getPatientTab(searchParams.get("tab"))
+  const { data: patient, isLoading, isError } = usePatient(id!)
+  const { alerts } = usePatientAlerts(patient)
+  const { resetEnrollment, updateDraft } = useEnrollmentStore()
 
   function handleEnroll() {
-    if (!patient) return;
-    resetEnrollment();
-    updateDraft(buildEnrollmentPrefill(patient));
-    navigate("/enrolamiento");
+    if (!patient) return
+    resetEnrollment()
+    updateDraft(buildEnrollmentPrefill(patient))
+    navigate("/enrolamiento")
+  }
+
+  function handleTabChange(value: string) {
+    if (!isPatientTab(value)) return
+    setSearchParams(withPatientTab(searchParams, value))
   }
 
   if (isLoading) {
@@ -44,7 +56,7 @@ export function PatientDetailContent() {
       <div className="flex h-64 items-center justify-center">
         <p className="text-muted-foreground text-sm">Cargando...</p>
       </div>
-    );
+    )
   }
 
   if (isError || !patient) {
@@ -59,18 +71,16 @@ export function PatientDetailContent() {
           <ArrowLeft className="size-3.5" />
           Volver a pacientes
         </Button>
-        <p className="text-muted-foreground text-sm">
-          Paciente no encontrado.
-        </p>
+        <p className="text-muted-foreground text-sm">Paciente no encontrado.</p>
       </div>
-    );
+    )
   }
 
   const initials = patient.fullName
     .split(" ")
     .slice(0, 2)
     .map((w) => w[0])
-    .join("");
+    .join("")
 
   return (
     <div className="space-y-5">
@@ -96,7 +106,7 @@ export function PatientDetailContent() {
               {patient.fullName}
             </h1>
             {patient.role === "COMPANION" ? (
-              <Badge className="border bg-amber-50 text-amber-700 text-xs font-medium">
+              <Badge className="border bg-amber-50 text-xs font-medium text-amber-700">
                 {roleLabels[patient.role]}
               </Badge>
             ) : (
@@ -133,7 +143,7 @@ export function PatientDetailContent() {
 
       {alerts.length > 0 && <AlertBanner alerts={alerts} />}
 
-      <Tabs defaultValue="resumen">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-4">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
@@ -145,7 +155,9 @@ export function PatientDetailContent() {
             <OverviewSection patient={patient} />
             <EnrollmentRatingCard
               patientId={patient.id}
-              enabled={patient.role !== "COMPANION" && patient.status === "ENROLLED"}
+              enabled={
+                patient.role !== "COMPANION" && patient.status === "ENROLLED"
+              }
             />
           </div>
         </TabsContent>
@@ -160,5 +172,5 @@ export function PatientDetailContent() {
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

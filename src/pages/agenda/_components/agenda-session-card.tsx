@@ -1,43 +1,48 @@
-import { useNavigate } from "react-router-dom";
-import { Phone, Video, CalendarDays } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments";
+import { useNavigate } from "react-router-dom"
+import { Phone, Video, CalendarDays } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments"
+import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 
 interface AgendaSessionCardProps {
-  appointment: PsychooncologyAppointment;
-  patientName: string;
-  isToday?: boolean;
-  onComplete?: (appointment: PsychooncologyAppointment) => void;
+  appointment: PsychooncologyAppointment
+  patientName: string
+  isToday?: boolean
+  onComplete?: (appointment: PsychooncologyAppointment) => void
 }
 
 const STATUS_STYLES: Record<PsychooncologyAppointment["status"], string> = {
-  SCHEDULED: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
-  COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
-  CANCELLED: "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
-  NO_ANSWER: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
-};
+  SCHEDULED:
+    "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
+  COMPLETED:
+    "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
+  CANCELLED:
+    "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
+  NO_ANSWER:
+    "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+}
 
 const STATUS_LABELS: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Completada",
   CANCELLED: "Cancelada",
   NO_ANSWER: "No contestó",
-};
+}
 
 function formatDate(iso: string): string {
-  const date = new Date(iso);
+  const date = new Date(iso)
   return date.toLocaleDateString("es-PE", {
     weekday: "long",
     day: "numeric",
     month: "long",
-  });
+  })
 }
 
 function formatTime(iso: string): string {
-  return iso.slice(11, 16);
+  return iso.slice(11, 16)
 }
 
 export function AgendaSessionCard({
@@ -46,14 +51,14 @@ export function AgendaSessionCard({
   isToday,
   onComplete,
 }: AgendaSessionCardProps) {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   const sessionLabel =
     appointment.sessionNumber === 0 || !appointment.sessionNumber
       ? "Sesión extra"
-      : `Sesión ${appointment.sessionNumber}`;
+      : `Sesión ${appointment.sessionNumber}`
 
-  const isScheduled = appointment.status === "SCHEDULED";
+  const isScheduled = appointment.status === "SCHEDULED"
 
   return (
     <Card
@@ -74,7 +79,9 @@ export function AgendaSessionCard({
         <button
           type="button"
           className="hover:bg-muted/30 min-w-0 flex-1 space-y-1 rounded-md px-1 py-0.5 text-left transition-colors"
-          onClick={() => navigate(`/pacientes/${appointment.patientId}`)}
+          onClick={() =>
+            navigate(patientTabUrl(appointment.patientId, "psicooncologia"))
+          }
         >
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-foreground truncate text-sm font-medium">
@@ -105,8 +112,8 @@ export function AgendaSessionCard({
             size="sm"
             className="shrink-0"
             onClick={(e) => {
-              e.stopPropagation();
-              onComplete(appointment);
+              e.stopPropagation()
+              onComplete(appointment)
             }}
           >
             Registrar
@@ -114,5 +121,5 @@ export function AgendaSessionCard({
         )}
       </CardContent>
     </Card>
-  );
+  )
 }

@@ -24,6 +24,7 @@ import { CreateAlertDialog } from "./create-alert-dialog"
 import { FollowUpAside } from "./follow-up-aside"
 import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 import { toDurationInput } from "@/types/duration"
+import { patientTabUrl } from "../../_lib/patient-tabs"
 
 const statusLabels: Record<string, string> = {
   SCHEDULED: "Agendado",
@@ -134,7 +135,9 @@ export function FollowUpContent() {
 
   if (!followUpId) {
     return (
-      <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+      <MissingFollowUp
+        onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      />
     )
   }
 
@@ -149,14 +152,18 @@ export function FollowUpContent() {
 
   if (followUpQuery.isError || !followUpQuery.data) {
     return (
-      <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+      <MissingFollowUp
+        onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      />
     )
   }
 
   const followUp = followUpQuery.data
   if (followUp.subjectPatientId !== patientId)
     return (
-      <MissingFollowUp onBack={() => navigate(`/pacientes/${patientId}`)} />
+      <MissingFollowUp
+        onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      />
     )
   const isOpen = followUp.status === "SCHEDULED"
 
@@ -400,7 +407,7 @@ export function FollowUpContent() {
         variant="ghost"
         size="sm"
         className="-ml-2 gap-1.5 text-xs"
-        onClick={() => navigate(`/pacientes/${patientId}`)}
+        onClick={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
       >
         <ArrowLeft className="size-3.5" />
         Volver al paciente

@@ -36,6 +36,7 @@ import {
   ReminderFormDialog,
   type ReminderFormValues,
 } from "@/pages/pacientes/[id]/_components/reminder-form-dialog"
+import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 import { AgentAgendaCalendar } from "./_components/agent-agenda-calendar"
 import { FollowUpDetailDialog } from "./_components/follow-up-detail-dialog"
 import { FollowUpEditDialog } from "./_components/follow-up-edit-dialog"
@@ -323,7 +324,9 @@ export default function AgentAgendaPage() {
           patientNames={patientNames}
           volunteers={volunteers}
           onSelectEvent={openEvent}
-          onOpenPatient={(patientId) => navigate(`/pacientes/${patientId}`)}
+          onOpenPatient={(patientId) =>
+            navigate(patientTabUrl(patientId, "psicooncologia"))
+          }
         />
       )}
 
@@ -355,7 +358,7 @@ export default function AgentAgendaPage() {
         onClose={() => setSelectedReminder(null)}
         onViewPatient={(reminder) => {
           setSelectedReminder(null)
-          navigate(`/pacientes/${reminder.subjectPatientId}`)
+          navigate(patientTabUrl(reminder.subjectPatientId, "recordatorios"))
         }}
         onEdit={openReminderEditor}
       />
