@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   followUpPurposeLabels,
+  followUpStatusLabels,
   followUpTypeLabels,
   formatAgendaDate,
   formatAgendaTime,
@@ -30,13 +31,6 @@ interface FollowUpDetailDialogProps {
   onClose: () => void
   onGoToFollowUp: (followUp: FollowUp) => void
   onEdit: (followUp: FollowUp) => void
-}
-
-const statusLabels: Record<FollowUp["status"], string> = {
-  SCHEDULED: "Agendado",
-  COMPLETED: "Completado",
-  CANCELLED: "Cancelado",
-  NO_ANSWER: "No contestó",
 }
 
 export function FollowUpDetailDialog({
@@ -81,7 +75,7 @@ export function FollowUpDetailDialog({
                 variant="outline"
                 className="border-amber-300 bg-amber-50 text-amber-800"
               >
-                {statusLabels[followUp.status]}
+                {followUpStatusLabels[followUp.status]}
               </Badge>
             </div>
 

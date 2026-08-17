@@ -1,8 +1,12 @@
 import type { components } from "./schema"
 import { api } from "./client"
 
-export type PatientTimelineEvent = components["schemas"]["PatientTimelineResponseDto"]["data"][number]
-export type PatientTimeline = components["schemas"]["PatientTimelineResponseDto"]
+export type PatientTimelineEvent =
+  components["schemas"]["PatientTimelineResponseDto"]["data"][number]
+export type PatientTimelineOutcome =
+  components["schemas"]["PatientTimelineOutcomeDto"]
+export type PatientTimeline =
+  components["schemas"]["PatientTimelineResponseDto"]
 
 export class PatientTimelineApiError extends Error {
   readonly status: number

@@ -1737,8 +1737,22 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        CreateScheduledFollowUpDto: {
+            /** Format: uuid */
+            subjectPatientId: string;
+            /** Format: uuid */
+            interlocutorId: string;
+            /** Format: uuid */
+            agentId?: string;
+            /** @enum {string} */
+            type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            notes?: string;
+            scheduledAt: string;
+        };
         CreateFollowUpsBatchDto: {
-            followUps: components["schemas"]["CreateFollowUpDto"][];
+            followUps: components["schemas"]["CreateScheduledFollowUpDto"][];
         };
         UpdateFollowUpDto: {
             notes?: string;
@@ -1861,6 +1875,16 @@ export interface components {
             isFirstConsultation?: boolean;
             changeReason: string;
         };
+        PatientTimelineOutcomeDto: {
+            /** @enum {string} */
+            type: "DIAGNOSIS" | "TREATMENT" | "MEDICATION" | "SYMPTOM" | "INSURANCE" | "SIS_AFFILIATION" | "ADDRESS" | "SOCIAL_NOTE" | "REMINDER" | "PSYCHOONCOLOGY_APPOINTMENT" | "ALERT";
+            /** Format: uuid */
+            recordId: string;
+            /** @description Etiqueta legible del tipo de registro */
+            label: string;
+            /** @description Resumen operativo del registro relacionado */
+            summary: string;
+        };
         FollowUpTimelineEventDto: {
             /** Format: uuid */
             id: string;
@@ -1880,6 +1904,7 @@ export interface components {
             /** @enum {string} */
             purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
             notes: string | null;
+            outcomes: components["schemas"]["PatientTimelineOutcomeDto"][];
         };
         ReminderTimelineEventDto: {
             /** Format: uuid */

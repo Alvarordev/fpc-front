@@ -1,22 +1,15 @@
 import type { FollowUp } from "@/api/follow-ups"
 import type { Reminder } from "@/api/reminders"
+import {
+  followUpPurposeLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
 
-export const followUpTypeLabels: Record<FollowUp["type"], string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Correo electrónico",
-  IN_PERSON: "Presencial",
-  FACEBOOK: "Facebook",
-}
-
-export const followUpPurposeLabels: Record<FollowUp["purpose"], string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-}
+export {
+  followUpPurposeLabels,
+  followUpStatusLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
 
 export type AgendaEvent =
   | {

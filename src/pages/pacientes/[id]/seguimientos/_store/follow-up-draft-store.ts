@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import type { CreatePsychooncologyAppointmentInput } from "@/api/psychooncology-appointments"
-import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-dialog"
+import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
 import type { ClinicalDrafts } from "../_components/clinical-drafts"
 import type { CreateAlertFormValues } from "../_components/create-alert-dialog"
 import type { ReminderDraft } from "../_components/follow-up-aside"
@@ -35,29 +35,34 @@ const EMPTY_DRAFT = {
   reminders: [] as ReminderDraft[],
 }
 
-export const useFollowUpDraftStore = create<FollowUpDraftState>()((set, get) => ({
-  followUpId: null,
-  ...EMPTY_DRAFT,
+export const useFollowUpDraftStore = create<FollowUpDraftState>()(
+  (set, get) => ({
+    followUpId: null,
+    ...EMPTY_DRAFT,
 
-  ensureFollowUp: (followUpId) => {
-    if (get().followUpId !== followUpId) {
-      set({ followUpId, ...EMPTY_DRAFT })
-    }
-  },
+    ensureFollowUp: (followUpId) => {
+      if (get().followUpId !== followUpId) {
+        set({ followUpId, ...EMPTY_DRAFT })
+      }
+    },
 
-  updateClinical: (updater) => set((s) => ({ clinical: updater(s.clinical) })),
+    updateClinical: (updater) =>
+      set((s) => ({ clinical: updater(s.clinical) })),
 
-  setPsico: (value) => set({ psico: value }),
-  clearPsico: () => set({ psico: null }),
+    setPsico: (value) => set({ psico: value }),
+    clearPsico: () => set({ psico: null }),
 
-  setAlert: (value) => set({ alert: value }),
-  clearAlert: () => set({ alert: null }),
+    setAlert: (value) => set({ alert: value }),
+    clearAlert: () => set({ alert: null }),
 
-  setNextFollowUp: (value) => set({ nextFollowUp: value }),
-  clearNextFollowUp: () => set({ nextFollowUp: null }),
+    setNextFollowUp: (value) => set({ nextFollowUp: value }),
+    clearNextFollowUp: () => set({ nextFollowUp: null }),
 
-  addReminder: (reminder) => set((s) => ({ reminders: [...s.reminders, reminder] })),
-  removeReminder: (index) => set((s) => ({ reminders: s.reminders.filter((_, i) => i !== index) })),
+    addReminder: (reminder) =>
+      set((s) => ({ reminders: [...s.reminders, reminder] })),
+    removeReminder: (index) =>
+      set((s) => ({ reminders: s.reminders.filter((_, i) => i !== index) })),
 
-  reset: () => set({ followUpId: null, ...EMPTY_DRAFT }),
-}))
+    reset: () => set({ followUpId: null, ...EMPTY_DRAFT }),
+  }),
+)

@@ -1,6 +1,5 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Dialog,
   DialogContent,
@@ -8,61 +7,36 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { CreateFollowUpInput } from "@/api/follow-ups";
-
-const schema = z.object({
-  type: z.enum(["CALL", "WHATSAPP", "VIDEO_CALL", "EMAIL", "IN_PERSON", "FACEBOOK"] as const),
-  purpose: z.enum([
-    "FIRST_CONTACT",
-    "ENROLLMENT",
-    "FOLLOW_UP",
-    "PSYCHOONCOLOGY_REFERRAL",
-    "OTHER",
-  ] as const),
-  date: z.string().min(1, "Fecha requerida"),
-  time: z.string().min(1, "Hora requerida"),
-  notes: z.string().optional(),
-  agentId: z.string().optional(),
-});
-
-export type ScheduleFollowUpFormValues = z.infer<typeof schema>;
-
-const typeLabels: Record<CreateFollowUpInput["type"], string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Email",
-  IN_PERSON: "Presencial",
-  FACEBOOK: "Facebook",
-};
-
-const purposeLabels: Record<CreateFollowUpInput["purpose"], string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-};
+} from "@/components/ui/select"
+import type { CreateFollowUpInput } from "@/api/follow-ups"
+import {
+  followUpPurposeLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
+import {
+  scheduleFollowUpSchema,
+  getLocalDateValue,
+  type ScheduleFollowUpFormValues,
+} from "./schedule-follow-up-schema"
 
 interface ScheduleFollowUpDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (values: ScheduleFollowUpFormValues) => Promise<void>;
-  isPending: boolean;
-  agents?: Array<{ id: string; fullName: string }>;
-  requiresAgentSelection?: boolean;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit: (values: ScheduleFollowUpFormValues) => Promise<void>
+  isPending: boolean
+  agents?: Array<{ id: string; fullName: string }>
+  requiresAgentSelection?: boolean
 }
 
 export function ScheduleFollowUpDialog({
@@ -82,33 +56,33 @@ export function ScheduleFollowUpDialog({
     reset,
     formState: { errors },
   } = useForm<ScheduleFollowUpFormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(scheduleFollowUpSchema),
     defaultValues: {
       type: "CALL",
       purpose: "FOLLOW_UP",
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalDateValue(),
       time: "",
-      notes: ""
+      notes: "",
     },
-  });
+  })
 
-  const selectedType = watch("type");
-  const selectedPurpose = watch("purpose");
-  const selectedAgentId = watch("agentId");
+  const selectedType = watch("type")
+  const selectedPurpose = watch("purpose")
+  const selectedAgentId = watch("agentId")
 
   function handleClose() {
-    onOpenChange(false);
-    reset();
+    onOpenChange(false)
+    reset()
   }
 
   async function submit(values: ScheduleFollowUpFormValues) {
     if (requiresAgentSelection && !values.agentId) {
-      setError("agentId", { message: "Seleccioná un agente" });
-      return;
+      setError("agentId", { message: "Seleccioná un agente" })
+      return
     }
 
-    await onSubmit(values);
-    handleClose();
+    await onSubmit(values)
+    handleClose()
   }
 
   return (
@@ -126,15 +100,22 @@ export function ScheduleFollowUpDialog({
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select
+                items={Object.entries(followUpTypeLabels).map(
+                  ([value, label]) => ({ value, label }),
+                )}
                 value={selectedType}
-                onValueChange={(v) => setValue("type", v as CreateFollowUpInput["type"])}
+                onValueChange={(v) =>
+                  setValue("type", v as CreateFollowUpInput["type"])
+                }
               >
                 <SelectTrigger className="w-full">
-                  {selectedType ? typeLabels[selectedType] : <SelectValue placeholder="Seleccionar tipo" />}
+                  <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(typeLabels).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  {Object.entries(followUpTypeLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -143,15 +124,22 @@ export function ScheduleFollowUpDialog({
             <div className="space-y-2">
               <Label>Propósito</Label>
               <Select
+                items={Object.entries(followUpPurposeLabels).map(
+                  ([value, label]) => ({ value, label }),
+                )}
                 value={selectedPurpose}
-                onValueChange={(v) => setValue("purpose", v as CreateFollowUpInput["purpose"])}
+                onValueChange={(v) =>
+                  setValue("purpose", v as CreateFollowUpInput["purpose"])
+                }
               >
                 <SelectTrigger className="w-full">
-                  {selectedPurpose ? purposeLabels[selectedPurpose] : <SelectValue placeholder="Seleccionar propósito" />}
+                  <SelectValue placeholder="Seleccionar propósito" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(purposeLabels).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  {Object.entries(followUpPurposeLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -162,9 +150,16 @@ export function ScheduleFollowUpDialog({
             <div className="space-y-2">
               <Label>Agente responsable</Label>
               <Select
-                items={agents.map((agent) => ({ value: agent.id, label: agent.fullName }))}
+                items={agents.map((agent) => ({
+                  value: agent.id,
+                  label: agent.fullName,
+                }))}
                 value={selectedAgentId}
-                onValueChange={(value) => setValue("agentId", value ?? undefined, { shouldValidate: true })}
+                onValueChange={(value) =>
+                  setValue("agentId", value ?? undefined, {
+                    shouldValidate: true,
+                  })
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Seleccionar agente" />
@@ -178,7 +173,9 @@ export function ScheduleFollowUpDialog({
                 </SelectContent>
               </Select>
               {errors.agentId && (
-                <p className="text-xs text-destructive">{errors.agentId.message ?? "Seleccioná un agente"}</p>
+                <p className="text-destructive text-xs">
+                  {errors.agentId.message ?? "Seleccioná un agente"}
+                </p>
               )}
             </div>
           )}
@@ -188,7 +185,7 @@ export function ScheduleFollowUpDialog({
               <Label>Fecha</Label>
               <Input type="date" {...register("date")} />
               {errors.date && (
-                <p className="text-xs text-destructive">
+                <p className="text-destructive text-xs">
                   {errors.date.message}
                 </p>
               )}
@@ -197,7 +194,7 @@ export function ScheduleFollowUpDialog({
               <Label>Hora</Label>
               <Input type="time" {...register("time")} />
               {errors.time && (
-                <p className="text-xs text-destructive">
+                <p className="text-destructive text-xs">
                   {errors.time.message}
                 </p>
               )}
@@ -224,5 +221,5 @@ export function ScheduleFollowUpDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

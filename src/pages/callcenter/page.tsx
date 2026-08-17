@@ -16,28 +16,16 @@ import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  followUpPurposeLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-
-const typeLabels: Record<string, string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Email",
-  IN_PERSON: "Presencial",
-  FACEBOOK: "Facebook",
-}
-const purposeLabels: Record<string, string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-}
 
 type WorkloadGroup = {
   id: string
@@ -226,8 +214,8 @@ export default function CallcenterPage() {
                               {followUp.subjectPatientName}
                             </p>
                             <p className="text-muted-foreground mt-0.5 text-xs">
-                              {typeLabels[followUp.type]} ·{" "}
-                              {purposeLabels[followUp.purpose]}
+                              {followUpTypeLabels[followUp.type]} ·{" "}
+                              {followUpPurposeLabels[followUp.purpose]}
                             </p>
                             <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                               <Calendar className="size-3" />

@@ -6,6 +6,10 @@ import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { alertsApi } from "@/api/alerts"
 import { followUpsApi } from "@/api/follow-ups"
+import {
+  patientTimelineApi,
+  type PatientTimelineEvent,
+} from "@/api/patient-timeline"
 import { patientsApi, type PatientDetailsInput } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
 import { Button } from "@/components/ui/button"
@@ -13,42 +17,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
-import {
-  ScheduleFollowUpDialog,
-  type ScheduleFollowUpFormValues,
-} from "../../_components/schedule-follow-up-dialog"
+import { ScheduleFollowUpDialog } from "../../_components/schedule-follow-up-dialog"
+import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
 import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
 import { ClinicalDataTabs } from "./clinical-data-tabs"
 import { DRAFT_DIAGNOSIS_ID, hasAnyClinicalDraft } from "./clinical-drafts"
 import { CreateAlertDialog } from "./create-alert-dialog"
 import { FollowUpAside } from "./follow-up-aside"
+import { FollowUpOutcomes } from "../../_components/follow-up-outcomes"
 import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 import { toDurationInput } from "@/types/duration"
 import { patientTabUrl } from "../../_lib/patient-tabs"
-
-const statusLabels: Record<string, string> = {
-  SCHEDULED: "Agendado",
-  COMPLETED: "Completado",
-  CANCELLED: "Cancelado",
-  NO_ANSWER: "No contestó",
-}
-
-const followUpTypeLabels: Record<string, string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Correo electrónico",
-  IN_PERSON: "Presencial",
-  FACEBOOK: "Facebook",
-}
-
-const followUpPurposeLabels: Record<string, string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-}
+import {
+  followUpPurposeLabels,
+  followUpStatusClasses,
+  followUpStatusLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
 
 export function FollowUpContent() {
   const { id: patientId, followUpId } = useParams<{
@@ -91,6 +76,11 @@ export function FollowUpContent() {
     queryFn: () => followUpsApi.getById(followUpId!),
     enabled: Boolean(followUpId),
   })
+  const patientTimelineQuery = useQuery({
+    queryKey: ["patient-timeline", patientId],
+    queryFn: () => patientTimelineApi.list(patientId!),
+    enabled: Boolean(patientId),
+  })
   const agentsQuery = useQuery({
     queryKey: ["agents"],
     queryFn: agentsApi.list,
@@ -117,6 +107,9 @@ export function FollowUpContent() {
       queryClient.invalidateQueries({ queryKey: ["follow-up", followUpId] }),
       queryClient.invalidateQueries({
         queryKey: ["patient-timeline", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-follow-ups", patientId],
       }),
       queryClient.invalidateQueries({
         queryKey: ["patient-profile", patientId],
@@ -166,6 +159,10 @@ export function FollowUpContent() {
       />
     )
   const isOpen = followUp.status === "SCHEDULED"
+  const followUpTimelineEvent = patientTimelineQuery.data?.data.find(
+    (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
+      event.kind === "FOLLOW_UP" && event.followUpId === followUp.id,
+  )
 
   function resolveNextFollowUpAgentId(values: ScheduleFollowUpFormValues) {
     const ownAgent = agentsQuery.data?.find(
@@ -417,8 +414,10 @@ export function FollowUpContent() {
         <CardHeader className="border-border/60 border-b pb-4">
           <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
             <span>Registrar seguimiento</span>
-            <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
-              {statusLabels[followUp.status]}
+            <span
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium ${followUpStatusClasses[followUp.status]}`}
+            >
+              {followUpStatusLabels[followUp.status]}
             </span>
           </CardTitle>
           <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -478,6 +477,12 @@ export function FollowUpContent() {
               o marcás «No contestó», se descartan.
             </p>
           )}
+          {followUpTimelineEvent?.outcomes.length ? (
+            <FollowUpOutcomes
+              outcomes={followUpTimelineEvent.outcomes}
+              className="lg:col-span-2"
+            />
+          ) : null}
         </CardContent>
       </Card>
 
