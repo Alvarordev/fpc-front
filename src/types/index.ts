@@ -12,6 +12,11 @@ export type PatientStatus = "UNENROLLED" | "ENROLLED"
 
 export type PatientActivityStatus = "ACTIVE" | "INACTIVE" | "REACTIVE"
 
+export type PatientHealthPhase =
+  | "CANCER_DIAGNOSIS"
+  | "ANNUAL_CHECKUP"
+  | "SIGNS_AND_SYMPTOMS"
+
 export type EducationLevel =
   | "NONE"
   | "INITIAL"

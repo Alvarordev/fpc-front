@@ -38,6 +38,7 @@ import {
   cancerStageLabels,
   educationLabels,
   epsLabels,
+  healthPhaseLabels,
   insuranceLabels,
   relationshipLabels,
   roleLabels,
@@ -245,6 +246,16 @@ export function OverviewSection({
                 </Badge>
               }
             />
+            {patient.role !== "COMPANION" && (
+              <Field
+                label="Fase de salud"
+                value={
+                  details?.healthPhase
+                    ? healthPhaseLabels[details.healthPhase]
+                    : "Sin clasificar"
+                }
+              />
+            )}
             <Field
               label="Teléfono principal"
               value={patient.primaryPhone}
@@ -321,6 +332,35 @@ export function OverviewSection({
                   icon={Languages}
                 />
               </div>
+
+              {details.healthPhaseHistory?.length > 0 && (
+                <>
+                  <Separator />
+                  <p className="text-muted-foreground text-xs font-medium">
+                    Historial de fase de salud
+                  </p>
+                  <div className="space-y-2">
+                    {details.healthPhaseHistory.map((item) => (
+                      <div
+                        key={item.id}
+                        className="bg-muted/20 flex items-center justify-between gap-3 rounded-md border p-3 text-sm"
+                      >
+                        <span>{healthPhaseLabels[item.healthPhase]}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {new Date(item.changedAt).toLocaleDateString(
+                            "es-PE",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
               {(details.emergencyContactName ||
                 details.emergencyContactPhone ||

@@ -49,12 +49,18 @@ export function PatientDetailContent() {
   const activeTab = getPatientTab(searchParams.get("tab"))
   const { data: patient, isLoading, isError } = usePatient(id!)
   const { alerts } = usePatientAlerts(patient)
-  const { resetEnrollment, updateDraft } = useEnrollmentStore()
+  const { resetEnrollment, updateDraft, setCategoria } = useEnrollmentStore()
 
   function handleEnroll() {
     if (!patient) return
     resetEnrollment()
     updateDraft(buildEnrollmentPrefill(patient))
+    const healthPhase = patient.details?.healthPhase
+    setCategoria(
+      healthPhase === "CANCER_DIAGNOSIS" || healthPhase === "SIGNS_AND_SYMPTOMS"
+        ? healthPhase
+        : null,
+    )
     navigate("/enrolamiento")
   }
 

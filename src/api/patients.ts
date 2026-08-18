@@ -13,6 +13,12 @@ export type PatientDetailsInput =
 export type PatientResponse = components["schemas"]["PatientResponseDto"]
 export type PatientDetailsResponse =
   components["schemas"]["PatientDetailsWithSummaryResponseDto"]
+export type PatientHealthPhase = NonNullable<
+  NonNullable<PatientDetailsResponse["details"]>["healthPhase"]
+>
+export type PatientHealthPhaseHistory = NonNullable<
+  NonNullable<PatientDetailsResponse["details"]>["healthPhaseHistory"]
+>[number]
 export type PatientListItem =
   components["schemas"]["PatientListItemResponseDto"]
 export type PatientActivityStatus = PatientListItem["activityStatus"]

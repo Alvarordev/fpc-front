@@ -1491,6 +1491,8 @@ export interface components {
             label?: string;
         };
         UpsertPatientDetailsDto: {
+            /** @enum {string} */
+            healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
             birthDepartment?: string;
             /** Format: uuid */
             primaryHealthCenterId?: string;
@@ -1629,6 +1631,8 @@ export interface components {
             familyMemberEmail?: string;
         };
         CreateEnrollmentDto: {
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
             /** Format: uuid */
             patientId?: string;
             patient?: components["schemas"]["CreatePatientDto"];
@@ -2092,11 +2096,21 @@ export interface components {
             unit: "MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR";
             label: string | null;
         };
+        PatientHealthPhaseHistoryResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+            /** Format: date-time */
+            changedAt: string;
+        };
         PatientDetailsResponseDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             patientId: string;
+            /** @enum {string|null} */
+            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
             birthDepartment: string | null;
             /** Format: uuid */
             primaryHealthCenterId: string | null;
@@ -2124,6 +2138,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            healthPhaseHistory: components["schemas"]["PatientHealthPhaseHistoryResponseDto"][];
         };
         PatientDiagnosisResponseDto: {
             /** Format: uuid */

@@ -3,6 +3,7 @@ import type {
   CreatePatientInsuranceInput,
   PatientDetailsInput,
   PatientDetailsResponse,
+  PatientHealthPhase,
 } from "@/api/patients"
 import type {
   MedicationDoseUnit,
@@ -78,6 +79,12 @@ export const roleLabels: Record<PatientDetailsResponse["role"], string> = {
   UNKNOWN: "Sin definir",
   PATIENT: "Paciente",
   COMPANION: "Acompañante",
+}
+
+export const healthPhaseLabels: Record<PatientHealthPhase, string> = {
+  CANCER_DIAGNOSIS: "Diagnóstico de Cáncer",
+  ANNUAL_CHECKUP: "Control Anual",
+  SIGNS_AND_SYMPTOMS: "Signos y Síntomas",
 }
 
 export const relationshipLabels: Record<string, string> = {

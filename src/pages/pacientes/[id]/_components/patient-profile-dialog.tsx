@@ -6,6 +6,7 @@ import {
   patientsApi,
   type PatientDetailsInput,
   type PatientDetailsResponse,
+  type PatientHealthPhase,
   type UpdatePatientInput,
 } from "@/api/patients"
 import { healthCentersApi } from "@/api/health-centers"
@@ -35,6 +36,7 @@ import {
 import { educationLabels, genderLabels } from "../_lib/clinical-labels"
 
 type EducationValue = NonNullable<PatientDetailsInput["educationLevel"]>
+type HealthPhaseValue = PatientHealthPhase
 
 export type PatientProfileFormValues = {
   fullName: string
@@ -46,6 +48,7 @@ export type PatientProfileFormValues = {
   hasWhatsapp: boolean
   email: string
   birthDepartment: string
+  healthPhase: HealthPhaseValue | ""
   primaryHealthCenterId: string
   emergencyContactName: string
   emergencyContactPhone: string
@@ -67,6 +70,7 @@ const DEFAULT_FORM_VALUES: PatientProfileFormValues = {
   hasWhatsapp: false,
   email: "",
   birthDepartment: "",
+  healthPhase: "",
   primaryHealthCenterId: "",
   emergencyContactName: "",
   emergencyContactPhone: "",
@@ -84,6 +88,12 @@ const GENDER_OPTIONS = Object.entries(genderLabels).map(([value, label]) => ({
 const EDUCATION_OPTIONS = Object.entries(educationLabels).map(
   ([value, label]) => ({ value, label }),
 )
+
+const HEALTH_PHASE_OPTIONS: { value: HealthPhaseValue; label: string }[] = [
+  { value: "CANCER_DIAGNOSIS", label: "Diagnóstico de Cáncer" },
+  { value: "ANNUAL_CHECKUP", label: "Control Anual" },
+  { value: "SIGNS_AND_SYMPTOMS", label: "Signos y Síntomas" },
+]
 
 function optionalText(value: string) {
   const trimmed = value.trim()
@@ -115,6 +125,7 @@ function formValuesFromPatient(
     hasWhatsapp: patient.hasWhatsapp,
     email: patient.email ?? "",
     birthDepartment: patient.details?.birthDepartment ?? "",
+    healthPhase: patient.details?.healthPhase ?? "",
     primaryHealthCenterId: patient.details?.primaryHealthCenterId ?? "",
     emergencyContactName: patient.details?.emergencyContactName ?? "",
     emergencyContactPhone: patient.details?.emergencyContactPhone ?? "",
@@ -158,6 +169,7 @@ export function PatientProfileDialog({
   const formValues = useWatch({ control })
   const gender = formValues.gender ?? ""
   const birthDepartment = formValues.birthDepartment ?? ""
+  const healthPhase = formValues.healthPhase ?? ""
   const primaryHealthCenterId = formValues.primaryHealthCenterId ?? ""
   const emergencyContactGender = formValues.emergencyContactGender ?? ""
   const educationLevel = formValues.educationLevel ?? ""
@@ -213,6 +225,7 @@ export function PatientProfileDialog({
       if (canEditDetails) {
         const detailsInput: PatientDetailsInput = {
           birthDepartment: optionalText(values.birthDepartment),
+          healthPhase: values.healthPhase || undefined,
           primaryHealthCenterId: optionalText(values.primaryHealthCenterId),
           emergencyContactName: optionalText(values.emergencyContactName),
           emergencyContactPhone: optionalText(values.emergencyContactPhone),
@@ -422,6 +435,30 @@ export function PatientProfileDialog({
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {healthCenterItems.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Fase de salud</Label>
+                  <Select
+                    items={HEALTH_PHASE_OPTIONS}
+                    value={healthPhase}
+                    onValueChange={(value) =>
+                      setValue(
+                        "healthPhase",
+                        (value ?? "") as HealthPhaseValue | "",
+                      )
+                    }
+                  >
+                    <SelectTrigger id="patient-health-phase">
+                      <SelectValue placeholder="Seleccionar fase" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HEALTH_PHASE_OPTIONS.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
                           {item.label}
                         </SelectItem>

@@ -1,70 +1,79 @@
-import type { AsideContent } from "../_components/enrollment-aside";
-import type { EnrollmentDraft } from "../_store/enrollment-store";
+import type { AsideContent } from "../_components/enrollment-aside"
+import type { EnrollmentDraft } from "../_store/enrollment-store"
+import type { CategoriaClinica } from "../_store/enrollment-store"
 
 function step5Conditionals(draft: EnrollmentDraft): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   if (draft.addresses[0]?.dniMatchesAddress === false) {
     parts.push(
       "Información adicional si no coincide con su domicilio: Le recomendamos acercarse a RENIEC para actualizar la dirección registrada en su DNI, ya que en caso requiera ser referido a un establecimiento de salud de mayor complejidad, podría ser derivado a uno que no se encuentre cercano a su domicilio actual. Para ello deberá presentar su DNI vigente y un recibo de servicios (agua o luz) con una antigüedad no mayor a seis meses. En RENIEC le indicarán los procedimientos correspondientes. Asimismo, puede comunicarse a la línea 113, opción 4, para obtener mayor información.",
-    );
+    )
   }
 
   if (draft.insurance.insuranceType === "NONE") {
     parts.push(
       'Estimada(o), dentro de los próximos minutos le compartiremos un enlace para que pueda verificar qué tipo de seguro tiene: https://app1.susalud.gob.pe/registro/ Para ello deberá seguir los siguientes pasos:\n1. Hacer clic en "Nuevo usuario".\n2. Registrarse utilizando su DNI o CE.\n3. Hacer clic en "Grabar".\n4. Validar sus datos y revisar su correo electrónico.\n5. Volver a la página e iniciar sesión.',
-    );
+    )
   }
 
-  return parts.join("\n\n");
+  return parts.join("\n\n")
 }
 
-function step7Script(draft: EnrollmentDraft, categoriaClinica: "signos" | "diagnostico" | null): string {
-  const hasInsurance = draft.insurance.insuranceType !== "NONE";
-  const hasMedicalReport = draft.diagnosis.hasMedicalReport;
-  const hasSoughtConsultation = draft.symptomReport.hasSoughtMedicalConsultation;
+function step7Script(
+  draft: EnrollmentDraft,
+  categoriaClinica: CategoriaClinica,
+): string {
+  const hasInsurance = draft.insurance.insuranceType !== "NONE"
+  const hasMedicalReport = draft.diagnosis.hasMedicalReport
+  const hasSoughtConsultation = draft.symptomReport.hasSoughtMedicalConsultation
 
   const baseScript = (() => {
     if (hasInsurance) {
-      if (categoriaClinica === "signos") {
-        return "Entiendo su situación. Dado que cuenta con seguro y presenta signos o síntomas, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+      if (categoriaClinica === "SIGNS_AND_SYMPTOMS") {
+        return "Entiendo su situación. Dado que cuenta con seguro y presenta signos o síntomas, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro."
       }
-      return "Entiendo su situación. Dado que cuenta con seguro y ya cuenta con un diagnóstico, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+      return "Entiendo su situación. Dado que cuenta con seguro y ya cuenta con un diagnóstico, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro."
     }
 
-    return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas.";
-  })();
+    return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas."
+  })()
 
   // Medical appointment guidance when patient hasn't sought consultation (signos only)
-  let medAppointmentGuidance = "";
-  if (categoriaClinica === "signos" && hasSoughtConsultation === false) {
-    const insuranceType = draft.insurance.insuranceType;
+  let medAppointmentGuidance = ""
+  if (
+    categoriaClinica === "SIGNS_AND_SYMPTOMS" &&
+    hasSoughtConsultation === false
+  ) {
+    const insuranceType = draft.insurance.insuranceType
     if (insuranceType === "ESSALUD") {
-      medAppointmentGuidance = "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — ESSALUD</strong>\n\nEstimado(a), al finalizar esta llamada le compartiremos un enlace donde podrá verificar dónde se atiende:\nhttps://dondemeatiendo.essalud.gob.pe/#/consulta\n\nPara la consulta deberá tener a la mano su DNI, CE o Permiso Temporal de Permanencia.";
+      medAppointmentGuidance =
+        "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — ESSALUD</strong>\n\nEstimado(a), al finalizar esta llamada le compartiremos un enlace donde podrá verificar dónde se atiende:\nhttps://dondemeatiendo.essalud.gob.pe/#/consulta\n\nPara la consulta deberá tener a la mano su DNI, CE o Permiso Temporal de Permanencia."
     } else if (insuranceType === "SIS") {
-      medAppointmentGuidance = "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — SIS</strong>\n\nConsultar el número de DNI y verificar el establecimiento a través del siguiente enlace:\nhttps://cel.sis.gob.pe/SisConsultaEnLinea\n\nPosteriormente enviar al paciente una captura de pantalla de su establecimiento de atención.";
+      medAppointmentGuidance =
+        "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — SIS</strong>\n\nConsultar el número de DNI y verificar el establecimiento a través del siguiente enlace:\nhttps://cel.sis.gob.pe/SisConsultaEnLinea\n\nPosteriormente enviar al paciente una captura de pantalla de su establecimiento de atención."
     }
   }
 
-  const parts: string[] = [baseScript];
-  if (medAppointmentGuidance) parts.push(medAppointmentGuidance);
+  const parts: string[] = [baseScript]
+  if (medAppointmentGuidance) parts.push(medAppointmentGuidance)
 
   if (hasMedicalReport !== undefined && hasMedicalReport !== null) {
     const informeMedico = hasMedicalReport
       ? "<strong>INFORME MÉDICO</strong>\n\nSI TIENE INFORME MÉDICO: De acuerdo, le pedimos que por favor nos pueda enviar su informe médico a nuestro número de WhatsApp 923514021.\n\nNO TIENE INFORME MÉDICO: Le recomendamos que pueda acercarse al establecimiento de salud en donde se atiende para que pueda solicitar su informe médico. En cuanto lo tenga disponible, por favor nos lo hace llegar vía WhatsApp o correo electrónico sepa@fpc.pe"
-      : "";
-    if (informeMedico) parts.push(informeMedico);
+      : ""
+    if (informeMedico) parts.push(informeMedico)
   }
 
-  return parts.join("\n\n");
+  return parts.join("\n\n")
 }
 
 export function resolveAsideContent(
   step: number,
   draft?: EnrollmentDraft,
-  categoriaClinica?: "signos" | "diagnostico" | null,
+  categoriaClinica?: CategoriaClinica,
 ): AsideContent {
-  const d = draft;
+  const d = draft
 
   switch (step) {
     case 1:
@@ -72,7 +81,7 @@ export function resolveAsideContent(
         script:
           "Buenos días / Buenas Tardes. Bienvenido/a al Programa SEPA de la Fundación Peruana de Cáncer. Le saluda [Nombre], ejecutiva del programa SEPA. ¿Me brinda su nombre por favor?\n\nEstimado(a) _____ Le comentamos que el programa SEPA es un programa que brinda Servicios gratuitos de Educación en Prevención del Cáncer y Acompañamiento al Paciente con cáncer. ¿Cuál es el motivo de su llamada?",
         reference: "SEPA Protocol — Apertura de Sesión v4.2",
-      };
+      }
 
     case 2:
       return {
@@ -81,14 +90,14 @@ export function resolveAsideContent(
         complianceNote:
           "Sin el acuerdo explícito, la inscripción debe detenerse inmediatamente.",
         reference: "SEPA Protocol — Autorización de Datos v4.2",
-      };
+      }
 
     case 3:
       return {
         script:
           "¿Me podría indicar si usted es el paciente oncológico, o si está realizando esta afiliación en nombre de un familiar o amigo?",
         reference: "SEPA Protocol — Identificación del Llamante v4.2",
-      };
+      }
 
     case 4:
       return {
@@ -97,17 +106,18 @@ export function resolveAsideContent(
         complianceNote:
           "El consentimiento verbal es jurídicamente válido. No continúe si el paciente no acepta.",
         reference: "SEPA Protocol — Consentimiento Informado v4.2",
-      };
+      }
 
     case 5: {
-      const base = "Para proceder con su registro, ¿podría indicarme el nombre completo del paciente y su número de DNI, por favor?";
-      const extra = d ? step5Conditionals(d) : "";
+      const base =
+        "Para proceder con su registro, ¿podría indicarme el nombre completo del paciente y su número de DNI, por favor?"
+      const extra = d ? step5Conditionals(d) : ""
       return {
         script: extra ? `${base}\n\n${extra}` : base,
         complianceNote:
           "Asegúrese de que el paciente comprende que sus datos serán tratados bajo las regulaciones de privacidad.",
         reference: "SEPA Protocol — Verificación de Identidad v4.2",
-      };
+      }
     }
 
     case 6:
@@ -115,7 +125,7 @@ export function resolveAsideContent(
         script:
           "Con base en la información brindada, vamos a identificar la categoría que mejor describe su situación, para conectarle con la atención más adecuada dentro del programa.",
         reference: "SEPA Protocol — Categorización Clínica v4.2",
-      };
+      }
 
     case 7:
       return {
@@ -123,19 +133,19 @@ export function resolveAsideContent(
           ? step7Script(d, categoriaClinica ?? null)
           : "Complete los datos clínicos según la categoría seleccionada y la situación de seguro del paciente.",
         reference: "SEPA Protocol — Atención Especializada v4.2",
-      };
+      }
 
     case 8:
       return {
         script:
           "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos por WhatsApp una breve encuesta de satisfacción sobre la presente llamada. La calificación podrá registrarse posteriormente desde el perfil del paciente.\n\nRecuerde que para cualquier duda o consulta puede comunicarse con nuestro Programa SEPA de lunes a viernes de 8:30 a.m. a 5:30 p.m. y los sábados de 8:30 a.m. a 12:00 p.m. al 0800 74012.",
         reference: "SEPA Protocol — Cierre de Sesión v4.2",
-      };
+      }
 
     default:
       return {
         script: "Complete los campos de este paso para continuar.",
         reference: "SEPA Protocol v4.2",
-      };
+      }
   }
 }
