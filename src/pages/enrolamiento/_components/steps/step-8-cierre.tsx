@@ -49,13 +49,15 @@ export function Step8Cierre() {
       if (!agentId)
         throw new Error("Seleccione un agente responsable antes de finalizar")
       if (
-        meta.affiliationType === "FAMILY" &&
+        (meta.affiliationType === "FAMILY" || meta.hasCaregiver === true) &&
         (!draft.companion.fullName.trim() ||
           !draft.companion.primaryPhone.trim() ||
           !draft.companion.relationship?.trim())
       ) {
         throw new Error(
-          "Ingrese el nombre, teléfono y parentesco del familiar o acompañante",
+          meta.hasCaregiver
+            ? "Ingrese el nombre, teléfono y parentesco del cuidador"
+            : "Ingrese el nombre, teléfono y parentesco del familiar o acompañante",
         )
       }
       const payload = buildEnrollmentPayload({

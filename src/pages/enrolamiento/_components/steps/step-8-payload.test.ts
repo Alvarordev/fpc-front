@@ -46,8 +46,10 @@ describe("step 8 Nest enrollment payload", () => {
           dni: "97000000",
         },
         details: {
+          birthDepartment: "AREQUIPA",
           referredToSocialWorker: true,
           travelTimeToHospital: { valueMin: 45, unit: "MINUTE" },
+          zoneType: "RURAL",
         },
         addresses: [
           {
@@ -164,6 +166,10 @@ describe("step 8 Nest enrollment payload", () => {
       type: "PERMANENT",
       department: "LIMA",
       dniMatchesAddress: false,
+    })
+    expect(payload.details).toMatchObject({
+      birthDepartment: "AREQUIPA",
+      zoneType: "RURAL",
     })
     expect(payload.addresses).toHaveLength(2)
     expect(payload.addresses?.[1]).toMatchObject({

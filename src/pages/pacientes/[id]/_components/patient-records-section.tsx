@@ -12,12 +12,108 @@ import {
 import { usePatientAddresses } from "../_hooks/use-patient-records"
 import { PatientAddressDialog } from "./patient-address-dialog"
 import { useAuthStore } from "@/store/auth-store"
+import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
 
 function RecordStatus({ active }: { active: boolean }) {
   return (
     <Badge variant={active ? "secondary" : "outline"} className="text-[10px]">
       {active ? "Activo" : "Histórico"}
     </Badge>
+  )
+}
+
+const addressTypeLabels: Record<PatientAddress["type"], string> = {
+  PERMANENT: "Permanente",
+  TEMPORARY: "Temporal",
+}
+
+function AddressLocation({ address }: { address: PatientAddress }) {
+  const location = [
+    address.district,
+    address.province,
+    address.department
+      ? (DEPARTMENT_LABELS[address.department] ?? address.department)
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ")
+
+  return (
+    <>
+      <p className="text-sm font-semibold">
+        {address.address ?? "Sin dirección registrada"}
+      </p>
+      <p className="text-muted-foreground mt-1">
+        {location || "Sin ubicación detallada"}
+      </p>
+      {address.reference && (
+        <p className="text-muted-foreground mt-1">
+          Referencia: {address.reference}
+        </p>
+      )}
+    </>
+  )
+}
+
+function AddressEntry({
+  address,
+  title,
+  canManage,
+  isPending,
+  onEdit,
+  onDeactivate,
+}: {
+  address: PatientAddress
+  title: string
+  canManage: boolean
+  isPending: boolean
+  onEdit: () => void
+  onDeactivate: () => void
+}) {
+  return (
+    <div className="rounded-md border p-3 text-sm">
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className="text-muted-foreground text-xs font-medium uppercase">
+              {title}
+            </p>
+            {address.isPrimary && (
+              <Badge className="text-[10px]">Principal</Badge>
+            )}
+            <RecordStatus active={address.isActive} />
+          </div>
+          <AddressLocation address={address} />
+        </div>
+        {canManage && (
+          <span className="flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              title="Editar dirección"
+              onClick={onEdit}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+            {address.isActive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                title="Desactivar dirección"
+                onClick={onDeactivate}
+                disabled={isPending}
+              >
+                <Archive className="size-3.5" />
+              </Button>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -78,19 +174,36 @@ export function PatientRecordsSection({
     setAddressDialogOpen(true)
   }
 
+  const activeAddresses = addresses.filter((address) => address.isActive)
+  const currentAddress =
+    activeAddresses.find(
+      (address) => address.type === "PERMANENT" && address.isPrimary,
+    ) ?? activeAddresses.find((address) => address.type === "PERMANENT")
+  const temporaryAddress = activeAddresses.find(
+    (address) => address.type === "TEMPORARY",
+  )
+  const highlightedIds = new Set(
+    [currentAddress?.id, temporaryAddress?.id].filter((id): id is string =>
+      Boolean(id),
+    ),
+  )
+  const historicalAddresses = addresses.filter(
+    (address) => !highlightedIds.has(address.id),
+  )
+
   if (!enabled) return null
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Direcciones</CardTitle>
+        <CardTitle className="text-sm">Direcciones de residencia</CardTitle>
       </CardHeader>
       <CardContent>
-        <section>
-          <div className="mb-2 flex items-center justify-between gap-2">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
             <p className="flex items-center gap-1 text-sm font-medium">
               <MapPin className="size-3.5" />
-              Direcciones ({addresses.length})
+              Residencia
             </p>
             {canManage && (
               <Button
@@ -105,65 +218,51 @@ export function PatientRecordsSection({
               </Button>
             )}
           </div>
-          {addresses.length ? (
-            <div className="space-y-2">
-              {addresses.map((address) => (
-                <div key={address.id} className="rounded-md border p-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <b>{address.address ?? "Sin dirección"}</b>
-                    {address.isPrimary && (
-                      <Badge className="text-[10px]">Principal</Badge>
-                    )}
-                    <span className="ml-auto flex items-center gap-1.5">
-                      <RecordStatus active={address.isActive} />
-                      {canManage && (
-                        <>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            title="Editar dirección"
-                            onClick={() => openEditAddress(address)}
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          {address.isActive && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="size-7"
-                              title="Desactivar dirección"
-                              onClick={() =>
-                                addressStatusMutation.mutate(address)
-                              }
-                              disabled={addressStatusMutation.isPending}
-                            >
-                              <Archive className="size-3.5" />
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground mt-1">
-                    {[address.district, address.province, address.department]
-                      .filter(Boolean)
-                      .join(", ") || "Sin ubicación detallada"}
-                  </p>
-                  {address.reference && (
-                    <p className="text-muted-foreground mt-1">
-                      Referencia: {address.reference}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+          {currentAddress ? (
+            <AddressEntry
+              address={currentAddress}
+              title="Residencia actual"
+              canManage={canManage}
+              isPending={addressStatusMutation.isPending}
+              onEdit={() => openEditAddress(currentAddress)}
+              onDeactivate={() => addressStatusMutation.mutate(currentAddress)}
+            />
           ) : (
             <p className="text-muted-foreground text-sm">
-              No hay direcciones registradas.
+              No hay una residencia actual registrada.
             </p>
+          )}
+
+          {temporaryAddress && (
+            <AddressEntry
+              address={temporaryAddress}
+              title="Residencia temporal"
+              canManage={canManage}
+              isPending={addressStatusMutation.isPending}
+              onEdit={() => openEditAddress(temporaryAddress)}
+              onDeactivate={() =>
+                addressStatusMutation.mutate(temporaryAddress)
+              }
+            />
+          )}
+
+          {historicalAddresses.length > 0 && (
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-muted-foreground text-xs font-medium uppercase">
+                Historial de direcciones
+              </p>
+              {historicalAddresses.map((address) => (
+                <AddressEntry
+                  key={address.id}
+                  address={address}
+                  title={addressTypeLabels[address.type]}
+                  canManage={canManage}
+                  isPending={addressStatusMutation.isPending}
+                  onEdit={() => openEditAddress(address)}
+                  onDeactivate={() => addressStatusMutation.mutate(address)}
+                />
+              ))}
+            </div>
           )}
         </section>
       </CardContent>

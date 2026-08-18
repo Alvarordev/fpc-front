@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -28,11 +28,14 @@ import type {
   PatientSocialNote,
   PatientTreatment,
 } from "@/api/patients"
+import { patientsApi } from "@/api/patients"
+import { followUpsApi } from "@/api/follow-ups"
 import {
   calculateDurationBetweenDates,
   toDurationInput,
   type DurationDraft,
 } from "@/types/duration"
+import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
 import {
   usePatientAddresses,
   usePatientSocialNotes,
@@ -45,6 +48,7 @@ import {
   Pencil,
   Pill,
   Plus,
+  Phone,
   ShieldCheck,
   Stethoscope,
   UserRound,
@@ -55,8 +59,8 @@ import {
   cancerStageLabels as cancerStageOptions,
   educationLabels as educationOptions,
   epsLabels as epsOptions,
-  genderLabels as genderOptions,
   insuranceLabels as insuranceOptions,
+  normalizeZoneType,
   type CancerStage,
   type EducationLevel,
   type EpsProvider,
@@ -74,6 +78,10 @@ import {
   type SocialNoteDraft,
   type SocialNoteType,
 } from "./clinical-drafts"
+import {
+  FollowUpContactForm,
+  type FollowUpContactValues,
+} from "./follow-up-contact-form"
 
 // ── Tri-state Sí/No/— select ──
 
@@ -161,12 +169,14 @@ function DraftBadge({ saved }: { saved: boolean }) {
 
 interface ClinicalDataTabsProps {
   patientId: string
+  followUpId: string
   drafts: ClinicalDrafts
   onDraftsChange: (updater: (prev: ClinicalDrafts) => ClinicalDrafts) => void
 }
 
 export function ClinicalDataTabs({
   patientId,
+  followUpId,
   drafts,
   onDraftsChange,
 }: ClinicalDataTabsProps) {
@@ -179,6 +189,79 @@ export function ClinicalDataTabs({
   })
   const { data: addresses = [] } = usePatientAddresses(patientId)
   const { data: socialNotes = [] } = usePatientSocialNotes(patientId)
+  const { data: companions = [] } = useQuery({
+    queryKey: ["patient-companions", patientId],
+    queryFn: () => patientsApi.companions(patientId),
+    enabled: Boolean(patientId),
+    staleTime: 30_000,
+  })
+  const queryClient = useQueryClient()
+  const contactMutation = useMutation({
+    mutationFn: async (values: FollowUpContactValues) => {
+      if (values.kind === "NEW_CAREGIVER") {
+        await patientsApi.createCompanion(patientId, {
+          fullName: values.fullName.trim(),
+          primaryPhone: values.primaryPhone.trim(),
+          secondaryPhone: values.secondaryPhone.trim() || undefined,
+          gender: values.gender || undefined,
+          relationship: values.relationship || undefined,
+          isCaregiver: true,
+        })
+        await followUpsApi.update(followUpId, { interlocutorId: patientId })
+        return
+      }
+      if (values.kind === "PATIENT") {
+        await patientsApi.update(patientId, {
+          primaryPhone: values.primaryPhone.trim(),
+          secondaryPhone: values.secondaryPhone.trim() || undefined,
+        })
+        await Promise.all(
+          companions
+            .filter((link) => link.isPrimaryContact)
+            .map((link) =>
+              patientsApi.updateCompanionLink(patientId, link.id, {
+                isPrimaryContact: false,
+              }),
+            ),
+        )
+        await followUpsApi.update(followUpId, { interlocutorId: patientId })
+        return
+      }
+
+      await patientsApi.update(values.companionId, {
+        fullName: values.fullName.trim(),
+        primaryPhone: values.primaryPhone.trim(),
+        secondaryPhone: values.secondaryPhone.trim() || undefined,
+        gender: values.gender || undefined,
+      })
+      await patientsApi.updateCompanionLink(patientId, values.linkId, {
+        relationship: values.relationship || undefined,
+        isPrimaryContact: values.isPrimaryContact,
+        isCaregiver: values.isCaregiver,
+      })
+      await followUpsApi.update(followUpId, {
+        interlocutorId: values.companionId,
+      })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["patient-profile", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-companions", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-follow-ups", patientId],
+        }),
+      ])
+      toast.success("Información de contacto actualizada")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo actualizar la información de contacto", {
+        description: error.message,
+      }),
+  })
 
   const diagnoses = patient?.diagnoses ?? []
   const currentDiagnosis = diagnoses.find((d) => d.isCurrent)
@@ -214,6 +297,13 @@ export function ClinicalDataTabs({
           <MapPin className="size-4 text-emerald-600" />
           <span>Direcciones</span>
           {drafts.address && <DraftDot />}
+        </TabsTrigger>
+        <TabsTrigger
+          value="contacto"
+          className="min-h-10 flex-none justify-start gap-2"
+        >
+          <Phone className="size-4 text-cyan-600" />
+          <span>Contacto</span>
         </TabsTrigger>
         <TabsTrigger
           value="diagnostico"
@@ -275,6 +365,19 @@ export function ClinicalDataTabs({
           addresses={addresses}
           onSave={(address) => onDraftsChange((prev) => ({ ...prev, address }))}
         />
+      </TabsContent>
+      <TabsContent value="contacto" keepMounted className="min-w-0 flex-1 pr-1">
+        {patient ? (
+          <FollowUpContactForm
+            key={companions.map((link) => link.id).join(",")}
+            patient={patient}
+            companions={companions}
+            isPending={contactMutation.isPending}
+            onSubmit={async (values) => contactMutation.mutateAsync(values)}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">Cargando contacto...</p>
+        )}
       </TabsContent>
       <TabsContent
         value="diagnostico"
@@ -366,32 +469,11 @@ const ADDRESS_TYPES = [
   { value: "TEMPORARY", label: "Temporal" },
 ] as const
 
-const DEPARTMENT_OPTIONS = [
-  "AMAZONAS",
-  "ANCASH",
-  "APURIMAC",
-  "AREQUIPA",
-  "AYACUCHO",
-  "CAJAMARCA",
-  "CALLAO",
-  "CUSCO",
-  "HUANCAVELICA",
-  "HUANUCO",
-  "ICA",
-  "JUNIN",
-  "LA_LIBERTAD",
-  "LAMBAYEQUE",
-  "LIMA",
-  "LORETO",
-  "MADRE_DE_DIOS",
-  "MOQUEGUA",
-  "PASCO",
-  "PIURA",
-  "PUNO",
-  "SAN_MARTIN",
-  "TACNA",
-  "TUMBES",
-  "UCAYALI",
+const DEPARTMENT_OPTIONS = DEPARTMENTS
+
+const ZONE_TYPES = [
+  { value: "URBAN", label: "Urbana" },
+  { value: "RURAL", label: "Rural" },
 ] as const
 
 type AddressFormValues = Omit<CreatePatientAddressInput, "followUpId">
@@ -409,7 +491,8 @@ function AddressForm({
     useForm<AddressFormValues>({
       defaultValues: {
         type: draft?.type ?? "PERMANENT",
-        isPrimary: draft?.isPrimary ?? true,
+        isPrimary:
+          draft?.type === "TEMPORARY" ? false : (draft?.isPrimary ?? true),
         address: draft?.address ?? "",
         district: draft?.district ?? "",
         province: draft?.province ?? "",
@@ -433,6 +516,7 @@ function AddressForm({
     }
     onSave({
       ...values,
+      isPrimary: values.type === "TEMPORARY" ? false : values.isPrimary,
       address: values.address?.trim() || undefined,
       district: values.district?.trim() || undefined,
       province: values.province?.trim() || undefined,
@@ -492,9 +576,11 @@ function AddressForm({
             <Select
               items={ADDRESS_TYPES}
               value={addressType}
-              onValueChange={(value) =>
-                setValue("type", value as AddressFormValues["type"])
-              }
+              onValueChange={(value) => {
+                const nextType = value as AddressFormValues["type"]
+                setValue("type", nextType)
+                if (nextType === "TEMPORARY") setValue("isPrimary", false)
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -512,8 +598,8 @@ function AddressForm({
             <Label>Departamento</Label>
             <Select
               items={DEPARTMENT_OPTIONS.map((value) => ({
-                value,
-                label: value.replaceAll("_", " "),
+                value: value.value,
+                label: value.label,
               }))}
               value={department ?? ""}
               onValueChange={(value) =>
@@ -524,9 +610,9 @@ function AddressForm({
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
-                {DEPARTMENT_OPTIONS.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value.replaceAll("_", " ")}
+                {DEPARTMENT_OPTIONS.map((department) => (
+                  <SelectItem key={department.value} value={department.value}>
+                    {department.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -560,7 +646,8 @@ function AddressForm({
         <div className="flex flex-wrap gap-6">
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
-              checked={isPrimary}
+              checked={addressType === "PERMANENT" && isPrimary}
+              disabled={addressType === "TEMPORARY"}
               onCheckedChange={(value) => setValue("isPrimary", !!value)}
             />
             Dirección principal
@@ -589,8 +676,6 @@ function AddressForm({
 // ── Datos generales ──
 
 interface DatosGeneralesValues {
-  emergencyContactName: string
-  emergencyContactPhone: string
   nativeLanguage: string
   educationLevel: EducationLevel | undefined
   requiresTranslation: boolean
@@ -609,14 +694,6 @@ function DatosGeneralesForm({
   const { register, handleSubmit, watch, setValue, reset } =
     useForm<DatosGeneralesValues>({
       defaultValues: {
-        emergencyContactName:
-          draft?.emergencyContactName ??
-          currentDetails?.emergencyContactName ??
-          "",
-        emergencyContactPhone:
-          draft?.emergencyContactPhone ??
-          currentDetails?.emergencyContactPhone ??
-          "",
         nativeLanguage:
           draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
         educationLevel:
@@ -637,14 +714,6 @@ function DatosGeneralesForm({
   useEffect(() => {
     if (!currentDetails && !draft) return
     reset({
-      emergencyContactName:
-        draft?.emergencyContactName ??
-        currentDetails?.emergencyContactName ??
-        "",
-      emergencyContactPhone:
-        draft?.emergencyContactPhone ??
-        currentDetails?.emergencyContactPhone ??
-        "",
       nativeLanguage:
         draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
       educationLevel:
@@ -661,8 +730,6 @@ function DatosGeneralesForm({
 
   function onSubmit(values: DatosGeneralesValues) {
     onSave({
-      emergencyContactName: values.emergencyContactName || undefined,
-      emergencyContactPhone: values.emergencyContactPhone || undefined,
       nativeLanguage: values.nativeLanguage || undefined,
       educationLevel: values.educationLevel,
       requiresTranslation: values.requiresTranslation,
@@ -674,20 +741,6 @@ function DatosGeneralesForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Contacto de emergencia</Label>
-          <Input
-            {...register("emergencyContactName")}
-            placeholder="Nombre del contacto"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Teléfono de emergencia</Label>
-          <Input
-            {...register("emergencyContactPhone")}
-            placeholder="+51999000000"
-          />
-        </div>
         <div className="space-y-2">
           <Label>Lengua nativa</Label>
           <Input
@@ -2237,7 +2290,6 @@ function SeguroForm({
 
 interface SocialFormValues {
   zoneType: string
-  emergencyContactGender: string | undefined
   evidenceOfDomesticViolence: boolean | undefined
   usesWoodStove: boolean | undefined
   isWorking: boolean | undefined
@@ -2292,11 +2344,8 @@ function SeguimientoSocialForm({
   const { register, handleSubmit, watch, setValue, reset } =
     useForm<SocialFormValues>({
       defaultValues: {
-        zoneType: draft?.zoneType ?? currentDetails?.zoneType ?? "",
-        emergencyContactGender:
-          draft?.emergencyContactGender ??
-          currentDetails?.emergencyContactGender ??
-          undefined,
+        zoneType:
+          normalizeZoneType(draft?.zoneType ?? currentDetails?.zoneType) ?? "",
         evidenceOfDomesticViolence:
           draft?.evidenceOfDomesticViolence ??
           currentDetails?.evidenceOfDomesticViolence ??
@@ -2336,11 +2385,8 @@ function SeguimientoSocialForm({
   useEffect(() => {
     if (!currentDetails && !draft) return
     reset({
-      zoneType: draft?.zoneType ?? currentDetails?.zoneType ?? "",
-      emergencyContactGender:
-        draft?.emergencyContactGender ??
-        currentDetails?.emergencyContactGender ??
-        undefined,
+      zoneType:
+        normalizeZoneType(draft?.zoneType ?? currentDetails?.zoneType) ?? "",
       evidenceOfDomesticViolence:
         draft?.evidenceOfDomesticViolence ??
         currentDetails?.evidenceOfDomesticViolence ??
@@ -2371,8 +2417,6 @@ function SeguimientoSocialForm({
     })
   }, [currentDetails, draft, reset])
 
-  const emergencyContactGender = watch("emergencyContactGender")
-
   function onSubmit(values: SocialFormValues) {
     const nextNotes = SOCIAL_NOTE_SECTIONS.flatMap(({ type }) => {
       const note = notes[type].trim()
@@ -2381,7 +2425,6 @@ function SeguimientoSocialForm({
     onSave(
       {
         zoneType: values.zoneType || undefined,
-        emergencyContactGender: values.emergencyContactGender,
         evidenceOfDomesticViolence: values.evidenceOfDomesticViolence,
         usesWoodStove: values.usesWoodStove,
         isWorking: values.isWorking,
@@ -2401,34 +2444,24 @@ function SeguimientoSocialForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label>Zona</Label>
-          <Input {...register("zoneType")} placeholder="Urbana, Rural..." />
-        </div>
-        <div className="space-y-2">
-          <Label>Género del contacto de emergencia</Label>
+          <Label>Zonificación de residencia</Label>
           <Select
-            items={Object.entries(genderOptions).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-            value={emergencyContactGender}
-            onValueChange={(v) =>
-              setValue("emergencyContactGender", v ?? undefined)
-            }
+            items={ZONE_TYPES}
+            value={watch("zoneType")}
+            onValueChange={(value) => setValue("zoneType", value ?? "")}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
+              <SelectValue placeholder="Seleccionar zonificación" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(genderOptions).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
+              {ZONE_TYPES.map((zone) => (
+                <SelectItem key={zone.value} value={zone.value}>
+                  {zone.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-
         <TriSelect
           label="Evidencia de violencia doméstica"
           value={watch("evidenceOfDomesticViolence")}

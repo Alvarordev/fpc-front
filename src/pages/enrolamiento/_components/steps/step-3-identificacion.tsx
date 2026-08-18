@@ -10,6 +10,10 @@ import { isMinor } from "../../_utils/patient-age"
 const fl = "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
 const ic = "bg-card border"
 const sc = "w-full bg-card border"
+const CAREGIVER_OPTIONS = [
+  { value: "Sí", label: "Sí, registrar cuidador" },
+  { value: "No", label: "No" },
+] as const
 
 export function Step3Identificacion() {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
@@ -17,6 +21,7 @@ export function Step3Identificacion() {
   const companion = draft.companion
   const isParaMi = meta.affiliationType === "PATIENT"
   const isParaTercero = meta.affiliationType === "FAMILY"
+  const showCompanionForm = isParaTercero || meta.hasCaregiver === true
   const patientIsMinor = isMinor(draft.patientData.birthDate)
 
   return (
@@ -24,20 +29,36 @@ export function Step3Identificacion() {
       <StepHeader step={3} title="Identificación del Llamante" description="Determine la relación del llamante con el paciente oncológico." />
       <div className="flex flex-col gap-6"><SectionHeader icon={UserCheck} title="Relación con el Paciente" />
         {isParaMi && (
-          <div className="flex flex-col gap-2">
-            <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Usted es paciente oncológico?</Label>
-            <Select
-              value={meta.isOncologicalPatient === true ? "Sí" : meta.isOncologicalPatient === false ? "No" : ""}
-              onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, isOncologicalPatient: v === "Sí" } })}
-            >
-              <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-              <SelectContent><SelectItem value="Sí">Sí, soy paciente oncológico</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-            </Select>
-          </div>
-        )}
-        {isParaTercero && (
           <>
             <div className="flex flex-col gap-2">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Usted es paciente oncológico?</Label>
+              <Select
+                value={meta.isOncologicalPatient === true ? "Sí" : meta.isOncologicalPatient === false ? "No" : ""}
+                onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, isOncologicalPatient: v === "Sí" } })}
+              >
+                <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                <SelectContent><SelectItem value="Sí">Sí, soy paciente oncológico</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Hay un cuidador distinto del paciente?</Label>
+              <Select
+                items={CAREGIVER_OPTIONS}
+                value={meta.hasCaregiver === true ? "Sí" : "No"}
+                onValueChange={(v) => updateDraft({
+                  enrollmentMetadata: { ...meta, hasCaregiver: v === "Sí" },
+                  ...(v === "No" ? { companion: { fullName: "", primaryPhone: "" } } : {}),
+                })}
+              >
+                <SelectTrigger className="w-full bg-card border"><SelectValue /></SelectTrigger>
+                <SelectContent>{CAREGIVER_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+        {showCompanionForm && (
+          <>
+            {isParaTercero && <div className="flex flex-col gap-2">
               <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Usted es familiar del paciente oncológico?</Label>
               <Select
                 value={meta.isOncologicalPatient === true ? "Sí" : meta.isOncologicalPatient === false ? "No" : ""}
@@ -46,7 +67,7 @@ export function Step3Identificacion() {
                 <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent><SelectItem value="Sí">Sí, soy familiar</SelectItem><SelectItem value="No">No, soy amigo u otra persona</SelectItem></SelectContent>
               </Select>
-            </div>
+            </div>}
             {patientIsMinor && (
               <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-700/80">Paciente menor de edad</p>
@@ -57,16 +78,16 @@ export function Step3Identificacion() {
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label className={fl}>Nombre completo del familiar o acompañante <span className="text-destructive">*</span></Label>
+                <Label className={fl}>{isParaTercero ? "Nombre completo del familiar o acompañante" : "Nombre completo del cuidador"} <span className="text-destructive">*</span></Label>
                 <Input
                   value={companion.fullName}
                   onChange={(e) => updateDraft({ companion: { ...companion, fullName: e.target.value } })}
-                  placeholder="Nombre y apellidos de quien llama"
+                  placeholder={isParaTercero ? "Nombre y apellidos de quien llama" : "Nombre y apellidos del cuidador"}
                   className={ic}
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label className={fl}>Parentesco con el paciente <span className="text-destructive">*</span></Label>
+               <Label className={fl}>Parentesco con el paciente <span className="text-destructive">*</span></Label>
                 <Select items={Object.entries(relationshipLabels).map(([value, label]) => ({ value, label }))} value={companion.relationship ?? ""} onValueChange={(v) => updateDraft({ companion: { ...companion, relationship: v ?? undefined } })}>
                   <SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                   <SelectContent>{Object.entries(relationshipLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
@@ -94,7 +115,7 @@ export function Step3Identificacion() {
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <Label className={fl}>Género</Label>
+                <Label className={fl}>Género del cuidador</Label>
               <Select items={Object.entries(genderLabels).map(([value, label]) => ({ value, label }))} value={companion.gender ?? ""} onValueChange={(v) => updateDraft({ companion: { ...companion, gender: v || undefined } })}>
                 <SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>{Object.entries(genderLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>

@@ -42,6 +42,7 @@ export function buildEnrollmentPayload({
     throw new Error("Selecciona una categoría clínica")
   }
   const isFamily = meta.affiliationType === "FAMILY"
+  const includeCompanion = isFamily || meta.hasCaregiver === true
   const hasDiagnosis = Boolean(value(draft.diagnosis.diagnosis))
   const treatmentType = value(draft.treatment.treatmentType)
   const treatmentStartDate = value(draft.treatment.startDate)
@@ -161,7 +162,7 @@ export function buildEnrollmentPayload({
     },
     affiliationType: isFamily ? "FAMILY_FRIEND" : "SELF",
     healthPhase,
-    ...(isFamily
+    ...(includeCompanion
       ? {
           companion: {
             fullName: draft.companion.fullName.trim(),
@@ -173,7 +174,9 @@ export function buildEnrollmentPayload({
             hasWhatsapp: draft.companion.hasWhatsapp,
             email: value(draft.companion.email),
             relationship: value(draft.companion.relationship),
-            isPrimaryInformant: true,
+            isPrimaryInformant: isFamily,
+            isPrimaryContact: isFamily,
+            isCaregiver: true,
           },
         }
       : {}),

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { agentsApi } from "@/api/agents"
+import { patientsApi } from "@/api/patients"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
 import {
   patientTimelineApi,
@@ -297,6 +298,15 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
     enabled: canManage,
     staleTime: 60_000,
   })
+  const companionsQuery = useQuery({
+    queryKey: ["patient-companions", pacienteId],
+    queryFn: () => patientsApi.companions(pacienteId),
+    enabled: Boolean(pacienteId),
+    staleTime: 30_000,
+  })
+  const primaryContactId =
+    companionsQuery.data?.find((link) => link.isPrimaryContact)?.companionId ??
+    pacienteId
   const scheduleMutation = useMutation({
     mutationFn: async (values: ScheduleFollowUpFormValues[]) => {
       const ownAgent = agentsQuery.data?.find(
@@ -311,7 +321,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       return followUpsApi.createBatch({
         followUps: values.map((value) => ({
           subjectPatientId: pacienteId,
-          interlocutorId: pacienteId,
+           interlocutorId: primaryContactId,
           agentId,
           type: value.type,
           purpose: value.purpose,

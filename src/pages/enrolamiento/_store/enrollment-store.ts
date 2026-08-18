@@ -46,6 +46,8 @@ export interface CompanionDraft {
   email?: string
   hasWhatsapp?: boolean
   relationship?: string
+  isCaregiver?: boolean
+  isPrimaryContact?: boolean
 }
 
 export interface EnrollmentNoteDraft {
@@ -61,6 +63,7 @@ export type EnrollmentMetadataDraft = EnrollmentMetadataRequest & {
   affiliationType?: string
   isOncologicalPatient?: boolean
   assignedAgentId?: string
+  hasCaregiver?: boolean
 }
 
 export interface EnrollmentDraft {
