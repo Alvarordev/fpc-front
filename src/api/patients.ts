@@ -15,6 +15,8 @@ export type PatientDetailsResponse =
   components["schemas"]["PatientDetailsWithSummaryResponseDto"]
 export type PatientListItem =
   components["schemas"]["PatientListItemResponseDto"]
+export type PatientActivityStatus = PatientListItem["activityStatus"]
+export type PatientListSegment = NonNullable<PatientListFilters["segment"]>
 export type PatientDiagnosis =
   components["schemas"]["PatientDiagnosisResponseDto"]
 export type PatientTreatment =

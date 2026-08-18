@@ -99,7 +99,7 @@ export default function AgentAgendaPage() {
   })
   const patientsQuery = useQuery({
     queryKey: ["agenda-patients"],
-    queryFn: () => patientsApi.list({ limit: 100 }),
+    queryFn: () => patientsApi.list({ segment: "CARE", limit: 100 }),
     staleTime: 60_000,
   })
 

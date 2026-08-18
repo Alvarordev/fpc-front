@@ -41,6 +41,35 @@ describe("patients API", () => {
     })
   })
 
+  it("serializes the care segment and activity status filters", async () => {
+    vi.stubEnv("VITE_API_URL", "http://localhost:3000")
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      removeItem: () => undefined,
+      setItem: () => undefined,
+    })
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: [], total: 0 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { patientsApi } = await import("./patients")
+    await patientsApi.list({
+      segment: "CARE",
+      activityStatus: "REACTIVE",
+      role: "COMPANION",
+      limit: 100,
+    })
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request
+    expect(request.url).toBe(
+      "http://localhost:3000/patients?segment=CARE&activityStatus=REACTIVE&role=COMPANION&limit=100",
+    )
+  })
+
   it("records a typed social note linked to a follow-up", async () => {
     vi.stubEnv("VITE_API_URL", "http://localhost:3000")
     vi.stubGlobal("localStorage", {

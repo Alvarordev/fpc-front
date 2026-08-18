@@ -226,23 +226,25 @@ export function OverviewSection({
                 label="Estado de enrolamiento"
                 value={
                   <Badge variant="secondary" className="text-xs">
-                    {patient.status === "ENROLLED" ? "Enrolado" : "Sin enrolar"}
+                    {patient.status === "ENROLLED" ? "Enrolado" : "Prospecto"}
                   </Badge>
                 }
               />
             ) : (
               <Field label="Rol" value={roleLabels[patient.role]} icon={User} />
             )}
-            {patient.role !== "COMPANION" && (
-              <Field
-                label="Estado del paciente"
-                value={
-                  <Badge variant="secondary" className="text-xs">
-                    {patient.isActive ? "Activo" : "Inactivo"}
-                  </Badge>
-                }
-              />
-            )}
+            <Field
+              label="Estado del paciente"
+              value={
+                <Badge variant="secondary" className="text-xs">
+                  {patient.activityStatus === "ACTIVE"
+                    ? "Activo"
+                    : patient.activityStatus === "INACTIVE"
+                      ? "Inactivo"
+                      : "Reactivo"}
+                </Badge>
+              }
+            />
             <Field
               label="Teléfono principal"
               value={patient.primaryPhone}

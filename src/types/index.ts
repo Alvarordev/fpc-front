@@ -8,7 +8,9 @@ export type { DurationDraft, DurationInput, DurationUnit } from "./duration"
 
 export type PatientRole = "UNKNOWN" | "PATIENT" | "COMPANION"
 
-export type PatientStatus = "PROSPECT" | "ENROLLED" | "ACTIVE" | "INACTIVE"
+export type PatientStatus = "UNENROLLED" | "ENROLLED"
+
+export type PatientActivityStatus = "ACTIVE" | "INACTIVE" | "REACTIVE"
 
 export type EducationLevel =
   | "NONE"
@@ -175,8 +177,21 @@ export type TreatmentSituation =
   | "INTERRUMPIDO"
   | "FINALIZADO"
 
-export type MedicationDoseUnit = "MG" | "G" | "ML" | "UI" | "TABLET" | "DROP" | "OTHER"
-export type MedicationRoute = "ORAL" | "IV" | "IM" | "SUBCUTANEOUS" | "TOPICAL" | "OTHER"
+export type MedicationDoseUnit =
+  | "MG"
+  | "G"
+  | "ML"
+  | "UI"
+  | "TABLET"
+  | "DROP"
+  | "OTHER"
+export type MedicationRoute =
+  | "ORAL"
+  | "IV"
+  | "IM"
+  | "SUBCUTANEOUS"
+  | "TOPICAL"
+  | "OTHER"
 
 export interface AddTreatmentMedicationRequest {
   name: string

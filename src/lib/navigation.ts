@@ -9,6 +9,7 @@ import {
   Headset,
   ShieldUser,
   Calendar,
+  UserRound,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -20,6 +21,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Mi agenda", url: "/", icon: LayoutDashboard },
         { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
       ],
     },
@@ -48,6 +50,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
         { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
         { title: "Usuarios", url: "/usuarios", icon: ShieldUser },
       ],
@@ -68,6 +71,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
         { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
       ],
     },
@@ -77,6 +81,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
 export const pathTitles: Record<string, string> = {
   "/": "Dashboard",
   "/pacientes": "Pacientes",
+  "/prospectos": "Prospectos",
   "/inscripcion": "Inscripción",
   "/enrolamiento": "Enrolamiento",
   "/agenda": "Mi Agenda",

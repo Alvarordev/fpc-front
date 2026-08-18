@@ -1,117 +1,56 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ClipboardPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { usePatients } from "../_hooks/use-patients";
-import { PatientsToolbar } from "./patients-toolbar";
-import { PatientsTable } from "./patients-table";
-import { patientColumns } from "./patients-columns";
-import { useQueryClient } from "@tanstack/react-query";
-import { patientsApi } from "@/api/patients";
-import { toast } from "sonner";
-import {
-  AddProspectDialog,
-  type AddProspectFormValues,
-} from "./add-prospect-dialog";
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { usePatients } from "../_hooks/use-patients"
+import { PatientsToolbar } from "./patients-toolbar"
+import { PatientsTable } from "./patients-table"
+import { patientColumns } from "./patients-columns"
+import type { PatientActivityStatus } from "@/api/patients"
 
 export function AdminPatientsContent() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"UNENROLLED" | "ENROLLED" | null>(null);
-  const [roleFilter, setRoleFilter] = useState<"COMPANION" | null>(null);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("")
+  const [activityStatusFilter, setActivityStatusFilter] =
+    useState<PatientActivityStatus | null>(null)
+  const [roleFilter, setRoleFilter] = useState<"COMPANION" | null>(null)
+  const navigate = useNavigate()
 
-  const [prospectOpen, setProspectOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-
-  const { data: patientPage, isLoading } = usePatients();
-  const patients = patientPage?.data ?? [];
-
-  const filtered = patients.filter((p) => {
-    const matchesSearch =
-      !search ||
-      p.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (p.dni && p.dni.includes(search));
-
-    const matchesStatus = !statusFilter || p.status === statusFilter;
-    const matchesRole = !roleFilter || p.role === roleFilter;
-
-    return matchesSearch && matchesStatus && matchesRole;
-  });
-
-  async function handleProspectSubmit(values: AddProspectFormValues) {
-    const shouldScheduleContact = Boolean(values.scheduledDate && values.scheduledTime);
-
-    setIsCreating(true);
-    try {
-      // The Nest API creates patients as UNENROLLED until the enrollment phase.
-      await patientsApi.create({
-        fullName: values.fullName,
-        dni: values.dni || undefined,
-        primaryPhone: values.phone,
-        email: values.email || undefined,
-        hasWhatsapp: true,
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ["patients"] });
-      toast.success("Prospecto creado correctamente");
-
-      if (shouldScheduleContact) {
-        toast.info("El agendamiento se habilitará al migrar seguimientos al nuevo backend");
-      }
-    } catch {
-      toast.error("Error al crear el prospecto");
-    } finally {
-      setIsCreating(false);
-    }
-  }
+  const { data: patientPage, isLoading } = usePatients({
+    filters: {
+      segment: "CARE",
+      search: search || undefined,
+      activityStatus: activityStatusFilter ?? undefined,
+      role: roleFilter ?? undefined,
+    },
+  })
+  const patients = patientPage?.data ?? []
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-foreground text-xl font-semibold tracking-tight">
             Pacientes
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {patients.length} pacientes registrados
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            {patientPage?.total ?? 0} pacientes en seguimiento
           </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={() => setProspectOpen(true)}
-          >
-            <ClipboardPlus className="size-4" />
-            Agregar prospecto
-          </Button>
         </div>
       </div>
 
       <PatientsToolbar
         search={search}
         onSearchChange={setSearch}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        activityStatusFilter={activityStatusFilter}
+        onActivityStatusFilterChange={setActivityStatusFilter}
         roleFilter={roleFilter}
         onRoleFilterChange={setRoleFilter}
       />
 
       <PatientsTable
-        data={filtered}
+        data={patients}
         columns={patientColumns}
         isLoading={isLoading}
         onRowClick={(p) => navigate(`/pacientes/${p.id}`)}
       />
-
-      <AddProspectDialog
-        open={prospectOpen}
-        onOpenChange={setProspectOpen}
-        onSubmit={handleProspectSubmit}
-        isPending={isCreating}
-      />
     </div>
-  );
+  )
 }

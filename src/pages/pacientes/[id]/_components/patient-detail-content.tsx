@@ -21,7 +21,7 @@ import {
   withPatientTab,
 } from "../_lib/patient-tabs"
 const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
-  UNENROLLED: "Sin enrolar",
+  UNENROLLED: "Prospecto",
   ENROLLED: "Enrolado",
 }
 
@@ -29,6 +29,18 @@ const statusStyles: Record<"UNENROLLED" | "ENROLLED", string> = {
   UNENROLLED: "bg-violet-50 text-violet-700 border-violet-200",
   ENROLLED: "bg-blue-50 text-blue-700 border-blue-200",
 }
+
+const activityStatusLabels = {
+  ACTIVE: "Activo",
+  INACTIVE: "Inactivo",
+  REACTIVE: "Reactivo",
+} as const
+
+const activityStatusStyles = {
+  ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  INACTIVE: "bg-zinc-100 text-zinc-600 border-zinc-200",
+  REACTIVE: "bg-orange-50 text-orange-700 border-orange-200",
+} as const
 
 export function PatientDetailContent() {
   const { id } = useParams<{ id: string }>()
@@ -119,6 +131,14 @@ export function PatientDetailContent() {
                 {statusLabels[patient.status]}
               </Badge>
             )}
+            <Badge
+              className={cn(
+                "border text-xs font-medium",
+                activityStatusStyles[patient.activityStatus],
+              )}
+            >
+              {activityStatusLabels[patient.activityStatus]}
+            </Badge>
           </div>
           <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-4 text-sm">
             <span>{patient.dni ? `DNI ${patient.dni}` : "Sin DNI"}</span>
@@ -133,7 +153,7 @@ export function PatientDetailContent() {
           </div>
         </div>
 
-        {patient.status === "UNENROLLED" && (
+        {patient.role !== "COMPANION" && patient.status === "UNENROLLED" && (
           <Button size="sm" className="shrink-0 gap-1.5" onClick={handleEnroll}>
             <UserPlus className="size-4" />
             Enrolar

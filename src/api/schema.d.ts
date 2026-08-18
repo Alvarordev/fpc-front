@@ -1975,7 +1975,8 @@ export interface components {
             role: "UNKNOWN" | "PATIENT" | "COMPANION";
             /** @enum {string} */
             status: "UNENROLLED" | "ENROLLED";
-            isActive: boolean;
+            /** @enum {string} */
+            activityStatus: "ACTIVE" | "INACTIVE" | "REACTIVE";
             /** @enum {string|null} */
             deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
             deactivationReasonDetail: string | null;
@@ -2050,7 +2051,8 @@ export interface components {
             role: "UNKNOWN" | "PATIENT" | "COMPANION";
             /** @enum {string} */
             status: "UNENROLLED" | "ENROLLED";
-            isActive: boolean;
+            /** @enum {string} */
+            activityStatus: "ACTIVE" | "INACTIVE" | "REACTIVE";
             /** @enum {string|null} */
             deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
             deactivationReasonDetail: string | null;
@@ -2303,7 +2305,8 @@ export interface components {
             role: "UNKNOWN" | "PATIENT" | "COMPANION";
             /** @enum {string} */
             status: "UNENROLLED" | "ENROLLED";
-            isActive: boolean;
+            /** @enum {string} */
+            activityStatus: "ACTIVE" | "INACTIVE" | "REACTIVE";
             /** @enum {string|null} */
             deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
             deactivationReasonDetail: string | null;
@@ -4425,7 +4428,8 @@ export interface operations {
             query?: {
                 role?: "UNKNOWN" | "PATIENT" | "COMPANION";
                 status?: "UNENROLLED" | "ENROLLED";
-                isActive?: boolean;
+                activityStatus?: "ACTIVE" | "INACTIVE" | "REACTIVE";
+                segment?: "CARE" | "PROSPECTS";
                 search?: string;
                 limit?: number;
                 offset?: number;
