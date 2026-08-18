@@ -28,8 +28,10 @@ describe("step 8 Nest enrollment payload", () => {
       draft: draft({
         patientData: { fullName: "Paciente Test", primaryPhone: "988111222", dni: "97000000" },
         details: {
+          birthDepartment: "AREQUIPA",
           referredToSocialWorker: true,
           travelTimeToHospital: { valueMin: 45, unit: "MINUTE" },
+          zoneType: "RURAL",
         },
         addresses: [{
           type: "PERMANENT",
@@ -87,6 +89,10 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.treatments?.[0]).toMatchObject({ startDate: "2026-02-20", endDate: "2026-08-20" })
     expect(payload.treatments?.[0]?.medications?.[0]?.frequency).toEqual({ valueMin: 1, unit: "DAY" })
     expect(payload.details?.travelTimeToHospital).toEqual({ valueMin: 45, unit: "MINUTE" })
+    expect(payload.details).toMatchObject({
+      birthDepartment: "AREQUIPA",
+      zoneType: "RURAL",
+    })
     expect(payload.addresses?.[0]).toMatchObject({ type: "PERMANENT", department: "LIMA", dniMatchesAddress: false })
     expect(payload.addresses).toHaveLength(2)
     expect(payload.addresses?.[1]).toMatchObject({ type: "TEMPORARY", isPrimary: false, address: "Jr. Temporal 456" })

@@ -32,19 +32,24 @@ import {
   User,
   Users,
 } from "lucide-react"
+import { enrollmentsApi } from "@/api/enrollments"
 import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
 import { cn } from "@/lib/utils"
 import {
   cancerStageLabels,
   educationLabels,
   epsLabels,
+  genderLabels,
   insuranceLabels,
+  zoneTypeLabels,
   relationshipLabels,
   roleLabels,
 } from "../_lib/clinical-labels"
 import { usePatientAccompanies } from "../_hooks/use-patient-accompanies"
 import { Link } from "react-router-dom"
 import { DURATION_UNIT_LABELS } from "@/types/duration"
+import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
+import { getAge } from "@/pages/enrolamiento/_utils/patient-age"
 import { PatientRecordsSection } from "./patient-records-section"
 import { TreatmentCard } from "./treatment-card"
 import { PatientProfileDialog } from "./patient-profile-dialog"
@@ -115,6 +120,108 @@ function Section({
     </Card>
   )
 }
+
+function ContactInformationSection({
+  patient,
+}: {
+  patient: PatientDetailsResponse
+}) {
+  const primaryCompanion = patient.companions.find(
+    (link) => link.isPrimaryContact,
+  )
+  const primaryContact = primaryCompanion?.companion ?? patient
+  const caregiverLink = patient.companions.find((link) => link.isCaregiver)
+  const legacyCaregiver = patient.details?.emergencyContactName
+    ? {
+        name: patient.details.emergencyContactName,
+        phone: patient.details.emergencyContactPhone,
+        gender: patient.details.emergencyContactGender,
+      }
+    : null
+  const caregiver = caregiverLink?.companion
+    ? {
+        name: caregiverLink.companion.fullName,
+        phone: caregiverLink.companion.primaryPhone,
+        gender: caregiverLink.companion.gender,
+      }
+    : legacyCaregiver
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Phone className="size-4" />
+          Información de contacto
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">
+            Contacto para seguimiento
+          </p>
+          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
+            <Field label="Nombre" value={primaryContact.fullName} icon={User} />
+            <Field
+              label="Parentesco"
+              value={
+                primaryCompanion
+                  ? primaryCompanion.relationship
+                    ? relationshipLabels[primaryCompanion.relationship] ??
+                      primaryCompanion.relationship
+                    : null
+                  : "Paciente"
+              }
+            />
+            <Field
+              label="Celular principal"
+              value={primaryContact.primaryPhone}
+              icon={Phone}
+            />
+            <Field
+              label="Celular auxiliar"
+              value={primaryContact.secondaryPhone}
+              icon={Phone}
+            />
+            <Field
+              label="Género"
+              value={
+                primaryContact.gender
+                  ? genderLabels[primaryContact.gender] ?? primaryContact.gender
+                  : null
+              }
+              icon={User}
+            />
+          </div>
+        </div>
+        <Separator />
+        <div>
+          <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">
+            Cuidador
+          </p>
+          {caregiver ? (
+            <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
+              <Field label="Nombre" value={caregiver.name} icon={User} />
+              <Field label="Celular" value={caregiver.phone} icon={Phone} />
+              <Field
+                label="Género"
+                value={
+                  caregiver.gender
+                    ? genderLabels[caregiver.gender] ?? caregiver.gender
+                    : null
+                }
+                icon={User}
+              />
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              No hay un cuidador registrado.
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 function Empty({ children }: { children: string }) {
   return <p className="text-muted-foreground py-2 text-sm">{children}</p>
 }
@@ -151,6 +258,14 @@ export function OverviewSection({
     patient.id,
     patient.role !== "COMPANION",
   )
+  const enrollmentQuery = useQuery({
+    queryKey: ["patient-enrollments", patient.id],
+    queryFn: () => enrollmentsApi.listByPatient(patient.id),
+    enabled: patient.role !== "COMPANION",
+    staleTime: 30_000,
+  })
+  const enrollment = enrollmentQuery.data?.[0]
+  const age = getAge(patient.birthDate)
   return (
     <div className="space-y-4">
       {patient.role === "COMPANION" && (
@@ -245,16 +360,25 @@ export function OverviewSection({
                 </Badge>
               }
             />
+            {patient.role !== "COMPANION" && (
+              <Field label="Punto de ingreso" value={enrollment?.entrySource} />
+            )}
+            <Field label="Edad" value={age === null ? null : `${age} años`} />
             <Field
-              label="Teléfono principal"
-              value={patient.primaryPhone}
-              icon={Phone}
+              label="Sexo"
+              value={
+                patient.gender
+                  ? (genderLabels[patient.gender] ?? patient.gender)
+                  : null
+              }
+              icon={User}
             />
-            <Field
-              label="Teléfono secundario"
-              value={patient.secondaryPhone}
-              icon={Phone}
-            />
+            {patient.role !== "COMPANION" && (
+              <Field
+                label="Cáncer infantil"
+                value={age === null ? null : age < 18 ? "Sí" : "No"}
+              />
+            )}
             <Field
               label="WhatsApp"
               value={
@@ -267,7 +391,6 @@ export function OverviewSection({
               }
             />
             <Field label="Email" value={patient.email} />
-            <Field label="Género" value={patient.gender} />
             {patient.deactivationReason && (
               <Field
                 label="Motivo de desactivación"
@@ -283,19 +406,33 @@ export function OverviewSection({
             <>
               <Separator />
               <p className="text-muted-foreground text-xs font-medium">
-                Datos demográficos
+                Datos de procedencia y residencia
               </p>
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <Field
                   label="Departamento de nacimiento"
-                  value={details.birthDepartment}
+                  value={
+                    details.birthDepartment
+                      ? (DEPARTMENT_LABELS[details.birthDepartment] ??
+                        details.birthDepartment)
+                      : null
+                  }
                 />
                 <Field
                   label="Hospital principal"
                   value={details.primaryHealthCenterName}
                   icon={Building2}
                 />
-                <Field label="Zona" value={details.zoneType} icon={MapPin} />
+                <Field
+                  label="Zonificación de residencia"
+                  value={
+                    details.zoneType
+                      ? (zoneTypeLabels[details.zoneType.toUpperCase()] ??
+                        details.zoneType)
+                      : null
+                  }
+                  icon={MapPin}
+                />
                 <Field
                   label="Tiempo al hospital"
                   value={durationLabel(details.travelTimeToHospital)}
@@ -321,33 +458,6 @@ export function OverviewSection({
                   icon={Languages}
                 />
               </div>
-
-              {(details.emergencyContactName ||
-                details.emergencyContactPhone ||
-                details.emergencyContactGender) && (
-                <>
-                  <Separator />
-                  <p className="text-muted-foreground text-xs font-medium">
-                    Contacto de emergencia
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
-                    <Field
-                      label="Nombre"
-                      value={details.emergencyContactName}
-                    />
-                    <Field
-                      label="Teléfono"
-                      value={details.emergencyContactPhone}
-                      icon={Phone}
-                    />
-                    <Field
-                      label="Género"
-                      value={details.emergencyContactGender}
-                      icon={User}
-                    />
-                  </div>
-                </>
-              )}
 
               <Separator />
               <p className="text-muted-foreground text-xs font-medium">
@@ -429,8 +539,14 @@ export function OverviewSection({
               </div>
             </>
           )}
+          {patient.role !== "COMPANION" && (
+            <PatientRecordsSection patientId={patient.id} />
+          )}
         </CardContent>
       </Card>
+      {patient.role !== "COMPANION" && (
+        <ContactInformationSection patient={patient} />
+      )}
       {canEditProfile && (
         <PatientProfileDialog
           patient={patient}
@@ -655,10 +771,6 @@ export function OverviewSection({
           </Records>
         </div>
       </Section>
-      <PatientRecordsSection
-        patientId={patient.id}
-        enabled={patient.role !== "COMPANION"}
-      />
     </div>
   )
 }

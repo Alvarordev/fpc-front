@@ -5,43 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CreditCard, MapPin, Phone, GraduationCap, ShieldCheck, LogIn } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import type { EnrollmentAddressRequest, InsuranceType, EpsProvider, EducationLevel, PeruDepartment } from "@/types"
-import { genderLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
+import {
+  genderLabels,
+  normalizeZoneType,
+} from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { isMinor } from "../../_utils/patient-age"
 import { DurationInput } from "@/components/duration-input"
+import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
 
 const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"; const ic="bg-card border"
 const sc="w-full bg-card border"
 const EDU:Record<EducationLevel,string>={NONE:"Sin estudios",INITIAL:"Inicial",PRIMARY_INCOMPLETE:"Primaria incompleta",PRIMARY:"Primaria",SECONDARY_INCOMPLETE:"Secundaria incompleta",SECONDARY:"Secundaria",TECHNICAL_INCOMPLETE:"Técnica incompleta",TECHNICAL:"Técnica",HIGHER_INCOMPLETE:"Superior incompleta",HIGHER:"Superior"}
 const INS:Record<InsuranceType,string>={SIS:"SIS",ESSALUD:"EsSalud",EPS:"EPS",FUERZAS_ARMADAS:"Fuerzas Armadas",SALUDPOL:"SaludPol",NONE:"Ninguno"}
 const EPS_LABELS:Record<EpsProvider,string>={PACIFICO:"Pacífico",RIMAC:"Rímac",MAPFRE:"Mapfre",LA_POSITIVA:"La Positiva",SANITAS:"Sanitas",ONCOSALUD:"Oncosalud",OTHER:"Otro"}
-
-const PERU_DEPARTMENTS: Array<{ value: PeruDepartment; label: string }> = [
-  { value: "AMAZONAS", label: "Amazonas" },
-  { value: "ANCASH", label: "Áncash" },
-  { value: "APURIMAC", label: "Apurímac" },
-  { value: "AREQUIPA", label: "Arequipa" },
-  { value: "AYACUCHO", label: "Ayacucho" },
-  { value: "CAJAMARCA", label: "Cajamarca" },
-  { value: "CALLAO", label: "Callao" },
-  { value: "CUSCO", label: "Cusco" },
-  { value: "HUANCAVELICA", label: "Huancavelica" },
-  { value: "HUANUCO", label: "Huánuco" },
-  { value: "ICA", label: "Ica" },
-  { value: "JUNIN", label: "Junín" },
-  { value: "LA_LIBERTAD", label: "La Libertad" },
-  { value: "LAMBAYEQUE", label: "Lambayeque" },
-  { value: "LIMA", label: "Lima" },
-  { value: "LORETO", label: "Loreto" },
-  { value: "MADRE_DE_DIOS", label: "Madre de Dios" },
-  { value: "MOQUEGUA", label: "Moquegua" },
-  { value: "PASCO", label: "Pasco" },
-  { value: "PIURA", label: "Piura" },
-  { value: "PUNO", label: "Puno" },
-  { value: "SAN_MARTIN", label: "San Martín" },
-  { value: "TACNA", label: "Tacna" },
-  { value: "TUMBES", label: "Tumbes" },
-  { value: "UCAYALI", label: "Ucayali" },
-]
 
 const ENTRY_POINTS = [
   "Llamada directa",
@@ -51,6 +27,11 @@ const ENTRY_POINTS = [
   "Campaña prevención",
   "Centro de salud/hospital",
   "Otro",
+] as const
+
+const ZONE_TYPES = [
+  { value: "URBAN", label: "Urbana" },
+  { value: "RURAL", label: "Rural" },
 ] as const
 
 const NATIVE_LANGUAGES = [
@@ -184,14 +165,22 @@ export function Step5Datos() {
           </div>
         )}
       </section>
-      <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos Demográficos" />
-        <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={address.address??""} onChange={e=>updateAddress({address:e.target.value||undefined})} /></div>
+       <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos de procedencia y residencia" />
+         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+           <div className="flex flex-col gap-2"><Label className={fl}>Departamento de nacimiento</Label>
+             <Select items={DEPARTMENTS} value={d.birthDepartment??""} onValueChange={v=>updateDraft({details:{...d,birthDepartment:v||undefined}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{DEPARTMENTS.map(department=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
+           </div>
+           <div className="flex flex-col gap-2"><Label className={fl}>Zonificación de residencia</Label>
+             <Select items={ZONE_TYPES} value={normalizeZoneType(d.zoneType)??""} onValueChange={v=>updateDraft({details:{...d,zoneType:v||undefined}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar zonificación..." /></SelectTrigger><SelectContent>{ZONE_TYPES.map(zone=><SelectItem key={zone.value} value={zone.value}>{zone.label}</SelectItem>)}</SelectContent></Select>
+           </div>
+         </div>
+         <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={address.address??""} onChange={e=>updateAddress({address:e.target.value||undefined})} /></div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={address.district??""} onChange={e=>updateAddress({district:e.target.value||undefined})} /></div>
           <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={address.province??""} onChange={e=>updateAddress({province:e.target.value||undefined})} /></div>
         </div>
         <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label>
-          <Select items={PERU_DEPARTMENTS} value={address.department??""} onValueChange={v=>updateAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{PERU_DEPARTMENTS.map((department)=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
+           <Select items={DEPARTMENTS} value={address.department??""} onValueChange={v=>updateAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{DEPARTMENTS.map(department=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
         </div>
         <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={address.reference??""} onChange={e=>updateAddress({reference:e.target.value||undefined})} /></div>
         <div className="flex flex-col gap-2">
@@ -219,7 +208,7 @@ export function Step5Datos() {
                 <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={temporaryAddress.province??""} onChange={e=>updateTemporaryAddress({province:e.target.value||undefined})} /></div>
               </div>
               <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label>
-                <Select items={PERU_DEPARTMENTS} value={temporaryAddress.department??""} onValueChange={v=>updateTemporaryAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{PERU_DEPARTMENTS.map((department)=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
+                 <Select items={DEPARTMENTS} value={temporaryAddress.department??""} onValueChange={v=>updateTemporaryAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{DEPARTMENTS.map(department=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
               </div>
               <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={temporaryAddress.reference??""} onChange={e=>updateTemporaryAddress({reference:e.target.value||undefined})} /></div>
             </div>
@@ -237,10 +226,6 @@ export function Step5Datos() {
         <div className="flex flex-col gap-2"><Label className={fl}>Email</Label><Input type="email" placeholder="paciente@correo.com" className={ic} value={pd.email??""} onChange={e=>updateDraft({patientData:{...pd,email:e.target.value||null}})} /></div>
         <div className="flex flex-col gap-2"><Label className={fl}>¿Tiene WhatsApp?</Label>
           <Select value={pd.hasWhatsapp?"Sí":"No"} onValueChange={v=>updateDraft({patientData:{...pd,hasWhatsapp:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>Contacto de emergencia</Label><Input placeholder="Nombre" className={ic} value={d.emergencyContactName??""} onChange={e=>updateDraft({details:{...d,emergencyContactName:e.target.value||null}})} /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>Tel. emergencia</Label><Input placeholder="987654321" className={ic} value={d.emergencyContactPhone??""} onChange={e=>updateDraft({details:{...d,emergencyContactPhone:e.target.value||null}})} /></div>
-        </div>
       </section>
       <section className="flex flex-col gap-5"><SectionHeader icon={GraduationCap} title="Perfil Socioeducativo" />
         <div className="flex flex-col gap-2"><Label className={fl}>Nivel educativo</Label>

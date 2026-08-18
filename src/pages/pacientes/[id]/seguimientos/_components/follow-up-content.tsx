@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { alertsApi } from "@/api/alerts"
-import { followUpsApi } from "@/api/follow-ups"
+import { followUpsApi, type FollowUp } from "@/api/follow-ups"
 import {
   patientTimelineApi,
   type PatientTimelineEvent,
@@ -15,6 +15,13 @@ import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
 import { ScheduleFollowUpDialog } from "../../_components/schedule-follow-up-dialog"
@@ -35,6 +42,20 @@ import {
   followUpTypeLabels,
 } from "@/lib/follow-up-labels"
 
+type EditableFollowUpStatus = Exclude<FollowUp["status"], "SCHEDULED">
+
+const EDITABLE_STATUS_OPTIONS = [
+  { value: "COMPLETED", label: "Completado" },
+  { value: "NO_ANSWER", label: "No contestó" },
+  { value: "CANCELLED", label: "Cancelado" },
+] as const
+
+function isClosedFollowUpStatus(
+  status: FollowUp["status"],
+): status is EditableFollowUpStatus {
+  return status !== "SCHEDULED"
+}
+
 export function FollowUpContent() {
   const { id: patientId, followUpId } = useParams<{
     id: string
@@ -43,7 +64,17 @@ export function FollowUpContent() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
-  const [notes, setNotes] = useState("")
+  const [notesDraft, setNotesDraft] = useState<{
+    followUpId: string
+    value: string
+  } | null>(null)
+  const [editingFollowUpId, setEditingFollowUpId] = useState<string | null>(
+    null,
+  )
+  const [editStatusDraft, setEditStatusDraft] = useState<{
+    followUpId: string
+    value: EditableFollowUpStatus
+  } | null>(null)
   const [nextOpen, setNextOpen] = useState(false)
   const [psychooncologyOpen, setPsychooncologyOpen] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
@@ -87,6 +118,27 @@ export function FollowUpContent() {
     enabled: canManage,
     staleTime: 60_000,
   })
+  const notes =
+    notesDraft && notesDraft.followUpId === followUpId
+      ? notesDraft.value
+      : (followUpQuery.data?.notes ?? "")
+  const editStatus: EditableFollowUpStatus =
+    editStatusDraft && editStatusDraft.followUpId === followUpId
+      ? editStatusDraft.value
+      : followUpQuery.data?.status && followUpQuery.data.status !== "SCHEDULED"
+        ? followUpQuery.data.status
+        : "COMPLETED"
+  const isEditing = editingFollowUpId === followUpId
+
+  function setNotes(value: string) {
+    if (!followUpId) return
+    setNotesDraft({ followUpId, value })
+  }
+
+  function setEditStatus(value: EditableFollowUpStatus) {
+    if (!followUpId) return
+    setEditStatusDraft({ followUpId, value })
+  }
   const updateMutation = useMutation({
     mutationFn: ({
       status,
@@ -101,8 +153,15 @@ export function FollowUpContent() {
         completedAt,
       }),
   })
+  const editMutation = useMutation({
+    mutationFn: () =>
+      followUpsApi.update(followUpId!, {
+        status: editStatus,
+        notes: notes.trim(),
+      }),
+  })
 
-  async function refreshAfterCompletion() {
+  async function refreshAfterFollowUpUpdate() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["follow-up", followUpId] }),
       queryClient.invalidateQueries({
@@ -123,6 +182,7 @@ export function FollowUpContent() {
       queryClient.invalidateQueries({
         queryKey: ["psychooncology-appointments"],
       }),
+      queryClient.invalidateQueries({ queryKey: ["agent-follow-ups"] }),
     ])
   }
 
@@ -159,6 +219,7 @@ export function FollowUpContent() {
       />
     )
   const isOpen = followUp.status === "SCHEDULED"
+  const canEditClosed = canManage && !isOpen
   const followUpTimelineEvent = patientTimelineQuery.data?.data.find(
     (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
       event.kind === "FOLLOW_UP" && event.followUpId === followUp.id,
@@ -365,7 +426,7 @@ export function FollowUpContent() {
         completedAt: new Date().toISOString(),
       })
       draftStore.reset()
-      await refreshAfterCompletion()
+      await refreshAfterFollowUpUpdate()
       toast.success("Seguimiento completado")
     } catch (error) {
       toast.error("No se pudo completar el seguimiento", {
@@ -380,10 +441,41 @@ export function FollowUpContent() {
     try {
       await updateMutation.mutateAsync({ status })
       draftStore.reset()
-      await refreshAfterCompletion()
+      await refreshAfterFollowUpUpdate()
       toast.success("Seguimiento actualizado")
     } catch (error) {
       toast.error("No se pudo actualizar el seguimiento", {
+        description: (error as Error).message,
+      })
+    }
+  }
+
+  function startEditing() {
+    if (!canEditClosed || !isClosedFollowUpStatus(followUp.status)) return
+
+    setNotes(followUp.notes ?? "")
+    setEditStatus(followUp.status)
+    setEditingFollowUpId(followUp.id)
+  }
+
+  function cancelEditing() {
+    if (!isClosedFollowUpStatus(followUp.status)) return
+
+    setNotes(followUp.notes ?? "")
+    setEditStatus(followUp.status)
+    setEditingFollowUpId(null)
+  }
+
+  async function handleEditSave() {
+    try {
+      const updated = await editMutation.mutateAsync()
+      setNotes(updated.notes ?? "")
+      if (isClosedFollowUpStatus(updated.status)) setEditStatus(updated.status)
+      await refreshAfterFollowUpUpdate()
+      setEditingFollowUpId(null)
+      toast.success("Seguimiento actualizado")
+    } catch (error) {
+      toast.error("No se pudo guardar el seguimiento", {
         description: (error as Error).message,
       })
     }
@@ -413,7 +505,23 @@ export function FollowUpContent() {
       <Card size="sm" className="border-border/60">
         <CardHeader className="border-border/60 border-b pb-4">
           <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
-            <span>Registrar seguimiento</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>
+                {isOpen ? "Registrar seguimiento" : "Detalle del seguimiento"}
+              </span>
+              {canEditClosed && !isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={startEditing}
+                >
+                  <Pencil className="size-3.5" />
+                  Editar seguimiento
+                </Button>
+              )}
+            </div>
             <span
               className={`rounded-full border px-2.5 py-1 text-xs font-medium ${followUpStatusClasses[followUp.status]}`}
             >
@@ -432,44 +540,102 @@ export function FollowUpContent() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div className="space-y-2">
-            <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
-            <Textarea
-              id="follow-up-notes"
-              className="min-h-20 resize-y"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder={
-                followUp.notes ?? "Registrá el resultado del seguimiento..."
-              }
-              disabled={!canManage || !isOpen}
-            />
-          </div>
-          {canManage && isOpen && (
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <Button
-                onClick={handleComplete}
-                disabled={isCompleting}
-                className="gap-1.5"
-              >
-                <CheckCircle2 className="size-4" />
-                {isCompleting ? "Guardando..." : "Completar"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleDiscardStatus("NO_ANSWER")}
-                disabled={isCompleting}
-              >
-                No contestó
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleDiscardStatus("CANCELLED")}
-                disabled={isCompleting}
-              >
-                Cancelar
-              </Button>
+          {isEditing ? (
+            <div className="space-y-4 lg:col-span-2">
+              <div className="max-w-sm space-y-2">
+                <Label htmlFor="follow-up-edit-status">Estado</Label>
+                <Select
+                  items={EDITABLE_STATUS_OPTIONS}
+                  value={editStatus}
+                  onValueChange={(value) => {
+                    if (value) setEditStatus(value as EditableFollowUpStatus)
+                  }}
+                >
+                  <SelectTrigger id="follow-up-edit-status" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITABLE_STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+                <Textarea
+                  id="follow-up-notes"
+                  className="min-h-20 resize-y"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Registrá el resultado del seguimiento..."
+                  disabled={editMutation.isPending}
+                />
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={cancelEditing}
+                  disabled={editMutation.isPending}
+                  className="gap-1.5"
+                >
+                  <X className="size-4" />
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleEditSave}
+                  disabled={editMutation.isPending}
+                  className="gap-1.5"
+                >
+                  <Save className="size-4" />
+                  {editMutation.isPending ? "Guardando..." : "Guardar cambios"}
+                </Button>
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+                <Textarea
+                  id="follow-up-notes"
+                  className="min-h-20 resize-y"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Registrá el resultado del seguimiento..."
+                  disabled={!canManage || !isOpen}
+                />
+              </div>
+              {canManage && isOpen && (
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <Button
+                    onClick={handleComplete}
+                    disabled={isCompleting}
+                    className="gap-1.5"
+                  >
+                    <CheckCircle2 className="size-4" />
+                    {isCompleting ? "Guardando..." : "Completar"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDiscardStatus("NO_ANSWER")}
+                    disabled={isCompleting}
+                  >
+                    No contestó
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDiscardStatus("CANCELLED")}
+                    disabled={isCompleting}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )}
+            </>
           )}
           {hasAnyClinicalDraft(clinicalDrafts) && isOpen && (
             <p className="text-muted-foreground text-xs lg:col-span-2">
@@ -499,6 +665,7 @@ export function FollowUpContent() {
             <CardContent className="px-4 pt-4 pb-4">
               <ClinicalDataTabs
                 patientId={patientId!}
+                followUpId={followUpId}
                 drafts={clinicalDrafts}
                 onDraftsChange={(updater) => draftStore.updateClinical(updater)}
               />

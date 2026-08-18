@@ -548,6 +548,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{id}/companions/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a companion link */
+        patch: operations["PatientsController_updateCompanionLink"];
+        trace?: never;
+    };
     "/patients/{id}/accompanies": {
         parameters: {
             query?: never;
@@ -1481,6 +1498,8 @@ export interface components {
             /** Format: email */
             email?: string;
             isPrimaryInformant?: boolean;
+            isPrimaryContact?: boolean;
+            isCaregiver?: boolean;
             relationship?: string;
         };
         DurationDto: {
@@ -1491,6 +1510,8 @@ export interface components {
             label?: string;
         };
         UpsertPatientDetailsDto: {
+            /** @enum {string} */
+            healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
             birthDepartment?: string;
             /** Format: uuid */
             primaryHealthCenterId?: string;
@@ -1629,6 +1650,8 @@ export interface components {
             familyMemberEmail?: string;
         };
         CreateEnrollmentDto: {
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
             /** Format: uuid */
             patientId?: string;
             patient?: components["schemas"]["CreatePatientDto"];
@@ -1755,6 +1778,8 @@ export interface components {
             followUps: components["schemas"]["CreateScheduledFollowUpDto"][];
         };
         UpdateFollowUpDto: {
+            /** Format: uuid */
+            interlocutorId?: string;
             notes?: string;
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
@@ -1993,6 +2018,8 @@ export interface components {
             /** Format: uuid */
             existingCompanionId: string;
             isPrimaryInformant?: boolean;
+            isPrimaryContact?: boolean;
+            isCaregiver?: boolean;
             relationship?: string;
         };
         CompanionPatientResponseDto: {
@@ -2003,12 +2030,20 @@ export interface components {
             /** Format: uuid */
             patientId: string;
             isPrimaryInformant: boolean;
+            isPrimaryContact: boolean;
+            isCaregiver: boolean;
             relationship: string | null;
             companionDisplayName: string | null;
             /** Format: date-time */
             createdAt: string;
             companion?: components["schemas"]["PatientResponseDto"];
             patient?: components["schemas"]["PatientResponseDto"];
+        };
+        UpdateCompanionLinkDto: {
+            isPrimaryInformant?: boolean;
+            isPrimaryContact?: boolean;
+            isCaregiver?: boolean;
+            relationship?: string;
         };
         CurrentDiagnosisResponseDto: {
             /** Format: uuid */
@@ -2092,11 +2127,21 @@ export interface components {
             unit: "MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR";
             label: string | null;
         };
+        PatientHealthPhaseHistoryResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+            /** Format: date-time */
+            changedAt: string;
+        };
         PatientDetailsResponseDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             patientId: string;
+            /** @enum {string|null} */
+            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
             birthDepartment: string | null;
             /** Format: uuid */
             primaryHealthCenterId: string | null;
@@ -2124,6 +2169,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            healthPhaseHistory: components["schemas"]["PatientHealthPhaseHistoryResponseDto"][];
         };
         PatientDiagnosisResponseDto: {
             /** Format: uuid */
@@ -4625,6 +4671,51 @@ export interface operations {
             };
             /** @description Companion is already linked */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_updateCompanionLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanionLinkDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionPatientResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or companion link not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

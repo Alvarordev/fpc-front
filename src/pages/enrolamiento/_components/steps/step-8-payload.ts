@@ -6,6 +6,7 @@ interface BuildEnrollmentPayloadOptions {
   draft: EnrollmentDraft
   agentId: string
   today?: string
+  healthPhase?: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS"
 }
 
 function value(value: string | null | undefined) {
@@ -23,10 +24,11 @@ function duration(value: Parameters<typeof toDurationInput>[0], field: string) {
   return result
 }
 
-export function buildEnrollmentPayload({ draft, agentId, today = new Date().toISOString().slice(0, 10) }: BuildEnrollmentPayloadOptions): CreateEnrollmentInput {
+export function buildEnrollmentPayload({ draft, agentId, today = new Date().toISOString().slice(0, 10), healthPhase = "CANCER_DIAGNOSIS" }: BuildEnrollmentPayloadOptions): CreateEnrollmentInput {
   const meta = draft.enrollmentMetadata
   const comments = getEnrollmentComments(meta)
   const isFamily = meta.affiliationType === "FAMILY"
+  const includeCompanion = isFamily || meta.hasCaregiver === true
   const hasDiagnosis = Boolean(value(draft.diagnosis.diagnosis))
   const treatmentType = value(draft.treatment.treatmentType)
   const treatmentStartDate = value(draft.treatment.startDate)
@@ -91,6 +93,7 @@ export function buildEnrollmentPayload({ draft, agentId, today = new Date().toIS
     }))
 
   return {
+    healthPhase,
     ...(draft.patientId ? { patientId: draft.patientId } : {
       patient: {
         fullName: draft.patientData.fullName.trim(),
@@ -110,8 +113,8 @@ export function buildEnrollmentPayload({ draft, agentId, today = new Date().toIS
       completedAt: localDateTime(today, meta.endTime),
     },
     affiliationType: isFamily ? "FAMILY_FRIEND" : "SELF",
-    ...(isFamily ? {
-      companion: {
+     ...(includeCompanion ? {
+       companion: {
         fullName: draft.companion.fullName.trim(),
         primaryPhone: draft.companion.primaryPhone.trim(),
         secondaryPhone: value(draft.companion.secondaryPhone),
@@ -121,8 +124,10 @@ export function buildEnrollmentPayload({ draft, agentId, today = new Date().toIS
         hasWhatsapp: draft.companion.hasWhatsapp,
         email: value(draft.companion.email),
         relationship: value(draft.companion.relationship),
-        isPrimaryInformant: true,
-      },
+         isPrimaryInformant: isFamily,
+         isPrimaryContact: isFamily,
+         isCaregiver: true,
+       },
     } : {}),
     details: {
       birthDepartment: value(draft.details.birthDepartment),

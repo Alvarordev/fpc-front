@@ -5,6 +5,10 @@ export type PatientListFilters = NonNullable<
   paths["/patients"]["get"]["parameters"]["query"]
 >
 export type CreatePatientInput = components["schemas"]["CreatePatientDto"]
+export type CreateCompanionInput = components["schemas"]["CreateCompanionDto"]
+export type LinkCompanionInput = components["schemas"]["LinkCompanionDto"]
+export type UpdateCompanionLinkInput =
+  components["schemas"]["UpdateCompanionLinkDto"]
 export type UpdatePatientInput = components["schemas"]["UpdatePatientDto"]
 export type DeactivatePatientInput =
   components["schemas"]["DeactivatePatientDto"]
@@ -152,6 +156,42 @@ export const patientsApi = {
       throw new PatientsApiError(response.status)
     }
 
+    return data
+  },
+
+  async companions(id: string) {
+    const { data, response } = await api.GET("/patients/{id}/companions", {
+      params: { path: { id } },
+    })
+
+    if (!data) throw new PatientsApiError(response.status)
+    return data
+  },
+
+  async createCompanion(patientId: string, input: CreateCompanionInput) {
+    const { data, response } = await api.POST("/patients/{id}/companions", {
+      params: { path: { id: patientId } },
+      body: input,
+    })
+
+    if (!data) throw new PatientsApiError(response.status)
+    return data
+  },
+
+  async updateCompanionLink(
+    patientId: string,
+    linkId: string,
+    input: UpdateCompanionLinkInput,
+  ) {
+    const { data, response } = await api.PATCH(
+      "/patients/{id}/companions/{linkId}",
+      {
+        params: { path: { id: patientId, linkId } },
+        body: input,
+      },
+    )
+
+    if (!data) throw new PatientsApiError(response.status)
     return data
   },
 

@@ -74,6 +74,29 @@ export const genderLabels: Record<string, string> = {
   OTHER: "Otro",
 }
 
+export const zoneTypeLabels: Record<string, string> = {
+  URBAN: "Urbana",
+  URBANA: "Urbana",
+  URBANO: "Urbana",
+  RURAL: "Rural",
+}
+
+export function normalizeZoneType(
+  value: string | null | undefined,
+): "URBAN" | "RURAL" | undefined {
+  if (!value) return undefined
+  const normalized = value.toUpperCase()
+  if (
+    normalized === "URBAN" ||
+    normalized === "URBANA" ||
+    normalized === "URBANO"
+  ) {
+    return "URBAN"
+  }
+  if (normalized === "RURAL") return "RURAL"
+  return undefined
+}
+
 export const roleLabels: Record<PatientDetailsResponse["role"], string> = {
   UNKNOWN: "Sin definir",
   PATIENT: "Paciente",

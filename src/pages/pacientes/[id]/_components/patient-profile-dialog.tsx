@@ -159,7 +159,6 @@ export function PatientProfileDialog({
   const gender = formValues.gender ?? ""
   const birthDepartment = formValues.birthDepartment ?? ""
   const primaryHealthCenterId = formValues.primaryHealthCenterId ?? ""
-  const emergencyContactGender = formValues.emergencyContactGender ?? ""
   const educationLevel = formValues.educationLevel ?? ""
   const hasWhatsapp = formValues.hasWhatsapp ?? false
   const requiresTranslation = formValues.requiresTranslation ?? false
@@ -173,11 +172,6 @@ export function PatientProfileDialog({
     DEPARTMENTS,
     birthDepartment,
     DEPARTMENT_LABELS[birthDepartment],
-  )
-  const emergencyGenderItems = withCurrentOption(
-    GENDER_OPTIONS,
-    emergencyContactGender,
-    genderLabels[emergencyContactGender],
   )
   const educationItems = withCurrentOption(EDUCATION_OPTIONS, educationLevel)
   const healthCenterItems = withCurrentOption(
@@ -384,7 +378,7 @@ export function PatientProfileDialog({
           {canEditDetails && (
             <section className="space-y-3">
               <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Datos demográficos
+                Datos de procedencia y residencia
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -459,47 +453,6 @@ export function PatientProfileDialog({
                     id="patient-native-language"
                     {...register("nativeLanguage")}
                   />
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-md border p-3">
-                <p className="text-sm font-medium">Contacto de emergencia</p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="emergency-contact-name">Nombre</Label>
-                    <Input
-                      id="emergency-contact-name"
-                      {...register("emergencyContactName")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emergency-contact-phone">Teléfono</Label>
-                    <Input
-                      id="emergency-contact-phone"
-                      {...register("emergencyContactPhone")}
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Género</Label>
-                    <Select
-                      items={emergencyGenderItems}
-                      value={emergencyContactGender}
-                      onValueChange={(value) =>
-                        setValue("emergencyContactGender", value ?? "")
-                      }
-                    >
-                      <SelectTrigger id="emergency-contact-gender">
-                        <SelectValue placeholder="Seleccionar género" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {emergencyGenderItems.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
               </div>
 
