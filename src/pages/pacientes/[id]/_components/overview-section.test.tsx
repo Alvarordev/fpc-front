@@ -161,6 +161,8 @@ describe("OverviewSection", () => {
     const pediatricField = screen.getByText("Cáncer infantil")
     expect(pediatricField.parentElement?.textContent).toContain("Sí")
     expect(screen.getByText("Datos de procedencia y residencia")).toBeTruthy()
+    expect(screen.getByText("Residencia actual y temporal")).toBeTruthy()
+    expect(screen.queryByText("Direcciones de residencia")).toBeNull()
     expect(screen.getByText("Arequipa")).toBeTruthy()
     expect(screen.getByText("Residencia actual")).toBeTruthy()
     expect(screen.getByText("Av. Principal 123")).toBeTruthy()

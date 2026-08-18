@@ -120,9 +120,11 @@ function AddressEntry({
 export function PatientRecordsSection({
   patientId,
   enabled = true,
+  embedded = false,
 }: {
   patientId: string
   enabled?: boolean
+  embedded?: boolean
 }) {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
@@ -193,91 +195,102 @@ export function PatientRecordsSection({
 
   if (!enabled) return null
 
+  const content = (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1 text-sm font-medium">
+          <MapPin className="size-3.5" />
+          Residencia actual y temporal
+        </p>
+        {canManage && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 text-xs"
+            onClick={openNewAddress}
+          >
+            <Plus className="size-3" />
+            Agregar
+          </Button>
+        )}
+      </div>
+      {currentAddress ? (
+        <AddressEntry
+          address={currentAddress}
+          title="Residencia actual"
+          canManage={canManage}
+          isPending={addressStatusMutation.isPending}
+          onEdit={() => openEditAddress(currentAddress)}
+          onDeactivate={() => addressStatusMutation.mutate(currentAddress)}
+        />
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          No hay una residencia actual registrada.
+        </p>
+      )}
+
+      {temporaryAddress && (
+        <AddressEntry
+          address={temporaryAddress}
+          title="Residencia temporal"
+          canManage={canManage}
+          isPending={addressStatusMutation.isPending}
+          onEdit={() => openEditAddress(temporaryAddress)}
+          onDeactivate={() => addressStatusMutation.mutate(temporaryAddress)}
+        />
+      )}
+
+      {historicalAddresses.length > 0 && (
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-muted-foreground text-xs font-medium uppercase">
+            Historial de direcciones
+          </p>
+          {historicalAddresses.map((address) => (
+            <AddressEntry
+              key={address.id}
+              address={address}
+              title={addressTypeLabels[address.type]}
+              canManage={canManage}
+              isPending={addressStatusMutation.isPending}
+              onEdit={() => openEditAddress(address)}
+              onDeactivate={() => addressStatusMutation.mutate(address)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+  const dialog = (
+    <PatientAddressDialog
+      open={addressDialogOpen}
+      onOpenChange={(open) => {
+        setAddressDialogOpen(open)
+        if (!open) setEditingAddress(null)
+      }}
+      address={editingAddress}
+      isPending={addressMutation.isPending}
+      onSubmit={(values) =>
+        addressMutation.mutate({ address: editingAddress, values })
+      }
+    />
+  )
+
+  if (embedded)
+    return (
+      <div className="border-t pt-4">
+        {content}
+        {dialog}
+      </div>
+    )
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm">Direcciones de residencia</CardTitle>
       </CardHeader>
-      <CardContent>
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="flex items-center gap-1 text-sm font-medium">
-              <MapPin className="size-3.5" />
-              Residencia
-            </p>
-            {canManage && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1 text-xs"
-                onClick={openNewAddress}
-              >
-                <Plus className="size-3" />
-                Agregar
-              </Button>
-            )}
-          </div>
-          {currentAddress ? (
-            <AddressEntry
-              address={currentAddress}
-              title="Residencia actual"
-              canManage={canManage}
-              isPending={addressStatusMutation.isPending}
-              onEdit={() => openEditAddress(currentAddress)}
-              onDeactivate={() => addressStatusMutation.mutate(currentAddress)}
-            />
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              No hay una residencia actual registrada.
-            </p>
-          )}
-
-          {temporaryAddress && (
-            <AddressEntry
-              address={temporaryAddress}
-              title="Residencia temporal"
-              canManage={canManage}
-              isPending={addressStatusMutation.isPending}
-              onEdit={() => openEditAddress(temporaryAddress)}
-              onDeactivate={() =>
-                addressStatusMutation.mutate(temporaryAddress)
-              }
-            />
-          )}
-
-          {historicalAddresses.length > 0 && (
-            <div className="space-y-2 border-t pt-3">
-              <p className="text-muted-foreground text-xs font-medium uppercase">
-                Historial de direcciones
-              </p>
-              {historicalAddresses.map((address) => (
-                <AddressEntry
-                  key={address.id}
-                  address={address}
-                  title={addressTypeLabels[address.type]}
-                  canManage={canManage}
-                  isPending={addressStatusMutation.isPending}
-                  onEdit={() => openEditAddress(address)}
-                  onDeactivate={() => addressStatusMutation.mutate(address)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </CardContent>
-      <PatientAddressDialog
-        open={addressDialogOpen}
-        onOpenChange={(open) => {
-          setAddressDialogOpen(open)
-          if (!open) setEditingAddress(null)
-        }}
-        address={editingAddress}
-        isPending={addressMutation.isPending}
-        onSubmit={(values) =>
-          addressMutation.mutate({ address: editingAddress, values })
-        }
-      />
+      <CardContent>{content}</CardContent>
+      {dialog}
     </Card>
   )
 }

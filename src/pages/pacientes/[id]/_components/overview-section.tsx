@@ -474,6 +474,10 @@ export function OverviewSection({
                 />
               </div>
 
+              {patient.role !== "COMPANION" && (
+                <PatientRecordsSection patientId={patient.id} embedded />
+              )}
+
               {details.healthPhaseHistory?.length > 0 && (
                 <>
                   <Separator />
@@ -581,9 +585,6 @@ export function OverviewSection({
                 )}
               </div>
             </>
-          )}
-          {patient.role !== "COMPANION" && (
-            <PatientRecordsSection patientId={patient.id} />
           )}
         </CardContent>
       </Card>
