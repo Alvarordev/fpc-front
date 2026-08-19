@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -65,6 +66,7 @@ export function SchedulePsychooncologyDialog({
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<string>()
   const [selectedSlotId, setSelectedSlotId] = useState<string>()
   const [modality, setModality] = useState<"CALL" | "VIDEO_CALL">("CALL")
+  const [zoomLink, setZoomLink] = useState("")
   const volunteerId = ownVolunteerId ?? selectedVolunteerId
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],
@@ -89,6 +91,7 @@ export function SchedulePsychooncologyDialog({
     setSelectedVolunteerId(undefined)
     setSelectedSlotId(undefined)
     setModality("CALL")
+    setZoomLink("")
   }
 
   async function submit() {
@@ -99,6 +102,8 @@ export function SchedulePsychooncologyDialog({
       availabilityId: selectedSlotId,
       followUpId,
       modality,
+      zoomLink:
+        modality === "VIDEO_CALL" && zoomLink.trim() ? zoomLink.trim() : undefined,
     })
     close()
   }
@@ -184,9 +189,11 @@ export function SchedulePsychooncologyDialog({
             <Select
               items={MODALITY_OPTIONS}
               value={modality}
-              onValueChange={(value) =>
-                setModality(value as "CALL" | "VIDEO_CALL")
-              }
+              onValueChange={(value) => {
+                const nextModality = value as "CALL" | "VIDEO_CALL"
+                setModality(nextModality)
+                if (nextModality === "CALL") setZoomLink("")
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -200,6 +207,18 @@ export function SchedulePsychooncologyDialog({
               </SelectContent>
             </Select>
           </div>
+          {modality === "VIDEO_CALL" && (
+            <div className="space-y-2">
+              <Label htmlFor="zoom-link">Link de Zoom (opcional)</Label>
+              <Input
+                id="zoom-link"
+                type="url"
+                value={zoomLink}
+                onChange={(event) => setZoomLink(event.target.value)}
+                placeholder="https://zoom.us/j/..."
+              />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={close}>

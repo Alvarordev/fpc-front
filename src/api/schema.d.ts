@@ -2612,6 +2612,8 @@ export interface components {
             /** Format: uuid */
             followUpId?: string;
             patientEmail?: string;
+            /** Format: uri */
+            zoomLink?: string;
             isAdditionalSession?: boolean;
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
@@ -2629,6 +2631,8 @@ export interface components {
             availabilityId: string;
             /** Format: email */
             patientEmail: string | null;
+            /** Format: uri */
+            zoomLink: string | null;
             sessionNumber: number;
             isAdditionalSession: boolean;
             /** @enum {string} */
