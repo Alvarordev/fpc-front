@@ -66,6 +66,10 @@ export type UpdateTreatmentMedicationInput =
   components["schemas"]["UpdateTreatmentMedicationDto"]
 export type CreatePatientSocialNoteInput =
   components["schemas"]["CreatePatientSocialNoteDto"]
+export type CreatePatientHealthBackgroundAssessmentInput =
+  components["schemas"]["CreatePatientHealthBackgroundAssessmentDto"]
+export type PatientHealthBackgroundAssessment =
+  components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"]
 export type CompanionPatient =
   components["schemas"]["CompanionPatientResponseDto"]
 
@@ -222,6 +226,40 @@ export const patientsApi = {
   ) {
     const { data, response } = await api.POST(
       "/patients/{patientId}/social-notes",
+      {
+        params: { path: { patientId } },
+        body: input,
+      },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async listHealthBackgroundAssessments(patientId: string) {
+    const { data, response } = await api.GET(
+      "/patients/{patientId}/health-background-assessments",
+      {
+        params: { path: { patientId } },
+      },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async createHealthBackgroundAssessment(
+    patientId: string,
+    input: CreatePatientHealthBackgroundAssessmentInput,
+  ) {
+    const { data, response } = await api.POST(
+      "/patients/{patientId}/health-background-assessments",
       {
         params: { path: { patientId } },
         body: input,

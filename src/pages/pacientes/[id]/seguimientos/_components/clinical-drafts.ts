@@ -2,6 +2,7 @@ import type {
   CreatePatientDiagnosisInput,
   CreatePatientAddressInput,
   CreatePatientInsuranceInput,
+  CreatePatientHealthBackgroundAssessmentInput,
   CreatePatientSisAffiliationInput,
   CreatePatientSymptomReportInput,
   CreatePatientTreatmentInput,
@@ -37,6 +38,10 @@ export type SisAffiliationDraft = Omit<
   CreatePatientSisAffiliationInput,
   "followUpId"
 >
+export type HealthBackgroundAssessmentDraft = Omit<
+  CreatePatientHealthBackgroundAssessmentInput,
+  "followUpId"
+>
 export type SymptomReportDraft = Omit<
   CreatePatientSymptomReportInput,
   "followUpId" | "symptomDuration" | "symptomFrequency"
@@ -54,6 +59,7 @@ export interface ClinicalDrafts {
   symptomReport?: SymptomReportDraft
   insurance?: InsuranceDraft
   sisAffiliation?: SisAffiliationDraft
+  healthBackground?: HealthBackgroundAssessmentDraft
   address?: Omit<CreatePatientAddressInput, "followUpId">
 }
 
@@ -67,6 +73,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.symptomReport ||
     drafts.insurance ||
     drafts.sisAffiliation ||
+    drafts.healthBackground ||
     drafts.address,
   )
 }

@@ -236,6 +236,75 @@ describe("step 8 Nest enrollment payload", () => {
     })
   })
 
+  it("maps the new clinical fields and omits cancer treatment status metadata", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnosis: {
+          diagnosis: "Cáncer de mama",
+          diagnosisSpecialty: "Oncología",
+          isSepaActiveReferral: true,
+          isCurrent: true,
+        },
+        treatment: {
+          diagnosisId: "diagnosis-1",
+          treatmentType: "Cirugía",
+          operationName: "Mastectomía",
+          careProgram: "COPHOES",
+          receivesTeleconsultation: true,
+          teleconsultationNote: "Control remoto",
+          teleconsultationSpecialties: ["Oncología", "Psicología"],
+          treatmentSituation: "ABANDONED",
+          treatmentAbandonmentReason: "Cambio de ciudad",
+          isCurrent: true,
+        },
+        healthBackgroundAssessment: {
+          hasPsychiatry: false,
+          activeComorbidities: [
+            {
+              conditionName: "Hipertensión",
+              treatmentDescription: "Losartán",
+              followUpSpecialty: "Cardiología",
+            },
+          ],
+          limitations: [
+            { description: "Movilidad reducida", cause: "TREATMENT" },
+          ],
+          familyCancerHistory: [{ relationship: "Madre", cancerType: "Mama" }],
+        },
+        enrollmentMetadata: { currentlyReceivingTreatment: false },
+      }),
+    })
+
+    expect(payload.diagnosis).toMatchObject({
+      diagnosisSpecialty: "Oncología",
+    })
+    expect(payload.diagnosis).not.toHaveProperty("isSepaActiveReferral")
+    expect(payload.treatments?.[0]).toMatchObject({
+      operationName: "Mastectomía",
+      careProgram: "COPHOES",
+      receivesTeleconsultation: true,
+      teleconsultationNote: "Control remoto",
+      teleconsultationSpecialties: ["Oncología", "Psicología"],
+      treatmentSituation: "ABANDONED",
+      treatmentAbandonmentReason: "Cambio de ciudad",
+    })
+    expect(payload.healthBackgroundAssessment).toMatchObject({
+      hasPsychiatry: false,
+      activeComorbidities: [
+        {
+          conditionName: "Hipertensión",
+          treatmentDescription: "Losartán",
+          followUpSpecialty: "Cardiología",
+        },
+      ],
+      limitations: [{ description: "Movilidad reducida", cause: "TREATMENT" }],
+      familyCancerHistory: [{ relationship: "Madre", cancerType: "Mama" }],
+    })
+    expect("currentlyReceivingTreatment" in payload).toBe(false)
+  })
+
   it("serializes accumulated enrollment notes into both comment destinations", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",

@@ -307,7 +307,22 @@ export function FollowUpContent() {
         endDate: treatmentDraft.endDate,
         changeReason: treatmentDraft.changeReason,
         notReceivingReason: treatmentDraft.notReceivingReason,
+        operationName: treatmentDraft.operationName,
+        careProgram: treatmentDraft.careProgram,
+        receivesTeleconsultation: treatmentDraft.receivesTeleconsultation,
+        teleconsultationNote:
+          treatmentDraft.receivesTeleconsultation === true
+            ? treatmentDraft.teleconsultationNote
+            : undefined,
+        teleconsultationSpecialties:
+          treatmentDraft.receivesTeleconsultation === true
+            ? treatmentDraft.teleconsultationSpecialties
+            : undefined,
         treatmentSituation: treatmentDraft.treatmentSituation,
+        treatmentAbandonmentReason:
+          treatmentDraft.treatmentSituation === "ABANDONED"
+            ? treatmentDraft.treatmentAbandonmentReason
+            : undefined,
         hasLatestPrescription: treatmentDraft.hasLatestPrescription,
         latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
         treatmentFrequency: normalizedFrequency,
@@ -352,6 +367,12 @@ export function FollowUpContent() {
     if (clinicalDrafts.sisAffiliation) {
       await patientsApi.createSisAffiliation(patientId!, {
         ...clinicalDrafts.sisAffiliation,
+        followUpId: followUpId!,
+      })
+    }
+    if (clinicalDrafts.healthBackground) {
+      await patientsApi.createHealthBackgroundAssessment(patientId!, {
+        ...clinicalDrafts.healthBackground,
         followUpId: followUpId!,
       })
     }

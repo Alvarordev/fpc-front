@@ -44,4 +44,8 @@ describe("clinical follow-up drafts", () => {
       }),
     ).toBe(true)
   })
+
+  it("keeps an explicitly saved health background draft pending", () => {
+    expect(hasAnyClinicalDraft({ healthBackground: {} })).toBe(true)
+  })
 })

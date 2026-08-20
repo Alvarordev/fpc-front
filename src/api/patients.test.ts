@@ -103,4 +103,53 @@ describe("patients API", () => {
       note: "Se explicó el beneficio.",
     })
   })
+
+  it("records and lists health background assessments", async () => {
+    vi.stubEnv("VITE_API_URL", "http://localhost:3000")
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      removeItem: () => undefined,
+      setItem: () => undefined,
+    })
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "assessment-1" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: "assessment-1" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { patientsApi } = await import("./patients")
+    await patientsApi.createHealthBackgroundAssessment("patient-1", {
+      followUpId: "follow-up-1",
+      hasPsychiatry: true,
+      activeComorbidities: [{ conditionName: "Hipertensión" }],
+    })
+    const assessments =
+      await patientsApi.listHealthBackgroundAssessments("patient-1")
+
+    expect(assessments).toEqual([{ id: "assessment-1" }])
+    const createRequest = fetchMock.mock.calls[0]?.[0] as Request
+    expect(createRequest.url).toBe(
+      "http://localhost:3000/patients/patient-1/health-background-assessments",
+    )
+    expect(createRequest.method).toBe("POST")
+    expect(await createRequest.json()).toMatchObject({
+      followUpId: "follow-up-1",
+      hasPsychiatry: true,
+    })
+    const listRequest = fetchMock.mock.calls[1]?.[0] as Request
+    expect(listRequest.url).toBe(
+      "http://localhost:3000/patients/patient-1/health-background-assessments",
+    )
+    expect(listRequest.method).toBe("GET")
+  })
 })

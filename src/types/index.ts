@@ -172,6 +172,7 @@ export interface AddDiagnosisRequest {
   symptomLeadingToCheckup?: string | null
   waitTimeForDiagnosis?: DurationDraft
   hasMedicalReport?: boolean
+  isSepaActiveReferral?: boolean | null
   isCurrent: boolean
   changeReason?: string | null
 }
@@ -181,6 +182,13 @@ export type TreatmentSituation =
   | "PENDIENTE_DE_INICIO"
   | "INTERRUMPIDO"
   | "FINALIZADO"
+  | "SEARCHING"
+  | "ABANDONED"
+  | "DECEASED_DURING_TREATMENT"
+  | "NOT_APPLICABLE"
+  | "REMISSION"
+
+export type CareProgram = "COPHOES" | "PADOMI"
 
 export type MedicationDoseUnit =
   | "MG"
@@ -223,7 +231,15 @@ export interface AddTreatmentRequest {
   isCurrent: boolean
   changeReason?: string | null
   notReceivingReason?: string | null
+  /** UI-only flag; the API stores the operation name when present. */
+  isOperation?: boolean
   treatmentSituation?: TreatmentSituation | null
+  operationName?: string | null
+  careProgram?: CareProgram | null
+  receivesTeleconsultation?: boolean | null
+  teleconsultationNote?: string | null
+  teleconsultationSpecialties?: string[] | null
+  treatmentAbandonmentReason?: string | null
   hasLatestPrescription?: boolean
   latestPrescriptionDate?: string | null
   medications?: AddTreatmentMedicationRequest[]
@@ -242,9 +258,38 @@ export interface AddMedicalAppointmentRequest {
 
 export interface AddSisAffiliationRequest {
   canAffiliate: boolean
+  affiliatedViaSepa?: boolean | null
   expectedDate?: string | null
   cantAffiliateReason?: string | null
   comments?: string | null
+}
+
+export type HealthBackgroundCause =
+  | "DIAGNOSIS"
+  | "TREATMENT"
+  | "NATURAL_CONDITION"
+
+export interface ActiveComorbidityRequest {
+  conditionName: string
+  treatmentDescription?: string
+  followUpSpecialty?: string
+}
+
+export interface LimitationRequest {
+  description: string
+  cause: HealthBackgroundCause
+}
+
+export interface FamilyCancerHistoryRequest {
+  relationship: string
+  cancerType?: string
+}
+
+export interface HealthBackgroundAssessmentRequest {
+  hasPsychiatry?: boolean | null
+  activeComorbidities?: ActiveComorbidityRequest[]
+  limitations?: LimitationRequest[]
+  familyCancerHistory?: FamilyCancerHistoryRequest[]
 }
 
 export interface EnrollmentMetadataRequest {

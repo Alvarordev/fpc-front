@@ -124,10 +124,15 @@ export const relationshipLabels: Record<string, string> = {
 }
 
 export const treatmentSituationLabels: Record<TreatmentSituation, string> = {
-  EN_CURSO: "En curso",
-  PENDIENTE_DE_INICIO: "Pendiente de inicio",
-  INTERRUMPIDO: "Interrumpido",
-  FINALIZADO: "Finalizado",
+  EN_CURSO: "En proceso",
+  PENDIENTE_DE_INICIO: "En espera",
+  INTERRUMPIDO: "Suspendido",
+  FINALIZADO: "Culminado",
+  SEARCHING: "En búsqueda",
+  ABANDONED: "Abandonado",
+  DECEASED_DURING_TREATMENT: "Culminado en situación de tratamiento",
+  NOT_APPLICABLE: "N/A",
+  REMISSION: "En remisión",
 }
 
 export const medicationDoseUnitLabels: Record<MedicationDoseUnit, string> = {

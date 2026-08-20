@@ -909,6 +909,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/health-background-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient health background assessments */
+        get: operations["PatientHealthBackgroundAssessmentsController_findAll"];
+        put?: never;
+        /** Record a patient health background assessment */
+        post: operations["PatientHealthBackgroundAssessmentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/psychooncology-appointments": {
         parameters: {
             query?: never;
@@ -1546,6 +1564,7 @@ export interface components {
         };
         EnrollmentSisAffiliationDto: {
             canAffiliate: boolean;
+            affiliatedViaSepa?: boolean;
             expectedDate?: string;
             cantAffiliateReason?: string;
             affiliatedAt?: string;
@@ -1563,6 +1582,7 @@ export interface components {
             symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
+            isSepaActiveReferral?: boolean;
             changeReason?: string;
         };
         CreateTreatmentMedicationDto: {
@@ -1593,8 +1613,15 @@ export interface components {
             endDate?: string;
             changeReason?: string;
             notReceivingReason?: string;
+            operationName?: string;
             /** @enum {string} */
-            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO";
+            careProgram?: "COPHOES" | "PADOMI";
+            receivesTeleconsultation?: boolean;
+            teleconsultationNote?: string;
+            teleconsultationSpecialties?: string[];
+            /** @enum {string} */
+            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentAbandonmentReason?: string;
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
@@ -1643,6 +1670,26 @@ export interface components {
             healthCenterId?: string;
             specialty?: string;
         };
+        CreatePatientActiveComorbidityDto: {
+            conditionName: string;
+            treatmentDescription?: string;
+            followUpSpecialty?: string;
+        };
+        CreatePatientLimitationDto: {
+            description: string;
+            /** @enum {string} */
+            cause: "DIAGNOSIS" | "TREATMENT" | "NATURAL_CONDITION";
+        };
+        CreatePatientFamilyCancerHistoryDto: {
+            relationship: string;
+            cancerType?: string;
+        };
+        EnrollmentHealthBackgroundAssessmentDto: {
+            hasPsychiatry?: boolean;
+            activeComorbidities?: components["schemas"]["CreatePatientActiveComorbidityDto"][];
+            limitations?: components["schemas"]["CreatePatientLimitationDto"][];
+            familyCancerHistory?: components["schemas"]["CreatePatientFamilyCancerHistoryDto"][];
+        };
         CreateEnrollmentFamilyTalkInterestDto: {
             talkName: string;
             familyMemberName: string;
@@ -1669,6 +1716,7 @@ export interface components {
             medicalAppointments?: components["schemas"]["EnrollmentMedicalAppointmentDto"][];
             addresses?: components["schemas"]["EnrollmentAddressDto"][];
             symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
+            healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
             currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
             entrySource?: string;
@@ -2194,6 +2242,7 @@ export interface components {
             waitTimeSource: "COMPUTED" | "REPORTED" | null;
             waitTimeForDiagnosis: components["schemas"]["DurationResponseDto"] | null;
             hasMedicalReport: boolean;
+            isSepaActiveReferral: boolean | null;
             isCurrent: boolean;
             changeReason: string | null;
             /** Format: date-time */
@@ -2236,8 +2285,15 @@ export interface components {
             isCurrent: boolean;
             changeReason: string | null;
             notReceivingReason: string | null;
+            operationName: string | null;
             /** @enum {string|null} */
-            treatmentSituation: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | null;
+            careProgram: "COPHOES" | "PADOMI" | null;
+            receivesTeleconsultation: boolean | null;
+            teleconsultationNote: string | null;
+            teleconsultationSpecialties: string[] | null;
+            /** @enum {string|null} */
+            treatmentSituation: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION" | null;
+            treatmentAbandonmentReason: string | null;
             hasLatestPrescription: boolean | null;
             /** Format: date */
             latestPrescriptionDate: string | null;
@@ -2298,6 +2354,7 @@ export interface components {
             /** Format: uuid */
             followUpId: string;
             canAffiliate: boolean;
+            affiliatedViaSepa: boolean | null;
             /** Format: date */
             expectedDate: string | null;
             cantAffiliateReason: string | null;
@@ -2331,6 +2388,40 @@ export interface components {
             /** Format: uuid */
             healthCenterId: string | null;
             specialty: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientActiveComorbidityResponseDto: {
+            /** Format: uuid */
+            id: string;
+            conditionName: string;
+            treatmentDescription: string | null;
+            followUpSpecialty: string | null;
+        };
+        PatientLimitationResponseDto: {
+            /** Format: uuid */
+            id: string;
+            description: string;
+            /** @enum {string} */
+            cause: "DIAGNOSIS" | "TREATMENT" | "NATURAL_CONDITION";
+        };
+        PatientFamilyCancerHistoryResponseDto: {
+            /** Format: uuid */
+            id: string;
+            relationship: string;
+            cancerType: string | null;
+        };
+        PatientHealthBackgroundAssessmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            hasPsychiatry: boolean | null;
+            activeComorbidities: components["schemas"]["PatientActiveComorbidityResponseDto"][];
+            limitations: components["schemas"]["PatientLimitationResponseDto"][];
+            familyCancerHistory: components["schemas"]["PatientFamilyCancerHistoryResponseDto"][];
             /** Format: date-time */
             createdAt: string;
         };
@@ -2372,6 +2463,7 @@ export interface components {
             medicalAppointments: components["schemas"]["PatientMedicalAppointmentResponseDto"][];
             sisAffiliations: components["schemas"]["PatientSisAffiliationResponseDto"][];
             symptomReports: components["schemas"]["PatientSymptomReportResponseDto"][];
+            healthBackgroundAssessments: components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"][];
             companions: components["schemas"]["CompanionPatientResponseDto"][];
         };
         UpdatePatientDto: {
@@ -2406,6 +2498,7 @@ export interface components {
             symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
+            isSepaActiveReferral?: boolean;
             changeReason?: string;
         };
         CreatePatientInsuranceDto: {
@@ -2438,6 +2531,7 @@ export interface components {
             /** Format: uuid */
             followUpId: string;
             canAffiliate: boolean;
+            affiliatedViaSepa?: boolean;
             expectedDate?: string;
             cantAffiliateReason?: string;
             affiliatedAt?: string;
@@ -2461,8 +2555,15 @@ export interface components {
             endDate?: string;
             changeReason?: string;
             notReceivingReason?: string;
+            operationName?: string;
             /** @enum {string} */
-            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO";
+            careProgram?: "COPHOES" | "PADOMI";
+            receivesTeleconsultation?: boolean;
+            teleconsultationNote?: string;
+            teleconsultationSpecialties?: string[];
+            /** @enum {string} */
+            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentAbandonmentReason?: string;
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
@@ -2603,6 +2704,14 @@ export interface components {
             authorId: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        CreatePatientHealthBackgroundAssessmentDto: {
+            /** Format: uuid */
+            followUpId: string;
+            hasPsychiatry?: boolean;
+            activeComorbidities?: components["schemas"]["CreatePatientActiveComorbidityDto"][];
+            limitations?: components["schemas"]["CreatePatientLimitationDto"][];
+            familyCancerHistory?: components["schemas"]["CreatePatientFamilyCancerHistoryDto"][];
         };
         CreatePsychooncologyAppointmentDto: {
             /** Format: uuid */
@@ -6015,6 +6124,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PatientSocialNoteResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientHealthBackgroundAssessmentsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientHealthBackgroundAssessmentsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientHealthBackgroundAssessmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"];
                 };
             };
             /** @description Invalid request payload */

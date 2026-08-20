@@ -30,7 +30,9 @@ import { calculateDurationBetweenDates } from "@/types/duration"
 import type {
   AddMedicalAppointmentRequest,
   AddTreatmentMedicationRequest,
+  CareProgram,
   CancerStage,
+  HealthBackgroundCause,
   MedicationDoseUnit,
   MedicationRoute,
   TreatmentSituation,
@@ -75,10 +77,43 @@ const TREATMENT_SITUATIONS: Array<{
   value: TreatmentSituation
   label: string
 }> = [
-  { value: "EN_CURSO", label: "En curso" },
-  { value: "PENDIENTE_DE_INICIO", label: "Pendiente de inicio" },
-  { value: "INTERRUMPIDO", label: "Interrumpido" },
-  { value: "FINALIZADO", label: "Finalizado" },
+  { value: "EN_CURSO", label: "En proceso" },
+  { value: "PENDIENTE_DE_INICIO", label: "En espera" },
+  { value: "INTERRUMPIDO", label: "Suspendido" },
+  { value: "FINALIZADO", label: "Culminado" },
+  { value: "SEARCHING", label: "En búsqueda" },
+  { value: "ABANDONED", label: "Abandonado" },
+  {
+    value: "DECEASED_DURING_TREATMENT",
+    label: "Culminado en situación de tratamiento",
+  },
+  { value: "NOT_APPLICABLE", label: "N/A" },
+  { value: "REMISSION", label: "En remisión" },
+]
+
+const YES_NO_OPTIONS = [
+  { value: "Sí", label: "Sí" },
+  { value: "No", label: "No" },
+] as const
+
+const TRI_STATE_OPTIONS = [
+  { value: "SIN_DATO", label: "Sin dato" },
+  { value: "SI", label: "Sí" },
+  { value: "NO", label: "No" },
+] as const
+
+const CARE_PROGRAMS: Array<{ value: CareProgram; label: string }> = [
+  { value: "COPHOES", label: "COPHOES" },
+  { value: "PADOMI", label: "PADOMI" },
+]
+
+const HEALTH_BACKGROUND_CAUSES: Array<{
+  value: HealthBackgroundCause
+  label: string
+}> = [
+  { value: "DIAGNOSIS", label: "Diagnóstico" },
+  { value: "TREATMENT", label: "Tratamiento" },
+  { value: "NATURAL_CONDITION", label: "Condición natural" },
 ]
 
 const DOSE_UNITS: Array<{ value: MedicationDoseUnit; label: string }> = [
@@ -131,6 +166,7 @@ export function Step7Atencion() {
   const dx = draft.diagnosis
   const tx = draft.treatment
   const sis = draft.sisAffiliation
+  const healthBackground = draft.healthBackgroundAssessment
   const details = draft.details
   const meta = draft.enrollmentMetadata
   const seguro = draft.insurance.insuranceType
@@ -154,6 +190,9 @@ export function Step7Atencion() {
 
   const medicalAppointments = draft.medicalAppointments ?? []
   const medications = tx.medications ?? []
+  const activeComorbidities = healthBackground.activeComorbidities ?? []
+  const limitations = healthBackground.limitations ?? []
+  const familyCancerHistory = healthBackground.familyCancerHistory ?? []
   const familyPreventionTalkInterests =
     draft.familyPreventionTalkInterests ?? []
   const appointment = medicalAppointments[0] ?? EMPTY_APPOINTMENT
@@ -241,6 +280,87 @@ export function Step7Atencion() {
           (_, medicationIndex) => medicationIndex !== index,
         ),
       },
+    })
+  }
+
+  function updateHealthBackground(partial: Partial<typeof healthBackground>) {
+    updateDraft({
+      healthBackgroundAssessment: { ...healthBackground, ...partial },
+    })
+  }
+
+  function addActiveComorbidity() {
+    updateHealthBackground({
+      activeComorbidities: [...activeComorbidities, { conditionName: "" }],
+    })
+  }
+
+  function updateActiveComorbidity(
+    index: number,
+    field: "conditionName" | "treatmentDescription" | "followUpSpecialty",
+    value: string,
+  ) {
+    updateHealthBackground({
+      activeComorbidities: activeComorbidities.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value || undefined } : item,
+      ),
+    })
+  }
+
+  function removeActiveComorbidity(index: number) {
+    updateHealthBackground({
+      activeComorbidities: activeComorbidities.filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
+    })
+  }
+
+  function addLimitation() {
+    updateHealthBackground({
+      limitations: [...limitations, { description: "", cause: "DIAGNOSIS" }],
+    })
+  }
+
+  function updateLimitation(
+    index: number,
+    partial: Partial<(typeof limitations)[number]>,
+  ) {
+    updateHealthBackground({
+      limitations: limitations.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...partial } : item,
+      ),
+    })
+  }
+
+  function removeLimitation(index: number) {
+    updateHealthBackground({
+      limitations: limitations.filter((_, itemIndex) => itemIndex !== index),
+    })
+  }
+
+  function addFamilyCancerHistory() {
+    updateHealthBackground({
+      familyCancerHistory: [...familyCancerHistory, { relationship: "" }],
+    })
+  }
+
+  function updateFamilyCancerHistory(
+    index: number,
+    field: "relationship" | "cancerType",
+    value: string,
+  ) {
+    updateHealthBackground({
+      familyCancerHistory: familyCancerHistory.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value || undefined } : item,
+      ),
+    })
+  }
+
+  function removeFamilyCancerHistory(index: number) {
+    updateHealthBackground({
+      familyCancerHistory: familyCancerHistory.filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
     })
   }
 
@@ -355,6 +475,7 @@ export function Step7Atencion() {
           <div className="flex flex-col gap-2">
             <Label className={fl}>¿Presenta malestar o dolor?</Label>
             <Select
+              items={YES_NO_OPTIONS}
               value={
                 sr.hasDiscomfort === true
                   ? "Sí"
@@ -398,6 +519,7 @@ export function Step7Atencion() {
               ¿Actualmente ha sacado o asistido a una cita médica?
             </Label>
             <Select
+              items={YES_NO_OPTIONS}
               value={
                 sr.hasSoughtMedicalConsultation === true
                   ? "Sí"
@@ -472,6 +594,42 @@ export function Step7Atencion() {
               updateDraft({ symptomReport: { ...sr, symptomFrequency } })
             }
           />
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              ¿Actualmente recibe tratamiento médico?
+            </Label>
+            <Select
+              items={YES_NO_OPTIONS}
+              value={
+                meta.currentlyReceivingTreatment === true
+                  ? "Sí"
+                  : meta.currentlyReceivingTreatment === false
+                    ? "No"
+                    : ""
+              }
+              onValueChange={(value) => {
+                const receives = value === "Sí"
+                updateDraft({
+                  enrollmentMetadata: {
+                    ...meta,
+                    currentlyReceivingTreatment: receives,
+                  },
+                  treatment: { ...tx, isCurrent: receives },
+                })
+              }}
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                {YES_NO_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </section>
       )}
 
@@ -486,6 +644,13 @@ export function Step7Atencion() {
                   <span className="text-destructive">*</span>
                 </Label>
                 <Select
+                  items={[
+                    ...DIAGNOSIS_OPTIONS.map((value) => ({
+                      value,
+                      label: value,
+                    })),
+                    { value: OTHER_VALUE, label: "Otro (especificar)" },
+                  ]}
                   value={diagnosisSelectValue}
                   onValueChange={(v) => {
                     if (!v) return
@@ -692,6 +857,7 @@ export function Step7Atencion() {
                 ¿Cuenta con informe médico de respaldo?
               </Label>
               <Select
+                items={YES_NO_OPTIONS}
                 value={
                   dx.hasMedicalReport === true
                     ? "Sí"
@@ -723,6 +889,7 @@ export function Step7Atencion() {
                 ¿Actualmente asiste a sus consultas médicas?
               </Label>
               <Select
+                items={YES_NO_OPTIONS}
                 value={
                   meta.currentlyAttendingConsultations === true
                     ? "Sí"
@@ -824,6 +991,7 @@ export function Step7Atencion() {
                 ¿Recibe este tratamiento por derivación?
               </Label>
               <Select
+                items={YES_NO_OPTIONS}
                 value={tx.isReferred === true ? "Sí" : "No"}
                 onValueChange={(v) => {
                   const isReferred = v === "Sí"
@@ -975,38 +1143,6 @@ export function Step7Atencion() {
             )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label className={flGrid}>
-                  ¿Actualmente recibe tratamiento médico?
-                </Label>
-                <Select
-                  value={
-                    meta.currentlyReceivingTreatment === true
-                      ? "Sí"
-                      : meta.currentlyReceivingTreatment === false
-                        ? "No"
-                        : ""
-                  }
-                  onValueChange={(v) => {
-                    const receives = v === "Sí"
-                    updateDraft({
-                      enrollmentMetadata: {
-                        ...meta,
-                        currentlyReceivingTreatment: receives,
-                      },
-                      treatment: { ...tx, isCurrent: receives },
-                    })
-                  }}
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Sí">Sí</SelectItem>
-                    <SelectItem value="No">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
                 <Label className={flGrid}>Situación del tratamiento</Label>
                 <Select
                   items={TREATMENT_SITUATIONS}
@@ -1035,82 +1171,231 @@ export function Step7Atencion() {
                 </Select>
               </div>
             </div>
-            {meta.currentlyReceivingTreatment !== false && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                  <Label className={flGrid}>
-                    ¿Qué tipo de tratamiento recibe?
-                  </Label>
-                  <Input
-                    value={tx.treatmentType}
-                    onChange={(e) =>
-                      updateDraft({
-                        treatment: { ...tx, treatmentType: e.target.value },
-                      })
-                    }
-                    placeholder="Ej: Quimioterapia"
-                    className="bg-card border"
-                  />
-                </div>
-                <DurationInput
-                  label="Frecuencia del tratamiento"
-                  units={["DAY", "WEEK", "MONTH", "YEAR"]}
-                  defaultUnit="WEEK"
-                  singleValue
-                  value={tx.treatmentFrequency}
-                  onChange={(treatmentFrequency) =>
-                    updateDraft({ treatment: { ...tx, treatmentFrequency } })
-                  }
-                />
-                <div className="flex flex-col gap-2">
-                  <Label className={flGrid}>Fecha de inicio</Label>
-                  <Input
-                    type="date"
-                    value={tx.startDate ?? ""}
-                    onChange={(e) =>
-                      updateDraft({
-                        treatment: { ...tx, startDate: e.target.value || null },
-                      })
-                    }
-                    className="bg-card border"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={flGrid}>Fecha de fin (opcional)</Label>
-                  <Input
-                    type="date"
-                    value={tx.endDate ?? ""}
-                    min={tx.startDate ?? undefined}
-                    onChange={(e) =>
-                      updateDraft({
-                        treatment: { ...tx, endDate: e.target.value || null },
-                      })
-                    }
-                    className="bg-card border"
-                  />
-                </div>
-              </div>
-            )}
-            {meta.currentlyReceivingTreatment === false && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label className={fl}>
-                  Tipo y frecuencia de tratamiento / motivo si no recibe
+                <Label className={flGrid}>
+                  ¿Qué tipo de tratamiento recibe?
                 </Label>
-                <Textarea
-                  value={tx.notReceivingReason ?? ""}
+                <Input
+                  value={tx.treatmentType}
                   onChange={(e) =>
+                    updateDraft({
+                      treatment: { ...tx, treatmentType: e.target.value },
+                    })
+                  }
+                  placeholder="Ej: Quimioterapia"
+                  className="bg-card border"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className={flGrid}>¿Es una operación?</Label>
+                <Select
+                  items={YES_NO_OPTIONS}
+                  value={
+                    (tx.isOperation ?? Boolean(tx.operationName)) === true
+                      ? "Sí"
+                      : (tx.isOperation ?? Boolean(tx.operationName)) === false
+                        ? "No"
+                        : ""
+                  }
+                  onValueChange={(value) =>
                     updateDraft({
                       treatment: {
                         ...tx,
-                        notReceivingReason: e.target.value || null,
+                        isOperation: value === "Sí",
+                        operationName: value === "Sí" ? tx.operationName : null,
                       },
                     })
                   }
-                  placeholder="Motivo si no recibe tratamiento"
-                  className="bg-card min-h-20 border"
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue placeholder="Seleccionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {YES_NO_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(tx.isOperation ?? Boolean(tx.operationName)) && (
+                <div className="flex flex-col gap-2">
+                  <Label className={flGrid}>Nombre de la operación</Label>
+                  <Input
+                    value={tx.operationName ?? ""}
+                    onChange={(e) =>
+                      updateDraft({
+                        treatment: {
+                          ...tx,
+                          operationName: e.target.value || null,
+                        },
+                      })
+                    }
+                    placeholder="Ej: Mastectomía"
+                    className="bg-card border"
+                  />
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <Label className={flGrid}>Programa de atención</Label>
+                <Select
+                  items={CARE_PROGRAMS}
+                  value={tx.careProgram ?? ""}
+                  onValueChange={(value) =>
+                    updateDraft({
+                      treatment: {
+                        ...tx,
+                        careProgram: (value || undefined) as
+                          | CareProgram
+                          | undefined,
+                      },
+                    })
+                  }
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue placeholder="Seleccionar programa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARE_PROGRAMS.map((program) => (
+                      <SelectItem key={program.value} value={program.value}>
+                        {program.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DurationInput
+                label="Frecuencia del tratamiento"
+                units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                defaultUnit="WEEK"
+                singleValue
+                value={tx.treatmentFrequency}
+                onChange={(treatmentFrequency) =>
+                  updateDraft({ treatment: { ...tx, treatmentFrequency } })
+                }
+              />
+              <div className="flex flex-col gap-2">
+                <Label className={flGrid}>Fecha de inicio</Label>
+                <Input
+                  type="date"
+                  value={tx.startDate ?? ""}
+                  onChange={(e) =>
+                    updateDraft({
+                      treatment: { ...tx, startDate: e.target.value || null },
+                    })
+                  }
+                  className="bg-card border"
                 />
               </div>
-            )}
+              <div className="flex flex-col gap-2">
+                <Label className={flGrid}>Fecha de fin (opcional)</Label>
+                <Input
+                  type="date"
+                  value={tx.endDate ?? ""}
+                  min={tx.startDate ?? undefined}
+                  onChange={(e) =>
+                    updateDraft({
+                      treatment: { ...tx, endDate: e.target.value || null },
+                    })
+                  }
+                  className="bg-card border"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className={flGrid}>¿Recibe teleconsulta?</Label>
+                <Select
+                  items={TRI_STATE_OPTIONS}
+                  value={
+                    tx.receivesTeleconsultation === true
+                      ? "SI"
+                      : tx.receivesTeleconsultation === false
+                        ? "NO"
+                        : "SIN_DATO"
+                  }
+                  onValueChange={(value) =>
+                    updateDraft({
+                      treatment: {
+                        ...tx,
+                        receivesTeleconsultation:
+                          value === "SIN_DATO" ? undefined : value === "SI",
+                      },
+                    })
+                  }
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRI_STATE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {tx.receivesTeleconsultation === true && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>Nota de teleconsulta</Label>
+                    <Textarea
+                      value={tx.teleconsultationNote ?? ""}
+                      onChange={(e) =>
+                        updateDraft({
+                          treatment: {
+                            ...tx,
+                            teleconsultationNote: e.target.value || null,
+                          },
+                        })
+                      }
+                      placeholder="Detalle de la teleconsulta"
+                      className="bg-card min-h-16 border"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>
+                      Especialidades de teleconsulta
+                    </Label>
+                    <Input
+                      value={(tx.teleconsultationSpecialties ?? []).join(", ")}
+                      onChange={(e) =>
+                        updateDraft({
+                          treatment: {
+                            ...tx,
+                            teleconsultationSpecialties: e.target.value
+                              .split(",")
+                              .map((specialty) => specialty.trim())
+                              .filter(Boolean),
+                          },
+                        })
+                      }
+                      placeholder="Ej: Oncología, Psicología"
+                      className="bg-card border"
+                    />
+                  </div>
+                </>
+              )}
+              {tx.treatmentSituation === "ABANDONED" && (
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <Label className={flGrid}>Motivo de abandono</Label>
+                  <Textarea
+                    value={tx.treatmentAbandonmentReason ?? ""}
+                    onChange={(e) =>
+                      updateDraft({
+                        treatment: {
+                          ...tx,
+                          treatmentAbandonmentReason: e.target.value || null,
+                        },
+                      })
+                    }
+                    placeholder="Describe el motivo del abandono"
+                    className="bg-card min-h-16 border"
+                  />
+                </div>
+              )}
+            </div>
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -1312,11 +1597,301 @@ export function Step7Atencion() {
       )}
 
       <section className="flex flex-col gap-5">
+        <SectionHeader
+          icon={Stethoscope}
+          title="Antecedentes y comorbilidades"
+        />
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Tiene antecedentes de psiquiatría?</Label>
+          <Select
+            items={TRI_STATE_OPTIONS}
+            value={
+              healthBackground.hasPsychiatry === true
+                ? "SI"
+                : healthBackground.hasPsychiatry === false
+                  ? "NO"
+                  : "SIN_DATO"
+            }
+            onValueChange={(value) =>
+              updateHealthBackground({
+                hasPsychiatry:
+                  value === "SIN_DATO" ? undefined : value === "SI",
+              })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TRI_STATE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Comorbilidades activas</p>
+              <p className="text-muted-foreground text-xs">
+                Registra las condiciones que requieren atención actualmente.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={addActiveComorbidity}
+            >
+              <Plus className="size-3.5" />
+              Agregar
+            </Button>
+          </div>
+          {activeComorbidities.map((item, index) => (
+            <div
+              key={index}
+              className="border-border/60 bg-muted/20 flex flex-col gap-3 rounded-xl border p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-muted-foreground text-xs font-semibold">
+                  Comorbilidad {index + 1}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground/60 hover:text-destructive"
+                  aria-label={`Quitar comorbilidad ${index + 1}`}
+                  onClick={() => removeActiveComorbidity(index)}
+                >
+                  <Minus className="size-3.5" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="flex flex-col gap-2">
+                  <Label
+                    htmlFor={`enrollment-comorbidity-${index}`}
+                    className={fl}
+                  >
+                    Condición <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={`enrollment-comorbidity-${index}`}
+                    value={item.conditionName}
+                    onChange={(event) =>
+                      updateActiveComorbidity(
+                        index,
+                        "conditionName",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Ej: Hipertensión"
+                    className="bg-card border"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>Tratamiento</Label>
+                  <Input
+                    value={item.treatmentDescription ?? ""}
+                    onChange={(event) =>
+                      updateActiveComorbidity(
+                        index,
+                        "treatmentDescription",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Tratamiento actual"
+                    className="bg-card border"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>Especialidad de seguimiento</Label>
+                  <Input
+                    value={item.followUpSpecialty ?? ""}
+                    onChange={(event) =>
+                      updateActiveComorbidity(
+                        index,
+                        "followUpSpecialty",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Ej: Cardiología"
+                    className="bg-card border"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Limitaciones</p>
+              <p className="text-muted-foreground text-xs">
+                Registra las limitaciones actuales y su causa principal.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={addLimitation}
+            >
+              <Plus className="size-3.5" />
+              Agregar
+            </Button>
+          </div>
+          {limitations.map((item, index) => (
+            <div
+              key={index}
+              className="border-border/60 bg-muted/20 grid grid-cols-1 gap-3 rounded-xl border p-4 md:grid-cols-[minmax(0,1fr)_14rem_auto]"
+            >
+              <div className="flex flex-col gap-2">
+                <Label
+                  htmlFor={`enrollment-limitation-${index}`}
+                  className={fl}
+                >
+                  Descripción <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id={`enrollment-limitation-${index}`}
+                  value={item.description}
+                  onChange={(event) =>
+                    updateLimitation(index, {
+                      description: event.target.value,
+                    })
+                  }
+                  placeholder="Describe la limitación"
+                  className="bg-card min-h-16 border"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Causa</Label>
+                <Select
+                  items={HEALTH_BACKGROUND_CAUSES}
+                  value={item.cause}
+                  onValueChange={(value) =>
+                    updateLimitation(index, {
+                      cause: value as HealthBackgroundCause,
+                    })
+                  }
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HEALTH_BACKGROUND_CAUSES.map((cause) => (
+                      <SelectItem key={cause.value} value={cause.value}>
+                        {cause.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground/60 hover:text-destructive self-end"
+                aria-label={`Quitar limitación ${index + 1}`}
+                onClick={() => removeLimitation(index)}
+              >
+                <Minus className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">
+                Antecedentes familiares de cáncer
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Registra familiares con antecedentes oncológicos.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={addFamilyCancerHistory}
+            >
+              <Plus className="size-3.5" />
+              Agregar
+            </Button>
+          </div>
+          {familyCancerHistory.map((item, index) => (
+            <div
+              key={index}
+              className="border-border/60 bg-muted/20 grid grid-cols-1 gap-3 rounded-xl border p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+            >
+              <div className="flex flex-col gap-2">
+                <Label
+                  htmlFor={`enrollment-family-history-${index}`}
+                  className={fl}
+                >
+                  Parentesco <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id={`enrollment-family-history-${index}`}
+                  value={item.relationship}
+                  onChange={(event) =>
+                    updateFamilyCancerHistory(
+                      index,
+                      "relationship",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Ej: Madre"
+                  className="bg-card border"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Tipo de cáncer</Label>
+                <Input
+                  value={item.cancerType ?? ""}
+                  onChange={(event) =>
+                    updateFamilyCancerHistory(
+                      index,
+                      "cancerType",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Ej: Cáncer de mama"
+                  className="bg-card border"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground/60 hover:text-destructive self-end"
+                aria-label={`Quitar antecedente familiar ${index + 1}`}
+                onClick={() => removeFamilyCancerHistory(index)}
+              >
+                <Minus className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-5">
         <SectionHeader icon={Users} title="Servicios de Apoyo" />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label className={fl}>¿Se derivó con la asistenta social?</Label>
             <Select
+              items={YES_NO_OPTIONS}
               value={
                 details.referredToSocialWorker === true
                   ? "Sí"
@@ -1345,6 +1920,7 @@ export function Step7Atencion() {
             ¿Familiares interesados en charlas de prevención del cáncer?
           </Label>
           <Select
+            items={YES_NO_OPTIONS}
             value={showFamilyTalks ? "Sí" : "No"}
             onValueChange={(v) => {
               const show = v === "Sí"
@@ -1385,6 +1961,10 @@ export function Step7Atencion() {
               <div className="flex flex-col gap-2">
                 <Label className={fl}>Charla de prevención</Label>
                 <Select
+                  items={[
+                    ...TALK_TOPICS.map((value) => ({ value, label: value })),
+                    { value: TALK_OTHER, label: "Otro (especificar)" },
+                  ]}
                   value={
                     talkOtherIndices.has(idx)
                       ? TALK_OTHER
@@ -1484,6 +2064,7 @@ export function Step7Atencion() {
           <div className="flex flex-col gap-2">
             <Label className={fl}>¿Puede afiliarse al SIS?</Label>
             <Select
+              items={YES_NO_OPTIONS}
               value={
                 sis.canAffiliate === true
                   ? "Sí"

@@ -75,6 +75,16 @@ function statusClass(status: ReturnType<typeof treatmentStatus>) {
       return "border-orange-200 bg-orange-50 text-orange-700"
     case "FINALIZADO":
       return "border-border bg-muted text-muted-foreground"
+    case "SEARCHING":
+      return "border-sky-200 bg-sky-50 text-sky-700"
+    case "ABANDONED":
+      return "border-red-200 bg-red-50 text-red-700"
+    case "DECEASED_DURING_TREATMENT":
+      return "border-slate-200 bg-slate-50 text-slate-700"
+    case "NOT_APPLICABLE":
+      return "border-border bg-muted text-muted-foreground"
+    case "REMISSION":
+      return "border-violet-200 bg-violet-50 text-violet-700"
   }
 }
 
@@ -216,6 +226,33 @@ export function TreatmentCard({
                 value={prescriptionLabel(treatment)}
                 icon={FileText}
               />
+              {treatment.operationName && (
+                <Detail label="Operación" value={treatment.operationName} />
+              )}
+              {treatment.careProgram && (
+                <Detail
+                  label="Programa de atención"
+                  value={treatment.careProgram}
+                />
+              )}
+              {treatment.receivesTeleconsultation !== null && (
+                <Detail
+                  label="Teleconsulta"
+                  value={treatment.receivesTeleconsultation ? "Sí" : "No"}
+                />
+              )}
+              {treatment.teleconsultationNote && (
+                <Detail
+                  label="Nota de teleconsulta"
+                  value={treatment.teleconsultationNote}
+                />
+              )}
+              {treatment.treatmentAbandonmentReason && (
+                <Detail
+                  label="Motivo de abandono"
+                  value={treatment.treatmentAbandonmentReason}
+                />
+              )}
               {treatment.notReceivingReason && (
                 <Detail
                   label="Motivo de no recibir"

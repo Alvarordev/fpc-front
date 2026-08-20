@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -25,7 +25,10 @@ import type {
   PatientAddress,
   PatientDetailsInput,
   PatientDetailsResponse,
+  PatientHealthBackgroundAssessment,
+  PatientInsurance,
   PatientSocialNote,
+  PatientSisAffiliation,
   PatientTreatment,
 } from "@/api/patients"
 import { patientsApi } from "@/api/patients"
@@ -43,6 +46,7 @@ import {
 } from "../../_hooks/use-patient-records"
 import {
   Activity,
+  HeartPulse,
   MapPin,
   Minus,
   Pencil,
@@ -70,6 +74,7 @@ import {
   DRAFT_DIAGNOSIS_ID,
   type ClinicalDrafts,
   type DiagnosisDraft,
+  type HealthBackgroundAssessmentDraft,
   type InsuranceDraft,
   type SisAffiliationDraft,
   type SymptomReportDraft,
@@ -83,21 +88,45 @@ import {
   type FollowUpContactValues,
 } from "./follow-up-contact-form"
 
-// ── Tri-state Sí/No/— select ──
+// ── Tri-state Sí/No/sin dato select ──
 
 const TRI_UNSET = "SIN_DATO"
 
 const TRI_OPTIONS = [
-  { value: TRI_UNSET, label: "—" },
+  { value: TRI_UNSET, label: "Sin dato" },
   { value: "SI", label: "Sí" },
   { value: "NO", label: "No" },
 ] as const
 
 const TREATMENT_SITUATIONS = [
-  { value: "EN_CURSO", label: "En curso" },
-  { value: "PENDIENTE_DE_INICIO", label: "Pendiente de inicio" },
-  { value: "INTERRUMPIDO", label: "Interrumpido" },
-  { value: "FINALIZADO", label: "Finalizado" },
+  { value: "EN_CURSO", label: "En proceso" },
+  { value: "PENDIENTE_DE_INICIO", label: "En espera" },
+  { value: "INTERRUMPIDO", label: "Suspendido" },
+  { value: "FINALIZADO", label: "Culminado" },
+  { value: "SEARCHING", label: "En búsqueda" },
+  { value: "ABANDONED", label: "Abandonado" },
+  {
+    value: "DECEASED_DURING_TREATMENT",
+    label: "Culminado en situación de tratamiento",
+  },
+  { value: "NOT_APPLICABLE", label: "N/A" },
+  { value: "REMISSION", label: "En remisión" },
+] as const
+
+type TreatmentSituation = NonNullable<
+  CreatePatientTreatmentInput["treatmentSituation"]
+>
+type CareProgram = NonNullable<CreatePatientTreatmentInput["careProgram"]>
+
+const CARE_PROGRAMS = [
+  { value: "COPHOES", label: "COPHOES" },
+  { value: "PADOMI", label: "PADOMI" },
+] as const
+
+const HEALTH_BACKGROUND_CAUSES = [
+  { value: "DIAGNOSIS", label: "Diagnóstico" },
+  { value: "TREATMENT", label: "Tratamiento" },
+  { value: "NATURAL_CONDITION", label: "Condición natural" },
 ] as const
 
 const DOSE_UNITS = [
@@ -118,12 +147,6 @@ const MEDICATION_ROUTES = [
   { value: "TOPICAL", label: "Tópica" },
   { value: "OTHER", label: "Otra" },
 ] as const
-
-function triLabel(value: boolean | undefined): string {
-  if (value === true) return "Sí"
-  if (value === false) return "No"
-  return "—"
-}
 
 function TriSelect({
   value,
@@ -146,7 +169,7 @@ function TriSelect({
         }
       >
         <SelectTrigger className="h-9">
-          <SelectValue>{triLabel(value)}</SelectValue>
+          <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={TRI_UNSET}>—</SelectItem>
@@ -273,68 +296,78 @@ export function ClinicalDataTabs({
       onValueChange={(value) => setActiveTab(String(value))}
       className="flex-col items-stretch gap-3 lg:flex-row"
     >
-      <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-48 lg:flex-col lg:overflow-visible">
+      <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-56 lg:flex-col lg:overflow-visible">
         <TabsTrigger
           value="datos"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <UserRound className="size-4 text-sky-600" />
-          <span>Datos clínicos</span>
+          <span className="min-w-0 break-words">Datos clínicos</span>
           {drafts.details && <DraftDot />}
         </TabsTrigger>
         <TabsTrigger
           value="sintomas"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <Activity className="size-4 text-rose-600" />
-          <span>Síntomas</span>
+          <span className="min-w-0 break-words">Síntomas</span>
           {drafts.symptomReport && <DraftDot />}
         </TabsTrigger>
         <TabsTrigger
           value="direcciones"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <MapPin className="size-4 text-emerald-600" />
-          <span>Direcciones</span>
+          <span className="min-w-0 break-words">Direcciones</span>
           {drafts.address && <DraftDot />}
         </TabsTrigger>
         <TabsTrigger
           value="contacto"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <Phone className="size-4 text-cyan-600" />
-          <span>Contacto</span>
+          <span className="min-w-0 break-words">Contacto</span>
         </TabsTrigger>
         <TabsTrigger
           value="diagnostico"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <Stethoscope className="size-4 text-violet-600" />
-          <span>Diagnóstico</span>
+          <span className="min-w-0 break-words">Diagnóstico</span>
           {drafts.diagnosis && <DraftDot />}
         </TabsTrigger>
         <TabsTrigger
+          value="antecedentes"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+        >
+          <HeartPulse className="size-4 text-pink-600" />
+          <span className="min-w-0 break-words">
+            Antecedentes y comorbilidades
+          </span>
+          {drafts.healthBackground && <DraftDot />}
+        </TabsTrigger>
+        <TabsTrigger
           value="tratamiento"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <Pill className="size-4 text-amber-600" />
-          <span>Tratamientos</span>
+          <span className="min-w-0 break-words">Tratamientos</span>
           {drafts.treatments?.length ? <DraftDot /> : null}
         </TabsTrigger>
         <TabsTrigger
           value="seguro"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <ShieldCheck className="size-4 text-teal-600" />
-          <span>Seguro / SIS</span>
+          <span className="min-w-0 break-words">INFORMACIÓN DE SEGURO</span>
           {drafts.insurance && <DraftDot />}
         </TabsTrigger>
         <TabsTrigger
           value="social"
-          className="min-h-10 flex-none justify-start gap-2"
+          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
         >
           <Users className="size-4 text-orange-600" />
-          <span>Seguimiento social</span>
+          <span className="min-w-0 break-words">Seguimiento social</span>
           {(drafts.social || drafts.socialNotes?.length) && <DraftDot />}
         </TabsTrigger>
       </TabsList>
@@ -352,6 +385,25 @@ export function ClinicalDataTabs({
           hospitals={hospitals}
           onSave={(symptomReport) =>
             onDraftsChange((prev) => ({ ...prev, symptomReport }))
+          }
+        />
+      </TabsContent>
+      <TabsContent
+        value="antecedentes"
+        keepMounted
+        className="min-w-0 flex-1 pr-1"
+      >
+        <AntecedentesForm
+          draft={drafts.healthBackground}
+          latestAssessment={patient?.healthBackgroundAssessments?.reduce(
+            (latest, assessment) =>
+              !latest || assessment.createdAt > latest.createdAt
+                ? assessment
+                : latest,
+            undefined as PatientHealthBackgroundAssessment | undefined,
+          )}
+          onSave={(healthBackground) =>
+            onDraftsChange((prev) => ({ ...prev, healthBackground }))
           }
         />
       </TabsContent>
@@ -413,6 +465,8 @@ export function ClinicalDataTabs({
         <SeguroForm
           insuranceDraft={drafts.insurance}
           sisDraft={drafts.sisAffiliation}
+          currentInsurance={patient?.insurance.find((item) => item.isCurrent)}
+          currentSisAffiliation={patient?.sisAffiliations[0]}
           onSave={(insurance, sisAffiliation) =>
             onDraftsChange((prev) => ({ ...prev, insurance, sisAffiliation }))
           }
@@ -439,6 +493,401 @@ function DraftDot() {
       className="bg-primary ml-auto size-1.5 shrink-0 rounded-full"
       aria-label="Cambios pendientes"
     />
+  )
+}
+
+type HealthBackgroundFormValues = {
+  hasPsychiatry: boolean | undefined
+  activeComorbidities: Array<{
+    conditionName: string
+    treatmentDescription: string
+    followUpSpecialty: string
+  }>
+  limitations: Array<{
+    description: string
+    cause: NonNullable<
+      NonNullable<
+        HealthBackgroundAssessmentDraft["limitations"]
+      >[number]["cause"]
+    >
+  }>
+  familyCancerHistory: Array<{
+    relationship: string
+    cancerType: string
+  }>
+}
+
+function AntecedentesForm({
+  draft,
+  latestAssessment,
+  onSave,
+}: {
+  draft: HealthBackgroundAssessmentDraft | undefined
+  latestAssessment: PatientHealthBackgroundAssessment | undefined
+  onSave: (healthBackground: HealthBackgroundAssessmentDraft) => void
+}) {
+  const { control, handleSubmit, register, reset, setValue } =
+    useForm<HealthBackgroundFormValues>({
+      defaultValues: {
+        hasPsychiatry: draft?.hasPsychiatry,
+        activeComorbidities: (draft?.activeComorbidities ?? []).map((item) => ({
+          conditionName: item.conditionName,
+          treatmentDescription: item.treatmentDescription ?? "",
+          followUpSpecialty: item.followUpSpecialty ?? "",
+        })),
+        limitations: (draft?.limitations ?? []).map((item) => ({
+          description: item.description,
+          cause: item.cause,
+        })),
+        familyCancerHistory: (draft?.familyCancerHistory ?? []).map((item) => ({
+          relationship: item.relationship,
+          cancerType: item.cancerType ?? "",
+        })),
+      },
+    })
+  const {
+    fields: comorbidityFields,
+    append: appendComorbidity,
+    remove: removeComorbidity,
+  } = useFieldArray({ control, name: "activeComorbidities" })
+  const {
+    fields: limitationFields,
+    append: appendLimitation,
+    remove: removeLimitation,
+  } = useFieldArray({ control, name: "limitations" })
+  const {
+    fields: familyHistoryFields,
+    append: appendFamilyHistory,
+    remove: removeFamilyHistory,
+  } = useFieldArray({ control, name: "familyCancerHistory" })
+  const psychiatry = useWatch({ control, name: "hasPsychiatry" })
+  const limitations = useWatch({ control, name: "limitations" }) ?? []
+
+  useEffect(() => {
+    reset({
+      hasPsychiatry: draft?.hasPsychiatry,
+      activeComorbidities: (draft?.activeComorbidities ?? []).map((item) => ({
+        conditionName: item.conditionName,
+        treatmentDescription: item.treatmentDescription ?? "",
+        followUpSpecialty: item.followUpSpecialty ?? "",
+      })),
+      limitations: (draft?.limitations ?? []).map((item) => ({
+        description: item.description,
+        cause: item.cause,
+      })),
+      familyCancerHistory: (draft?.familyCancerHistory ?? []).map((item) => ({
+        relationship: item.relationship,
+        cancerType: item.cancerType ?? "",
+      })),
+    })
+  }, [draft, reset])
+
+  function onSubmit(values: HealthBackgroundFormValues) {
+    const activeComorbidities = values.activeComorbidities.map(
+      (item, index) => {
+        const conditionName = item.conditionName.trim()
+        if (!conditionName) {
+          throw new Error(
+            `Completa la condición de la comorbilidad ${index + 1}`,
+          )
+        }
+        return {
+          conditionName,
+          treatmentDescription: item.treatmentDescription.trim() || undefined,
+          followUpSpecialty: item.followUpSpecialty.trim() || undefined,
+        }
+      },
+    )
+    const limitations = values.limitations.map((item, index) => {
+      const description = item.description.trim()
+      if (!description) {
+        throw new Error(`Completa la descripción de la limitación ${index + 1}`)
+      }
+      return { description, cause: item.cause }
+    })
+    const familyCancerHistory = values.familyCancerHistory.map(
+      (item, index) => {
+        const relationship = item.relationship.trim()
+        if (!relationship) {
+          throw new Error(
+            `Completa el parentesco del antecedente familiar ${index + 1}`,
+          )
+        }
+        return {
+          relationship,
+          cancerType: item.cancerType.trim() || undefined,
+        }
+      },
+    )
+
+    onSave({
+      hasPsychiatry: values.hasPsychiatry,
+      ...(activeComorbidities.length ? { activeComorbidities } : {}),
+      ...(limitations.length ? { limitations } : {}),
+      ...(familyCancerHistory.length ? { familyCancerHistory } : {}),
+    })
+    toast.success("Antecedentes guardados en el borrador")
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit((values) => {
+        try {
+          onSubmit(values)
+        } catch (error) {
+          toast.error((error as Error).message)
+        }
+      })}
+      className="space-y-5"
+    >
+      {latestAssessment && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+          <p className="font-medium">Último registro guardado</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            {new Date(latestAssessment.createdAt).toLocaleDateString("es-PE")}
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <p>
+              <span className="text-muted-foreground">Psiquiatría:</span>{" "}
+              {latestAssessment.hasPsychiatry === null
+                ? "Sin dato"
+                : latestAssessment.hasPsychiatry
+                  ? "Sí"
+                  : "No"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">
+                Comorbilidades activas:
+              </span>{" "}
+              {latestAssessment.activeComorbidities.length || 0}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Limitaciones:</span>{" "}
+              {latestAssessment.limitations.length || 0}
+            </p>
+            <p>
+              <span className="text-muted-foreground">
+                Antecedentes familiares:
+              </span>{" "}
+              {latestAssessment.familyCancerHistory.length || 0}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <TriSelect
+          label="¿Tiene antecedentes de psiquiatría?"
+          value={psychiatry}
+          onChange={(value) => setValue("hasPsychiatry", value)}
+        />
+      </div>
+
+      <RepeatableSection
+        title="Comorbilidades activas"
+        description="Condición requerida; tratamiento y especialidad son opcionales."
+        addLabel="Agregar comorbilidad"
+        onAdd={() =>
+          appendComorbidity({
+            conditionName: "",
+            treatmentDescription: "",
+            followUpSpecialty: "",
+          })
+        }
+      >
+        {comorbidityFields.map((field, index) => (
+          <div key={field.id} className="space-y-3 rounded-lg border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">Comorbilidad {index + 1}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Quitar comorbilidad ${index + 1}`}
+                onClick={() => removeComorbidity(index)}
+              >
+                <Minus className="size-3.5" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor={`follow-up-comorbidity-${field.id}`}>
+                  Condición <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id={`follow-up-comorbidity-${field.id}`}
+                  {...register(`activeComorbidities.${index}.conditionName`)}
+                  placeholder="Ej: Hipertensión"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tratamiento</Label>
+                <Input
+                  {...register(
+                    `activeComorbidities.${index}.treatmentDescription`,
+                  )}
+                  placeholder="Tratamiento actual"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Especialidad de seguimiento</Label>
+                <Input
+                  {...register(
+                    `activeComorbidities.${index}.followUpSpecialty`,
+                  )}
+                  placeholder="Ej: Cardiología"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </RepeatableSection>
+
+      <RepeatableSection
+        title="Limitaciones"
+        description="La descripción es requerida y la causa se registra con una etiqueta en español."
+        addLabel="Agregar limitación"
+        onAdd={() => appendLimitation({ description: "", cause: "DIAGNOSIS" })}
+      >
+        {limitationFields.map((field, index) => (
+          <div
+            key={field.id}
+            className="grid grid-cols-1 gap-3 rounded-lg border p-3 md:grid-cols-[minmax(0,1fr)_14rem_auto]"
+          >
+            <div className="space-y-2">
+              <Label htmlFor={`follow-up-limitation-${field.id}`}>
+                Descripción <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id={`follow-up-limitation-${field.id}`}
+                {...register(`limitations.${index}.description`)}
+                placeholder="Describe la limitación"
+                className="min-h-16"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Causa</Label>
+              <Select
+                items={HEALTH_BACKGROUND_CAUSES}
+                value={limitations[index]?.cause ?? "DIAGNOSIS"}
+                onValueChange={(value) =>
+                  setValue(
+                    `limitations.${index}.cause`,
+                    value as HealthBackgroundFormValues["limitations"][number]["cause"],
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HEALTH_BACKGROUND_CAUSES.map((cause) => (
+                    <SelectItem key={cause.value} value={cause.value}>
+                      {cause.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="self-end"
+              aria-label={`Quitar limitación ${index + 1}`}
+              onClick={() => removeLimitation(index)}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+          </div>
+        ))}
+      </RepeatableSection>
+
+      <RepeatableSection
+        title="Antecedentes familiares de cáncer"
+        description="El parentesco es requerido; el tipo de cáncer es opcional."
+        addLabel="Agregar antecedente familiar"
+        onAdd={() => appendFamilyHistory({ relationship: "", cancerType: "" })}
+      >
+        {familyHistoryFields.map((field, index) => (
+          <div
+            key={field.id}
+            className="grid grid-cols-1 gap-3 rounded-lg border p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+          >
+            <div className="space-y-2">
+              <Label htmlFor={`follow-up-family-history-${field.id}`}>
+                Parentesco <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id={`follow-up-family-history-${field.id}`}
+                {...register(`familyCancerHistory.${index}.relationship`)}
+                placeholder="Ej: Madre"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de cáncer</Label>
+              <Input
+                {...register(`familyCancerHistory.${index}.cancerType`)}
+                placeholder="Ej: Cáncer de mama"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="self-end"
+              aria-label={`Quitar antecedente familiar ${index + 1}`}
+              onClick={() => removeFamilyHistory(index)}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+          </div>
+        ))}
+      </RepeatableSection>
+
+      <div className="flex items-center gap-3">
+        <Button type="submit" size="sm">
+          Guardar antecedentes
+        </Button>
+        <DraftBadge saved={Boolean(draft)} />
+      </div>
+    </form>
+  )
+}
+
+function RepeatableSection({
+  title,
+  description,
+  addLabel,
+  onAdd,
+  children,
+}: {
+  title: string
+  description: string
+  addLabel: string
+  onAdd: () => void
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-3 border-t pt-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">{title}</p>
+          <p className="text-muted-foreground text-xs">{description}</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5"
+          onClick={onAdd}
+        >
+          <Plus className="size-3.5" />
+          {addLabel}
+        </Button>
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
   )
 }
 
@@ -994,6 +1443,8 @@ function SintomasForm({
 
 interface DiagnosisFormValues {
   diagnosis: string
+  diagnosisSpecialty: string
+  isSepaActiveReferral: boolean | undefined
   cancerStage: CancerStage
   diagnosisDate: string
   firstSymptomsDate: string
@@ -1020,6 +1471,8 @@ function DiagnosticoForm({
     useForm<DiagnosisFormValues>({
       defaultValues: {
         diagnosis: draft?.diagnosis ?? "",
+        diagnosisSpecialty: draft?.diagnosisSpecialty ?? "",
+        isSepaActiveReferral: draft?.isSepaActiveReferral,
         cancerStage: draft?.cancerStage ?? "UNKNOWN",
         diagnosisDate: draft?.diagnosisDate ?? "",
         firstSymptomsDate: draft?.firstSymptomsDate ?? "",
@@ -1089,6 +1542,8 @@ function DiagnosticoForm({
 
     onSave({
       diagnosis: values.diagnosis.trim(),
+      diagnosisSpecialty: values.diagnosisSpecialty.trim() || undefined,
+      isSepaActiveReferral: values.isSepaActiveReferral,
       cancerStage: values.cancerStage,
       diagnosisDate: values.diagnosisDate || undefined,
       firstSymptomsDate: values.firstSymptomsDate || undefined,
@@ -1117,6 +1572,18 @@ function DiagnosticoForm({
           <Label>Diagnóstico</Label>
           <Input {...register("diagnosis")} placeholder="Ej: Cáncer de mama" />
         </div>
+        <div className="space-y-2">
+          <Label>Especialidad del diagnóstico</Label>
+          <Input
+            {...register("diagnosisSpecialty")}
+            placeholder="Ej: Oncología"
+          />
+        </div>
+        <TriSelect
+          label="¿Diagnóstico con derivación activa de SEPA?"
+          value={watch("isSepaActiveReferral")}
+          onChange={(value) => setValue("isSepaActiveReferral", value)}
+        />
         {currentDiagnosis && (
           <div className="space-y-2 md:col-span-2">
             <Label>Motivo del reemplazo</Label>
@@ -1179,11 +1646,7 @@ function DiagnosticoForm({
             onValueChange={(v) => setValue("healthCenterId", v ?? undefined)}
           >
             <SelectTrigger>
-              {healthCenterId ? (
-                hospitals.find((h) => h.id === healthCenterId)?.name
-              ) : (
-                <SelectValue placeholder="Seleccionar" />
-              )}
+              <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
             <SelectContent>
               {hospitals.map((h) => (
@@ -1252,9 +1715,14 @@ interface TreatmentFormValues {
   diagnosisId: string | undefined
   treatmentType: string
   treatmentFrequency: DurationDraft | undefined
-  treatmentSituation:
-    | NonNullable<CreatePatientTreatmentInput["treatmentSituation"]>
-    | undefined
+  treatmentSituation: TreatmentSituation | undefined
+  isOperation: boolean | undefined
+  operationName: string
+  careProgram: CareProgram | undefined
+  receivesTeleconsultation: boolean | undefined
+  teleconsultationNote: string
+  teleconsultationSpecialties: string
+  treatmentAbandonmentReason: string
   isReferred: boolean
   sourceHealthCenterId: string | undefined
   receivingHealthCenterId: string | undefined
@@ -1294,6 +1762,14 @@ function TratamientosForm({
         treatmentType: initial?.treatmentType ?? "",
         treatmentFrequency: initial?.treatmentFrequency,
         treatmentSituation: initial?.treatmentSituation,
+        isOperation: initial?.operationName ? true : undefined,
+        operationName: initial?.operationName ?? "",
+        careProgram: initial?.careProgram,
+        receivesTeleconsultation: initial?.receivesTeleconsultation,
+        teleconsultationNote: initial?.teleconsultationNote ?? "",
+        teleconsultationSpecialties:
+          initial?.teleconsultationSpecialties?.join(", ") ?? "",
+        treatmentAbandonmentReason: initial?.treatmentAbandonmentReason ?? "",
         isReferred: initial?.isReferred ?? false,
         sourceHealthCenterId: initial?.sourceHealthCenterId ?? undefined,
         receivingHealthCenterId: initial?.receivingHealthCenterId ?? undefined,
@@ -1323,6 +1799,8 @@ function TratamientosForm({
   const receivingHealthCenterId = watched.receivingHealthCenterId
   const treatmentFrequency = watched.treatmentFrequency
   const treatmentSituation = watched.treatmentSituation
+  const isOperation = watched.isOperation
+  const receivesTeleconsultation = watched.receivesTeleconsultation
   const startDate = watched.startDate ?? ""
   const hasLatestPrescription = watched.hasLatestPrescription
   const medications = watched.medications ?? []
@@ -1384,6 +1862,14 @@ function TratamientosForm({
           }
         : undefined,
       treatmentSituation: treatment.treatmentSituation ?? undefined,
+      isOperation: treatment.operationName ? true : undefined,
+      operationName: treatment.operationName ?? "",
+      careProgram: treatment.careProgram ?? undefined,
+      receivesTeleconsultation: treatment.receivesTeleconsultation ?? undefined,
+      teleconsultationNote: treatment.teleconsultationNote ?? "",
+      teleconsultationSpecialties:
+        treatment.teleconsultationSpecialties?.join(", ") ?? "",
+      treatmentAbandonmentReason: treatment.treatmentAbandonmentReason ?? "",
       isReferred: treatment.isReferred,
       sourceHealthCenterId: treatment.sourceHealthCenterId ?? undefined,
       receivingHealthCenterId: treatment.receivingHealthCenterId ?? undefined,
@@ -1456,6 +1942,14 @@ function TratamientosForm({
       treatmentType: decision.treatmentType,
       treatmentFrequency: decision.treatmentFrequency,
       treatmentSituation: decision.treatmentSituation,
+      isOperation: decision.operationName ? true : undefined,
+      operationName: decision.operationName ?? "",
+      careProgram: decision.careProgram,
+      receivesTeleconsultation: decision.receivesTeleconsultation,
+      teleconsultationNote: decision.teleconsultationNote ?? "",
+      teleconsultationSpecialties:
+        decision.teleconsultationSpecialties?.join(", ") ?? "",
+      treatmentAbandonmentReason: decision.treatmentAbandonmentReason ?? "",
       isReferred: decision.isReferred ?? false,
       sourceHealthCenterId: decision.sourceHealthCenterId,
       receivingHealthCenterId: decision.receivingHealthCenterId,
@@ -1467,12 +1961,6 @@ function TratamientosForm({
       latestPrescriptionDate: decision.latestPrescriptionDate ?? "",
       medications: decision.medications ?? [],
     })
-  }
-
-  function diagnosisLabel(id: string) {
-    if (id === DRAFT_DIAGNOSIS_ID)
-      return "El diagnóstico que estoy guardando en este seguimiento"
-    return diagnoses.find((d) => d.id === id)?.diagnosis
   }
 
   function updateMedication(
@@ -1499,6 +1987,17 @@ function TratamientosForm({
     }
     if (!values.treatmentType.trim()) {
       toast.error("Ingresá el tipo de tratamiento")
+      return
+    }
+    if (
+      values.treatmentSituation === "ABANDONED" &&
+      !values.treatmentAbandonmentReason.trim()
+    ) {
+      toast.error("Indica el motivo de abandono del tratamiento")
+      return
+    }
+    if (values.isOperation && !values.operationName.trim()) {
+      toast.error("Ingresa el nombre de la operación")
       return
     }
 
@@ -1565,6 +2064,35 @@ function TratamientosForm({
       treatmentType: values.treatmentType.trim(),
       treatmentFrequency: normalizedFrequency,
       treatmentSituation: values.treatmentSituation,
+      operationName: values.isOperation
+        ? values.operationName.trim() || undefined
+        : undefined,
+      careProgram: values.careProgram,
+      receivesTeleconsultation: values.receivesTeleconsultation,
+      ...(values.receivesTeleconsultation === true
+        ? {
+            teleconsultationNote:
+              values.teleconsultationNote.trim() || undefined,
+            ...(values.teleconsultationSpecialties
+              .split(",")
+              .map((specialty) => specialty.trim())
+              .filter(Boolean).length
+              ? {
+                  teleconsultationSpecialties:
+                    values.teleconsultationSpecialties
+                      .split(",")
+                      .map((specialty) => specialty.trim())
+                      .filter(Boolean),
+                }
+              : {}),
+          }
+        : {}),
+      ...(values.treatmentSituation === "ABANDONED"
+        ? {
+            treatmentAbandonmentReason:
+              values.treatmentAbandonmentReason.trim() || undefined,
+          }
+        : {}),
       isReferred: values.isReferred,
       sourceHealthCenterId: values.isReferred
         ? values.sourceHealthCenterId
@@ -1613,6 +2141,13 @@ function TratamientosForm({
       treatmentType: "",
       treatmentFrequency: undefined,
       treatmentSituation: undefined,
+      isOperation: undefined,
+      operationName: "",
+      careProgram: undefined,
+      receivesTeleconsultation: undefined,
+      teleconsultationNote: "",
+      teleconsultationSpecialties: "",
+      treatmentAbandonmentReason: "",
       isReferred: false,
       sourceHealthCenterId: undefined,
       receivingHealthCenterId: undefined,
@@ -1751,11 +2286,7 @@ function TratamientosForm({
               onValueChange={(v) => setValue("diagnosisId", v ?? undefined)}
             >
               <SelectTrigger>
-                {diagnosisId ? (
-                  diagnosisLabel(diagnosisId)
-                ) : (
-                  <SelectValue placeholder="Seleccionar diagnóstico" />
-                )}
+                <SelectValue placeholder="Seleccionar diagnóstico" />
               </SelectTrigger>
               <SelectContent>
                 {diagnosisItems.map((item) => (
@@ -1777,6 +2308,44 @@ function TratamientosForm({
               {...register("treatmentType")}
               placeholder="Ej: Quimioterapia"
             />
+          </div>
+          <TriSelect
+            label="¿Es una operación?"
+            value={isOperation}
+            onChange={(value) => {
+              setValue("isOperation", value)
+              if (!value) setValue("operationName", "")
+            }}
+          />
+          {isOperation && (
+            <div className="space-y-2">
+              <Label>Nombre de la operación</Label>
+              <Input
+                {...register("operationName")}
+                placeholder="Ej: Mastectomía"
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Programa de atención</Label>
+            <Select
+              items={CARE_PROGRAMS}
+              value={watched.careProgram ?? ""}
+              onValueChange={(value) =>
+                setValue("careProgram", value as CareProgram)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar programa" />
+              </SelectTrigger>
+              <SelectContent>
+                {CARE_PROGRAMS.map((program) => (
+                  <SelectItem key={program.value} value={program.value}>
+                    {program.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DurationInput
             label="Frecuencia del tratamiento"
@@ -1822,6 +2391,38 @@ function TratamientosForm({
               {...register("endDate")}
             />
           </div>
+          <TriSelect
+            label="¿Recibe teleconsulta?"
+            value={receivesTeleconsultation}
+            onChange={(value) => setValue("receivesTeleconsultation", value)}
+          />
+          {receivesTeleconsultation === true && (
+            <>
+              <div className="space-y-2">
+                <Label>Nota de teleconsulta</Label>
+                <Textarea
+                  {...register("teleconsultationNote")}
+                  placeholder="Detalle de la teleconsulta"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Especialidades de teleconsulta</Label>
+                <Input
+                  {...register("teleconsultationSpecialties")}
+                  placeholder="Ej: Oncología, Psicología"
+                />
+              </div>
+            </>
+          )}
+          {treatmentSituation === "ABANDONED" && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Motivo de abandono</Label>
+              <Textarea
+                {...register("treatmentAbandonmentReason")}
+                placeholder="Describe el motivo del abandono"
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>¿Recibe este tratamiento por derivación?</Label>
             <Select
@@ -2139,35 +2740,76 @@ interface InsuranceFormValues {
   changeReason: string
   startDate: string
   canAffiliate: boolean
+  affiliatedViaSepa: boolean | undefined
   expectedDate: string
 }
 
 function SeguroForm({
   insuranceDraft,
   sisDraft,
+  currentInsurance,
+  currentSisAffiliation,
   onSave,
 }: {
   insuranceDraft: InsuranceDraft | undefined
   sisDraft: SisAffiliationDraft | undefined
+  currentInsurance: PatientInsurance | undefined
+  currentSisAffiliation: PatientSisAffiliation | undefined
   onSave: (
     insurance: InsuranceDraft,
     sisAffiliation: SisAffiliationDraft | undefined,
   ) => void
 }) {
-  const { register, handleSubmit, watch, setValue } =
+  const { register, handleSubmit, watch, setValue, reset } =
     useForm<InsuranceFormValues>({
       defaultValues: {
-        insuranceType: insuranceDraft?.insuranceType,
-        epsProvider: insuranceDraft?.epsProvider,
+        insuranceType:
+          insuranceDraft?.insuranceType ?? currentInsurance?.insuranceType,
+        epsProvider:
+          insuranceDraft?.epsProvider ?? currentInsurance?.epsProvider ?? undefined,
         changeReason: insuranceDraft?.changeReason ?? "",
-        startDate: insuranceDraft?.startDate ?? "",
-        canAffiliate: sisDraft?.canAffiliate ?? false,
-        expectedDate: sisDraft?.expectedDate ?? "",
+        startDate:
+          insuranceDraft?.startDate ?? currentInsurance?.startDate ?? "",
+        canAffiliate:
+          sisDraft?.canAffiliate ?? currentSisAffiliation?.canAffiliate ?? false,
+        affiliatedViaSepa:
+          sisDraft?.affiliatedViaSepa ??
+          currentSisAffiliation?.affiliatedViaSepa ??
+          undefined,
+        expectedDate:
+          sisDraft?.expectedDate ?? currentSisAffiliation?.expectedDate ?? "",
       },
     })
 
+  useEffect(() => {
+    reset({
+      insuranceType:
+        insuranceDraft?.insuranceType ?? currentInsurance?.insuranceType,
+      epsProvider:
+        insuranceDraft?.epsProvider ?? currentInsurance?.epsProvider ?? undefined,
+      changeReason: insuranceDraft?.changeReason ?? "",
+      startDate: insuranceDraft?.startDate ?? currentInsurance?.startDate ?? "",
+      canAffiliate:
+        sisDraft?.canAffiliate ?? currentSisAffiliation?.canAffiliate ?? false,
+      affiliatedViaSepa:
+        sisDraft?.affiliatedViaSepa ??
+        currentSisAffiliation?.affiliatedViaSepa ??
+        undefined,
+      expectedDate:
+        sisDraft?.expectedDate ?? currentSisAffiliation?.expectedDate ?? "",
+    })
+  }, [
+    currentInsurance,
+    currentSisAffiliation,
+    insuranceDraft,
+    reset,
+    sisDraft,
+  ])
+
   const insuranceType = watch("insuranceType")
   const epsProvider = watch("epsProvider")
+  const isSis = insuranceType === "SIS"
+  const isWithoutInsurance = insuranceType === "NONE"
 
   function onSubmit(values: InsuranceFormValues) {
     if (!values.insuranceType) {
@@ -2183,8 +2825,15 @@ function SeguroForm({
       startDate: values.startDate || undefined,
     }
 
-    const sisAffiliation: SisAffiliationDraft | undefined =
-      values.insuranceType === "NONE"
+    const selectedIsSis = values.insuranceType === "SIS"
+    const selectedWithoutInsurance = values.insuranceType === "NONE"
+    const sisAffiliation: SisAffiliationDraft | undefined = selectedIsSis
+      ? {
+          canAffiliate: true,
+          affiliatedViaSepa: values.affiliatedViaSepa,
+          affiliatedAt: values.startDate || undefined,
+        }
+      : selectedWithoutInsurance
         ? {
             canAffiliate: values.canAffiliate,
             expectedDate: values.expectedDate || undefined,
@@ -2197,6 +2846,12 @@ function SeguroForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <p className="text-sm font-medium">INFORMACIÓN DE SEGURO</p>
+        <p className="text-muted-foreground text-xs">
+          Registra el seguro actual y la afiliación al SIS cuando corresponda.
+        </p>
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo de seguro</Label>
@@ -2249,29 +2904,40 @@ function SeguroForm({
           <Input {...register("changeReason")} placeholder="Motivo" />
         </div>
         <div className="space-y-2">
-          <Label>Fecha de inicio</Label>
+          <Label>Fecha de afiliación</Label>
           <Input type="date" {...register("startDate")} />
         </div>
       </div>
 
-      {insuranceType === "NONE" && (
+      {(isSis || isWithoutInsurance) && (
         <div className="border-border/60 mt-2 border-t pt-4">
           <p className="mb-3 text-sm font-medium">Afiliación SIS</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex items-center gap-3 space-y-2">
-              <Checkbox
-                checked={watch("canAffiliate")}
-                onCheckedChange={(v) => setValue("canAffiliate", !!v)}
-                id="canAffiliate"
+            {isWithoutInsurance && (
+              <div className="flex items-center gap-3 space-y-2">
+                <Checkbox
+                  checked={watch("canAffiliate")}
+                  onCheckedChange={(v) => setValue("canAffiliate", !!v)}
+                  id="canAffiliate"
+                />
+                <Label htmlFor="canAffiliate" className="cursor-pointer">
+                  Puede afiliarse al SIS
+                </Label>
+              </div>
+            )}
+            {isSis && (
+              <TriSelect
+                label="¿Afiliación al SIS desde SEPA?"
+                value={watch("affiliatedViaSepa")}
+                onChange={(value) => setValue("affiliatedViaSepa", value)}
               />
-              <Label htmlFor="canAffiliate" className="cursor-pointer">
-                Puede afiliarse al SIS
-              </Label>
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha esperada</Label>
-              <Input type="date" {...register("expectedDate")} />
-            </div>
+            )}
+            {isWithoutInsurance && (
+              <div className="space-y-2">
+                <Label>Fecha esperada</Label>
+                <Input type="date" {...register("expectedDate")} />
+              </div>
+            )}
           </div>
         </div>
       )}

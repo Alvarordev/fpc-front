@@ -45,9 +45,34 @@ export function buildEnrollmentPayload({
   const includeCompanion = isFamily || meta.hasCaregiver === true
   const hasDiagnosis = Boolean(value(draft.diagnosis.diagnosis))
   const treatmentType = value(draft.treatment.treatmentType)
+  const hasTreatment =
+    Boolean(treatmentType) &&
+    !(
+      healthPhase === "SIGNS_AND_SYMPTOMS" &&
+      draft.enrollmentMetadata.currentlyReceivingTreatment === false
+    )
+  const isOperation =
+    draft.treatment.isOperation ?? Boolean(draft.treatment.operationName)
   const treatmentStartDate = value(draft.treatment.startDate)
   const treatmentEndDate = value(draft.treatment.endDate)
   const isReferred = draft.treatment.isReferred ?? false
+  const receivesTeleconsultation =
+    draft.treatment.receivesTeleconsultation ?? undefined
+  const teleconsultationSpecialties = (
+    draft.treatment.teleconsultationSpecialties ?? []
+  )
+    .map((specialty) => value(specialty))
+    .filter((specialty): specialty is string => Boolean(specialty))
+  if (
+    hasTreatment &&
+    draft.treatment.treatmentSituation === "ABANDONED" &&
+    !value(draft.treatment.treatmentAbandonmentReason)
+  ) {
+    throw new Error("Indica el motivo de abandono del tratamiento")
+  }
+  if (hasTreatment && isOperation && !value(draft.treatment.operationName)) {
+    throw new Error("Ingresa el nombre de la operación")
+  }
   if (
     treatmentStartDate &&
     treatmentEndDate &&
@@ -57,11 +82,7 @@ export function buildEnrollmentPayload({
       "La fecha de fin del tratamiento debe ser posterior o igual a la fecha de inicio",
     )
 
-  if (
-    hasDiagnosis &&
-    (treatmentType ||
-      draft.enrollmentMetadata.currentlyReceivingTreatment === false)
-  ) {
+  if (hasDiagnosis && hasTreatment) {
     if (
       isReferred &&
       (!draft.treatment.sourceHealthCenterId ||
@@ -83,9 +104,18 @@ export function buildEnrollmentPayload({
         "El hospital de origen solo aplica a tratamientos derivados",
       )
   }
-  const appointment = draft.medicalAppointments.find((item) =>
-    value(item.specialty),
+  const appointment = draft.medicalAppointments.find(
+    (item) => value(item.specialty) || value(item.difficulties),
   )
+  if (
+    appointment &&
+    value(appointment.difficulties) &&
+    !value(appointment.specialty)
+  ) {
+    throw new Error(
+      "Indica la especialidad de la consulta para guardar sus limitaciones",
+    )
+  }
   const addresses = draft.addresses
     .filter(
       (address) =>
@@ -138,6 +168,33 @@ export function buildEnrollmentPayload({
       familyMemberPhone: value(item.familyMemberPhone),
       familyMemberEmail: value(item.familyMemberEmail),
     }))
+  const healthBackground = draft.healthBackgroundAssessment
+  const activeComorbidities = (healthBackground.activeComorbidities ?? [])
+    .filter((item) => value(item.conditionName))
+    .map((item) => ({
+      conditionName: item.conditionName.trim(),
+      treatmentDescription: value(item.treatmentDescription),
+      followUpSpecialty: value(item.followUpSpecialty),
+    }))
+  const limitations = (healthBackground.limitations ?? [])
+    .filter((item) => value(item.description))
+    .map((item) => ({
+      description: item.description.trim(),
+      cause: item.cause,
+    }))
+  const familyCancerHistory = (healthBackground.familyCancerHistory ?? [])
+    .filter((item) => value(item.relationship))
+    .map((item) => ({
+      relationship: item.relationship.trim(),
+      cancerType: value(item.cancerType),
+    }))
+  const hasHealthBackground =
+    healthBackground.hasPsychiatry !== undefined &&
+    healthBackground.hasPsychiatry !== null
+      ? true
+      : activeComorbidities.length > 0 ||
+        limitations.length > 0 ||
+        familyCancerHistory.length > 0
 
   return {
     ...(draft.patientId
@@ -241,17 +298,16 @@ export function buildEnrollmentPayload({
                 : duration(
                     draft.diagnosis.waitTimeForDiagnosis,
                     "tiempo de espera para el diagnóstico",
-                  ),
+            ),
             hasMedicalReport: draft.diagnosis.hasMedicalReport ?? undefined,
           },
         }
       : {}),
-    ...(hasDiagnosis &&
-    (treatmentType || meta.currentlyReceivingTreatment === false)
+    ...(hasDiagnosis && hasTreatment
       ? {
           treatments: [
             {
-              treatmentType: treatmentType ?? "No recibe tratamiento",
+              treatmentType: treatmentType!,
               treatmentFrequency: duration(
                 draft.treatment.treatmentFrequency,
                 "frecuencia del tratamiento",
@@ -262,8 +318,32 @@ export function buildEnrollmentPayload({
               startDate: treatmentStartDate,
               endDate: treatmentEndDate,
               notReceivingReason: value(draft.treatment.notReceivingReason),
+              operationName:
+                draft.treatment.isOperation === true ||
+                Boolean(draft.treatment.operationName)
+                  ? value(draft.treatment.operationName)
+                  : undefined,
+              careProgram: draft.treatment.careProgram ?? undefined,
+              receivesTeleconsultation,
+              ...(receivesTeleconsultation
+                ? {
+                    teleconsultationNote: value(
+                      draft.treatment.teleconsultationNote,
+                    ),
+                    ...(teleconsultationSpecialties.length
+                      ? { teleconsultationSpecialties }
+                      : {}),
+                  }
+                : {}),
               treatmentSituation:
                 draft.treatment.treatmentSituation ?? undefined,
+              ...(draft.treatment.treatmentSituation === "ABANDONED"
+                ? {
+                    treatmentAbandonmentReason: value(
+                      draft.treatment.treatmentAbandonmentReason,
+                    ),
+                  }
+                : {}),
               hasLatestPrescription: draft.treatment.hasLatestPrescription,
               latestPrescriptionDate: value(
                 draft.treatment.latestPrescriptionDate,
@@ -310,9 +390,15 @@ export function buildEnrollmentPayload({
           },
         }
       : {}),
-    currentlyAttendingConsultations:
-      meta.currentlyAttendingConsultations ?? undefined,
-    currentlyReceivingTreatment: meta.currentlyReceivingTreatment ?? undefined,
+    ...(typeof meta.currentlyAttendingConsultations === "boolean"
+      ? {
+          currentlyAttendingConsultations: meta.currentlyAttendingConsultations,
+        }
+      : {}),
+    ...(categoriaClinica === "SIGNS_AND_SYMPTOMS" &&
+    typeof meta.currentlyReceivingTreatment === "boolean"
+      ? { currentlyReceivingTreatment: meta.currentlyReceivingTreatment }
+      : {}),
     entrySource: value(meta.programEntryPoint),
     consentToContact: meta.informedConsentAccepted ?? undefined,
     consentToShareData: meta.dataPolicyAccepted ?? undefined,
@@ -321,6 +407,16 @@ export function buildEnrollmentPayload({
     caseComments: comments,
     callStartedAt: localDateTime(today, meta.startTime),
     callEndedAt: localDateTime(today, meta.endTime),
+    ...(hasHealthBackground
+      ? {
+          healthBackgroundAssessment: {
+            hasPsychiatry: healthBackground.hasPsychiatry ?? undefined,
+            ...(activeComorbidities.length ? { activeComorbidities } : {}),
+            ...(limitations.length ? { limitations } : {}),
+            ...(familyCancerHistory.length ? { familyCancerHistory } : {}),
+          },
+        }
+      : {}),
     ...(talks.length ? { familyPreventionTalkInterests: talks } : {}),
   }
 }
