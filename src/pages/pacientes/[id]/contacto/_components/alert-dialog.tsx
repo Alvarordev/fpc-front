@@ -73,7 +73,14 @@ export function AlertDialog({ open, onOpenChange, onSave }: AlertDialogProps) {
               name="healthCenterId"
               control={form.control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  items={hospitals.map((hospital) => ({
+                    value: hospital.id,
+                    label: hospital.name,
+                  }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar establecimiento" />
                   </SelectTrigger>

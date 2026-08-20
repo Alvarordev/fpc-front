@@ -347,6 +347,10 @@ function SheetForm({
           <div className="space-y-2">
             <Label className="text-xs">Número de semanas</Label>
             <Select
+              items={[1, 2, 3, 4, 5, 6, 7, 8].map((weeks) => ({
+                value: String(weeks),
+                label: `${weeks} ${weeks === 1 ? "semana" : "semanas"}`,
+              }))}
               value={recurringForm.watch("weeks")}
               onValueChange={(v) =>
                 recurringForm.setValue("weeks", v ?? "4")

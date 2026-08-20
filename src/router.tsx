@@ -15,6 +15,7 @@ import HealthCentersPage from "@/pages/hospitales/page";
 import AlertsPage from "@/pages/alertas/page";
 import EnrolamientoPage from "@/pages/enrolamiento/page";
 import CitasPage from "@/pages/citas/citas-page";
+import CallcenterPage from "@/pages/callcenter/page";
 
 export const router = createBrowserRouter([
   {
@@ -59,6 +60,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard allowedRoles={["ADMIN"]}>
             <UsersPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "callcenter",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN"]}>
+            <CallcenterPage />
           </RoleGuard>
         ),
       },

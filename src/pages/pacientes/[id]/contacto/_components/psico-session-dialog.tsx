@@ -121,6 +121,12 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
                 const selectedVol = volunteers.find((v) => v.id === field.value);
                 return (
                   <Select
+                    items={volunteers
+                      .filter((volunteer) => volunteer.isActive)
+                      .map((volunteer) => ({
+                        value: volunteer.id,
+                        label: getVolunteerLabel(volunteer),
+                      }))}
                     value={field.value}
                     onValueChange={(v) => {
                       field.onChange(v);
@@ -131,7 +137,7 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
                       {field.value
                         ? selectedVol
                           ? getVolunteerLabel(selectedVol)
-                          : field.value
+                          : "Voluntario no disponible"
                         : <SelectValue placeholder="Seleccionar voluntario" />}
                     </SelectTrigger>
                     <SelectContent>
@@ -155,13 +161,19 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
                 const selectedSlot = slots.find((s) => s.id === field.value);
                 return (
                   <Select
+                    items={availableSlots.map((slot) => ({
+                      value: slot.id,
+                      label: formatSlot(slot),
+                    }))}
                     value={field.value}
                     onValueChange={field.onChange}
                     disabled={!selectedVolunteerId}
                   >
                     <SelectTrigger>
-                      {field.value && selectedSlot
-                        ? formatSlot(selectedSlot)
+                      {field.value
+                        ? selectedSlot
+                          ? formatSlot(selectedSlot)
+                          : "Horario no disponible"
                         : <SelectValue
                             placeholder={
                               !selectedVolunteerId
@@ -191,10 +203,10 @@ export function PsicoSessionDialog({ open, onOpenChange, onSave }: PsicoSessionD
               name="modality"
               control={form.control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select items={modalityLabels} value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger>
                     {field.value
-                      ? modalityLabels[field.value] ?? field.value
+                      ? modalityLabels[field.value] ?? "Modalidad no disponible"
                       : <SelectValue placeholder="Seleccionar modalidad" />}
                   </SelectTrigger>
                   <SelectContent>

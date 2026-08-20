@@ -84,7 +84,7 @@ export function ReminderDraftDialog({ open, onOpenChange, onSave }: ReminderDraf
               control={form.control}
               name="type"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select items={TYPE_OPTIONS} value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className="w-full bg-card border">
                     <SelectValue placeholder="Seleccionar tipo..." />
                   </SelectTrigger>
