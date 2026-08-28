@@ -447,6 +447,7 @@ export function buildEnrollmentPayload({
     ...(hasDiagnosis
       ? {
           diagnosis: {
+            mode: "PARALLEL",
             diagnosis: draft.diagnosis.diagnosis.trim(),
             cancerStage: draft.diagnosis.cancerStage ?? undefined,
             diagnosisDate: value(draft.diagnosis.diagnosisDate),

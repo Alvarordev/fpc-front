@@ -141,6 +141,7 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.healthPhase).toBe("CANCER_DIAGNOSIS")
     expect(payload.insurance?.insuranceType).toBe("EPS")
     expect(payload.diagnosis?.diagnosis).toBe("Cáncer de mama")
+    expect(payload.diagnosis?.mode).toBe("PARALLEL")
     expect(payload.treatments?.[0]?.treatmentType).toBe("Quimioterapia")
     expect(payload.treatments?.[0]?.treatmentFrequency).toEqual({
       valueMin: 3,

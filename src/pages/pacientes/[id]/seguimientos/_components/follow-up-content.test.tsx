@@ -1,17 +1,18 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen, waitFor } from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { FollowUpContent } from "./follow-up-content"
+import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 
 const mocks = vi.hoisted(() => ({
   getById: vi.fn(),
   update: vi.fn(),
   listTimeline: vi.fn(),
   listAgents: vi.fn(),
-  ensureFollowUp: vi.fn(),
+  getPatient: vi.fn(),
 }))
 
 vi.mock("react-router-dom", () => ({
@@ -35,7 +36,9 @@ vi.mock("@/api/agents", () => ({
 }))
 
 vi.mock("@/api/alerts", () => ({ alertsApi: { create: vi.fn() } }))
-vi.mock("@/api/patients", () => ({ patientsApi: {} }))
+vi.mock("@/api/patients", () => ({
+  patientsApi: { getById: mocks.getPatient },
+}))
 vi.mock("@/api/psychooncology-appointments", () => ({
   psychooncologyAppointmentsApi: { create: vi.fn() },
 }))
@@ -58,29 +61,6 @@ vi.mock("../../_components/follow-up-outcomes", () => ({
 vi.mock("./clinical-data-tabs", () => ({ ClinicalDataTabs: () => null }))
 vi.mock("./create-alert-dialog", () => ({ CreateAlertDialog: () => null }))
 vi.mock("./follow-up-aside", () => ({ FollowUpAside: () => null }))
-vi.mock("../_store/follow-up-draft-store", () => ({
-  useFollowUpDraftStore: Object.assign(
-    vi.fn(() => ({
-      clinical: {},
-      psico: undefined,
-      alert: undefined,
-      nextFollowUp: undefined,
-      reminders: [],
-      reset: vi.fn(),
-      updateClinical: vi.fn(),
-      setPsico: vi.fn(),
-      setAlert: vi.fn(),
-      setNextFollowUp: vi.fn(),
-      addReminder: vi.fn(),
-      removeReminder: vi.fn(),
-      clearPsico: vi.fn(),
-      clearAlert: vi.fn(),
-      clearNextFollowUp: vi.fn(),
-    })),
-    { getState: () => ({ ensureFollowUp: mocks.ensureFollowUp }) },
-  ),
-}))
-
 const completedFollowUp = {
   id: "follow-up-1",
   subjectPatientId: "patient-1",
@@ -98,6 +78,14 @@ const completedFollowUp = {
   updatedAt: "2026-08-15T14:10:00.000Z",
 }
 
+const scheduledFollowUp = {
+  ...completedFollowUp,
+  status: "SCHEDULED" as const,
+  scheduledAt: "2026-08-15T14:00:00.000Z",
+  completedAt: null,
+  notes: "Nota para guardar",
+}
+
 function renderFollowUp() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -111,6 +99,8 @@ function renderFollowUp() {
 }
 
 describe("FollowUpContent closed follow-up editing", () => {
+  afterEach(() => cleanup())
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getById.mockResolvedValue(completedFollowUp)
@@ -121,6 +111,8 @@ describe("FollowUpContent closed follow-up editing", () => {
     })
     mocks.listTimeline.mockResolvedValue({ data: [] })
     mocks.listAgents.mockResolvedValue([])
+    mocks.getPatient.mockResolvedValue({ diagnoses: [], treatments: [] })
+    useFollowUpDraftStore.getState().reset()
   })
 
   it("shows the edit action, loads the note, and updates closed fields", async () => {
@@ -145,6 +137,7 @@ describe("FollowUpContent closed follow-up editing", () => {
     await user.clear(notes)
     await user.type(notes, "Nota corregida")
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }))
+    await user.click(screen.getByRole("button", { name: "Marcar no contestó" }))
 
     await waitFor(() => {
       expect(mocks.update).toHaveBeenCalledWith("follow-up-1", {
@@ -153,4 +146,47 @@ describe("FollowUpContent closed follow-up editing", () => {
       })
     })
   })
+
+  it.each([
+    [
+      "Completar",
+      "¿Completar seguimiento?",
+      "Completar seguimiento",
+      "COMPLETED",
+    ],
+    [
+      "No contestó",
+      "¿Marcar como no contestó?",
+      "Marcar no contestó",
+      "NO_ANSWER",
+    ],
+    ["Cancelar", "¿Cancelar seguimiento?", "Cancelar seguimiento", "CANCELLED"],
+  ] as const)(
+    "confirms before changing the status with %s",
+    async (buttonLabel, dialogTitle, confirmLabel, status) => {
+      const user = userEvent.setup()
+      mocks.getById.mockResolvedValue(scheduledFollowUp)
+      mocks.update.mockResolvedValue({ ...scheduledFollowUp, status })
+      renderFollowUp()
+
+      await user.click(await screen.findByRole("button", { name: buttonLabel }))
+      expect(screen.getByRole("heading", { name: dialogTitle })).toBeTruthy()
+      expect(mocks.update).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole("button", { name: "Volver" }))
+      expect(screen.queryByRole("heading", { name: dialogTitle })).toBeNull()
+      expect(mocks.update).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole("button", { name: buttonLabel }))
+      await user.click(screen.getByRole("button", { name: confirmLabel }))
+
+      await waitFor(() => {
+        expect(mocks.update).toHaveBeenCalledWith("follow-up-1", {
+          status,
+          notes: "Nota para guardar",
+          completedAt: status === "COMPLETED" ? expect.any(String) : undefined,
+        })
+      })
+    },
+  )
 })

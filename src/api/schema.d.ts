@@ -1787,6 +1787,10 @@ export interface components {
             comments?: string;
         };
         EnrollmentDiagnosisDto: {
+            /** @enum {string} */
+            mode: "PARALLEL" | "REPLACE";
+            /** Format: uuid */
+            replacementDiagnosisId?: string;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -2739,6 +2743,13 @@ export interface components {
             deceasedAt?: string;
         };
         CreatePatientDiagnosisDto: {
+            /** @enum {string} */
+            mode: "PARALLEL" | "REPLACE";
+            /**
+             * Format: uuid
+             * @description Required when mode is REPLACE; the active diagnosis to retire
+             */
+            replacementDiagnosisId?: string;
             /** Format: uuid */
             followUpId: string;
             diagnosis: string;
@@ -5740,8 +5751,15 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient or follow-up not found */
+            /** @description Patient, follow-up, or replacement diagnosis not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The replacement diagnosis belongs to another patient or is not active */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -12,6 +12,7 @@ import {
   Stethoscope,
 } from "lucide-react"
 import type { PatientTimelineOutcome } from "@/api/patient-timeline"
+import type { PatientDiagnosis, PatientTreatment } from "@/api/patients"
 import { cn } from "@/lib/utils"
 
 const outcomeIcons: Record<
@@ -35,12 +36,20 @@ interface FollowUpOutcomesProps {
   outcomes: PatientTimelineOutcome[]
   limit?: number
   className?: string
+  diagnoses?: PatientDiagnosis[]
+  treatments?: PatientTreatment[]
+  onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
+  onViewTreatment?: (treatment: PatientTreatment) => void
 }
 
 export function FollowUpOutcomes({
   outcomes,
   limit,
   className,
+  diagnoses,
+  treatments,
+  onViewDiagnosis,
+  onViewTreatment,
 }: FollowUpOutcomesProps) {
   if (outcomes.length === 0) return null
 
@@ -56,12 +65,23 @@ export function FollowUpOutcomes({
       <div className="space-y-2">
         {visibleOutcomes.map((outcome) => {
           const Icon = outcomeIcons[outcome.type]
+          const diagnosis =
+            outcome.type === "DIAGNOSIS"
+              ? diagnoses?.find((item) => item.id === outcome.recordId)
+              : undefined
+          const treatment =
+            outcome.type === "TREATMENT"
+              ? treatments?.find((item) => item.id === outcome.recordId)
+              : undefined
+          const onView =
+            diagnosis && onViewDiagnosis
+              ? () => onViewDiagnosis(diagnosis)
+              : treatment && onViewTreatment
+                ? () => onViewTreatment(treatment)
+                : undefined
 
-          return (
-            <div
-              key={`${outcome.type}-${outcome.recordId}`}
-              className="bg-muted/40 flex items-start gap-2.5 rounded-lg px-3 py-2"
-            >
+          const content = (
+            <>
               <span className="bg-background text-muted-foreground ring-border/70 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ring-1">
                 <Icon className="size-3.5" />
               </span>
@@ -73,6 +93,30 @@ export function FollowUpOutcomes({
                   {outcome.summary}
                 </p>
               </div>
+            </>
+          )
+          const outcomeClassName = cn(
+            "bg-muted/40 flex items-start gap-2.5 rounded-lg px-3 py-2 text-left",
+            onView &&
+              "hover:bg-muted/70 focus-visible:ring-ring cursor-pointer transition-colors focus-visible:ring-2 focus-visible:outline-none",
+          )
+
+          return onView ? (
+            <button
+              key={`${outcome.type}-${outcome.recordId}`}
+              type="button"
+              className={cn(outcomeClassName, "w-full")}
+              onClick={onView}
+              aria-label={`Ver detalle de ${outcome.label}`}
+            >
+              {content}
+            </button>
+          ) : (
+            <div
+              key={`${outcome.type}-${outcome.recordId}`}
+              className={outcomeClassName}
+            >
+              {content}
             </div>
           )
         })}

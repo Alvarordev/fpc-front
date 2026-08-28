@@ -23,6 +23,7 @@ import type {
   CreateTreatmentMedicationInput,
   CreatePatientSymptomReportInput,
   PatientAddress,
+  PatientDiagnosis,
   PatientDetailsInput,
   PatientDetailsResponse,
   PatientHealthBackgroundAssessment,
@@ -57,6 +58,7 @@ import {
   Stethoscope,
   UserRound,
   Users,
+  ChevronRight,
 } from "lucide-react"
 import { usePatient } from "../../_hooks/use-patient"
 import {
@@ -71,8 +73,9 @@ import {
   type InsuranceType,
 } from "../../_lib/clinical-labels"
 import {
-  DRAFT_DIAGNOSIS_ID,
+  draftDiagnosisOptionId,
   type ClinicalDrafts,
+  type DiagnosisDecisionMode,
   type DiagnosisDraft,
   type HealthBackgroundAssessmentDraft,
   type InsuranceDraft,
@@ -195,6 +198,8 @@ interface ClinicalDataTabsProps {
   followUpId: string
   drafts: ClinicalDrafts
   onDraftsChange: (updater: (prev: ClinicalDrafts) => ClinicalDrafts) => void
+  onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
+  onViewTreatment?: (treatment: PatientTreatment) => void
 }
 
 export function ClinicalDataTabs({
@@ -202,6 +207,8 @@ export function ClinicalDataTabs({
   followUpId,
   drafts,
   onDraftsChange,
+  onViewDiagnosis,
+  onViewTreatment,
 }: ClinicalDataTabsProps) {
   const [activeTab, setActiveTab] = useState("datos")
   const { data: patient } = usePatient(patientId)
@@ -287,7 +294,7 @@ export function ClinicalDataTabs({
   })
 
   const diagnoses = patient?.diagnoses ?? []
-  const currentDiagnosis = diagnoses.find((d) => d.isCurrent)
+  const currentDiagnoses = diagnoses.filter((diagnosis) => diagnosis.isCurrent)
 
   return (
     <Tabs
@@ -334,7 +341,7 @@ export function ClinicalDataTabs({
         >
           <Stethoscope className="size-4 text-violet-600" />
           <span className="min-w-0 break-words">Diagnóstico</span>
-          {drafts.diagnosis && <DraftDot />}
+          {drafts.diagnoses?.length ? <DraftDot /> : null}
         </TabsTrigger>
         <TabsTrigger
           value="antecedentes"
@@ -437,11 +444,12 @@ export function ClinicalDataTabs({
         className="min-w-0 flex-1 pr-1"
       >
         <DiagnosticoForm
-          draft={drafts.diagnosis}
+          draft={drafts.diagnoses}
           hospitals={hospitals}
-          currentDiagnosis={currentDiagnosis}
-          onSave={(diagnosis) =>
-            onDraftsChange((prev) => ({ ...prev, diagnosis }))
+          currentDiagnoses={currentDiagnoses}
+          onViewDiagnosis={onViewDiagnosis}
+          onSave={(diagnoses) =>
+            onDraftsChange((prev) => ({ ...prev, diagnoses }))
           }
         />
       </TabsContent>
@@ -455,7 +463,8 @@ export function ClinicalDataTabs({
           hospitals={hospitals}
           diagnoses={diagnoses}
           treatments={patient?.treatments ?? []}
-          hasDraftDiagnosis={Boolean(drafts.diagnosis)}
+          diagnosisDrafts={drafts.diagnoses}
+          onViewTreatment={onViewTreatment}
           onSave={(treatments) =>
             onDraftsChange((prev) => ({ ...prev, treatments }))
           }
@@ -1503,30 +1512,33 @@ interface DiagnosisFormValues {
 function DiagnosticoForm({
   draft,
   hospitals,
-  currentDiagnosis,
+  currentDiagnoses,
+  onViewDiagnosis,
   onSave,
 }: {
-  draft: DiagnosisDraft | undefined
+  draft: DiagnosisDraft[] | undefined
   hospitals: Array<{ id: string; name: string }>
-  currentDiagnosis?: { diagnosis: string; cancerStage: string | null }
-  onSave: (diagnosis: DiagnosisDraft) => void
+  currentDiagnoses: PatientDiagnosis[]
+  onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
+  onSave: (diagnoses: DiagnosisDraft[]) => void
 }) {
+  const initial = draft?.[0]
   const { register, handleSubmit, watch, setValue } =
     useForm<DiagnosisFormValues>({
       defaultValues: {
-        diagnosis: draft?.diagnosis ?? "",
-        diagnosisSpecialty: draft?.diagnosisSpecialty ?? "",
-        isSepaActiveReferral: draft?.isSepaActiveReferral,
-        cancerStage: draft?.cancerStage ?? "UNKNOWN",
-        diagnosisDate: draft?.diagnosisDate ?? "",
-        firstSymptomsDate: draft?.firstSymptomsDate ?? "",
-        healthCenterId: draft?.healthCenterId,
-        symptomLeadingToCheckup: draft?.symptomLeadingToCheckup ?? "",
-        waitTimeForDiagnosis: draft?.waitTimeForDiagnosis,
+        diagnosis: initial?.diagnosis ?? "",
+        diagnosisSpecialty: initial?.diagnosisSpecialty ?? "",
+        isSepaActiveReferral: initial?.isSepaActiveReferral,
+        cancerStage: initial?.cancerStage ?? "UNKNOWN",
+        diagnosisDate: initial?.diagnosisDate ?? "",
+        firstSymptomsDate: initial?.firstSymptomsDate ?? "",
+        healthCenterId: initial?.healthCenterId,
+        symptomLeadingToCheckup: initial?.symptomLeadingToCheckup ?? "",
+        waitTimeForDiagnosis: initial?.waitTimeForDiagnosis,
         waitTimeForDiagnosisManuallyEdited:
-          draft?.waitTimeForDiagnosisManuallyEdited ?? false,
-        hasMedicalReport: draft?.hasMedicalReport ?? false,
-        changeReason: draft?.changeReason ?? "",
+          initial?.waitTimeForDiagnosisManuallyEdited ?? false,
+        hasMedicalReport: initial?.hasMedicalReport ?? false,
+        changeReason: initial?.changeReason ?? "",
       },
     })
 
@@ -1545,6 +1557,20 @@ function DiagnosticoForm({
   const visibleWaitTime = waitTimeForDiagnosisManuallyEdited
     ? waitTimeForDiagnosis
     : (calculatedWaitTime ?? waitTimeForDiagnosis)
+  const [mode, setMode] = useState<DiagnosisDecisionMode>(
+    initial?.mode ?? "PARALLEL",
+  )
+  const [replacementDiagnosisId, setReplacementDiagnosisId] = useState(
+    initial?.replacementDiagnosisId ?? "",
+  )
+  const [decisions, setDecisions] = useState<DiagnosisDraft[]>(draft ?? [])
+  const [editingDecisionIndex, setEditingDecisionIndex] = useState<
+    number | null
+  >(null)
+  const decisionModeItems = [
+    { value: "PARALLEL", label: "Agregar diagnóstico activo" },
+    { value: "REPLACE", label: "Reemplazar diagnóstico existente" },
+  ] as const
 
   function updateDiagnosisDate(
     field: "diagnosisDate" | "firstSymptomsDate",
@@ -1566,8 +1592,23 @@ function DiagnosticoForm({
       toast.error("Ingresá el diagnóstico")
       return
     }
-    if (currentDiagnosis && !values.changeReason.trim()) {
+    if (mode === "REPLACE" && !replacementDiagnosisId) {
+      toast.error("Seleccioná el diagnóstico que deseas reemplazar")
+      return
+    }
+    if (mode === "REPLACE" && !values.changeReason.trim()) {
       toast.error("Indica el motivo del reemplazo del diagnóstico")
+      return
+    }
+    if (
+      mode === "REPLACE" &&
+      decisions.some(
+        (decision, index) =>
+          index !== editingDecisionIndex &&
+          decision.replacementDiagnosisId === replacementDiagnosisId,
+      )
+    ) {
+      toast.error("Ya agregaste un reemplazo para ese diagnóstico")
       return
     }
 
@@ -1584,7 +1625,12 @@ function DiagnosticoForm({
       return
     }
 
-    onSave({
+    const nextDecision: DiagnosisDraft = {
+      draftId:
+        editingDecisionIndex !== null
+          ? (decisions[editingDecisionIndex]?.draftId ?? createDraftId())
+          : createDraftId(),
+      mode,
       diagnosis: values.diagnosis.trim(),
       diagnosisSpecialty: values.diagnosisSpecialty.trim() || undefined,
       isSepaActiveReferral: values.isSepaActiveReferral,
@@ -1598,19 +1644,218 @@ function DiagnosticoForm({
         values.waitTimeForDiagnosisManuallyEdited,
       hasMedicalReport: values.hasMedicalReport,
       changeReason: values.changeReason.trim() || undefined,
-    })
+      ...(mode === "REPLACE" ? { replacementDiagnosisId } : {}),
+    }
+    const nextDecisions = [...decisions]
+    if (editingDecisionIndex === null) nextDecisions.push(nextDecision)
+    else nextDecisions[editingDecisionIndex] = nextDecision
+    setDecisions(nextDecisions)
+    onSave(nextDecisions)
+    resetDiagnosisForm()
     toast.success("Diagnóstico guardado en el borrador")
+  }
+
+  function resetDiagnosisForm() {
+    setValue("diagnosis", "")
+    setValue("diagnosisSpecialty", "")
+    setValue("isSepaActiveReferral", undefined)
+    setValue("cancerStage", "UNKNOWN")
+    setValue("diagnosisDate", "")
+    setValue("firstSymptomsDate", "")
+    setValue("healthCenterId", undefined)
+    setValue("symptomLeadingToCheckup", "")
+    setValue("waitTimeForDiagnosis", undefined)
+    setValue("waitTimeForDiagnosisManuallyEdited", false)
+    setValue("hasMedicalReport", false)
+    setValue("changeReason", "")
+    setMode("PARALLEL")
+    setReplacementDiagnosisId("")
+    setEditingDecisionIndex(null)
+  }
+
+  function editDecision(index: number) {
+    const decision = decisions[index]
+    if (!decision) return
+    setEditingDecisionIndex(index)
+    setMode(decision.mode)
+    setReplacementDiagnosisId(decision.replacementDiagnosisId ?? "")
+    setValue("diagnosis", decision.diagnosis)
+    setValue("diagnosisSpecialty", decision.diagnosisSpecialty ?? "")
+    setValue("isSepaActiveReferral", decision.isSepaActiveReferral)
+    setValue("cancerStage", decision.cancerStage ?? "UNKNOWN")
+    setValue("diagnosisDate", decision.diagnosisDate ?? "")
+    setValue("firstSymptomsDate", decision.firstSymptomsDate ?? "")
+    setValue("healthCenterId", decision.healthCenterId)
+    setValue("symptomLeadingToCheckup", decision.symptomLeadingToCheckup ?? "")
+    setValue("waitTimeForDiagnosis", decision.waitTimeForDiagnosis)
+    setValue(
+      "waitTimeForDiagnosisManuallyEdited",
+      decision.waitTimeForDiagnosisManuallyEdited ?? false,
+    )
+    setValue("hasMedicalReport", decision.hasMedicalReport ?? false)
+    setValue("changeReason", decision.changeReason ?? "")
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {currentDiagnosis && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-          Diagnóstico actual: <strong>{currentDiagnosis.diagnosis}</strong>
-          {currentDiagnosis.cancerStage &&
-            ` (${cancerStageOptions[currentDiagnosis.cancerStage as CancerStage]})`}
+      <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-blue-900">
+        <div>
+          <p className="font-semibold">
+            Diagnósticos activos ({currentDiagnoses.length})
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-blue-800">
+            Un paciente puede tener varios diagnósticos de cáncer activos al
+            mismo tiempo. Seleccioná uno para consultar todos sus datos.
+          </p>
+        </div>
+        {currentDiagnoses.length ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {currentDiagnoses.map((diagnosis) => (
+              <button
+                key={diagnosis.id}
+                type="button"
+                className="bg-background/80 hover:bg-background flex items-center gap-2 rounded-md border border-blue-200 p-2.5 text-left transition-colors"
+                onClick={() => onViewDiagnosis?.(diagnosis)}
+                disabled={!onViewDiagnosis}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold">
+                    {diagnosis.diagnosis}
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block text-[11px]">
+                    {diagnosis.cancerStage
+                      ? cancerStageOptions[diagnosis.cancerStage]
+                      : "Etapa sin dato"}
+                  </span>
+                </span>
+                <ChevronRight className="size-3.5 shrink-0 text-blue-700" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-blue-800">
+            Aún no hay diagnósticos activos.
+          </p>
+        )}
+      </div>
+      {decisions.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Cambios pendientes</p>
+            <span className="text-muted-foreground text-xs">
+              {decisions.length}
+            </span>
+          </div>
+          {decisions.map((decision, index) => {
+            const replacement = currentDiagnoses.find(
+              (item) => item.id === decision.replacementDiagnosisId,
+            )
+            return (
+              <div
+                key={decision.draftId}
+                className="bg-card flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+              >
+                <span className="min-w-0">
+                  <b className="block truncate">{decision.diagnosis}</b>
+                  <span className="text-muted-foreground text-xs">
+                    {decision.mode === "REPLACE"
+                      ? `Reemplaza ${replacement?.diagnosis ?? "un diagnóstico"}`
+                      : "Nuevo diagnóstico activo"}
+                  </span>
+                </span>
+                <span className="flex shrink-0 gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => editDecision(index)}
+                    aria-label="Editar diagnóstico"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      const next = decisions.filter(
+                        (_, itemIndex) => itemIndex !== index,
+                      )
+                      setDecisions(next)
+                      onSave(next)
+                    }}
+                    aria-label="Quitar diagnóstico"
+                  >
+                    <Minus className="size-3.5" />
+                  </Button>
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
+      <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">
+            {editingDecisionIndex === null
+              ? "Nueva decisión de diagnóstico"
+              : "Editar decisión de diagnóstico"}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Elegí si el diagnóstico se agrega o reemplaza uno activo.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label>Tipo de decisión</Label>
+          <Select
+            items={decisionModeItems}
+            value={mode}
+            onValueChange={(value) => {
+              const nextMode = (value || "PARALLEL") as DiagnosisDecisionMode
+              setMode(nextMode)
+              if (nextMode === "PARALLEL") setReplacementDiagnosisId("")
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {decisionModeItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {mode === "REPLACE" && (
+          <div className="space-y-2">
+            <Label>Diagnóstico activo a reemplazar</Label>
+            <Select
+              items={currentDiagnoses.map((item) => ({
+                value: item.id,
+                label: `${item.diagnosis} · ${item.cancerStage ? cancerStageOptions[item.cancerStage] : "Etapa sin dato"}`,
+              }))}
+              value={replacementDiagnosisId}
+              onValueChange={(value) => setReplacementDiagnosisId(value ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar diagnóstico actual" />
+              </SelectTrigger>
+              <SelectContent>
+                {currentDiagnoses.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.diagnosis} ·{" "}
+                    {item.cancerStage
+                      ? cancerStageOptions[item.cancerStage]
+                      : "Etapa sin dato"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
           <Label>Diagnóstico</Label>
@@ -1628,7 +1873,7 @@ function DiagnosticoForm({
           value={watch("isSepaActiveReferral")}
           onChange={(value) => setValue("isSepaActiveReferral", value)}
         />
-        {currentDiagnosis && (
+        {mode === "REPLACE" && (
           <div className="space-y-2 md:col-span-2">
             <Label>Motivo del reemplazo</Label>
             <Textarea
@@ -1745,12 +1990,28 @@ function DiagnosticoForm({
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm">
-          Guardar diagnóstico
+          {editingDecisionIndex === null
+            ? "Guardar diagnóstico"
+            : "Actualizar diagnóstico"}
         </Button>
-        <DraftBadge saved={Boolean(draft)} />
+        {editingDecisionIndex !== null && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={resetDiagnosisForm}
+          >
+            Cancelar edición
+          </Button>
+        )}
+        <DraftBadge saved={Boolean(decisions.length)} />
       </div>
     </form>
   )
+}
+
+function createDraftId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
 
 // ── Tratamiento ──
@@ -1788,14 +2049,16 @@ function TratamientosForm({
   hospitals,
   diagnoses,
   treatments,
-  hasDraftDiagnosis,
+  diagnosisDrafts,
+  onViewTreatment,
   onSave,
 }: {
   draft: TreatmentDraft[] | undefined
   hospitals: Array<{ id: string; name: string }>
   diagnoses: Array<{ id: string; diagnosis: string }>
   treatments: PatientTreatment[]
-  hasDraftDiagnosis: boolean
+  diagnosisDrafts: DiagnosisDraft[] | undefined
+  onViewTreatment?: (treatment: PatientTreatment) => void
   onSave: (treatments: TreatmentDraft[]) => void
 }) {
   const initial = draft?.[0]
@@ -1848,7 +2111,8 @@ function TratamientosForm({
   const startDate = watched.startDate ?? ""
   const hasLatestPrescription = watched.hasLatestPrescription
   const medications = watched.medications ?? []
-  const canPickDiagnosis = diagnoses.length > 0 || hasDraftDiagnosis
+  const canPickDiagnosis =
+    diagnoses.length > 0 || Boolean(diagnosisDrafts?.length)
   const [mode, setMode] = useState<TreatmentDecisionMode>(
     initial?.mode ?? "PARALLEL",
   )
@@ -1871,14 +2135,10 @@ function TratamientosForm({
       editingDecisionIndex === null,
   )
   const diagnosisItems = [
-    ...(hasDraftDiagnosis
-      ? [
-          {
-            value: DRAFT_DIAGNOSIS_ID,
-            label: "Diagnóstico de este seguimiento",
-          },
-        ]
-      : []),
+    ...(diagnosisDrafts ?? []).map((item) => ({
+      value: draftDiagnosisOptionId(item.draftId),
+      label: `${item.diagnosis} (nuevo)`,
+    })),
     ...diagnoses.map((item) => ({ value: item.id, label: item.diagnosis })),
   ]
   const decisionModeItems = [
@@ -2211,6 +2471,41 @@ function TratamientosForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {currentTreatments.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-amber-950">
+          <div>
+            <p className="font-semibold">
+              Tratamientos activos ({currentTreatments.length})
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+              Consultá el detalle de cada línea activa antes de registrar una
+              actualización o agregar otra en paralelo.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {currentTreatments.map((treatment) => (
+              <button
+                key={treatment.id}
+                type="button"
+                className="bg-background/80 hover:bg-background flex items-center gap-2 rounded-md border border-amber-200 p-2.5 text-left transition-colors"
+                onClick={() => onViewTreatment?.(treatment)}
+                disabled={!onViewTreatment}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold">
+                    {treatment.treatmentType}
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
+                    {treatment.diagnosisSummary?.diagnosis ??
+                      "Sin diagnóstico asociado"}
+                  </span>
+                </span>
+                <ChevronRight className="size-3.5 shrink-0 text-amber-700" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {decisions.length > 0 && (
         <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
           <div className="flex items-center justify-between gap-2">

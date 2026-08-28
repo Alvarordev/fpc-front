@@ -13,10 +13,27 @@ import type { DurationDraft } from "@/types/duration"
 /** Sentinel diagnosisId meaning "link to the diagnosis draft in this same batch". */
 export const DRAFT_DIAGNOSIS_ID = "__DRAFT_DIAGNOSIS__"
 
+export function draftDiagnosisOptionId(draftId: string) {
+  return `${DRAFT_DIAGNOSIS_ID}:${draftId}`
+}
+
+export function isDraftDiagnosisOptionId(value: string) {
+  return value.startsWith(`${DRAFT_DIAGNOSIS_ID}:`)
+}
+
+export function draftDiagnosisIdFromOption(value: string) {
+  return value.slice(`${DRAFT_DIAGNOSIS_ID}:`.length)
+}
+
+export type DiagnosisDecisionMode = "REPLACE" | "PARALLEL"
+
 export type DiagnosisDraft = Omit<
   CreatePatientDiagnosisInput,
-  "followUpId" | "waitTimeForDiagnosis"
+  "followUpId" | "waitTimeForDiagnosis" | "mode" | "replacementDiagnosisId"
 > & {
+  draftId: string
+  mode: DiagnosisDecisionMode
+  replacementDiagnosisId?: string
   waitTimeForDiagnosis?: DurationDraft
   waitTimeForDiagnosisManuallyEdited?: boolean
 }
@@ -53,7 +70,7 @@ export type SymptomReportDraft = Omit<
 export interface ClinicalDrafts {
   details?: PatientDetailsInput
   social?: PatientDetailsInput
-  diagnosis?: DiagnosisDraft
+  diagnoses?: DiagnosisDraft[]
   treatments?: TreatmentDraft[]
   socialNotes?: SocialNoteDraft[]
   symptomReport?: SymptomReportDraft
@@ -67,7 +84,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
   return Boolean(
     drafts.details ||
     drafts.social ||
-    drafts.diagnosis ||
+    drafts.diagnoses?.length ||
     drafts.treatments?.length ||
     drafts.socialNotes?.length ||
     drafts.symptomReport ||
