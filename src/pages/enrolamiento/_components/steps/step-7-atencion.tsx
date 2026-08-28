@@ -32,7 +32,6 @@ import type {
   AddTreatmentMedicationRequest,
   CareProgram,
   CancerStage,
-  HealthBackgroundCause,
   MedicalConsultationStatus,
   MedicationDoseUnit,
   MedicationRoute,
@@ -117,15 +116,6 @@ const CARE_PROGRAMS: Array<{ value: CareProgram; label: string }> = [
   { value: "PADOMI", label: "PADOMI" },
 ]
 
-const HEALTH_BACKGROUND_CAUSES: Array<{
-  value: HealthBackgroundCause
-  label: string
-}> = [
-  { value: "DIAGNOSIS", label: "Diagnóstico" },
-  { value: "TREATMENT", label: "Tratamiento" },
-  { value: "NATURAL_CONDITION", label: "Condición natural" },
-]
-
 const DOSE_UNITS: Array<{ value: MedicationDoseUnit; label: string }> = [
   { value: "MG", label: "mg" },
   { value: "G", label: "g" },
@@ -164,6 +154,7 @@ const EMPTY_APPOINTMENT: AddMedicalAppointmentRequest = {
   specialty: null,
   appointmentDate: null,
   nextAppointmentDate: null,
+  nextAppointmentSpecialty: null,
   difficulties: null,
   hasReferralSheet: undefined,
   isFirstConsultation: false,
@@ -176,7 +167,6 @@ export function Step7Atencion() {
   const dx = draft.diagnosis
   const tx = draft.treatment
   const sis = draft.sisAffiliation
-  const healthBackground = draft.healthBackgroundAssessment
   const details = draft.details
   const meta = draft.enrollmentMetadata
   const seguro = draft.insurance.insuranceType
@@ -200,9 +190,6 @@ export function Step7Atencion() {
 
   const medicalAppointments = draft.medicalAppointments ?? []
   const medications = tx.medications ?? []
-  const activeComorbidities = healthBackground.activeComorbidities ?? []
-  const limitations = healthBackground.limitations ?? []
-  const familyCancerHistory = healthBackground.familyCancerHistory ?? []
   const familyPreventionTalkInterests =
     draft.familyPreventionTalkInterests ?? []
   const appointment = medicalAppointments[0] ?? EMPTY_APPOINTMENT
@@ -290,87 +277,6 @@ export function Step7Atencion() {
           (_, medicationIndex) => medicationIndex !== index,
         ),
       },
-    })
-  }
-
-  function updateHealthBackground(partial: Partial<typeof healthBackground>) {
-    updateDraft({
-      healthBackgroundAssessment: { ...healthBackground, ...partial },
-    })
-  }
-
-  function addActiveComorbidity() {
-    updateHealthBackground({
-      activeComorbidities: [...activeComorbidities, { conditionName: "" }],
-    })
-  }
-
-  function updateActiveComorbidity(
-    index: number,
-    field: "conditionName" | "treatmentDescription" | "followUpSpecialty",
-    value: string,
-  ) {
-    updateHealthBackground({
-      activeComorbidities: activeComorbidities.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value || undefined } : item,
-      ),
-    })
-  }
-
-  function removeActiveComorbidity(index: number) {
-    updateHealthBackground({
-      activeComorbidities: activeComorbidities.filter(
-        (_, itemIndex) => itemIndex !== index,
-      ),
-    })
-  }
-
-  function addLimitation() {
-    updateHealthBackground({
-      limitations: [...limitations, { description: "", cause: "DIAGNOSIS" }],
-    })
-  }
-
-  function updateLimitation(
-    index: number,
-    partial: Partial<(typeof limitations)[number]>,
-  ) {
-    updateHealthBackground({
-      limitations: limitations.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...partial } : item,
-      ),
-    })
-  }
-
-  function removeLimitation(index: number) {
-    updateHealthBackground({
-      limitations: limitations.filter((_, itemIndex) => itemIndex !== index),
-    })
-  }
-
-  function addFamilyCancerHistory() {
-    updateHealthBackground({
-      familyCancerHistory: [...familyCancerHistory, { relationship: "" }],
-    })
-  }
-
-  function updateFamilyCancerHistory(
-    index: number,
-    field: "relationship" | "cancerType",
-    value: string,
-  ) {
-    updateHealthBackground({
-      familyCancerHistory: familyCancerHistory.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value || undefined } : item,
-      ),
-    })
-  }
-
-  function removeFamilyCancerHistory(index: number) {
-    updateHealthBackground({
-      familyCancerHistory: familyCancerHistory.filter(
-        (_, itemIndex) => itemIndex !== index,
-      ),
     })
   }
 
@@ -744,7 +650,7 @@ export function Step7Atencion() {
                       className="bg-card border"
                     />
                   </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="flex flex-col gap-2">
                       <Label className={fl}>
                         {sr.consultationStatus === "ATTENDED"
@@ -774,6 +680,21 @@ export function Step7Atencion() {
                             nextAppointmentDate: e.target.value || null,
                           })
                         }
+                        className="bg-card border"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label className={fl}>
+                        Especialidad de la siguiente consulta
+                      </Label>
+                      <Input
+                        value={appointment.nextAppointmentSpecialty ?? ""}
+                        onChange={(e) =>
+                          updateAppointment({
+                            nextAppointmentSpecialty: e.target.value || null,
+                          })
+                        }
+                        placeholder="Ej: Oncología"
                         className="bg-card border"
                       />
                     </div>
@@ -1360,20 +1281,37 @@ export function Step7Atencion() {
                     />
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>
-                    ¿Cuándo es su siguiente consulta y especialidad?
-                  </Label>
-                  <Input
-                    type="date"
-                    value={appointment.nextAppointmentDate ?? ""}
-                    onChange={(e) =>
-                      updateAppointment({
-                        nextAppointmentDate: e.target.value || null,
-                      })
-                    }
-                    className="bg-card max-w-60 border"
-                  />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>
+                      ¿Cuándo es su siguiente consulta?
+                    </Label>
+                    <Input
+                      type="date"
+                      value={appointment.nextAppointmentDate ?? ""}
+                      onChange={(e) =>
+                        updateAppointment({
+                          nextAppointmentDate: e.target.value || null,
+                        })
+                      }
+                      className="bg-card border"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>
+                      Especialidad de la siguiente consulta
+                    </Label>
+                    <Input
+                      value={appointment.nextAppointmentSpecialty ?? ""}
+                      onChange={(e) =>
+                        updateAppointment({
+                          nextAppointmentSpecialty: e.target.value || null,
+                        })
+                      }
+                      placeholder="Ej: Oncología"
+                      className="bg-card border"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
@@ -2005,295 +1943,6 @@ export function Step7Atencion() {
           </section>
         </>
       )}
-
-      <section className="flex flex-col gap-5">
-        <SectionHeader
-          icon={Stethoscope}
-          title="Antecedentes y comorbilidades"
-        />
-        <div className="flex flex-col gap-2">
-          <Label className={fl}>¿Tiene antecedentes de psiquiatría?</Label>
-          <Select
-            items={TRI_STATE_OPTIONS}
-            value={
-              healthBackground.hasPsychiatry === true
-                ? "SI"
-                : healthBackground.hasPsychiatry === false
-                  ? "NO"
-                  : "SIN_DATO"
-            }
-            onValueChange={(value) =>
-              updateHealthBackground({
-                hasPsychiatry:
-                  value === "SIN_DATO" ? undefined : value === "SI",
-              })
-            }
-          >
-            <SelectTrigger className={sc}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TRI_STATE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium">Comorbilidades activas</p>
-              <p className="text-muted-foreground text-xs">
-                Registra las condiciones que requieren atención actualmente.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5"
-              onClick={addActiveComorbidity}
-            >
-              <Plus className="size-3.5" />
-              Agregar
-            </Button>
-          </div>
-          {activeComorbidities.map((item, index) => (
-            <div
-              key={index}
-              className="border-border/60 bg-muted/20 flex flex-col gap-3 rounded-xl border p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-muted-foreground text-xs font-semibold">
-                  Comorbilidad {index + 1}
-                </p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground/60 hover:text-destructive"
-                  aria-label={`Quitar comorbilidad ${index + 1}`}
-                  onClick={() => removeActiveComorbidity(index)}
-                >
-                  <Minus className="size-3.5" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="flex flex-col gap-2">
-                  <Label
-                    htmlFor={`enrollment-comorbidity-${index}`}
-                    className={fl}
-                  >
-                    Condición <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id={`enrollment-comorbidity-${index}`}
-                    value={item.conditionName}
-                    onChange={(event) =>
-                      updateActiveComorbidity(
-                        index,
-                        "conditionName",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Ej: Hipertensión"
-                    className="bg-card border"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>Tratamiento</Label>
-                  <Input
-                    value={item.treatmentDescription ?? ""}
-                    onChange={(event) =>
-                      updateActiveComorbidity(
-                        index,
-                        "treatmentDescription",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Tratamiento actual"
-                    className="bg-card border"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>Especialidad de seguimiento</Label>
-                  <Input
-                    value={item.followUpSpecialty ?? ""}
-                    onChange={(event) =>
-                      updateActiveComorbidity(
-                        index,
-                        "followUpSpecialty",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Ej: Cardiología"
-                    className="bg-card border"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium">Limitaciones</p>
-              <p className="text-muted-foreground text-xs">
-                Registra las limitaciones actuales y su causa principal.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5"
-              onClick={addLimitation}
-            >
-              <Plus className="size-3.5" />
-              Agregar
-            </Button>
-          </div>
-          {limitations.map((item, index) => (
-            <div
-              key={index}
-              className="border-border/60 bg-muted/20 grid grid-cols-1 gap-3 rounded-xl border p-4 md:grid-cols-[minmax(0,1fr)_14rem_auto]"
-            >
-              <div className="flex flex-col gap-2">
-                <Label
-                  htmlFor={`enrollment-limitation-${index}`}
-                  className={fl}
-                >
-                  Descripción <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id={`enrollment-limitation-${index}`}
-                  value={item.description}
-                  onChange={(event) =>
-                    updateLimitation(index, {
-                      description: event.target.value,
-                    })
-                  }
-                  placeholder="Describe la limitación"
-                  className="bg-card min-h-16 border"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>Causa</Label>
-                <Select
-                  items={HEALTH_BACKGROUND_CAUSES}
-                  value={item.cause}
-                  onValueChange={(value) =>
-                    updateLimitation(index, {
-                      cause: value as HealthBackgroundCause,
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HEALTH_BACKGROUND_CAUSES.map((cause) => (
-                      <SelectItem key={cause.value} value={cause.value}>
-                        {cause.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground/60 hover:text-destructive self-end"
-                aria-label={`Quitar limitación ${index + 1}`}
-                onClick={() => removeLimitation(index)}
-              >
-                <Minus className="size-3.5" />
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium">
-                Antecedentes familiares de cáncer
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Registra familiares con antecedentes oncológicos.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5"
-              onClick={addFamilyCancerHistory}
-            >
-              <Plus className="size-3.5" />
-              Agregar
-            </Button>
-          </div>
-          {familyCancerHistory.map((item, index) => (
-            <div
-              key={index}
-              className="border-border/60 bg-muted/20 grid grid-cols-1 gap-3 rounded-xl border p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-            >
-              <div className="flex flex-col gap-2">
-                <Label
-                  htmlFor={`enrollment-family-history-${index}`}
-                  className={fl}
-                >
-                  Parentesco <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id={`enrollment-family-history-${index}`}
-                  value={item.relationship}
-                  onChange={(event) =>
-                    updateFamilyCancerHistory(
-                      index,
-                      "relationship",
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Ej: Madre"
-                  className="bg-card border"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>Tipo de cáncer</Label>
-                <Input
-                  value={item.cancerType ?? ""}
-                  onChange={(event) =>
-                    updateFamilyCancerHistory(
-                      index,
-                      "cancerType",
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Ej: Cáncer de mama"
-                  className="bg-card border"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground/60 hover:text-destructive self-end"
-                aria-label={`Quitar antecedente familiar ${index + 1}`}
-                onClick={() => removeFamilyCancerHistory(index)}
-              >
-                <Minus className="size-3.5" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section className="flex flex-col gap-5">
         <SectionHeader icon={Users} title="Servicios de Apoyo" />

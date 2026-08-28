@@ -1862,6 +1862,7 @@ export interface components {
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
             referralNotProvidedReason?: string;
@@ -2144,6 +2145,7 @@ export interface components {
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
             referralNotProvidedReason?: string;
@@ -2169,6 +2171,7 @@ export interface components {
             appointmentTime: string | null;
             /** Format: date */
             nextAppointmentDate: string | null;
+            nextAppointmentSpecialty: string | null;
             hasReferralSheet: boolean | null;
             referredTo: string | null;
             referralNotProvidedReason: string | null;
@@ -2189,6 +2192,7 @@ export interface components {
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
             referralNotProvidedReason?: string;
@@ -2591,6 +2595,7 @@ export interface components {
             appointmentTime: string | null;
             /** Format: date */
             nextAppointmentDate: string | null;
+            nextAppointmentSpecialty: string | null;
             hasReferralSheet: boolean | null;
             referredTo: string | null;
             referralNotProvidedReason: string | null;
@@ -2798,6 +2803,7 @@ export interface components {
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
             referralNotProvidedReason?: string;

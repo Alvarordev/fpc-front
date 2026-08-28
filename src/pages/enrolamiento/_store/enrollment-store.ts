@@ -13,7 +13,6 @@ import type {
   FamilyPreventionTalkInterestRequest,
   EnrollmentMetadataRequest,
   PatientHealthPhase,
-  HealthBackgroundAssessmentRequest,
   EnrollmentContactSource,
 } from "@/types"
 import { normalizeDuration } from "@/types/duration"
@@ -81,7 +80,6 @@ export interface EnrollmentDraft {
   addresses: EnrollmentAddressRequest[]
   medicalAppointments: AddMedicalAppointmentRequest[]
   familyPreventionTalkInterests: FamilyPreventionTalkInterestRequest[]
-  healthBackgroundAssessment: HealthBackgroundAssessmentRequest
   sisAffiliation: AddSisAffiliationRequest
   companion: CompanionDraft
   primaryContactSource?: EnrollmentContactSource
@@ -134,11 +132,6 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   addresses: [],
   medicalAppointments: [],
   familyPreventionTalkInterests: [],
-  healthBackgroundAssessment: {
-    activeComorbidities: [],
-    limitations: [],
-    familyCancerHistory: [],
-  },
   sisAffiliation: { canAffiliate: true },
   companion: { fullName: "", primaryPhone: "" },
   primaryContactSource: undefined,
@@ -347,15 +340,6 @@ function normalizeDraft(
     addresses: migratedAddresses,
     medicalAppointments: draft?.medicalAppointments ?? [],
     familyPreventionTalkInterests: draft?.familyPreventionTalkInterests ?? [],
-    healthBackgroundAssessment: {
-      ...DEFAULT_DRAFT.healthBackgroundAssessment,
-      ...draft?.healthBackgroundAssessment,
-      activeComorbidities:
-        draft?.healthBackgroundAssessment?.activeComorbidities ?? [],
-      limitations: draft?.healthBackgroundAssessment?.limitations ?? [],
-      familyCancerHistory:
-        draft?.healthBackgroundAssessment?.familyCancerHistory ?? [],
-    },
     sisAffiliation: {
       ...DEFAULT_DRAFT.sisAffiliation,
       ...draft?.sisAffiliation,
@@ -476,7 +460,7 @@ export const useEnrollmentStore = create<EnrollmentState>()(
     }),
     {
       name: "fpc-enrollment-draft",
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         const persisted = persistedState as Partial<EnrollmentState> | undefined
         return {

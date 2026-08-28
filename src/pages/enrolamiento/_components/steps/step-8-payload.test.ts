@@ -106,7 +106,8 @@ describe("step 8 Nest enrollment payload", () => {
             specialty: "Oncología",
             healthCenterId: null,
             appointmentDate: null,
-            nextAppointmentDate: null,
+            nextAppointmentDate: "2026-07-15",
+            nextAppointmentSpecialty: "Radioterapia",
             difficulties: null,
             hasReferralSheet: false,
             isFirstConsultation: false,
@@ -183,6 +184,10 @@ describe("step 8 Nest enrollment payload", () => {
     })
     expect(payload.details?.referredToSocialWorker).toBe(true)
     expect(payload.familyPreventionTalkInterests).toHaveLength(1)
+    expect(payload.medicalAppointments?.[0]).toMatchObject({
+      nextAppointmentDate: "2026-07-15",
+      nextAppointmentSpecialty: "Radioterapia",
+    })
     expect(payload.callStartedAt).toMatch(/^2026-06-25T/)
     expect(payload.diagnosis?.waitTimeForDiagnosis).toBeUndefined()
     expect(payload.surveyAccepted).toBe(true)
@@ -265,20 +270,6 @@ describe("step 8 Nest enrollment payload", () => {
           treatmentAbandonmentReason: "Cambio de ciudad",
           isCurrent: true,
         },
-        healthBackgroundAssessment: {
-          hasPsychiatry: false,
-          activeComorbidities: [
-            {
-              conditionName: "Hipertensión",
-              treatmentDescription: "Losartán",
-              followUpSpecialty: "Cardiología",
-            },
-          ],
-          limitations: [
-            { description: "Movilidad reducida", cause: "TREATMENT" },
-          ],
-          familyCancerHistory: [{ relationship: "Madre", cancerType: "Mama" }],
-        },
         enrollmentMetadata: { currentlyReceivingTreatment: false },
       }),
     })
@@ -296,18 +287,7 @@ describe("step 8 Nest enrollment payload", () => {
       treatmentSituation: "ABANDONED",
       treatmentAbandonmentReason: "Cambio de ciudad",
     })
-    expect(payload.healthBackgroundAssessment).toMatchObject({
-      hasPsychiatry: false,
-      activeComorbidities: [
-        {
-          conditionName: "Hipertensión",
-          treatmentDescription: "Losartán",
-          followUpSpecialty: "Cardiología",
-        },
-      ],
-      limitations: [{ description: "Movilidad reducida", cause: "TREATMENT" }],
-      familyCancerHistory: [{ relationship: "Madre", cancerType: "Mama" }],
-    })
+    expect(payload.healthBackgroundAssessment).toBeUndefined()
     expect("currentlyReceivingTreatment" in payload).toBe(false)
   })
 
@@ -359,6 +339,7 @@ describe("step 8 Nest enrollment payload", () => {
             specialty: "Medicina general",
             appointmentDate: "2026-06-20",
             nextAppointmentDate: "2026-07-20",
+            nextAppointmentSpecialty: "Oncología",
             hasReferralSheet: false,
             referralNotProvidedReason: "No fue necesario referir",
           },
@@ -392,6 +373,7 @@ describe("step 8 Nest enrollment payload", () => {
     })
     expect(payload.medicalAppointments?.[0]).toMatchObject({
       appointmentDate: "2026-06-20",
+      nextAppointmentSpecialty: "Oncología",
       isFirstConsultation: true,
       hasReferralSheet: false,
       referralNotProvidedReason: "No fue necesario referir",

@@ -172,6 +172,7 @@ export function buildEnrollmentPayload({
           value(item.difficulties) ||
           value(item.appointmentDate) ||
           value(item.nextAppointmentDate) ||
+          value(item.nextAppointmentSpecialty) ||
           value(item.healthCenterId) ||
           item.hasReferralSheet !== undefined,
       )
@@ -306,34 +307,6 @@ export function buildEnrollmentPayload({
       familyMemberPhone: value(item.familyMemberPhone),
       familyMemberEmail: value(item.familyMemberEmail),
     }))
-  const healthBackground = draft.healthBackgroundAssessment
-  const activeComorbidities = (healthBackground.activeComorbidities ?? [])
-    .filter((item) => value(item.conditionName))
-    .map((item) => ({
-      conditionName: item.conditionName.trim(),
-      treatmentDescription: value(item.treatmentDescription),
-      followUpSpecialty: value(item.followUpSpecialty),
-    }))
-  const limitations = (healthBackground.limitations ?? [])
-    .filter((item) => value(item.description))
-    .map((item) => ({
-      description: item.description.trim(),
-      cause: item.cause,
-    }))
-  const familyCancerHistory = (healthBackground.familyCancerHistory ?? [])
-    .filter((item) => value(item.relationship))
-    .map((item) => ({
-      relationship: item.relationship.trim(),
-      cancerType: value(item.cancerType),
-    }))
-  const hasHealthBackground =
-    healthBackground.hasPsychiatry !== undefined &&
-    healthBackground.hasPsychiatry !== null
-      ? true
-      : activeComorbidities.length > 0 ||
-        limitations.length > 0 ||
-        familyCancerHistory.length > 0
-
   const secondaryContactSource = draft.secondaryContactEnabled
     ? (draft.secondaryContactSource ??
       (callerIsComplete && primaryContactSource !== "CALLER"
@@ -533,6 +506,9 @@ export function buildEnrollmentPayload({
               healthCenterId: value(appointmentToSend.healthCenterId),
               appointmentDate: value(appointmentToSend.appointmentDate),
               nextAppointmentDate: value(appointmentToSend.nextAppointmentDate),
+              nextAppointmentSpecialty: value(
+                appointmentToSend.nextAppointmentSpecialty,
+              ),
               ...(consultationStatus === "ATTENDED"
                 ? {
                     hasReferralSheet:
@@ -649,16 +625,6 @@ export function buildEnrollmentPayload({
     caseComments: comments,
     callStartedAt: localDateTime(today, meta.startTime),
     callEndedAt: localDateTime(today, meta.endTime),
-    ...(hasHealthBackground
-      ? {
-          healthBackgroundAssessment: {
-            hasPsychiatry: healthBackground.hasPsychiatry ?? undefined,
-            ...(activeComorbidities.length ? { activeComorbidities } : {}),
-            ...(limitations.length ? { limitations } : {}),
-            ...(familyCancerHistory.length ? { familyCancerHistory } : {}),
-          },
-        }
-      : {}),
     ...(talks.length ? { familyPreventionTalkInterests: talks } : {}),
   }
 }
