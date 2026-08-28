@@ -259,6 +259,7 @@ export interface AddMedicalAppointmentRequest {
   specialty?: string | null
   appointmentDate?: string | null
   nextAppointmentDate?: string | null
+  nextAppointmentSpecialty?: string | null
   hasReferralSheet?: boolean
   referredTo?: string | null
   referralNotProvidedReason?: string | null

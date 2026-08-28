@@ -9,8 +9,6 @@ interface PatientsToolbarProps {
   onSearchChange: (value: string) => void
   activityStatusFilter: PatientActivityStatus | null
   onActivityStatusFilterChange: (status: PatientActivityStatus | null) => void
-  roleFilter: "COMPANION" | null
-  onRoleFilterChange: (role: "COMPANION" | null) => void
 }
 
 const activityStatuses: { value: PatientActivityStatus; label: string }[] = [
@@ -25,21 +23,11 @@ const activityStatusLabels: Record<PatientActivityStatus, string> = {
   REACTIVE: "Reactivo",
 }
 
-const roles: { value: "COMPANION"; label: string }[] = [
-  { value: "COMPANION", label: "Acompañante" },
-]
-
-const roleLabels: Record<"COMPANION", string> = {
-  COMPANION: "Acompañante",
-}
-
 export function PatientsToolbar({
   search,
   onSearchChange,
   activityStatusFilter,
   onActivityStatusFilterChange,
-  roleFilter,
-  onRoleFilterChange,
 }: PatientsToolbarProps) {
   return (
     <div className="space-y-3">
@@ -72,23 +60,7 @@ export function PatientsToolbar({
           ))}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {roles.map(({ value, label }) => (
-            <Button
-              key={value}
-              variant={roleFilter === value ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() =>
-                onRoleFilterChange(roleFilter === value ? null : value)
-              }
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-
-        {(search || activityStatusFilter || roleFilter) && (
+        {(search || activityStatusFilter) && (
           <Button
             variant="ghost"
             size="sm"
@@ -96,7 +68,6 @@ export function PatientsToolbar({
             onClick={() => {
               onSearchChange("")
               onActivityStatusFilterChange(null)
-              onRoleFilterChange(null)
             }}
           >
             <X className="size-3.5" />
@@ -105,7 +76,7 @@ export function PatientsToolbar({
         )}
       </div>
 
-      {(activityStatusFilter || roleFilter) && (
+      {activityStatusFilter && (
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs">Filtros:</span>
           {activityStatusFilter && (
@@ -115,16 +86,6 @@ export function PatientsToolbar({
               onClick={() => onActivityStatusFilterChange(null)}
             >
               {activityStatusLabels[activityStatusFilter]}
-              <X className="size-3" />
-            </Badge>
-          )}
-          {roleFilter && (
-            <Badge
-              variant="outline"
-              className="hover:bg-muted h-6 cursor-pointer gap-1 px-2 text-xs font-normal"
-              onClick={() => onRoleFilterChange(null)}
-            >
-              {roleLabels[roleFilter]}
               <X className="size-3" />
             </Badge>
           )}
