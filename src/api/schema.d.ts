@@ -755,7 +755,10 @@ export interface paths {
         /** List a patient diagnosis history */
         get: operations["PatientDiagnosesController_findAll"];
         put?: never;
-        /** Record a patient diagnosis */
+        /**
+         * Record a patient diagnosis
+         * @description PARALLEL adds a new active diagnosis. REPLACE retires only the active diagnosis identified by replacementDiagnosisId and adds the new diagnosis as active.
+         */
         post: operations["PatientDiagnosesController_create"];
         delete?: never;
         options?: never;
@@ -1787,9 +1790,15 @@ export interface components {
             comments?: string;
         };
         EnrollmentDiagnosisDto: {
-            /** @enum {string} */
+            /**
+             * @example PARALLEL
+             * @enum {string}
+             */
             mode: "PARALLEL" | "REPLACE";
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Required when mode is REPLACE; the active diagnosis to retire
+             */
             replacementDiagnosisId?: string;
             diagnosis: string;
             /** @enum {string} */
@@ -2743,7 +2752,10 @@ export interface components {
             deceasedAt?: string;
         };
         CreatePatientDiagnosisDto: {
-            /** @enum {string} */
+            /**
+             * @example PARALLEL
+             * @enum {string}
+             */
             mode: "PARALLEL" | "REPLACE";
             /**
              * Format: uuid
@@ -3017,6 +3029,16 @@ export interface components {
             createdAt: string;
         };
         DiagnosticStatusDiagnosisDto: {
+            /**
+             * @example PARALLEL
+             * @enum {string}
+             */
+            mode: "PARALLEL" | "REPLACE";
+            /**
+             * Format: uuid
+             * @description Required when mode is REPLACE; the active diagnosis to retire
+             */
+            replacementDiagnosisId?: string;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
