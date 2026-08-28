@@ -10,7 +10,6 @@ export function AdminPatientsContent() {
   const [search, setSearch] = useState("")
   const [activityStatusFilter, setActivityStatusFilter] =
     useState<PatientActivityStatus | null>(null)
-  const [roleFilter, setRoleFilter] = useState<"COMPANION" | null>(null)
   const navigate = useNavigate()
 
   const { data: patientPage, isLoading } = usePatients({
@@ -18,7 +17,7 @@ export function AdminPatientsContent() {
       segment: "CARE",
       search: search || undefined,
       activityStatus: activityStatusFilter ?? undefined,
-      role: roleFilter ?? undefined,
+      role: "PATIENT",
     },
   })
   const patients = patientPage?.data ?? []
@@ -41,8 +40,6 @@ export function AdminPatientsContent() {
         onSearchChange={setSearch}
         activityStatusFilter={activityStatusFilter}
         onActivityStatusFilterChange={setActivityStatusFilter}
-        roleFilter={roleFilter}
-        onRoleFilterChange={setRoleFilter}
       />
 
       <PatientsTable

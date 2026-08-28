@@ -54,6 +54,7 @@ import { getAge } from "@/pages/enrolamiento/_utils/patient-age"
 import { PatientRecordsSection } from "./patient-records-section"
 import { TreatmentCard } from "./treatment-card"
 import { PatientProfileDialog } from "./patient-profile-dialog"
+import { PatientCompanionsSection } from "./patient-companions-section"
 import { useAuthStore } from "@/store/auth-store"
 import { usePatientSocialNotes } from "../_hooks/use-patient-records"
 
@@ -130,7 +131,19 @@ function ContactInformationSection({
   const primaryCompanion = patient.companions.find(
     (link) => link.isPrimaryContact,
   )
-  const primaryContact = primaryCompanion?.companion ?? patient
+  const primaryContact = primaryCompanion?.companion
+  const primaryContactName =
+    primaryContact?.fullName ??
+    primaryCompanion?.companionDisplayName ??
+    (primaryCompanion ? "Acompañante" : patient.fullName)
+  const primaryContactPhone =
+    primaryContact?.primaryPhone ??
+    (primaryCompanion ? null : patient.primaryPhone)
+  const primaryContactSecondaryPhone =
+    primaryContact?.secondaryPhone ??
+    (primaryCompanion ? null : patient.secondaryPhone)
+  const primaryContactGender =
+    primaryContact?.gender ?? (primaryCompanion ? null : patient.gender)
   const caregiverLink = patient.companions.find((link) => link.isCaregiver)
   const legacyCaregiver = patient.details?.emergencyContactName
     ? {
@@ -139,11 +152,14 @@ function ContactInformationSection({
         gender: patient.details.emergencyContactGender,
       }
     : null
-  const caregiver = caregiverLink?.companion
+  const caregiver = caregiverLink
     ? {
-        name: caregiverLink.companion.fullName,
-        phone: caregiverLink.companion.primaryPhone,
-        gender: caregiverLink.companion.gender,
+        name:
+          caregiverLink.companion?.fullName ??
+          caregiverLink.companionDisplayName ??
+          "Acompañante",
+        phone: caregiverLink.companion?.primaryPhone ?? null,
+        gender: caregiverLink.companion?.gender ?? null,
       }
     : legacyCaregiver
 
@@ -161,7 +177,7 @@ function ContactInformationSection({
             Contacto para seguimiento
           </p>
           <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
-            <Field label="Nombre" value={primaryContact.fullName} icon={User} />
+            <Field label="Nombre" value={primaryContactName} icon={User} />
             <Field
               label="Parentesco"
               value={
@@ -175,20 +191,19 @@ function ContactInformationSection({
             />
             <Field
               label="Celular principal"
-              value={primaryContact.primaryPhone}
+              value={primaryContactPhone}
               icon={Phone}
             />
             <Field
               label="Celular auxiliar"
-              value={primaryContact.secondaryPhone}
+              value={primaryContactSecondaryPhone}
               icon={Phone}
             />
             <Field
               label="Género"
               value={
-                primaryContact.gender
-                  ? (genderLabels[primaryContact.gender] ??
-                    primaryContact.gender)
+                primaryContactGender
+                  ? (genderLabels[primaryContactGender] ?? primaryContactGender)
                   : null
               }
               icon={User}
@@ -591,6 +606,13 @@ export function OverviewSection({
       {patient.role !== "COMPANION" && (
         <ContactInformationSection patient={patient} />
       )}
+      {patient.role !== "COMPANION" && (
+        <PatientCompanionsSection
+          patientId={patient.id}
+          companions={patient.companions}
+          canEdit={canEditProfile}
+        />
+      )}
       {canEditProfile && (
         <PatientProfileDialog
           patient={patient}
@@ -786,30 +808,6 @@ export function OverviewSection({
                 {item.signsAndSymptoms ??
                   item.discomfortDescription ??
                   "Sin descripción"}
-              </div>
-            ))}
-          </Records>
-          <Records
-            title="Acompañantes"
-            count={patient.companions.length}
-            icon={Users}
-          >
-            {patient.companions.map((item) => (
-              <div
-                key={item.companionId}
-                className="rounded-md border p-3 text-sm"
-              >
-                {item.companion?.fullName ?? "Acompañante"}{" "}
-                {item.relationship && (
-                  <span className="text-muted-foreground">
-                    (
-                    {relationshipLabels[item.relationship] ?? item.relationship}
-                    )
-                  </span>
-                )}{" "}
-                {item.isPrimaryInformant && (
-                  <Badge className="ml-2">Informante principal</Badge>
-                )}
               </div>
             ))}
           </Records>
