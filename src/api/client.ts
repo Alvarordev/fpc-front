@@ -25,10 +25,38 @@ api.use({
   },
   onResponse({ request, response }) {
     // /auth/* handles its own error states (invalid credentials, failed refresh).
-    if (response.status === 401 && !new URL(request.url).pathname.startsWith("/auth/")) {
+    if (
+      response.status === 401 &&
+      !new URL(request.url).pathname.startsWith("/auth/")
+    ) {
       expireAuthSession()
     }
 
     return response
   },
 })
+
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ?? ""
+  const headers = new Headers(init.headers)
+  const accessToken = getAccessToken()
+
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`)
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    credentials: "include",
+    headers,
+  })
+
+  if (response.status === 401 && !path.startsWith("/auth/")) {
+    expireAuthSession()
+  }
+
+  return response
+}

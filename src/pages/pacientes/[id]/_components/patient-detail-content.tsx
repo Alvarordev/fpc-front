@@ -13,8 +13,10 @@ import { EnrollmentRatingCard } from "./enrollment-rating-card"
 import { SeguimientoTab } from "./seguimiento-tab"
 import { PsicoTab } from "./psico-tab"
 import { RecordatoriosTab } from "./recordatorios-tab"
+import { PatientDocumentsTab } from "./patient-documents-tab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { roleLabels } from "../_lib/clinical-labels"
+import { useAuthStore } from "@/store/auth-store"
 import {
   getPatientTab,
   isPatientTab,
@@ -50,6 +52,7 @@ export function PatientDetailContent() {
   const { data: patient, isLoading, isError } = usePatient(id!)
   const { alerts } = usePatientAlerts(patient)
   const { resetEnrollment, updateDraft, setCategoria } = useEnrollmentStore()
+  const user = useAuthStore((state) => state.user)
 
   function handleEnroll() {
     if (!patient) return
@@ -99,6 +102,13 @@ export function PatientDetailContent() {
     .slice(0, 2)
     .map((w) => w[0])
     .join("")
+  const canViewDocuments =
+    patient.role === "PATIENT" &&
+    (user?.role === "ADMIN" ||
+      user?.role === "FOUNDATION" ||
+      user?.role === "AGENT")
+  const visibleActiveTab =
+    activeTab === "documentos" && !canViewDocuments ? "resumen" : activeTab
 
   return (
     <div className="space-y-5">
@@ -169,12 +179,15 @@ export function PatientDetailContent() {
 
       {alerts.length > 0 && <AlertBanner alerts={alerts} />}
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="mb-4">
+      <Tabs value={visibleActiveTab} onValueChange={handleTabChange}>
+        <TabsList className="mb-4 max-w-full overflow-x-auto">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
           <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
           <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
+          {canViewDocuments && (
+            <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="resumen">
           <div className="space-y-4">
@@ -196,6 +209,15 @@ export function PatientDetailContent() {
         <TabsContent value="recordatorios">
           <RecordatoriosTab pacienteId={patient.id} />
         </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documentos">
+            <PatientDocumentsTab
+              patientId={patient.id}
+              diagnoses={patient.diagnoses}
+              treatments={patient.treatments}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

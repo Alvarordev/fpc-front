@@ -3,6 +3,7 @@ export const PATIENT_TABS = [
   "seguimiento",
   "psicooncologia",
   "recordatorios",
+  "documentos",
 ] as const
 
 export type PatientTab = (typeof PATIENT_TABS)[number]
