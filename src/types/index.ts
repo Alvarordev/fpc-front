@@ -66,6 +66,15 @@ export type UserRole = "ADMIN" | "FOUNDATION" | "AGENT" | "VOLUNTEER"
 
 export type AffiliationType = "PATIENT" | "FAMILY"
 
+export type CompanionContactRole = "PRIMARY" | "SECONDARY"
+
+export type EnrollmentContactSource = "PATIENT" | "CALLER" | "NEW"
+
+export type MedicalConsultationStatus =
+  | "NOT_OBTAINED"
+  | "SCHEDULED"
+  | "ATTENDED"
+
 export type AddressType = "PERMANENT" | "TEMPORARY"
 
 export type PeruDepartment =
@@ -252,6 +261,7 @@ export interface AddMedicalAppointmentRequest {
   nextAppointmentDate?: string | null
   hasReferralSheet?: boolean
   referredTo?: string | null
+  referralNotProvidedReason?: string | null
   difficulties?: string | null
   isFirstConsultation?: boolean
 }
@@ -308,15 +318,25 @@ export interface EnrollmentMetadataRequest {
 }
 
 export interface SymptomReportRequest {
-  hasDiscomfort?: boolean
+  hasDiscomfort?: boolean | null
+  checkupMotivation?: string | null
   signsAndSymptoms?: string | null
   symptomDuration?: DurationDraft
   symptomFrequency?: DurationDraft
   hasSoughtMedicalConsultation?: boolean
+  hasRequestedMedicalConsultation?: boolean | null
+  consultationStatus?: MedicalConsultationStatus | null
+  consultationNotObtainedReason?: string | null
   healthCenterId?: string | null
   specialty?: string | null
-  firstConsultationDetails?: string | null
   indicationsReceived?: string | null
+  diagnosisSearchDuration?: DurationDraft
+  hasReceivedDiagnosis?: boolean | null
+  reportedDiagnosis?: string | null
+  isReceivingReportedTreatment?: boolean | null
+  reportedTreatment?: string | null
+  reportedTreatmentFrequency?: DurationDraft
+  notReceivingTreatmentReason?: string | null
 }
 
 export interface EnrollmentAddressRequest {
@@ -327,6 +347,7 @@ export interface EnrollmentAddressRequest {
   district?: string
   province?: string
   reference?: string
+  locationUrl?: string
   dniMatchesAddress?: boolean
   validFrom?: string
   validTo?: string

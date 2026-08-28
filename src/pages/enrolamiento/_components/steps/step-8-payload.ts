@@ -1,10 +1,16 @@
 import type { CreateEnrollmentInput } from "@/api/enrollments"
 import {
   getEnrollmentComments,
+  type CompanionDraft,
   type CategoriaClinica,
   type EnrollmentDraft,
 } from "../../_store/enrollment-store"
+import { getAge } from "../../_utils/patient-age"
 import { toDurationInput } from "@/types/duration"
+import type {
+  EnrollmentContactSource,
+  MedicalConsultationStatus,
+} from "@/types"
 
 interface BuildEnrollmentPayloadOptions {
   draft: EnrollmentDraft
@@ -29,6 +35,24 @@ function duration(value: Parameters<typeof toDurationInput>[0], field: string) {
   return result
 }
 
+function contactPerson(person: CompanionDraft) {
+  const fullName = value(person.fullName)
+  const primaryPhone = value(person.primaryPhone)
+  const relationship = value(person.relationship)
+  if (!fullName || !primaryPhone || !relationship)
+    throw new Error("Completa nombre, parentesco y teléfono del contacto")
+  return {
+    fullName,
+    primaryPhone,
+    secondaryPhone: value(person.secondaryPhone),
+    dni: value(person.dni),
+    birthDate: value(person.birthDate),
+    gender: value(person.gender),
+    hasWhatsapp: person.hasWhatsapp,
+    relationship,
+  }
+}
+
 export function buildEnrollmentPayload({
   draft,
   agentId,
@@ -42,15 +66,44 @@ export function buildEnrollmentPayload({
     throw new Error("Selecciona una categoría clínica")
   }
   const isFamily = meta.affiliationType === "FAMILY"
-  const includeCompanion = isFamily || meta.hasCaregiver === true
-  const hasDiagnosis = Boolean(value(draft.diagnosis.diagnosis))
+  const patientAge = getAge(
+    draft.patientData.birthDate,
+    new Date(`${today}T12:00:00`),
+  )
+  const isMinorPatient = patientAge !== null && patientAge < 18
+  const callerIsComplete = Boolean(
+    value(draft.companion.fullName) &&
+    value(draft.companion.primaryPhone) &&
+    value(draft.companion.relationship),
+  )
+  const primaryContactSource =
+    draft.primaryContactSource ??
+    (isMinorPatient
+      ? callerIsComplete
+        ? "CALLER"
+        : undefined
+      : isFamily && callerIsComplete
+        ? "CALLER"
+        : "PATIENT")
+  if (!primaryContactSource) {
+    throw new Error("Selecciona un contacto principal")
+  }
+  if (isMinorPatient && primaryContactSource === "PATIENT") {
+    throw new Error(
+      "Un paciente menor debe tener un acompañante como contacto principal",
+    )
+  }
+  if (primaryContactSource === "CALLER" && !callerIsComplete) {
+    throw new Error("Completa los datos de quien llama")
+  }
+  const hasDiagnosis =
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    Boolean(value(draft.diagnosis.diagnosis))
   const treatmentType = value(draft.treatment.treatmentType)
   const hasTreatment =
+    healthPhase === "CANCER_DIAGNOSIS" &&
     Boolean(treatmentType) &&
-    !(
-      healthPhase === "SIGNS_AND_SYMPTOMS" &&
-      draft.enrollmentMetadata.currentlyReceivingTreatment === false
-    )
+    Boolean(value(draft.diagnosis.diagnosis))
   const isOperation =
     draft.treatment.isOperation ?? Boolean(draft.treatment.operationName)
   const treatmentStartDate = value(draft.treatment.startDate)
@@ -74,6 +127,7 @@ export function buildEnrollmentPayload({
     throw new Error("Ingresa el nombre de la operación")
   }
   if (
+    hasTreatment &&
     treatmentStartDate &&
     treatmentEndDate &&
     treatmentEndDate < treatmentStartDate
@@ -104,18 +158,102 @@ export function buildEnrollmentPayload({
         "El hospital de origen solo aplica a tratamientos derivados",
       )
   }
-  const appointment = draft.medicalAppointments.find(
-    (item) => value(item.specialty) || value(item.difficulties),
-  )
-  if (
-    appointment &&
-    value(appointment.difficulties) &&
-    !value(appointment.specialty)
-  ) {
-    throw new Error(
-      "Indica la especialidad de la consulta para guardar sus limitaciones",
-    )
+  const consultationStatus: MedicalConsultationStatus | undefined =
+    draft.symptomReport.consultationStatus ?? undefined
+  const symptom = draft.symptomReport
+  const signsUsesAppointment =
+    healthPhase !== "SIGNS_AND_SYMPTOMS" ||
+    (symptom.hasRequestedMedicalConsultation === true &&
+      (consultationStatus === "SCHEDULED" || consultationStatus === "ATTENDED"))
+  const appointment = signsUsesAppointment
+    ? draft.medicalAppointments.find(
+        (item) =>
+          value(item.specialty) ||
+          value(item.difficulties) ||
+          value(item.appointmentDate) ||
+          value(item.nextAppointmentDate) ||
+          value(item.healthCenterId) ||
+          item.hasReferralSheet !== undefined,
+      )
+    : undefined
+  const needsSignsAppointment =
+    healthPhase === "SIGNS_AND_SYMPTOMS" &&
+    (consultationStatus === "SCHEDULED" || consultationStatus === "ATTENDED")
+  if (needsSignsAppointment && !appointment) {
+    throw new Error("Completa los datos de la consulta médica")
   }
+  if (appointment && !value(appointment.specialty))
+    throw new Error("Indica la especialidad de la consulta")
+  if (healthPhase === "SIGNS_AND_SYMPTOMS") {
+    if (typeof symptom.hasDiscomfort !== "boolean")
+      throw new Error("Indica si presenta algún malestar o dolor")
+    if (typeof symptom.hasRequestedMedicalConsultation !== "boolean")
+      throw new Error("Indica si solicitó una consulta médica")
+    if (typeof symptom.hasReceivedDiagnosis !== "boolean")
+      throw new Error("Indica si le informaron algún diagnóstico")
+    if (typeof symptom.isReceivingReportedTreatment !== "boolean")
+      throw new Error("Indica si recibe el tratamiento informado")
+    if (symptom.hasDiscomfort === false && !value(symptom.checkupMotivation))
+      throw new Error("Indica qué motivó el examen médico")
+    if (symptom.hasRequestedMedicalConsultation === true) {
+      if (!consultationStatus)
+        throw new Error("Indica el estado de la consulta médica")
+      if (
+        consultationStatus === "NOT_OBTAINED" &&
+        !value(symptom.consultationNotObtainedReason)
+      )
+        throw new Error("Indica por qué no obtuvo la consulta médica")
+      if (
+        (consultationStatus === "SCHEDULED" ||
+          consultationStatus === "ATTENDED") &&
+        (!value(symptom.healthCenterId) || !value(symptom.specialty))
+      )
+        throw new Error("Indica establecimiento y especialidad de la consulta")
+      if (
+        (consultationStatus === "SCHEDULED" ||
+          consultationStatus === "ATTENDED") &&
+        !appointment?.appointmentDate
+      )
+        throw new Error("Indica la fecha de la consulta médica")
+      if (consultationStatus === "ATTENDED") {
+        if (appointment?.hasReferralSheet === undefined)
+          throw new Error("Indica si recibió una hoja de referencia")
+        if (appointment.hasReferralSheet && !value(appointment.referredTo))
+          throw new Error("Indica a dónde fue referido")
+        if (
+          appointment.hasReferralSheet === false &&
+          !value(appointment.referralNotProvidedReason)
+        )
+          throw new Error("Indica por qué no recibió la hoja de referencia")
+      }
+    }
+    if (
+      symptom.hasReceivedDiagnosis === true &&
+      !value(symptom.reportedDiagnosis)
+    )
+      throw new Error("Indica el diagnóstico que le informaron")
+    if (symptom.isReceivingReportedTreatment === true) {
+      if (
+        !value(symptom.reportedTreatment) ||
+        !duration(
+          symptom.reportedTreatmentFrequency,
+          "frecuencia del tratamiento reportado",
+        )
+      )
+        throw new Error("Completa el tratamiento reportado y su frecuencia")
+    } else if (
+      symptom.isReceivingReportedTreatment === false &&
+      !value(symptom.notReceivingTreatmentReason)
+    ) {
+      throw new Error("Indica por qué no recibe tratamiento")
+    }
+  }
+  const appointmentToSend =
+    healthPhase === "SIGNS_AND_SYMPTOMS" &&
+    (symptom.hasRequestedMedicalConsultation === false ||
+      consultationStatus === "NOT_OBTAINED")
+      ? undefined
+      : appointment
   const addresses = draft.addresses
     .filter(
       (address) =>
@@ -123,7 +261,7 @@ export function buildEnrollmentPayload({
         address.district ||
         address.province ||
         address.department ||
-        address.reference ||
+        address.locationUrl ||
         address.dniMatchesAddress !== undefined,
     )
     .map((address) => ({
@@ -133,33 +271,33 @@ export function buildEnrollmentPayload({
       district: value(address.district),
       province: value(address.province),
       department: address.department,
-      reference: value(address.reference),
+      locationUrl: value(address.locationUrl),
       dniMatchesAddress: address.dniMatchesAddress,
       validFrom: value(address.validFrom),
       validTo: value(address.validTo),
     }))
-  const medications = (draft.treatment.medications ?? []).map(
-    (medication, index) => {
-      const name = value(medication.name)
-      if (!name)
-        throw new Error(`Completa el nombre del medicamento ${index + 1}`)
-      return {
-        name,
-        doseAmount: medication.doseAmount,
-        doseUnit: medication.doseUnit,
-        doseDescription: value(medication.doseDescription),
-        route: medication.route,
-        frequency: duration(
-          medication.frequency,
-          `frecuencia del medicamento ${index + 1}`,
-        ),
-        startDate: value(medication.startDate),
-        endDate: value(medication.endDate),
-        isActive: medication.isActive,
-        notes: value(medication.notes),
-      }
-    },
-  )
+  const medications = hasTreatment
+    ? (draft.treatment.medications ?? []).map((medication, index) => {
+        const name = value(medication.name)
+        if (!name)
+          throw new Error(`Completa el nombre del medicamento ${index + 1}`)
+        return {
+          name,
+          doseAmount: medication.doseAmount,
+          doseUnit: medication.doseUnit,
+          doseDescription: value(medication.doseDescription),
+          route: medication.route,
+          frequency: duration(
+            medication.frequency,
+            `frecuencia del medicamento ${index + 1}`,
+          ),
+          startDate: value(medication.startDate),
+          endDate: value(medication.endDate),
+          isActive: medication.isActive,
+          notes: value(medication.notes),
+        }
+      })
+    : []
   const talks = draft.familyPreventionTalkInterests
     .filter((item) => value(item.talkName) && value(item.familyMemberName))
     .map((item) => ({
@@ -196,6 +334,41 @@ export function buildEnrollmentPayload({
         limitations.length > 0 ||
         familyCancerHistory.length > 0
 
+  const secondaryContactSource = draft.secondaryContactEnabled
+    ? (draft.secondaryContactSource ??
+      (callerIsComplete && primaryContactSource !== "CALLER"
+        ? "CALLER"
+        : "NEW"))
+    : undefined
+  if (secondaryContactSource === "CALLER" && !callerIsComplete)
+    throw new Error("Completa los datos de quien llama")
+  const contacts = [
+    {
+      role: "PRIMARY" as const,
+      source: primaryContactSource as EnrollmentContactSource,
+      ...(primaryContactSource === "NEW"
+        ? { person: contactPerson(draft.primaryContact) }
+        : {}),
+    },
+    ...(draft.secondaryContactEnabled
+      ? [
+          {
+            role: "SECONDARY" as const,
+            source: secondaryContactSource as EnrollmentContactSource,
+            ...(secondaryContactSource === "NEW"
+              ? { person: contactPerson(draft.secondaryContact) }
+              : {}),
+          },
+        ]
+      : []),
+  ]
+  const hasCaller =
+    isFamily ||
+    primaryContactSource === "CALLER" ||
+    secondaryContactSource === "CALLER"
+  if (hasCaller && !callerIsComplete)
+    throw new Error("Completa los datos de quien llama")
+
   return {
     ...(draft.patientId
       ? { patientId: draft.patientId }
@@ -208,7 +381,6 @@ export function buildEnrollmentPayload({
             birthDate: value(draft.patientData.birthDate),
             gender: value(draft.patientData.gender),
             hasWhatsapp: draft.patientData.hasWhatsapp,
-            email: value(draft.patientData.email),
           },
         }),
     followUp: {
@@ -219,7 +391,7 @@ export function buildEnrollmentPayload({
     },
     affiliationType: isFamily ? "FAMILY_FRIEND" : "SELF",
     healthPhase,
-    ...(includeCompanion
+    ...(hasCaller
       ? {
           companion: {
             fullName: draft.companion.fullName.trim(),
@@ -229,14 +401,14 @@ export function buildEnrollmentPayload({
             birthDate: value(draft.companion.birthDate),
             gender: value(draft.companion.gender),
             hasWhatsapp: draft.companion.hasWhatsapp,
-            email: value(draft.companion.email),
             relationship: value(draft.companion.relationship),
             isPrimaryInformant: isFamily,
-            isPrimaryContact: isFamily,
-            isCaregiver: true,
+            isPrimaryContact: false,
+            isCaregiver: false,
           },
         }
       : {}),
+    contacts,
     details: {
       birthDepartment: value(draft.details.birthDepartment),
       primaryHealthCenterId: value(draft.details.primaryHealthCenterId),
@@ -244,13 +416,11 @@ export function buildEnrollmentPayload({
         draft.details.travelTimeToHospital,
         "tiempo de viaje al hospital",
       ),
-      emergencyContactName: value(draft.details.emergencyContactName),
-      emergencyContactPhone: value(draft.details.emergencyContactPhone),
       zoneType: value(draft.details.zoneType),
-      emergencyContactGender: value(draft.details.emergencyContactGender),
       educationLevel: draft.details.educationLevel ?? undefined,
       nativeLanguage: value(draft.details.nativeLanguage),
       requiresTranslation: draft.details.requiresTranslation ?? undefined,
+      isWorking: draft.details.isWorking ?? undefined,
       referredToSocialWorker: draft.details.referredToSocialWorker ?? undefined,
     },
     ...(draft.insurance.insuranceType &&
@@ -298,7 +468,7 @@ export function buildEnrollmentPayload({
                 : duration(
                     draft.diagnosis.waitTimeForDiagnosis,
                     "tiempo de espera para el diagnóstico",
-            ),
+                  ),
             hasMedicalReport: draft.diagnosis.hasMedicalReport ?? undefined,
           },
         }
@@ -354,28 +524,56 @@ export function buildEnrollmentPayload({
         }
       : {}),
     ...(addresses.length ? { addresses } : {}),
-    ...(appointment
+    ...(appointmentToSend
       ? {
           medicalAppointments: [
             {
-              specialty: appointment.specialty!.trim(),
-              healthCenterId: value(appointment.healthCenterId),
-              appointmentDate: value(appointment.appointmentDate),
-              nextAppointmentDate: value(appointment.nextAppointmentDate),
-              hasReferralSheet: appointment.hasReferralSheet ?? undefined,
-              referredTo: value(appointment.referredTo),
-              difficulties: value(appointment.difficulties),
-              isFirstConsultation: appointment.isFirstConsultation ?? undefined,
+              specialty: value(appointmentToSend.specialty)!,
+              healthCenterId: value(appointmentToSend.healthCenterId),
+              appointmentDate: value(appointmentToSend.appointmentDate),
+              nextAppointmentDate: value(appointmentToSend.nextAppointmentDate),
+              ...(consultationStatus === "ATTENDED"
+                ? {
+                    hasReferralSheet:
+                      appointmentToSend.hasReferralSheet ?? undefined,
+                    referredTo: value(appointmentToSend.referredTo),
+                    referralNotProvidedReason: value(
+                      appointmentToSend.referralNotProvidedReason,
+                    ),
+                  }
+                : {}),
+              difficulties: value(appointmentToSend.difficulties),
+              isFirstConsultation:
+                consultationStatus === "ATTENDED"
+                  ? true
+                  : consultationStatus === "SCHEDULED"
+                    ? false
+                    : (appointmentToSend.isFirstConsultation ?? undefined),
             },
           ],
         }
       : {}),
-    ...(draft.symptomReport.hasDiscomfort !== undefined
+    ...(healthPhase === "SIGNS_AND_SYMPTOMS" &&
+    typeof draft.symptomReport.hasDiscomfort === "boolean"
       ? {
           symptomReport: {
             hasDiscomfort: draft.symptomReport.hasDiscomfort,
+            ...(draft.symptomReport.hasDiscomfort === false
+              ? {
+                  checkupMotivation: value(
+                    draft.symptomReport.checkupMotivation,
+                  ),
+                }
+              : {}),
             signsAndSymptoms: value(draft.symptomReport.signsAndSymptoms),
-            indicationsReceived: value(draft.symptomReport.indicationsReceived),
+            ...(draft.symptomReport.consultationStatus === "SCHEDULED" ||
+            draft.symptomReport.consultationStatus === "ATTENDED"
+              ? {
+                  indicationsReceived: value(
+                    draft.symptomReport.indicationsReceived,
+                  ),
+                }
+              : {}),
             symptomDuration: duration(
               draft.symptomReport.symptomDuration,
               "duración de los síntomas",
@@ -384,9 +582,56 @@ export function buildEnrollmentPayload({
               draft.symptomReport.symptomFrequency,
               "frecuencia de los síntomas",
             ),
-            hasSoughtMedicalConsultation:
-              draft.symptomReport.hasSoughtMedicalConsultation ?? undefined,
-            specialty: value(draft.symptomReport.specialty),
+            hasRequestedMedicalConsultation:
+              draft.symptomReport.hasRequestedMedicalConsultation ?? undefined,
+            consultationStatus:
+              draft.symptomReport.consultationStatus ?? undefined,
+            ...(draft.symptomReport.consultationStatus === "NOT_OBTAINED"
+              ? {
+                  consultationNotObtainedReason: value(
+                    draft.symptomReport.consultationNotObtainedReason,
+                  ),
+                }
+              : {}),
+            ...(draft.symptomReport.consultationStatus === "SCHEDULED" ||
+            draft.symptomReport.consultationStatus === "ATTENDED"
+              ? {
+                  healthCenterId: value(draft.symptomReport.healthCenterId),
+                  specialty: value(draft.symptomReport.specialty),
+                }
+              : {}),
+            diagnosisSearchDuration: duration(
+              draft.symptomReport.diagnosisSearchDuration,
+              "tiempo buscando diagnóstico",
+            ),
+            hasReceivedDiagnosis:
+              draft.symptomReport.hasReceivedDiagnosis ?? undefined,
+            ...(draft.symptomReport.hasReceivedDiagnosis === true
+              ? {
+                  reportedDiagnosis: value(
+                    draft.symptomReport.reportedDiagnosis,
+                  ),
+                }
+              : {}),
+            isReceivingReportedTreatment:
+              draft.symptomReport.isReceivingReportedTreatment ?? undefined,
+            ...(draft.symptomReport.isReceivingReportedTreatment === true
+              ? {
+                  reportedTreatment: value(
+                    draft.symptomReport.reportedTreatment,
+                  ),
+                  reportedTreatmentFrequency: duration(
+                    draft.symptomReport.reportedTreatmentFrequency,
+                    "frecuencia del tratamiento reportado",
+                  ),
+                }
+              : draft.symptomReport.isReceivingReportedTreatment === false
+                ? {
+                    notReceivingTreatmentReason: value(
+                      draft.symptomReport.notReceivingTreatmentReason,
+                    ),
+                  }
+                : {}),
           },
         }
       : {}),
@@ -394,10 +639,6 @@ export function buildEnrollmentPayload({
       ? {
           currentlyAttendingConsultations: meta.currentlyAttendingConsultations,
         }
-      : {}),
-    ...(categoriaClinica === "SIGNS_AND_SYMPTOMS" &&
-    typeof meta.currentlyReceivingTreatment === "boolean"
-      ? { currentlyReceivingTreatment: meta.currentlyReceivingTreatment }
       : {}),
     entrySource: value(meta.programEntryPoint),
     consentToContact: meta.informedConsentAccepted ?? undefined,

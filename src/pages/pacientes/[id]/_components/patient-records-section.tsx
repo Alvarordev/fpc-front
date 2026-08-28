@@ -51,8 +51,27 @@ function AddressLocation({ address }: { address: PatientAddress }) {
           Referencia: {address.reference}
         </p>
       )}
+      {address.locationUrl && isHttpUrl(address.locationUrl) && (
+        <a
+          href={address.locationUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary mt-2 inline-block text-xs underline underline-offset-4"
+        >
+          Abrir ubicación
+        </a>
+      )}
     </>
   )
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
 }
 
 function AddressEntry({

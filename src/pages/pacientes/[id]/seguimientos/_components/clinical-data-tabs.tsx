@@ -299,7 +299,7 @@ export function ClinicalDataTabs({
       <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-56 lg:flex-col lg:overflow-visible">
         <TabsTrigger
           value="datos"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <UserRound className="size-4 text-sky-600" />
           <span className="min-w-0 break-words">Datos clínicos</span>
@@ -307,7 +307,7 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="sintomas"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <Activity className="size-4 text-rose-600" />
           <span className="min-w-0 break-words">Síntomas</span>
@@ -315,7 +315,7 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="direcciones"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <MapPin className="size-4 text-emerald-600" />
           <span className="min-w-0 break-words">Direcciones</span>
@@ -323,14 +323,14 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="contacto"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <Phone className="size-4 text-cyan-600" />
           <span className="min-w-0 break-words">Contacto</span>
         </TabsTrigger>
         <TabsTrigger
           value="diagnostico"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <Stethoscope className="size-4 text-violet-600" />
           <span className="min-w-0 break-words">Diagnóstico</span>
@@ -338,7 +338,7 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="antecedentes"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <HeartPulse className="size-4 text-pink-600" />
           <span className="min-w-0 break-words">
@@ -348,7 +348,7 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="tratamiento"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <Pill className="size-4 text-amber-600" />
           <span className="min-w-0 break-words">Tratamientos</span>
@@ -356,7 +356,7 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="seguro"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <ShieldCheck className="size-4 text-teal-600" />
           <span className="min-w-0 break-words">INFORMACIÓN DE SEGURO</span>
@@ -364,7 +364,7 @@ export function ClinicalDataTabs({
         </TabsTrigger>
         <TabsTrigger
           value="social"
-          className="h-auto min-h-10 flex-none justify-start gap-2 whitespace-normal text-left"
+          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
         >
           <Users className="size-4 text-orange-600" />
           <span className="min-w-0 break-words">Seguimiento social</span>
@@ -925,6 +925,15 @@ const ZONE_TYPES = [
   { value: "RURAL", label: "Rural" },
 ] as const
 
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
 type AddressFormValues = Omit<CreatePatientAddressInput, "followUpId">
 
 function AddressForm({
@@ -936,8 +945,13 @@ function AddressForm({
   addresses: PatientAddress[]
   onSave: (address: Omit<CreatePatientAddressInput, "followUpId">) => void
 }) {
-  const { register, handleSubmit, watch, setValue } =
-    useForm<AddressFormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<AddressFormValues>({
       defaultValues: {
         type: draft?.type ?? "PERMANENT",
         isPrimary:
@@ -947,6 +961,7 @@ function AddressForm({
         province: draft?.province ?? "",
         department: draft?.department,
         reference: draft?.reference ?? "",
+        locationUrl: draft?.locationUrl ?? "",
         dniMatchesAddress: draft?.dniMatchesAddress,
         validFrom: draft?.validFrom ?? "",
         validTo: draft?.validTo ?? "",
@@ -970,6 +985,7 @@ function AddressForm({
       district: values.district?.trim() || undefined,
       province: values.province?.trim() || undefined,
       reference: values.reference?.trim() || undefined,
+      locationUrl: values.locationUrl?.trim() || undefined,
       validFrom: values.validFrom || undefined,
       validTo: values.validTo || undefined,
     })
@@ -995,6 +1011,16 @@ function AddressForm({
                     .filter(Boolean)
                     .join(", ")}
                 </span>
+                {address.locationUrl && isHttpUrl(address.locationUrl) && (
+                  <a
+                    href={address.locationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary text-xs underline underline-offset-4"
+                  >
+                    Abrir ubicación
+                  </a>
+                )}
                 <span className="ml-auto flex gap-1.5">
                   {address.isPrimary && (
                     <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
@@ -1082,6 +1108,24 @@ function AddressForm({
           <div className="space-y-2 md:col-span-2">
             <Label>Referencia</Label>
             <Input {...register("reference")} placeholder="Frente al parque" />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Ubicación web de la residencia</Label>
+            <Input
+              type="url"
+              {...register("locationUrl", {
+                validate: (value) =>
+                  !value ||
+                  isHttpUrl(value.trim()) ||
+                  "Usa una URL http o https",
+              })}
+              placeholder="https://maps.google.com/..."
+            />
+            {errors.locationUrl?.message && (
+              <p className="text-destructive text-xs">
+                {errors.locationUrl.message}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Vigente desde</Label>
@@ -2766,12 +2810,16 @@ function SeguroForm({
         insuranceType:
           insuranceDraft?.insuranceType ?? currentInsurance?.insuranceType,
         epsProvider:
-          insuranceDraft?.epsProvider ?? currentInsurance?.epsProvider ?? undefined,
+          insuranceDraft?.epsProvider ??
+          currentInsurance?.epsProvider ??
+          undefined,
         changeReason: insuranceDraft?.changeReason ?? "",
         startDate:
           insuranceDraft?.startDate ?? currentInsurance?.startDate ?? "",
         canAffiliate:
-          sisDraft?.canAffiliate ?? currentSisAffiliation?.canAffiliate ?? false,
+          sisDraft?.canAffiliate ??
+          currentSisAffiliation?.canAffiliate ??
+          false,
         affiliatedViaSepa:
           sisDraft?.affiliatedViaSepa ??
           currentSisAffiliation?.affiliatedViaSepa ??
@@ -2786,7 +2834,9 @@ function SeguroForm({
       insuranceType:
         insuranceDraft?.insuranceType ?? currentInsurance?.insuranceType,
       epsProvider:
-        insuranceDraft?.epsProvider ?? currentInsurance?.epsProvider ?? undefined,
+        insuranceDraft?.epsProvider ??
+        currentInsurance?.epsProvider ??
+        undefined,
       changeReason: insuranceDraft?.changeReason ?? "",
       startDate: insuranceDraft?.startDate ?? currentInsurance?.startDate ?? "",
       canAffiliate:
@@ -2798,13 +2848,7 @@ function SeguroForm({
       expectedDate:
         sisDraft?.expectedDate ?? currentSisAffiliation?.expectedDate ?? "",
     })
-  }, [
-    currentInsurance,
-    currentSisAffiliation,
-    insuranceDraft,
-    reset,
-    sisDraft,
-  ])
+  }, [currentInsurance, currentSisAffiliation, insuranceDraft, reset, sisDraft])
 
   const insuranceType = watch("insuranceType")
   const epsProvider = watch("epsProvider")

@@ -33,6 +33,7 @@ import type {
   CareProgram,
   CancerStage,
   HealthBackgroundCause,
+  MedicalConsultationStatus,
   MedicationDoseUnit,
   MedicationRoute,
   TreatmentSituation,
@@ -96,6 +97,15 @@ const YES_NO_OPTIONS = [
   { value: "No", label: "No" },
 ] as const
 
+const CONSULTATION_STATUS_OPTIONS: Array<{
+  value: MedicalConsultationStatus
+  label: string
+}> = [
+  { value: "NOT_OBTAINED", label: "No obtuvo consulta" },
+  { value: "SCHEDULED", label: "Consulta programada" },
+  { value: "ATTENDED", label: "Consulta atendida" },
+]
+
 const TRI_STATE_OPTIONS = [
   { value: "SIN_DATO", label: "Sin dato" },
   { value: "SI", label: "Sí" },
@@ -155,7 +165,7 @@ const EMPTY_APPOINTMENT: AddMedicalAppointmentRequest = {
   appointmentDate: null,
   nextAppointmentDate: null,
   difficulties: null,
-  hasReferralSheet: false,
+  hasReferralSheet: undefined,
   isFirstConsultation: false,
 }
 
@@ -473,7 +483,10 @@ export function Step7Atencion() {
         <section className="flex flex-col gap-5">
           <SectionHeader icon={Activity} title="Signos y Síntomas" />
           <div className="flex flex-col gap-2">
-            <Label className={fl}>¿Presenta malestar o dolor?</Label>
+            <Label className={fl}>
+              ¿Presenta algún malestar o dolor?{" "}
+              <span className="text-destructive">*</span>
+            </Label>
             <Select
               items={YES_NO_OPTIONS}
               value={
@@ -485,53 +498,10 @@ export function Step7Atencion() {
               }
               onValueChange={(v) =>
                 updateDraft({
-                  symptomReport: { ...sr, hasDiscomfort: v === "Sí" },
-                })
-              }
-            >
-              <SelectTrigger className={sc}>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Sí">Sí</SelectItem>
-                <SelectItem value="No">No</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>Signos y síntomas</Label>
-            <Textarea
-              value={sr.signsAndSymptoms ?? ""}
-              onChange={(e) =>
-                updateDraft({
                   symptomReport: {
                     ...sr,
-                    signsAndSymptoms: e.target.value || null,
-                  },
-                })
-              }
-              placeholder="Describa los signos o síntomas..."
-              className="bg-card min-h-20 border"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>
-              ¿Actualmente ha sacado o asistido a una cita médica?
-            </Label>
-            <Select
-              items={YES_NO_OPTIONS}
-              value={
-                sr.hasSoughtMedicalConsultation === true
-                  ? "Sí"
-                  : sr.hasSoughtMedicalConsultation === false
-                    ? "No"
-                    : ""
-              }
-              onValueChange={(v) =>
-                updateDraft({
-                  symptomReport: {
-                    ...sr,
-                    hasSoughtMedicalConsultation: v === "Sí",
+                    hasDiscomfort: v === "Sí",
+                    checkupMotivation: v === "Sí" ? null : sr.checkupMotivation,
                   },
                 })
               }
@@ -544,35 +514,6 @@ export function Step7Atencion() {
                 <SelectItem value="No">No</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>Especialidad consultada</Label>
-            <Input
-              value={sr.specialty ?? ""}
-              onChange={(e) =>
-                updateDraft({
-                  symptomReport: { ...sr, specialty: e.target.value || null },
-                })
-              }
-              placeholder="Ej: Oncología"
-              className="bg-card border"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>Indicaciones recibidas</Label>
-            <Input
-              value={sr.indicationsReceived ?? ""}
-              onChange={(e) =>
-                updateDraft({
-                  symptomReport: {
-                    ...sr,
-                    indicationsReceived: e.target.value || null,
-                  },
-                })
-              }
-              placeholder="Indicaciones de la consulta"
-              className="bg-card border"
-            />
           </div>
           <DurationInput
             label="¿Desde hace cuánto presenta los síntomas?"
@@ -595,27 +536,76 @@ export function Step7Atencion() {
             }
           />
           <div className="flex flex-col gap-2">
+            <Label className={fl}>Descripción de signos y síntomas</Label>
+            <Textarea
+              value={sr.signsAndSymptoms ?? ""}
+              onChange={(e) =>
+                updateDraft({
+                  symptomReport: {
+                    ...sr,
+                    signsAndSymptoms: e.target.value || null,
+                  },
+                })
+              }
+              placeholder="Describa los signos o síntomas..."
+              className="bg-card min-h-20 border"
+            />
+          </div>
+          {sr.hasDiscomfort === false && (
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                ¿Qué lo motivó a realizarse su examen médico?{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={sr.checkupMotivation ?? ""}
+                onChange={(e) =>
+                  updateDraft({
+                    symptomReport: {
+                      ...sr,
+                      checkupMotivation: e.target.value || null,
+                    },
+                  })
+                }
+                placeholder="Motivo del examen médico"
+                className="bg-card min-h-20 border"
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
             <Label className={fl}>
-              ¿Actualmente recibe tratamiento médico?
+              ¿Actualmente ha solicitado una consulta médica?{" "}
+              <span className="text-destructive">*</span>
             </Label>
             <Select
               items={YES_NO_OPTIONS}
               value={
-                meta.currentlyReceivingTreatment === true
+                sr.hasRequestedMedicalConsultation === true
                   ? "Sí"
-                  : meta.currentlyReceivingTreatment === false
+                  : sr.hasRequestedMedicalConsultation === false
                     ? "No"
                     : ""
               }
               onValueChange={(value) => {
-                const receives = value === "Sí"
+                const requested = value === "Sí"
                 updateDraft({
-                  enrollmentMetadata: {
-                    ...meta,
-                    currentlyReceivingTreatment: receives,
+                  symptomReport: {
+                    ...sr,
+                    hasRequestedMedicalConsultation: requested,
+                    hasSoughtMedicalConsultation: requested,
+                    ...(requested
+                      ? {}
+                      : {
+                          consultationStatus: null,
+                          consultationNotObtainedReason: null,
+                          healthCenterId: null,
+                          specialty: null,
+                          indicationsReceived: null,
+                        }),
                   },
-                  treatment: { ...tx, isCurrent: receives },
                 })
+                if (requested) updateAppointment({})
+                else clearAppointment()
               }}
             >
               <SelectTrigger className={sc}>
@@ -630,6 +620,426 @@ export function Step7Atencion() {
               </SelectContent>
             </Select>
           </div>
+          {sr.hasRequestedMedicalConsultation === true && (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>
+                  ¿Cuál es el estado de la consulta?{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  items={CONSULTATION_STATUS_OPTIONS}
+                  value={sr.consultationStatus ?? ""}
+                  onValueChange={(value) => {
+                    const status = value as MedicalConsultationStatus
+                    updateDraft({
+                      symptomReport: {
+                        ...sr,
+                        consultationStatus: status,
+                        ...(status === "NOT_OBTAINED"
+                          ? {
+                              consultationNotObtainedReason: null,
+                              healthCenterId: null,
+                              specialty: null,
+                              indicationsReceived: null,
+                            }
+                          : { consultationNotObtainedReason: null }),
+                      },
+                    })
+                    if (status === "NOT_OBTAINED") clearAppointment()
+                    else
+                      updateAppointment({
+                        ...(status === "SCHEDULED"
+                          ? {
+                              hasReferralSheet: undefined,
+                              referredTo: null,
+                              referralNotProvidedReason: null,
+                            }
+                          : {}),
+                      })
+                  }}
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue placeholder="Seleccionar estado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONSULTATION_STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {sr.consultationStatus === "NOT_OBTAINED" && (
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>
+                    Motivo por el que no obtuvo la consulta{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    value={sr.consultationNotObtainedReason ?? ""}
+                    onChange={(e) =>
+                      updateDraft({
+                        symptomReport: {
+                          ...sr,
+                          consultationNotObtainedReason: e.target.value || null,
+                        },
+                      })
+                    }
+                    placeholder="Explique el motivo"
+                    className="bg-card min-h-20 border"
+                  />
+                </div>
+              )}
+              {(sr.consultationStatus === "SCHEDULED" ||
+                sr.consultationStatus === "ATTENDED") && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>
+                      Establecimiento de la consulta{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      items={activeCenters.map((center) => ({
+                        value: center.id,
+                        label: `${center.name} — ${center.department}`,
+                      }))}
+                      value={sr.healthCenterId ?? ""}
+                      onValueChange={(value) => {
+                        updateDraft({
+                          symptomReport: {
+                            ...sr,
+                            healthCenterId: value || null,
+                          },
+                        })
+                        updateAppointment({ healthCenterId: value || null })
+                      }}
+                    >
+                      <SelectTrigger className={sc}>
+                        <SelectValue placeholder="Seleccionar establecimiento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeCenters.map((center) => (
+                          <SelectItem key={center.id} value={center.id}>
+                            {center.name} — {center.department}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>
+                      Especialidad de la consulta{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={sr.specialty ?? ""}
+                      onChange={(e) => {
+                        const specialty = e.target.value || null
+                        updateDraft({ symptomReport: { ...sr, specialty } })
+                        updateAppointment({ specialty })
+                      }}
+                      placeholder="Ej: Oncología"
+                      className="bg-card border"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="flex flex-col gap-2">
+                      <Label className={fl}>
+                        {sr.consultationStatus === "ATTENDED"
+                          ? "Fecha de la primera consulta"
+                          : "Fecha de la consulta programada"}{" "}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={appointment.appointmentDate ?? ""}
+                        onChange={(e) =>
+                          updateAppointment({
+                            appointmentDate: e.target.value || null,
+                          })
+                        }
+                        className="bg-card border"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label className={fl}>Próxima consulta</Label>
+                      <Input
+                        type="date"
+                        value={appointment.nextAppointmentDate ?? ""}
+                        min={appointment.appointmentDate ?? undefined}
+                        onChange={(e) =>
+                          updateAppointment({
+                            nextAppointmentDate: e.target.value || null,
+                          })
+                        }
+                        className="bg-card border"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>Indicaciones recibidas</Label>
+                    <Textarea
+                      value={sr.indicationsReceived ?? ""}
+                      onChange={(e) =>
+                        updateDraft({
+                          symptomReport: {
+                            ...sr,
+                            indicationsReceived: e.target.value || null,
+                          },
+                        })
+                      }
+                      placeholder="Indicaciones de la consulta"
+                      className="bg-card min-h-20 border"
+                    />
+                  </div>
+                  {sr.consultationStatus === "ATTENDED" && (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <Label className={fl}>
+                          ¿Le han brindado una hoja de referencia?{" "}
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          items={YES_NO_OPTIONS}
+                          value={
+                            appointment.hasReferralSheet === true
+                              ? "Sí"
+                              : appointment.hasReferralSheet === false
+                                ? "No"
+                                : ""
+                          }
+                          onValueChange={(value) =>
+                            updateAppointment({
+                              hasReferralSheet: value === "Sí",
+                              referredTo:
+                                value === "Sí" ? appointment.referredTo : null,
+                              referralNotProvidedReason:
+                                value === "No"
+                                  ? appointment.referralNotProvidedReason
+                                  : null,
+                            })
+                          }
+                        >
+                          <SelectTrigger className={sc}>
+                            <SelectValue placeholder="Seleccionar..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Sí">Sí</SelectItem>
+                            <SelectItem value="No">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {appointment.hasReferralSheet === true && (
+                        <div className="flex flex-col gap-2">
+                          <Label className={fl}>
+                            ¿A dónde lo han referido?{" "}
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            value={appointment.referredTo ?? ""}
+                            onChange={(e) =>
+                              updateAppointment({
+                                referredTo: e.target.value || null,
+                              })
+                            }
+                            placeholder="Establecimiento o servicio"
+                            className="bg-card border"
+                          />
+                        </div>
+                      )}
+                      {appointment.hasReferralSheet === false && (
+                        <div className="flex flex-col gap-2">
+                          <Label className={fl}>
+                            Motivo por el que no le brindaron la hoja de
+                            referencia{" "}
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          <Textarea
+                            value={appointment.referralNotProvidedReason ?? ""}
+                            onChange={(e) =>
+                              updateAppointment({
+                                referralNotProvidedReason:
+                                  e.target.value || null,
+                              })
+                            }
+                            placeholder="Explique el motivo"
+                            className="bg-card min-h-20 border"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+          <DurationInput
+            label="¿Cuánto tiempo lleva buscando un diagnóstico?"
+            units={["DAY", "WEEK", "MONTH", "YEAR"]}
+            defaultUnit="MONTH"
+            singleValue
+            value={sr.diagnosisSearchDuration}
+            onChange={(diagnosisSearchDuration) =>
+              updateDraft({
+                symptomReport: { ...sr, diagnosisSearchDuration },
+              })
+            }
+          />
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              ¿Le han informado algún diagnóstico?{" "}
+              <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              items={YES_NO_OPTIONS}
+              value={
+                sr.hasReceivedDiagnosis === true
+                  ? "Sí"
+                  : sr.hasReceivedDiagnosis === false
+                    ? "No"
+                    : ""
+              }
+              onValueChange={(value) =>
+                updateDraft({
+                  symptomReport: {
+                    ...sr,
+                    hasReceivedDiagnosis: value === "Sí",
+                    reportedDiagnosis:
+                      value === "Sí" ? sr.reportedDiagnosis : null,
+                  },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Sí">Sí</SelectItem>
+                <SelectItem value="No">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {sr.hasReceivedDiagnosis === true && (
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Diagnóstico informado{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={sr.reportedDiagnosis ?? ""}
+                onChange={(e) =>
+                  updateDraft({
+                    symptomReport: {
+                      ...sr,
+                      reportedDiagnosis: e.target.value || null,
+                    },
+                  })
+                }
+                placeholder="Escriba el diagnóstico informado"
+                className="bg-card border"
+              />
+              <p className="text-muted-foreground text-xs">
+                Este dato es preliminar y no crea un diagnóstico oncológico
+                formal.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              ¿Actualmente recibe el tratamiento que le informaron?{" "}
+              <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              items={YES_NO_OPTIONS}
+              value={
+                sr.isReceivingReportedTreatment === true
+                  ? "Sí"
+                  : sr.isReceivingReportedTreatment === false
+                    ? "No"
+                    : ""
+              }
+              onValueChange={(value) =>
+                updateDraft({
+                  symptomReport: {
+                    ...sr,
+                    isReceivingReportedTreatment: value === "Sí",
+                    ...(value === "Sí"
+                      ? { notReceivingTreatmentReason: null }
+                      : {
+                          reportedTreatment: null,
+                          reportedTreatmentFrequency: undefined,
+                        }),
+                  },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Sí">Sí</SelectItem>
+                <SelectItem value="No">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {sr.isReceivingReportedTreatment === true && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>
+                  Tratamiento informado{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={sr.reportedTreatment ?? ""}
+                  onChange={(e) =>
+                    updateDraft({
+                      symptomReport: {
+                        ...sr,
+                        reportedTreatment: e.target.value || null,
+                      },
+                    })
+                  }
+                  placeholder="Ej: Quimioterapia"
+                  className="bg-card border"
+                />
+              </div>
+              <DurationInput
+                label="Frecuencia del tratamiento informado"
+                units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                defaultUnit="WEEK"
+                singleValue
+                value={sr.reportedTreatmentFrequency}
+                onChange={(reportedTreatmentFrequency) =>
+                  updateDraft({
+                    symptomReport: { ...sr, reportedTreatmentFrequency },
+                  })
+                }
+              />
+            </div>
+          )}
+          {sr.isReceivingReportedTreatment === false && (
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Motivo por el que no recibe tratamiento{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={sr.notReceivingTreatmentReason ?? ""}
+                onChange={(e) =>
+                  updateDraft({
+                    symptomReport: {
+                      ...sr,
+                      notReceivingTreatmentReason: e.target.value || null,
+                    },
+                  })
+                }
+                placeholder="Explique el motivo"
+                className="bg-card min-h-20 border"
+              />
+            </div>
+          )}
         </section>
       )}
 

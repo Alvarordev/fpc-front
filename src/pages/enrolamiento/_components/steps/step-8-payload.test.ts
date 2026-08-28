@@ -59,6 +59,7 @@ describe("step 8 Nest enrollment payload", () => {
             district: "Lima",
             province: "Lima",
             department: "LIMA",
+            locationUrl: "https://maps.google.com/?q=Av+Test+123",
             dniMatchesAddress: false,
           },
           {
@@ -165,8 +166,10 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.addresses?.[0]).toMatchObject({
       type: "PERMANENT",
       department: "LIMA",
+      locationUrl: "https://maps.google.com/?q=Av+Test+123",
       dniMatchesAddress: false,
     })
+    expect(payload.addresses?.[0]).not.toHaveProperty("reference")
     expect(payload.details).toMatchObject({
       birthDepartment: "AREQUIPA",
       zoneType: "RURAL",
@@ -196,8 +199,10 @@ describe("step 8 Nest enrollment payload", () => {
         symptomReport: {
           hasDiscomfort: true,
           signsAndSymptoms: "Dolor abdominal",
-          indicationsReceived: "Control",
-          hasSoughtMedicalConsultation: false,
+          hasRequestedMedicalConsultation: false,
+          hasReceivedDiagnosis: false,
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "No corresponde",
           symptomDuration: { valueMin: 2, valueMax: 4, unit: "MONTH" },
           symptomFrequency: { valueMin: 1, unit: "WEEK" },
         },
@@ -222,6 +227,7 @@ describe("step 8 Nest enrollment payload", () => {
       relationship: "MOTHER",
       isPrimaryInformant: true,
     })
+    expect(payload.contacts).toEqual([{ role: "PRIMARY", source: "CALLER" }])
     expect(payload.insurance).toBeUndefined()
     expect(payload.sisAffiliation).toMatchObject({
       canAffiliate: false,
@@ -230,7 +236,6 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.symptomReport).toMatchObject({
       hasDiscomfort: true,
       signsAndSymptoms: "Dolor abdominal",
-      indicationsReceived: "Control",
       symptomDuration: { valueMin: 2, valueMax: 4, unit: "MONTH" },
       symptomFrequency: { valueMin: 1, unit: "WEEK" },
     })
@@ -303,6 +308,201 @@ describe("step 8 Nest enrollment payload", () => {
       familyCancerHistory: [{ relationship: "Madre", cancerType: "Mama" }],
     })
     expect("currentlyReceivingTreatment" in payload).toBe(false)
+  })
+
+  it("serializes the explicit contacts and signs consultation branch", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      today: "2026-06-25",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Signos",
+          primaryPhone: "988555666",
+          birthDate: "1980-04-10",
+        },
+        primaryContactSource: "CALLER",
+        primaryContact: { fullName: "No usado", primaryPhone: "000" },
+        secondaryContactEnabled: true,
+        secondaryContactSource: "NEW",
+        secondaryContact: {
+          fullName: "Contacto Secundario",
+          primaryPhone: "999444555",
+          relationship: "SIBLING",
+        },
+        companion: {
+          fullName: "Ana Caller",
+          primaryPhone: "999000333",
+          relationship: "MOTHER",
+        },
+        symptomReport: {
+          hasDiscomfort: false,
+          checkupMotivation: "Control preventivo",
+          signsAndSymptoms: "Cansancio",
+          symptomDuration: { valueMin: 3, unit: "MONTH" },
+          symptomFrequency: { valueMin: 1, unit: "WEEK" },
+          hasRequestedMedicalConsultation: true,
+          consultationStatus: "ATTENDED",
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          indicationsReceived: "Solicitar exámenes",
+          diagnosisSearchDuration: { valueMin: 2, unit: "MONTH" },
+          hasReceivedDiagnosis: true,
+          reportedDiagnosis: "Lesión por estudiar",
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "Aún no tiene diagnóstico formal",
+        },
+        medicalAppointments: [
+          {
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            appointmentDate: "2026-06-20",
+            nextAppointmentDate: "2026-07-20",
+            hasReferralSheet: false,
+            referralNotProvidedReason: "No fue necesario referir",
+          },
+        ],
+        enrollmentMetadata: { affiliationType: "FAMILY" },
+      }),
+    })
+
+    expect(payload.contacts).toEqual([
+      { role: "PRIMARY", source: "CALLER" },
+      {
+        role: "SECONDARY",
+        source: "NEW",
+        person: expect.objectContaining({
+          fullName: "Contacto Secundario",
+          primaryPhone: "999444555",
+          relationship: "SIBLING",
+        }),
+      },
+    ])
+    expect(payload.symptomReport).toMatchObject({
+      hasDiscomfort: false,
+      checkupMotivation: "Control preventivo",
+      consultationStatus: "ATTENDED",
+      healthCenterId: "center-1",
+      specialty: "Medicina general",
+      hasReceivedDiagnosis: true,
+      reportedDiagnosis: "Lesión por estudiar",
+      isReceivingReportedTreatment: false,
+      notReceivingTreatmentReason: "Aún no tiene diagnóstico formal",
+    })
+    expect(payload.medicalAppointments?.[0]).toMatchObject({
+      appointmentDate: "2026-06-20",
+      isFirstConsultation: true,
+      hasReferralSheet: false,
+      referralNotProvidedReason: "No fue necesario referir",
+    })
+    expect(payload.diagnosis).toBeUndefined()
+    expect(payload.treatments).toBeUndefined()
+  })
+
+  it("clears hidden signs branch fields when the answers change", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Signos",
+          primaryPhone: "988555666",
+        },
+        symptomReport: {
+          hasDiscomfort: true,
+          checkupMotivation: "Texto antiguo",
+          hasRequestedMedicalConsultation: false,
+          consultationStatus: "NOT_OBTAINED",
+          consultationNotObtainedReason: "Texto antiguo",
+          healthCenterId: "center-1",
+          specialty: "Oncología",
+          indicationsReceived: "Indicaciones antiguas",
+          hasReceivedDiagnosis: false,
+          reportedDiagnosis: "Diagnóstico antiguo",
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "No corresponde",
+        },
+        medicalAppointments: [
+          {
+            specialty: "Oncología",
+            appointmentDate: "2026-06-20",
+            hasReferralSheet: false,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      hasDiscomfort: true,
+      hasRequestedMedicalConsultation: false,
+      isReceivingReportedTreatment: false,
+      notReceivingTreatmentReason: "No corresponde",
+    })
+    expect(payload.symptomReport).not.toHaveProperty("checkupMotivation")
+    expect(payload.symptomReport).not.toHaveProperty("reportedDiagnosis")
+    expect(payload.symptomReport).not.toHaveProperty("indicationsReceived")
+    expect(payload.symptomReport).not.toHaveProperty("healthCenterId")
+    expect(payload.medicalAppointments).toBeUndefined()
+  })
+
+  it("does not use the legacy consultation answer as the new answer", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "SIGNS_AND_SYMPTOMS",
+        draft: draft({
+          patientData: {
+            fullName: "Paciente Signos",
+            primaryPhone: "988555666",
+          },
+          symptomReport: {
+            hasDiscomfort: true,
+            hasSoughtMedicalConsultation: false,
+          },
+        }),
+      }),
+    ).toThrow("Indica si solicitó una consulta médica")
+  })
+
+  it("omits referral fields for a scheduled consultation", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Signos",
+          primaryPhone: "988555666",
+        },
+        symptomReport: {
+          hasDiscomfort: true,
+          hasRequestedMedicalConsultation: true,
+          consultationStatus: "SCHEDULED",
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          hasReceivedDiagnosis: false,
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "Aún no corresponde",
+        },
+        medicalAppointments: [
+          {
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            appointmentDate: "2026-06-20",
+            hasReferralSheet: false,
+            referredTo: "Destino antiguo",
+            referralNotProvidedReason: "Motivo antiguo",
+          },
+        ],
+      }),
+    })
+
+    expect(payload.medicalAppointments?.[0]).not.toHaveProperty(
+      "hasReferralSheet",
+    )
+    expect(payload.medicalAppointments?.[0]).not.toHaveProperty("referredTo")
+    expect(payload.medicalAppointments?.[0]).not.toHaveProperty(
+      "referralNotProvidedReason",
+    )
   })
 
   it("serializes accumulated enrollment notes into both comment destinations", () => {

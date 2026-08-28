@@ -14,6 +14,7 @@ import type {
   EnrollmentMetadataRequest,
   PatientHealthPhase,
   HealthBackgroundAssessmentRequest,
+  EnrollmentContactSource,
 } from "@/types"
 import { normalizeDuration } from "@/types/duration"
 
@@ -51,6 +52,8 @@ export interface CompanionDraft {
   isPrimaryContact?: boolean
 }
 
+export type EnrollmentContactDraft = CompanionDraft
+
 export interface EnrollmentNoteDraft {
   text: string
 }
@@ -81,6 +84,11 @@ export interface EnrollmentDraft {
   healthBackgroundAssessment: HealthBackgroundAssessmentRequest
   sisAffiliation: AddSisAffiliationRequest
   companion: CompanionDraft
+  primaryContactSource?: EnrollmentContactSource
+  primaryContact: EnrollmentContactDraft
+  secondaryContactEnabled?: boolean
+  secondaryContactSource?: EnrollmentContactSource
+  secondaryContact: EnrollmentContactDraft
   enrollmentMetadata: EnrollmentMetadataDraft
 }
 
@@ -133,6 +141,11 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   },
   sisAffiliation: { canAffiliate: true },
   companion: { fullName: "", primaryPhone: "" },
+  primaryContactSource: undefined,
+  primaryContact: { fullName: "", primaryPhone: "" },
+  secondaryContactEnabled: false,
+  secondaryContactSource: undefined,
+  secondaryContact: { fullName: "", primaryPhone: "" },
   enrollmentMetadata: {},
 }
 
@@ -162,6 +175,28 @@ function normalizeDraft(
     legacyMeta?.enrollmentNotes,
     legacyMeta?.comments,
   )
+
+  const legacyCompanion = {
+    ...DEFAULT_DRAFT.companion,
+    ...migratedCompanion,
+    ...draft?.companion,
+  }
+  const rawPrimarySource = (draft as Partial<EnrollmentDraft> | undefined)
+    ?.primaryContactSource
+  const inferredPrimarySource =
+    rawPrimarySource ??
+    (legacyCompanion.fullName.trim()
+      ? legacyMeta?.affiliationType === "FAMILY"
+        ? "CALLER"
+        : legacyMeta?.hasCaregiver === true
+          ? "NEW"
+          : undefined
+      : undefined)
+  const inferredPrimaryContact =
+    draft?.primaryContact ??
+    (inferredPrimarySource === "NEW"
+      ? legacyCompanion
+      : DEFAULT_DRAFT.primaryContact)
 
   const legacyDetails = draft?.details as
     | (EnrollmentDraft["details"] & {
@@ -216,6 +251,8 @@ function normalizeDraft(
     | (EnrollmentDraft["symptomReport"] & {
         symptomDuration?: unknown
         symptomFrequency?: unknown
+        diagnosisSearchDuration?: unknown
+        reportedTreatmentFrequency?: unknown
       })
     | undefined
   const oldTreatmentSituation: Record<
@@ -276,6 +313,12 @@ function normalizeDraft(
       ...draft?.symptomReport,
       symptomDuration: normalizeDuration(legacySymptoms?.symptomDuration),
       symptomFrequency: normalizeDuration(legacySymptoms?.symptomFrequency),
+      diagnosisSearchDuration: normalizeDuration(
+        legacySymptoms?.diagnosisSearchDuration,
+      ),
+      reportedTreatmentFrequency: normalizeDuration(
+        legacySymptoms?.reportedTreatmentFrequency,
+      ),
     },
     diagnosis: {
       ...DEFAULT_DRAFT.diagnosis,
@@ -317,10 +360,18 @@ function normalizeDraft(
       ...DEFAULT_DRAFT.sisAffiliation,
       ...draft?.sisAffiliation,
     },
-    companion: {
-      ...DEFAULT_DRAFT.companion,
-      ...migratedCompanion,
-      ...draft?.companion,
+    companion: legacyCompanion,
+    primaryContactSource: inferredPrimarySource,
+    primaryContact: {
+      ...DEFAULT_DRAFT.primaryContact,
+      ...inferredPrimaryContact,
+      ...(draft?.primaryContact ?? {}),
+    },
+    secondaryContactEnabled: draft?.secondaryContactEnabled ?? false,
+    secondaryContactSource: draft?.secondaryContactSource,
+    secondaryContact: {
+      ...DEFAULT_DRAFT.secondaryContact,
+      ...draft?.secondaryContact,
     },
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
@@ -425,6 +476,17 @@ export const useEnrollmentStore = create<EnrollmentState>()(
     }),
     {
       name: "fpc-enrollment-draft",
+      version: 2,
+      migrate: (persistedState) => {
+        const persisted = persistedState as Partial<EnrollmentState> | undefined
+        return {
+          ...persisted,
+          draft: normalizeDraft(persisted?.draft),
+          categoriaClinica: normalizeCategoriaClinica(
+            persisted?.categoriaClinica,
+          ),
+        }
+      },
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<EnrollmentState> | undefined
         return {

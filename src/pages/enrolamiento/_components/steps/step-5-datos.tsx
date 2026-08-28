@@ -1,23 +1,79 @@
-import { useState } from "react"
-import { useEnrollmentStore } from "../../_store/enrollment-store"
-import { Label } from "@/components/ui/label"; import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, MapPin, Phone, GraduationCap, ShieldCheck, LogIn } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
-import type { EnrollmentAddressRequest, InsuranceType, EpsProvider, EducationLevel, PeruDepartment } from "@/types"
+import { useState, type FormEvent } from "react"
+import {
+  CreditCard,
+  GraduationCap,
+  LogIn,
+  MapPin,
+  Phone,
+  ShieldCheck,
+} from "lucide-react"
+import { DurationInput } from "@/components/duration-input"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type {
+  EducationLevel,
+  EnrollmentAddressRequest,
+  EnrollmentContactSource,
+  EpsProvider,
+  InsuranceType,
+  PeruDepartment,
+} from "@/types"
 import {
   genderLabels,
   normalizeZoneType,
+  relationshipLabels,
 } from "@/pages/pacientes/[id]/_lib/clinical-labels"
-import { isMinor } from "../../_utils/patient-age"
-import { DurationInput } from "@/components/duration-input"
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
+import { SectionHeader, StepHeader, StepNav } from "../shared"
+import {
+  type CompanionDraft,
+  useEnrollmentStore,
+} from "../../_store/enrollment-store"
+import { isMinor } from "../../_utils/patient-age"
 
-const fl="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"; const ic="bg-card border"
-const sc="w-full bg-card border"
-const EDU:Record<EducationLevel,string>={NONE:"Sin estudios",INITIAL:"Inicial",PRIMARY_INCOMPLETE:"Primaria incompleta",PRIMARY:"Primaria",SECONDARY_INCOMPLETE:"Secundaria incompleta",SECONDARY:"Secundaria",TECHNICAL_INCOMPLETE:"Técnica incompleta",TECHNICAL:"Técnica",HIGHER_INCOMPLETE:"Superior incompleta",HIGHER:"Superior"}
-const INS:Record<InsuranceType,string>={SIS:"SIS",ESSALUD:"EsSalud",EPS:"EPS",FUERZAS_ARMADAS:"Fuerzas Armadas",SALUDPOL:"SaludPol",NONE:"Ninguno"}
-const EPS_LABELS:Record<EpsProvider,string>={PACIFICO:"Pacífico",RIMAC:"Rímac",MAPFRE:"Mapfre",LA_POSITIVA:"La Positiva",SANITAS:"Sanitas",ONCOSALUD:"Oncosalud",OTHER:"Otro"}
+const fl =
+  "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
+const ic = "bg-card border"
+const sc = "w-full bg-card border"
+
+const EDU: Record<EducationLevel, string> = {
+  NONE: "Sin estudios",
+  INITIAL: "Inicial",
+  PRIMARY_INCOMPLETE: "Primaria incompleta",
+  PRIMARY: "Primaria",
+  SECONDARY_INCOMPLETE: "Secundaria incompleta",
+  SECONDARY: "Secundaria",
+  TECHNICAL_INCOMPLETE: "Técnica incompleta",
+  TECHNICAL: "Técnica",
+  HIGHER_INCOMPLETE: "Superior incompleta",
+  HIGHER: "Superior",
+}
+
+const INS: Record<InsuranceType, string> = {
+  SIS: "SIS",
+  ESSALUD: "EsSalud",
+  EPS: "EPS",
+  FUERZAS_ARMADAS: "Fuerzas Armadas",
+  SALUDPOL: "SaludPol",
+  NONE: "Ninguno",
+}
+
+const EPS_LABELS: Record<EpsProvider, string> = {
+  PACIFICO: "Pacífico",
+  RIMAC: "Rímac",
+  MAPFRE: "Mapfre",
+  LA_POSITIVA: "La Positiva",
+  SANITAS: "Sanitas",
+  ONCOSALUD: "Oncosalud",
+  OTHER: "Otro",
+}
 
 const ENTRY_POINTS = [
   "Llamada directa",
@@ -42,28 +98,258 @@ const NATIVE_LANGUAGES = [
   "Otros",
 ] as const
 
+const YES_NO_OPTIONS = [
+  { value: "Sí", label: "Sí" },
+  { value: "No", label: "No" },
+] as const
+
+const CONTACT_SOURCE_LABELS: Record<EnrollmentContactSource, string> = {
+  PATIENT: "El paciente",
+  CALLER: "La persona que llama",
+  NEW: "Registrar un acompañante",
+}
+
+const EMPTY_CONTACT: CompanionDraft = {
+  fullName: "",
+  primaryPhone: "",
+}
+
+function isValidLocationUrl(value: string | undefined) {
+  if (!value?.trim()) return true
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
+interface ContactPersonFieldsProps {
+  person: CompanionDraft
+  onChange: (partial: Partial<CompanionDraft>) => void
+  title: string
+}
+
+function ContactPersonFields({
+  person,
+  onChange,
+  title,
+}: ContactPersonFieldsProps) {
+  return (
+    <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
+      <p className="mb-4 text-sm font-semibold">{title}</p>
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              Nombre completo <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={person.fullName}
+              onChange={(event) => onChange({ fullName: event.target.value })}
+              placeholder="Nombre y apellidos"
+              className={ic}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              Parentesco con el paciente{" "}
+              <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              items={Object.entries(relationshipLabels).map(
+                ([value, label]) => ({
+                  value,
+                  label,
+                }),
+              )}
+              value={person.relationship ?? ""}
+              onValueChange={(value) =>
+                onChange({ relationship: value ?? undefined })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(relationshipLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              Teléfono principal <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={person.primaryPhone}
+              onChange={(event) =>
+                onChange({ primaryPhone: event.target.value })
+              }
+              placeholder="999 000 777"
+              className={ic}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Teléfono adicional o fijo</Label>
+            <Input
+              value={person.secondaryPhone ?? ""}
+              onChange={(event) =>
+                onChange({ secondaryPhone: event.target.value || undefined })
+              }
+              placeholder="01 555 1234"
+              className={ic}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>DNI</Label>
+            <Input
+              value={person.dni ?? ""}
+              onChange={(event) =>
+                onChange({ dni: event.target.value || undefined })
+              }
+              placeholder="74829304"
+              className={ic}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Fecha de nacimiento</Label>
+            <Input
+              type="date"
+              value={person.birthDate ?? ""}
+              onChange={(event) =>
+                onChange({ birthDate: event.target.value || undefined })
+              }
+              className={ic}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Género</Label>
+          <Select
+            items={Object.entries(genderLabels).map(([value, label]) => ({
+              value,
+              label,
+            }))}
+            value={person.gender ?? ""}
+            onValueChange={(value) => onChange({ gender: value || undefined })}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(genderLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Tiene WhatsApp?</Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={person.hasWhatsapp ? "Sí" : "No"}
+            onValueChange={(value) => onChange({ hasWhatsapp: value === "Sí" })}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Step5Datos() {
-  const { draft, updateDraft, nextStep, prevStep, goToStep } = useEnrollmentStore()
-  const pd = draft.patientData; const d = draft.details; const ins = draft.insurance
-  const address: EnrollmentAddressRequest = draft.addresses[0] ?? { type: "PERMANENT", isPrimary: true }
+  const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
+  const [entryPoint, setEntryPoint] = useState<string>(() => {
+    const saved = draft.enrollmentMetadata.programEntryPoint
+    if (!saved) return ""
+    return (ENTRY_POINTS as readonly string[]).includes(saved) ? saved : "Otro"
+  })
+  const [customEntryPoint, setCustomEntryPoint] = useState<string>(() => {
+    const saved = draft.enrollmentMetadata.programEntryPoint
+    if (!saved || (ENTRY_POINTS as readonly string[]).includes(saved)) return ""
+    return saved
+  })
+  const [nativeLanguage, setNativeLanguage] = useState<string>(() => {
+    const saved = draft.details.nativeLanguage
+    if (!saved) return ""
+    return (NATIVE_LANGUAGES as readonly string[]).includes(saved)
+      ? saved
+      : "Otros"
+  })
+  const [customNativeLanguage, setCustomNativeLanguage] = useState<string>(
+    () => {
+      const saved = draft.details.nativeLanguage
+      if (!saved || (NATIVE_LANGUAGES as readonly string[]).includes(saved))
+        return ""
+      return saved
+    },
+  )
+  const [error, setError] = useState<string | null>(null)
+
+  const pd = draft.patientData
+  const details = draft.details
+  const insurance = draft.insurance
+  const meta = draft.enrollmentMetadata
+  const caller = draft.companion
+  const patientIsMinor = isMinor(pd.birthDate)
+  const callerIsComplete = Boolean(
+    caller.fullName.trim() &&
+    caller.primaryPhone.trim() &&
+    caller.relationship?.trim(),
+  )
+  const selectedPrimarySource =
+    draft.primaryContactSource ??
+    (patientIsMinor && callerIsComplete ? "CALLER" : "")
+  const secondarySource = draft.secondaryContactSource ?? ""
   const hasTemporaryAddress = draft.addresses.length > 1
+  const address: EnrollmentAddressRequest = draft.addresses[0] ?? {
+    type: "PERMANENT",
+    isPrimary: true,
+  }
   const temporaryAddress: EnrollmentAddressRequest = {
     ...(draft.addresses[1] ?? { type: "TEMPORARY", isPrimary: false }),
     type: "TEMPORARY",
     isPrimary: false,
   }
-  const meta = draft.enrollmentMetadata
-  const patientIsMinor = isMinor(pd.birthDate)
+  const hasInsurance = insurance.insuranceType !== "NONE"
+  const hasCallerOption = callerIsComplete
 
-  function updateAddress(partial: Partial<typeof address>) {
-    updateDraft({ addresses: [{ ...address, ...partial }, ...draft.addresses.slice(1)] })
+  function updateAddress(partial: Partial<EnrollmentAddressRequest>) {
+    updateDraft({
+      addresses: [{ ...address, ...partial }, ...draft.addresses.slice(1)],
+    })
   }
 
-  function updateTemporaryAddress(partial: Partial<typeof temporaryAddress>) {
+  function updateTemporaryAddress(partial: Partial<EnrollmentAddressRequest>) {
     updateDraft({
       addresses: [
         address,
-        { ...temporaryAddress, ...partial, type: "TEMPORARY", isPrimary: false },
+        {
+          ...temporaryAddress,
+          ...partial,
+          type: "TEMPORARY",
+          isPrimary: false,
+        },
         ...draft.addresses.slice(2),
       ],
     })
@@ -72,201 +358,1007 @@ export function Step5Datos() {
   function handleTemporaryAddressChange(value: string | null) {
     if (value === "Sí") {
       updateDraft({
-        addresses: [
-          address,
-          temporaryAddress,
-          ...draft.addresses.slice(2),
-        ],
+        addresses: [address, temporaryAddress, ...draft.addresses.slice(2)],
       })
       return
     }
-
     updateDraft({
-      addresses: draft.addresses.length > 1
-        ? [address, ...draft.addresses.slice(2)]
-        : draft.addresses,
+      addresses:
+        draft.addresses.length > 1
+          ? [address, ...draft.addresses.slice(2)]
+          : draft.addresses,
     })
   }
 
-  const saved = meta.programEntryPoint
+  function updatePrimarySource(value: string | null) {
+    const source = value as EnrollmentContactSource | ""
+    updateDraft({
+      primaryContactSource: source || undefined,
+      primaryContact: source === "NEW" ? draft.primaryContact : EMPTY_CONTACT,
+      ...(source === "CALLER" && secondarySource === "CALLER"
+        ? {
+            secondaryContactSource: "NEW",
+            secondaryContact: EMPTY_CONTACT,
+          }
+        : {}),
+    })
+  }
 
-  const [entryPoint, setEntryPoint] = useState<string>(() => {
-    if (!saved) return ""
-    if ((ENTRY_POINTS as readonly string[]).includes(saved)) return saved
-    return "Otro"
-  })
+  function handleSecondaryToggle(value: string | null) {
+    const enabled = value === "Sí"
+    const defaultSource =
+      hasCallerOption && selectedPrimarySource !== "CALLER" ? "CALLER" : "NEW"
+    updateDraft({
+      secondaryContactEnabled: enabled,
+      secondaryContactSource: enabled ? defaultSource : undefined,
+      secondaryContact: enabled ? draft.secondaryContact : EMPTY_CONTACT,
+    })
+  }
 
-  const [customEntryPoint, setCustomEntryPoint] = useState<string>(() => {
-    if (!saved) return ""
-    if ((ENTRY_POINTS as readonly string[]).includes(saved)) return ""
-    return saved
-  })
+  function validateContact(
+    source: EnrollmentContactSource | "",
+    person: CompanionDraft,
+    role: string,
+  ) {
+    if (!source) return `Seleccione el contacto ${role}`
+    if (source === "PATIENT") return null
+    if (source === "CALLER") {
+      return callerIsComplete
+        ? null
+        : "Complete primero los datos de quien llama"
+    }
+    if (
+      !person.fullName.trim() ||
+      !person.primaryPhone.trim() ||
+      !person.relationship?.trim()
+    )
+      return `Complete nombre, parentesco y teléfono del ${role}`
+    return null
+  }
 
-  function handleEntryPointChange(v: string) {
-    setEntryPoint(v)
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!pd.fullName.trim() || !pd.primaryPhone.trim() || !pd.birthDate) {
+      setError("Complete nombre, teléfono y fecha de nacimiento del paciente")
+      return
+    }
+    if (
+      !isValidLocationUrl(address.locationUrl) ||
+      !isValidLocationUrl(temporaryAddress.locationUrl)
+    ) {
+      setError("La ubicación web debe ser una URL válida http o https")
+      return
+    }
+    if (patientIsMinor && selectedPrimarySource === "PATIENT") {
+      setError(
+        "Un paciente menor debe tener un acompañante como contacto principal",
+      )
+      return
+    }
+    const primaryError = validateContact(
+      selectedPrimarySource,
+      draft.primaryContact,
+      "contacto principal",
+    )
+    if (primaryError) {
+      setError(primaryError)
+      return
+    }
+    if (draft.secondaryContactEnabled) {
+      const secondaryError = validateContact(
+        secondarySource as EnrollmentContactSource | "",
+        draft.secondaryContact,
+        "contacto secundario",
+      )
+      if (secondaryError) {
+        setError(secondaryError)
+        return
+      }
+      if (secondarySource === "PATIENT") {
+        setError("El paciente solo puede ser contacto principal")
+        return
+      }
+    }
+    setError(null)
+    nextStep()
+  }
+
+  function handleEntryPointChange(value: string) {
+    setEntryPoint(value)
     setCustomEntryPoint("")
-    if (v === "Otro") {
-      updateDraft({ enrollmentMetadata: { ...meta, programEntryPoint: undefined } })
-    } else {
-      updateDraft({ enrollmentMetadata: { ...meta, programEntryPoint: v } })
-    }
+    updateDraft({
+      enrollmentMetadata: {
+        ...meta,
+        programEntryPoint: value === "Otro" ? undefined : value,
+      },
+    })
   }
 
-  const savedLang = d.nativeLanguage
-
-  const [nativeLanguage, setNativeLanguage] = useState<string>(() => {
-    if (!savedLang) return ""
-    if ((NATIVE_LANGUAGES as readonly string[]).includes(savedLang)) return savedLang
-    return "Otros"
-  })
-
-  const [customNativeLanguage, setCustomNativeLanguage] = useState<string>(() => {
-    if (!savedLang) return ""
-    if ((NATIVE_LANGUAGES as readonly string[]).includes(savedLang)) return ""
-    return savedLang
-  })
-
-  function handleNativeLanguageChange(v: string) {
-    setNativeLanguage(v)
+  function handleNativeLanguageChange(value: string) {
+    setNativeLanguage(value)
     setCustomNativeLanguage("")
-    if (v === "Otros") {
-      updateDraft({ details: { ...d, nativeLanguage: undefined } })
-    } else {
-      updateDraft({ details: { ...d, nativeLanguage: v } })
-    }
+    updateDraft({
+      details: {
+        ...details,
+        nativeLanguage: value === "Otros" ? undefined : value,
+      },
+    })
   }
-
-  const hasInsurance = ins.insuranceType !== "NONE"
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-10">
-      <StepHeader step={5} title="Datos del Paciente" description="Complete los datos de identidad, demográficos, contacto y seguro." />
-      <section className="flex flex-col gap-5"><SectionHeader icon={CreditCard} title="Información de Identidad" />
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>DNI <span className="text-destructive">*</span></Label><Input placeholder="74829304" className={ic} value={pd.dni??""} onChange={e=>updateDraft({patientData:{...pd,dni:e.target.value||null}})} /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>Fecha de nacimiento <span className="text-destructive">*</span></Label><Input type="date" className={ic} value={pd.birthDate??""} onChange={e=>updateDraft({patientData:{...pd,birthDate:e.target.value||null}})} /></div>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-10">
+      <StepHeader
+        step={5}
+        title="Datos del Paciente"
+        description="Complete los datos de identidad, demográficos, contacto y seguro."
+      />
+      <section className="flex flex-col gap-5">
+        <SectionHeader icon={CreditCard} title="Información de Identidad" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>DNI</Label>
+            <Input
+              placeholder="74829304"
+              className={ic}
+              value={pd.dni ?? ""}
+              onChange={(event) =>
+                updateDraft({
+                  patientData: { ...pd, dni: event.target.value || null },
+                })
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              Fecha de nacimiento <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              type="date"
+              className={ic}
+              value={pd.birthDate ?? ""}
+              onChange={(event) =>
+                updateDraft({
+                  patientData: { ...pd, birthDate: event.target.value || null },
+                })
+              }
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Nombre completo <span className="text-destructive">*</span></Label><Input placeholder="Tal como aparece en el DNI" className={ic} value={pd.fullName} onChange={e=>updateDraft({patientData:{...pd,fullName:e.target.value}})} /></div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Género</Label>
-          <Select items={Object.entries(genderLabels).map(([value,label])=>({value,label}))} value={pd.gender??""} onValueChange={v=>updateDraft({patientData:{...pd,gender:v||null}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(genderLabels).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>
+            Nombre completo <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="Tal como aparece en el DNI"
+            className={ic}
+            value={pd.fullName}
+            onChange={(event) =>
+              updateDraft({
+                patientData: { ...pd, fullName: event.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Género</Label>
+          <Select
+            items={Object.entries(genderLabels).map(([value, label]) => ({
+              value,
+              label,
+            }))}
+            value={pd.gender ?? ""}
+            onValueChange={(value) =>
+              updateDraft({ patientData: { ...pd, gender: value || null } })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(genderLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         {patientIsMinor && (
           <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-700/80">Paciente menor de edad</p>
-            <p className="text-sm text-foreground/70">
-              Complete los datos del acompañante o tutor en el paso 3 (Identificación del Llamante).
+            <p className="mb-1 text-[10px] font-bold tracking-widest text-amber-700/80 uppercase">
+              Paciente menor de edad
             </p>
-            <button
-              type="button"
-              onClick={() => goToStep(3)}
-              className="mt-2 text-sm font-medium text-amber-700 underline underline-offset-2"
-            >
-              Ir al paso 3
-            </button>
+            <p className="text-foreground/70 text-sm">
+              El contacto principal debe ser un acompañante o tutor.
+            </p>
           </div>
         )}
       </section>
-       <section className="flex flex-col gap-5"><SectionHeader icon={MapPin} title="Datos de procedencia y residencia" />
-         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-           <div className="flex flex-col gap-2"><Label className={fl}>Departamento de nacimiento</Label>
-             <Select items={DEPARTMENTS} value={d.birthDepartment??""} onValueChange={v=>updateDraft({details:{...d,birthDepartment:v||undefined}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{DEPARTMENTS.map(department=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
-           </div>
-           <div className="flex flex-col gap-2"><Label className={fl}>Zonificación de residencia</Label>
-             <Select items={ZONE_TYPES} value={normalizeZoneType(d.zoneType)??""} onValueChange={v=>updateDraft({details:{...d,zoneType:v||undefined}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar zonificación..." /></SelectTrigger><SelectContent>{ZONE_TYPES.map(zone=><SelectItem key={zone.value} value={zone.value}>{zone.label}</SelectItem>)}</SelectContent></Select>
-           </div>
-         </div>
-         <div className="flex flex-col gap-2"><Label className={fl}>Dirección actual</Label><Input placeholder="Av. Principal 123" className={ic} value={address.address??""} onChange={e=>updateAddress({address:e.target.value||undefined})} /></div>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeader
+          icon={MapPin}
+          title="Datos de procedencia y residencia"
+        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={address.district??""} onChange={e=>updateAddress({district:e.target.value||undefined})} /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={address.province??""} onChange={e=>updateAddress({province:e.target.value||undefined})} /></div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Departamento de nacimiento</Label>
+            <Select
+              items={DEPARTMENTS}
+              value={details.birthDepartment ?? ""}
+              onValueChange={(value) =>
+                updateDraft({
+                  details: { ...details, birthDepartment: value || undefined },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar departamento..." />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPARTMENTS.map((department) => (
+                  <SelectItem key={department.value} value={department.value}>
+                    {department.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Zonificación de residencia</Label>
+            <Select
+              items={ZONE_TYPES}
+              value={normalizeZoneType(details.zoneType) ?? ""}
+              onValueChange={(value) =>
+                updateDraft({
+                  details: { ...details, zoneType: value || undefined },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar zonificación..." />
+              </SelectTrigger>
+              <SelectContent>
+                {ZONE_TYPES.map((zone) => (
+                  <SelectItem key={zone.value} value={zone.value}>
+                    {zone.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label>
-           <Select items={DEPARTMENTS} value={address.department??""} onValueChange={v=>updateAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{DEPARTMENTS.map(department=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
-        </div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={address.reference??""} onChange={e=>updateAddress({reference:e.target.value||undefined})} /></div>
         <div className="flex flex-col gap-2">
-          <Label className={fl}>¿Cuenta con una vivienda provisional adicional?</Label>
-          <Select value={hasTemporaryAddress ? "Sí" : "No"} onValueChange={handleTemporaryAddressChange}>
-            <SelectTrigger className={sc}><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+          <Label className={fl}>Dirección actual</Label>
+          <Input
+            placeholder="Av. Principal 123"
+            className={ic}
+            value={address.address ?? ""}
+            onChange={(event) =>
+              updateAddress({ address: event.target.value || undefined })
+            }
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Distrito</Label>
+            <Input
+              placeholder="Miraflores"
+              className={ic}
+              value={address.district ?? ""}
+              onChange={(event) =>
+                updateAddress({ district: event.target.value || undefined })
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Provincia</Label>
+            <Input
+              placeholder="Lima"
+              className={ic}
+              value={address.province ?? ""}
+              onChange={(event) =>
+                updateAddress({ province: event.target.value || undefined })
+              }
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Departamento</Label>
+          <Select
+            items={DEPARTMENTS}
+            value={address.department ?? ""}
+            onValueChange={(value) =>
+              updateAddress({
+                department: (value || undefined) as PeruDepartment | undefined,
+              })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar departamento..." />
+            </SelectTrigger>
+            <SelectContent>
+              {DEPARTMENTS.map((department) => (
+                <SelectItem key={department.value} value={department.value}>
+                  {department.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Si vive en otra ciudad durante parte del año, registre aquí esa segunda dirección.
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Ubicación web de la residencia</Label>
+          <Input
+            type="url"
+            placeholder="https://maps.google.com/..."
+            className={ic}
+            value={address.locationUrl ?? ""}
+            onChange={(event) =>
+              updateAddress({ locationUrl: event.target.value || undefined })
+            }
+          />
+          {address.locationUrl && isValidLocationUrl(address.locationUrl) && (
+            <a
+              href={address.locationUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary text-xs underline underline-offset-4"
+            >
+              Abrir ubicación
+            </a>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Pegue un enlace de Google Maps u otro mapa con protocolo http o
+            https.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>
+            ¿Cuenta con una vivienda provisional adicional?
+          </Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={hasTemporaryAddress ? "Sí" : "No"}
+            onValueChange={handleTemporaryAddressChange}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            Si vive en otra ciudad durante parte del año, registre aquí esa
+            segunda dirección.
           </p>
         </div>
         {hasTemporaryAddress && (
-          <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+          <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
             <div className="mb-4">
               <p className="text-sm font-semibold">Vivienda provisional</p>
-              <p className="text-xs text-muted-foreground">
-                Por ejemplo, una vivienda en Lima si su domicilio habitual está en provincia.
+              <p className="text-muted-foreground text-xs">
+                Por ejemplo, una vivienda en Lima si su domicilio habitual está
+                en provincia.
               </p>
             </div>
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2"><Label className={fl}>Dirección</Label><Input placeholder="Av. Principal 123" className={ic} value={temporaryAddress.address??""} onChange={e=>updateTemporaryAddress({address:e.target.value||undefined})} /></div>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Dirección</Label>
+                <Input
+                  placeholder="Av. Principal 123"
+                  className={ic}
+                  value={temporaryAddress.address ?? ""}
+                  onChange={(event) =>
+                    updateTemporaryAddress({
+                      address: event.target.value || undefined,
+                    })
+                  }
+                />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-2"><Label className={fl}>Distrito</Label><Input placeholder="Miraflores" className={ic} value={temporaryAddress.district??""} onChange={e=>updateTemporaryAddress({district:e.target.value||undefined})} /></div>
-                <div className="flex flex-col gap-2"><Label className={fl}>Provincia</Label><Input placeholder="Lima" className={ic} value={temporaryAddress.province??""} onChange={e=>updateTemporaryAddress({province:e.target.value||undefined})} /></div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>Distrito</Label>
+                  <Input
+                    placeholder="Miraflores"
+                    className={ic}
+                    value={temporaryAddress.district ?? ""}
+                    onChange={(event) =>
+                      updateTemporaryAddress({
+                        district: event.target.value || undefined,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>Provincia</Label>
+                  <Input
+                    placeholder="Lima"
+                    className={ic}
+                    value={temporaryAddress.province ?? ""}
+                    onChange={(event) =>
+                      updateTemporaryAddress({
+                        province: event.target.value || undefined,
+                      })
+                    }
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-2"><Label className={fl}>Departamento</Label>
-                 <Select items={DEPARTMENTS} value={temporaryAddress.department??""} onValueChange={v=>updateTemporaryAddress({department:(v || undefined) as PeruDepartment | undefined})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar departamento..." /></SelectTrigger><SelectContent>{DEPARTMENTS.map(department=><SelectItem key={department.value} value={department.value}>{department.label}</SelectItem>)}</SelectContent></Select>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Departamento</Label>
+                <Select
+                  items={DEPARTMENTS}
+                  value={temporaryAddress.department ?? ""}
+                  onValueChange={(value) =>
+                    updateTemporaryAddress({
+                      department: (value || undefined) as
+                        | PeruDepartment
+                        | undefined,
+                    })
+                  }
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue placeholder="Seleccionar departamento..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map((department) => (
+                      <SelectItem
+                        key={department.value}
+                        value={department.value}
+                      >
+                        {department.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex flex-col gap-2"><Label className={fl}>Referencia</Label><Input placeholder="Frente al parque..." className={ic} value={temporaryAddress.reference??""} onChange={e=>updateTemporaryAddress({reference:e.target.value||undefined})} /></div>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Ubicación web de la residencia</Label>
+                <Input
+                  type="url"
+                  placeholder="https://maps.google.com/..."
+                  className={ic}
+                  value={temporaryAddress.locationUrl ?? ""}
+                  onChange={(event) =>
+                    updateTemporaryAddress({
+                      locationUrl: event.target.value || undefined,
+                    })
+                  }
+                />
+                {temporaryAddress.locationUrl &&
+                  isValidLocationUrl(temporaryAddress.locationUrl) && (
+                    <a
+                      href={temporaryAddress.locationUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary text-xs underline underline-offset-4"
+                    >
+                      Abrir ubicación
+                    </a>
+                  )}
+              </div>
             </div>
           </div>
         )}
-        <DurationInput label="Tiempo de viaje al hospital" units={["MINUTE", "HOUR", "DAY"]} defaultUnit="HOUR" singleValue value={d.travelTimeToHospital} onChange={travelTimeToHospital=>updateDraft({details:{...d,travelTimeToHospital}})} />
-        <div className="flex flex-col gap-2"><Label className={fl}>¿Dirección DNI coincide con actual?</Label>
-          <Select value={address.dniMatchesAddress===true?"Sí":address.dniMatchesAddress===false?"No":""} onValueChange={v=>updateAddress({dniMatchesAddress:v==="Sí"})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-      </section>
-      <section className="flex flex-col gap-5"><SectionHeader icon={Phone} title="Contacto" />
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>Teléfono principal <span className="text-destructive">*</span></Label><Input placeholder="987654321" className={ic} value={pd.primaryPhone} onChange={e=>updateDraft({patientData:{...pd,primaryPhone:e.target.value}})} /></div>
-          <div className="flex flex-col gap-2"><Label className={fl}>Teléfono secundario</Label><Input placeholder="999888777" className={ic} value={pd.secondaryPhone??""} onChange={e=>updateDraft({patientData:{...pd,secondaryPhone:e.target.value||null}})} /></div>
-        </div>
-        <div className="flex flex-col gap-2"><Label className={fl}>Email</Label><Input type="email" placeholder="paciente@correo.com" className={ic} value={pd.email??""} onChange={e=>updateDraft({patientData:{...pd,email:e.target.value||null}})} /></div>
-        <div className="flex flex-col gap-2"><Label className={fl}>¿Tiene WhatsApp?</Label>
-          <Select value={pd.hasWhatsapp?"Sí":"No"} onValueChange={v=>updateDraft({patientData:{...pd,hasWhatsapp:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-      </section>
-      <section className="flex flex-col gap-5"><SectionHeader icon={GraduationCap} title="Perfil Socioeducativo" />
-        <div className="flex flex-col gap-2"><Label className={fl}>Nivel educativo</Label>
-          <Select items={Object.entries(EDU).map(([value,label])=>({value,label}))} value={d.educationLevel??""} onValueChange={v=>updateDraft({details:{...d,educationLevel:v as EducationLevel}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EDU).map(([k,v])=><SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2"><Label className={fl}>Lengua nativa</Label>
-            <Select value={nativeLanguage} onValueChange={v=>handleNativeLanguageChange(v??"")}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-              <SelectContent>{NATIVE_LANGUAGES.map(l=><SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-2"><Label className={fl}>¿Requiere traducción?</Label>
-            <Select value={d.requiresTranslation?"Sí":"No"} onValueChange={v=>updateDraft({details:{...d,requiresTranslation:v==="Sí"}})}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-        </div>
-        {nativeLanguage==="Otros"&&<div className="flex flex-col gap-2"><Label className={fl}>Especificar lengua</Label>
-          <Input placeholder="Escriba la lengua nativa" className={ic} value={customNativeLanguage}
-            onChange={e=>{setCustomNativeLanguage(e.target.value);updateDraft({details:{...d,nativeLanguage:e.target.value||undefined}})}} />
-        </div>}
-      </section>
-      <section className="flex flex-col gap-5"><SectionHeader icon={ShieldCheck} title="Seguro de Salud" />
-        <div className="flex flex-col gap-2"><Label className={fl}>¿Actualmente cuenta con un seguro de salud? <span className="text-destructive">*</span></Label>
-          <Select value={hasInsurance?"Sí":"No"} onValueChange={v=>{if(v==="No"){updateDraft({insurance:{...ins,insuranceType:"NONE",epsProvider:undefined,startDate:null},sisAffiliation:{canAffiliate:true}})}else{updateDraft({insurance:{...ins,insuranceType:"SIS"}})}}}>
-            <SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Sí">Sí</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-        {hasInsurance&&<>
-          <div className="flex flex-col gap-2"><Label className={fl}>Tipo de seguro <span className="text-destructive">*</span></Label>
-            <Select items={Object.entries(INS).map(([value,label])=>({value,label}))} value={ins.insuranceType} onValueChange={v=>{updateDraft({insurance:{...ins,insuranceType:v as InsuranceType,epsProvider:v!=="EPS"?undefined:ins.epsProvider}});if(v==="NONE")updateDraft({sisAffiliation:{canAffiliate:true}})}}><SelectTrigger className={sc}><SelectValue /></SelectTrigger><SelectContent>{Object.entries(INS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>
-          {ins.insuranceType==="EPS"&&<div className="flex flex-col gap-2"><Label className={fl}>Proveedor EPS</Label>
-            <Select items={Object.entries(EPS_LABELS).map(([value,label])=>({value,label}))} value={ins.epsProvider??""} onValueChange={v=>updateDraft({insurance:{...ins,epsProvider:v as EpsProvider}})}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{Object.entries(EPS_LABELS).map(([k,val])=><SelectItem key={k} value={k}>{val}</SelectItem>)}</SelectContent></Select></div>}
-          <div className="flex flex-col gap-2"><Label className={fl}>Fecha de inicio del seguro</Label><Input type="date" className={ic} value={ins.startDate??""} onChange={e=>updateDraft({insurance:{...ins,startDate:e.target.value||null}})} /></div>
-        </>}
-      </section>
-      <section className="flex flex-col gap-5"><SectionHeader icon={LogIn} title="Punto de Ingreso" />
-        <div className="flex flex-col gap-2"><Label className={fl}>¿Cuál fue el punto de ingreso al programa?</Label>
-          <Select value={entryPoint} onValueChange={v=>handleEntryPointChange(v??"")}><SelectTrigger className={sc}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-            <SelectContent>{ENTRY_POINTS.map(ep=><SelectItem key={ep} value={ep}>{ep}</SelectItem>)}</SelectContent>
+        <DurationInput
+          label="Tiempo de viaje al hospital"
+          units={["MINUTE", "HOUR", "DAY"]}
+          defaultUnit="HOUR"
+          singleValue
+          value={details.travelTimeToHospital}
+          onChange={(travelTimeToHospital) =>
+            updateDraft({ details: { ...details, travelTimeToHospital } })
+          }
+        />
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Dirección DNI coincide con actual?</Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={
+              address.dniMatchesAddress === true
+                ? "Sí"
+                : address.dniMatchesAddress === false
+                  ? "No"
+                  : ""
+            }
+            onValueChange={(value) =>
+              updateAddress({ dniMatchesAddress: value === "Sí" })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
-        {entryPoint==="Otro"&&<div className="flex flex-col gap-2"><Label className={fl}>Especificar</Label>
-          <Input placeholder="Describa el punto de ingreso" className={ic} value={customEntryPoint}
-            onChange={e=>{setCustomEntryPoint(e.target.value);updateDraft({enrollmentMetadata:{...meta,programEntryPoint:e.target.value||undefined}})}} />
-        </div>}
       </section>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeader icon={Phone} title="Contacto del paciente" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>
+              Teléfono principal <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              placeholder="987654321"
+              className={ic}
+              value={pd.primaryPhone}
+              onChange={(event) =>
+                updateDraft({
+                  patientData: { ...pd, primaryPhone: event.target.value },
+                })
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Teléfono adicional o fijo</Label>
+            <Input
+              placeholder="01 555 1234"
+              className={ic}
+              value={pd.secondaryPhone ?? ""}
+              onChange={(event) =>
+                updateDraft({
+                  patientData: {
+                    ...pd,
+                    secondaryPhone: event.target.value || null,
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Tiene WhatsApp?</Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={pd.hasWhatsapp ? "Sí" : "No"}
+            onValueChange={(value) =>
+              updateDraft({
+                patientData: { ...pd, hasWhatsapp: value === "Sí" },
+              })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeader icon={Phone} title="Contacto para seguimiento" />
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>
+            ¿Quién será el contacto principal?{" "}
+            <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            items={[
+              ...(patientIsMinor
+                ? []
+                : [{ value: "PATIENT", label: CONTACT_SOURCE_LABELS.PATIENT }]),
+              ...(hasCallerOption
+                ? [{ value: "CALLER", label: CONTACT_SOURCE_LABELS.CALLER }]
+                : []),
+              { value: "NEW", label: CONTACT_SOURCE_LABELS.NEW },
+            ]}
+            value={selectedPrimarySource}
+            onValueChange={updatePrimarySource}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue
+                placeholder={
+                  patientIsMinor
+                    ? "Seleccione un acompañante..."
+                    : "Seleccionar..."
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {!patientIsMinor && (
+                <SelectItem value="PATIENT">El paciente</SelectItem>
+              )}
+              {hasCallerOption && (
+                <SelectItem value="CALLER">La persona que llama</SelectItem>
+              )}
+              <SelectItem value="NEW">Registrar un acompañante</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {selectedPrimarySource === "CALLER" && (
+          <div className="border-border/70 bg-muted/20 rounded-xl border p-4 text-sm">
+            <p className="font-semibold">
+              Se reutilizarán los datos de quien llama
+            </p>
+            <p className="text-muted-foreground mt-1">
+              {caller.fullName} · {caller.relationship} · {caller.primaryPhone}
+            </p>
+          </div>
+        )}
+        {selectedPrimarySource === "NEW" && (
+          <ContactPersonFields
+            person={draft.primaryContact}
+            title="Datos del contacto principal"
+            onChange={(partial) =>
+              updateDraft({
+                primaryContact: { ...draft.primaryContact, ...partial },
+              })
+            }
+          />
+        )}
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Desea registrar un contacto secundario?</Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={draft.secondaryContactEnabled ? "Sí" : "No"}
+            onValueChange={handleSecondaryToggle}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {draft.secondaryContactEnabled && (
+          <>
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>Origen del contacto secundario</Label>
+              <Select
+                items={[
+                  ...(hasCallerOption && selectedPrimarySource !== "CALLER"
+                    ? [{ value: "CALLER", label: CONTACT_SOURCE_LABELS.CALLER }]
+                    : []),
+                  { value: "NEW", label: CONTACT_SOURCE_LABELS.NEW },
+                ]}
+                value={secondarySource}
+                onValueChange={(value) =>
+                  updateDraft({
+                    secondaryContactSource: value as EnrollmentContactSource,
+                    secondaryContact:
+                      value === "NEW" ? draft.secondaryContact : EMPTY_CONTACT,
+                  })
+                }
+              >
+                <SelectTrigger className={sc}>
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {hasCallerOption && selectedPrimarySource !== "CALLER" && (
+                    <SelectItem value="CALLER">La persona que llama</SelectItem>
+                  )}
+                  <SelectItem value="NEW">Registrar un acompañante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {secondarySource === "CALLER" && (
+              <div className="border-border/70 bg-muted/20 rounded-xl border p-4 text-sm">
+                <p className="font-semibold">
+                  Se reutilizarán los datos de quien llama
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  {caller.fullName} · {caller.relationship} ·{" "}
+                  {caller.primaryPhone}
+                </p>
+              </div>
+            )}
+            {secondarySource === "NEW" && (
+              <ContactPersonFields
+                person={draft.secondaryContact}
+                title="Datos del contacto secundario"
+                onChange={(partial) =>
+                  updateDraft({
+                    secondaryContact: { ...draft.secondaryContact, ...partial },
+                  })
+                }
+              />
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeader icon={GraduationCap} title="Perfil Socioeducativo" />
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Nivel educativo</Label>
+          <Select
+            items={Object.entries(EDU).map(([value, label]) => ({
+              value,
+              label,
+            }))}
+            value={details.educationLevel ?? ""}
+            onValueChange={(value) =>
+              updateDraft({
+                details: {
+                  ...details,
+                  educationLevel: value as EducationLevel,
+                },
+              })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(EDU).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Lengua nativa</Label>
+            <Select
+              items={NATIVE_LANGUAGES.map((value) => ({ value, label: value }))}
+              value={nativeLanguage}
+              onValueChange={(value) => handleNativeLanguageChange(value ?? "")}
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="Seleccionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                {NATIVE_LANGUAGES.map((language) => (
+                  <SelectItem key={language} value={language}>
+                    {language}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>¿Requiere traducción?</Label>
+            <Select
+              items={YES_NO_OPTIONS}
+              value={details.requiresTranslation ? "Sí" : "No"}
+              onValueChange={(value) =>
+                updateDraft({
+                  details: { ...details, requiresTranslation: value === "Sí" },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {YES_NO_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {nativeLanguage === "Otros" && (
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Especificar lengua</Label>
+            <Input
+              placeholder="Escriba la lengua nativa"
+              className={ic}
+              value={customNativeLanguage}
+              onChange={(event) => {
+                setCustomNativeLanguage(event.target.value)
+                updateDraft({
+                  details: {
+                    ...details,
+                    nativeLanguage: event.target.value || undefined,
+                  },
+                })
+              }}
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Actualmente trabaja?</Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={
+              details.isWorking === true
+                ? "Sí"
+                : details.isWorking === false
+                  ? "No"
+                  : ""
+            }
+            onValueChange={(value) =>
+              updateDraft({
+                details: { ...details, isWorking: value === "Sí" },
+              })
+            }
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeader icon={ShieldCheck} title="Seguro de Salud" />
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>
+            ¿Actualmente cuenta con un seguro de salud?{" "}
+            <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            items={YES_NO_OPTIONS}
+            value={hasInsurance ? "Sí" : "No"}
+            onValueChange={(value) => {
+              if (value === "No") {
+                updateDraft({
+                  insurance: {
+                    ...insurance,
+                    insuranceType: "NONE",
+                    epsProvider: undefined,
+                  },
+                  sisAffiliation: { canAffiliate: true },
+                })
+              } else {
+                updateDraft({
+                  insurance: { ...insurance, insuranceType: "SIS" },
+                })
+              }
+            }}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {YES_NO_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {hasInsurance && (
+          <>
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Tipo de seguro <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                items={Object.entries(INS).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+                value={insurance.insuranceType}
+                onValueChange={(value) =>
+                  updateDraft({
+                    insurance: {
+                      ...insurance,
+                      insuranceType: value as InsuranceType,
+                      epsProvider:
+                        value !== "EPS" ? undefined : insurance.epsProvider,
+                    },
+                  })
+                }
+              >
+                <SelectTrigger className={sc}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(INS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {insurance.insuranceType === "EPS" && (
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Proveedor EPS</Label>
+                <Select
+                  items={Object.entries(EPS_LABELS).map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                  value={insurance.epsProvider ?? ""}
+                  onValueChange={(value) =>
+                    updateDraft({
+                      insurance: {
+                        ...insurance,
+                        epsProvider: value as EpsProvider,
+                      },
+                    })
+                  }
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue placeholder="Seleccionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(EPS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeader icon={LogIn} title="Punto de Ingreso" />
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>
+            ¿Cuál fue el punto de ingreso al programa?
+          </Label>
+          <Select
+            items={ENTRY_POINTS.map((value) => ({ value, label: value }))}
+            value={entryPoint}
+            onValueChange={(value) => handleEntryPointChange(value ?? "")}
+          >
+            <SelectTrigger className={sc}>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {ENTRY_POINTS.map((point) => (
+                <SelectItem key={point} value={point}>
+                  {point}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {entryPoint === "Otro" && (
+          <div className="flex flex-col gap-2">
+            <Label className={fl}>Especificar</Label>
+            <Input
+              placeholder="Describa el punto de ingreso"
+              className={ic}
+              value={customEntryPoint}
+              onChange={(event) => {
+                setCustomEntryPoint(event.target.value)
+                updateDraft({
+                  enrollmentMetadata: {
+                    ...meta,
+                    programEntryPoint: event.target.value || undefined,
+                  },
+                })
+              }}
+            />
+          </div>
+        )}
+      </section>
+
+      {error && <p className="text-destructive text-sm">{error}</p>}
       <StepNav currentStep={5} onPrev={prevStep} />
     </form>
   )

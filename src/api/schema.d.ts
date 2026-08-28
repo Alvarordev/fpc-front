@@ -139,6 +139,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/indicators/demographics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get demographic dashboard indicators */
+        get: operations["DashboardController_getDemographics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/indicators/epidemiology": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get epidemiological dashboard indicators */
+        get: operations["DashboardController_getEpidemiology"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dashboard": {
         parameters: {
             query?: never;
@@ -927,6 +961,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/diagnostic-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient diagnostic status history */
+        get: operations["PatientDiagnosticStatusesController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/diagnostic-status/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current patient diagnostic status */
+        get: operations["PatientDiagnosticStatusesController_current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/diagnostic-status/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition patient diagnostic status */
+        post: operations["PatientDiagnosticStatusesController_transition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/psychooncology-appointments": {
         parameters: {
             query?: never;
@@ -1366,6 +1451,66 @@ export interface components {
             scheduledFollowUps: components["schemas"]["CallCenterFollowUpDto"][];
             pendingReminders: components["schemas"]["CallCenterReminderDto"][];
         };
+        DashboardIndicatorMetaDto: {
+            /** Format: date */
+            from: string;
+            /**
+             * Format: date
+             * @description Exclusive end date.
+             */
+            to: string;
+            /** @example America/Lima */
+            timezone: string;
+            definition: string;
+            population: string;
+            populationCount: number;
+        };
+        DashboardIndicatorItemDto: {
+            /** @example 18-29 */
+            label: string;
+            /** @example 42 */
+            count: number;
+        };
+        DashboardIndicatorDistributionDto: {
+            items: components["schemas"]["DashboardIndicatorItemDto"][];
+            /** @description Patients with a known value for this indicator. */
+            known: number;
+            /** @description Patients without a value for this indicator. */
+            unknown: number;
+            /** @description Known divided by known plus unknown, from 0 to 100. */
+            coveragePct: number;
+            /** @description Patients included in this indicator denominator. */
+            population: number;
+        };
+        DashboardDemographicsResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            age: components["schemas"]["DashboardIndicatorDistributionDto"];
+            gender: components["schemas"]["DashboardIndicatorDistributionDto"];
+            district: components["schemas"]["DashboardIndicatorDistributionDto"];
+            province: components["schemas"]["DashboardIndicatorDistributionDto"];
+            department: components["schemas"]["DashboardIndicatorDistributionDto"];
+            zoneType: components["schemas"]["DashboardIndicatorDistributionDto"];
+            educationLevel: components["schemas"]["DashboardIndicatorDistributionDto"];
+            nativeLanguage: components["schemas"]["DashboardIndicatorDistributionDto"];
+            requiresTranslation: components["schemas"]["DashboardIndicatorDistributionDto"];
+            isWorking: components["schemas"]["DashboardIndicatorDistributionDto"];
+            insuranceType: components["schemas"]["DashboardIndicatorDistributionDto"];
+            epsProvider: components["schemas"]["DashboardIndicatorDistributionDto"];
+        };
+        DashboardEpidemiologyEventsDto: {
+            deaths: number;
+            diagnosticConfirmed: number;
+            diagnosticRuledOut: number;
+        };
+        DashboardEpidemiologyResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            currentDiagnoses: components["schemas"]["DashboardIndicatorDistributionDto"];
+            currentCancerStages: components["schemas"]["DashboardIndicatorDistributionDto"];
+            currentTreatmentTypes: components["schemas"]["DashboardIndicatorDistributionDto"];
+            currentTreatmentSituations: components["schemas"]["DashboardIndicatorDistributionDto"];
+            currentDiagnosticStatuses: components["schemas"]["DashboardIndicatorDistributionDto"];
+            events: components["schemas"]["DashboardEpidemiologyEventsDto"];
+        };
         DashboardMetaDto: {
             /** @enum {string} */
             period: "month" | "year";
@@ -1517,8 +1662,27 @@ export interface components {
             email?: string;
             isPrimaryInformant?: boolean;
             isPrimaryContact?: boolean;
+            /** @enum {string|null} */
+            contactRole?: "PRIMARY" | "SECONDARY" | null;
             isCaregiver?: boolean;
             relationship?: string;
+        };
+        EnrollmentContactPersonDto: {
+            fullName: string;
+            primaryPhone: string;
+            secondaryPhone?: string;
+            dni?: string;
+            birthDate?: string;
+            gender?: string;
+            hasWhatsapp?: boolean;
+            relationship: string;
+        };
+        EnrollmentContactInputDto: {
+            /** @enum {string} */
+            role: "PRIMARY" | "SECONDARY";
+            /** @enum {string} */
+            source: "PATIENT" | "CALLER" | "NEW";
+            person?: components["schemas"]["EnrollmentContactPersonDto"];
         };
         DurationDto: {
             valueMin: number;
@@ -1635,6 +1799,7 @@ export interface components {
             nextAppointmentDate?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
+            referralNotProvidedReason?: string;
             difficulties?: string;
             isFirstConsultation?: boolean;
             changeReason?: string;
@@ -1649,6 +1814,8 @@ export interface components {
             district?: string;
             province?: string;
             reference?: string;
+            /** Format: uri */
+            locationUrl?: string;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -1657,6 +1824,7 @@ export interface components {
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean;
+            checkupMotivation?: string;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
             symptomDuration?: components["schemas"]["DurationDto"];
@@ -1666,9 +1834,20 @@ export interface components {
             painLocation?: string;
             painDescription?: string;
             hasSoughtMedicalConsultation?: boolean;
+            hasRequestedMedicalConsultation?: boolean;
+            /** @enum {string} */
+            consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
+            consultationNotObtainedReason?: string;
             /** Format: uuid */
             healthCenterId?: string;
             specialty?: string;
+            diagnosisSearchDuration?: components["schemas"]["DurationDto"];
+            hasReceivedDiagnosis?: boolean;
+            reportedDiagnosis?: string;
+            isReceivingReportedTreatment?: boolean;
+            reportedTreatment?: string;
+            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
+            notReceivingTreatmentReason?: string;
         };
         CreatePatientActiveComorbidityDto: {
             conditionName: string;
@@ -1708,6 +1887,7 @@ export interface components {
             /** Format: uuid */
             companionId?: string;
             companion?: components["schemas"]["CreateCompanionDto"];
+            contacts?: components["schemas"]["EnrollmentContactInputDto"][];
             details?: components["schemas"]["UpsertPatientDetailsDto"];
             insurance?: components["schemas"]["EnrollmentInsuranceDto"];
             sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
@@ -1901,6 +2081,7 @@ export interface components {
             nextAppointmentDate?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
+            referralNotProvidedReason?: string;
             difficulties?: string;
             isFirstConsultation?: boolean;
         };
@@ -1923,8 +2104,9 @@ export interface components {
             appointmentTime: string | null;
             /** Format: date */
             nextAppointmentDate: string | null;
-            hasReferralSheet: boolean;
+            hasReferralSheet: boolean | null;
             referredTo: string | null;
+            referralNotProvidedReason: string | null;
             difficulties: string | null;
             isFirstConsultation: boolean;
             isCurrent: boolean;
@@ -1944,6 +2126,7 @@ export interface components {
             nextAppointmentDate?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
+            referralNotProvidedReason?: string;
             difficulties?: string;
             isFirstConsultation?: boolean;
             changeReason: string;
@@ -2067,6 +2250,8 @@ export interface components {
             existingCompanionId: string;
             isPrimaryInformant?: boolean;
             isPrimaryContact?: boolean;
+            /** @enum {string|null} */
+            contactRole?: "PRIMARY" | "SECONDARY" | null;
             isCaregiver?: boolean;
             relationship?: string;
         };
@@ -2079,6 +2264,8 @@ export interface components {
             patientId: string;
             isPrimaryInformant: boolean;
             isPrimaryContact: boolean;
+            /** @enum {string|null} */
+            contactRole: "PRIMARY" | "SECONDARY" | null;
             isCaregiver: boolean;
             relationship: string | null;
             companionDisplayName: string | null;
@@ -2090,6 +2277,8 @@ export interface components {
         UpdateCompanionLinkDto: {
             isPrimaryInformant?: boolean;
             isPrimaryContact?: boolean;
+            /** @enum {string|null} */
+            contactRole?: "PRIMARY" | "SECONDARY" | null;
             isCaregiver?: boolean;
             relationship?: string;
         };
@@ -2337,8 +2526,9 @@ export interface components {
             appointmentTime: string | null;
             /** Format: date */
             nextAppointmentDate: string | null;
-            hasReferralSheet: boolean;
+            hasReferralSheet: boolean | null;
             referredTo: string | null;
+            referralNotProvidedReason: string | null;
             difficulties: string | null;
             isFirstConsultation: boolean;
             isCurrent: boolean;
@@ -2376,6 +2566,7 @@ export interface components {
             discomfortSeverity: string | null;
             discomfortDescription: string | null;
             hasDiscomfort: boolean | null;
+            checkupMotivation: string | null;
             signsAndSymptoms: string | null;
             indicationsReceived: string | null;
             symptomDuration: components["schemas"]["DurationResponseDto"] | null;
@@ -2385,9 +2576,20 @@ export interface components {
             painLocation: string | null;
             painDescription: string | null;
             hasSoughtMedicalConsultation: boolean;
+            hasRequestedMedicalConsultation: boolean | null;
+            /** @enum {string|null} */
+            consultationStatus: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED" | null;
+            consultationNotObtainedReason: string | null;
             /** Format: uuid */
             healthCenterId: string | null;
             specialty: string | null;
+            diagnosisSearchDuration: components["schemas"]["DurationResponseDto"] | null;
+            hasReceivedDiagnosis: boolean | null;
+            reportedDiagnosis: string | null;
+            isReceivingReportedTreatment: boolean | null;
+            reportedTreatment: string | null;
+            reportedTreatmentFrequency: components["schemas"]["DurationResponseDto"] | null;
+            notReceivingTreatmentReason: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2523,6 +2725,7 @@ export interface components {
             nextAppointmentDate?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
+            referralNotProvidedReason?: string;
             difficulties?: string;
             isFirstConsultation?: boolean;
             changeReason?: string;
@@ -2618,6 +2821,8 @@ export interface components {
             district?: string;
             province?: string;
             reference?: string;
+            /** Format: uri */
+            locationUrl?: string;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -2637,6 +2842,8 @@ export interface components {
             province: string | null;
             department: string | null;
             reference: string | null;
+            /** Format: uri */
+            locationUrl: string | null;
             dniMatchesAddress: boolean | null;
             /** Format: date */
             validFrom: string | null;
@@ -2658,6 +2865,8 @@ export interface components {
             district?: string;
             province?: string;
             reference?: string;
+            /** Format: uri */
+            locationUrl?: string;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -2670,6 +2879,7 @@ export interface components {
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean;
+            checkupMotivation?: string;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
             symptomDuration?: components["schemas"]["DurationDto"];
@@ -2679,9 +2889,20 @@ export interface components {
             painLocation?: string;
             painDescription?: string;
             hasSoughtMedicalConsultation?: boolean;
+            hasRequestedMedicalConsultation?: boolean;
+            /** @enum {string} */
+            consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
+            consultationNotObtainedReason?: string;
             /** Format: uuid */
             healthCenterId?: string;
             specialty?: string;
+            diagnosisSearchDuration?: components["schemas"]["DurationDto"];
+            hasReceivedDiagnosis?: boolean;
+            reportedDiagnosis?: string;
+            isReceivingReportedTreatment?: boolean;
+            reportedTreatment?: string;
+            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
+            notReceivingTreatmentReason?: string;
         };
         CreatePatientSocialNoteDto: {
             /** Format: uuid */
@@ -2712,6 +2933,51 @@ export interface components {
             activeComorbidities?: components["schemas"]["CreatePatientActiveComorbidityDto"][];
             limitations?: components["schemas"]["CreatePatientLimitationDto"][];
             familyCancerHistory?: components["schemas"]["CreatePatientFamilyCancerHistoryDto"][];
+        };
+        PatientDiagnosticStatusEventResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string | null;
+            /** @enum {string} */
+            status: "SEARCHING" | "CONFIRMED" | "RULED_OUT";
+            /** Format: date-time */
+            occurredAt: string;
+            reportedDiagnosis: string | null;
+            /** Format: uuid */
+            diagnosisId: string | null;
+            supportedBySepa: boolean | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DiagnosticStatusDiagnosisDto: {
+            diagnosis: string;
+            /** @enum {string} */
+            cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
+            diagnosisDate?: string;
+            firstSymptomsDate?: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+            diagnosisSpecialty?: string;
+            symptomLeadingToCheckup?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
+            hasMedicalReport?: boolean;
+            isSepaActiveReferral?: boolean;
+            changeReason?: string;
+        };
+        TransitionPatientDiagnosticStatusDto: {
+            /** @enum {string} */
+            status: "SEARCHING" | "CONFIRMED" | "RULED_OUT";
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: date-time */
+            occurredAt?: string;
+            diagnosis?: components["schemas"]["DiagnosticStatusDiagnosisDto"];
+            supportedBySepa?: boolean;
+            notes?: string;
         };
         CreatePsychooncologyAppointmentDto: {
             /** Format: uuid */
@@ -3363,6 +3629,108 @@ export interface operations {
                 content?: never;
             };
             /** @description Administrator role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getDemographics: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDemographicsResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getEpidemiology: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardEpidemiologyResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6231,6 +6599,130 @@ export interface operations {
             };
             /** @description Patient or follow-up not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDiagnosticStatusesController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDiagnosticStatusEventResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDiagnosticStatusesController_current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDiagnosticStatusEventResponseDto"] | null;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDiagnosticStatusesController_transition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionPatientDiagnosticStatusDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDiagnosticStatusEventResponseDto"];
+                };
+            };
+            /** @description Invalid diagnostic transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient is not searching for diagnosis */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
