@@ -927,6 +927,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient documents */
+        get: operations["PatientDocumentsController_findAll"];
+        put?: never;
+        /** Upload a patient document */
+        post: operations["PatientDocumentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/documents/{documentId}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream a patient document */
+        get: operations["PatientDocumentsController_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/documents/{documentId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Archive a patient document */
+        patch: operations["PatientDocumentsController_archive"];
+        trace?: never;
+    };
     "/psychooncology-appointments": {
         parameters: {
             query?: never;
@@ -2712,6 +2764,39 @@ export interface components {
             activeComorbidities?: components["schemas"]["CreatePatientActiveComorbidityDto"][];
             limitations?: components["schemas"]["CreatePatientLimitationDto"][];
             familyCancerHistory?: components["schemas"]["CreatePatientFamilyCancerHistoryDto"][];
+        };
+        PatientDocumentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** @enum {string} */
+            documentType: "MEDICAL_REPORT" | "PRESCRIPTION" | "OTHER";
+            /** Format: uuid */
+            diagnosisId: string | null;
+            /** Format: uuid */
+            treatmentId: string | null;
+            description: string | null;
+            originalFileName: string;
+            mediaType: string;
+            sizeBytes: number;
+            sha256: string;
+            /** @enum {string} */
+            status: "PENDING" | "ACTIVE" | "ARCHIVED";
+            /** Format: uuid */
+            uploadedById: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** Format: uuid */
+            archivedById: string | null;
+        };
+        PatientDocumentListResponseDto: {
+            data: components["schemas"]["PatientDocumentResponseDto"][];
+            total: number;
+            limit: number;
+            offset: number;
         };
         CreatePsychooncologyAppointmentDto: {
             /** Format: uuid */
@@ -6230,6 +6315,225 @@ export interface operations {
                 content?: never;
             };
             /** @description Patient or follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDocumentsController_findAll: {
+        parameters: {
+            query?: {
+                documentType?: "MEDICAL_REPORT" | "PRESCRIPTION" | "OTHER";
+                diagnosisId?: string;
+                treatmentId?: string;
+                includeArchived?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDocumentListResponseDto"];
+                };
+            };
+            /** @description Invalid filters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDocumentsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** @enum {unknown} */
+                    documentType: "MEDICAL_REPORT" | "PRESCRIPTION" | "OTHER";
+                    /** Format: uuid */
+                    diagnosisId?: string;
+                    /** Format: uuid */
+                    treatmentId?: string;
+                    description?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDocumentResponseDto"];
+                };
+            };
+            /** @description Invalid multipart payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or association not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File type is not supported */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDocumentsController_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document binary content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document has been archived */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDocumentsController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDocumentResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found */
             404: {
                 headers: {
                     [name: string]: unknown;

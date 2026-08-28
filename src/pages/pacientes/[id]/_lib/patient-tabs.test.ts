@@ -11,6 +11,7 @@ describe("patient tabs", () => {
     expect(getPatientTab(null)).toBe("resumen")
     expect(getPatientTab("unknown")).toBe("resumen")
     expect(isPatientTab("recordatorios")).toBe(true)
+    expect(isPatientTab("documentos")).toBe(true)
     expect(isPatientTab("unknown")).toBe(false)
   })
 
