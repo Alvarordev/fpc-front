@@ -54,9 +54,9 @@ import { getAge } from "@/pages/enrolamiento/_utils/patient-age"
 import { PatientRecordsSection } from "./patient-records-section"
 import { TreatmentCard } from "./treatment-card"
 import { PatientProfileDialog } from "./patient-profile-dialog"
-import { PatientCompanionsSection } from "./patient-companions-section"
 import { useAuthStore } from "@/store/auth-store"
 import { usePatientSocialNotes } from "../_hooks/use-patient-records"
+import { patientTabUrl } from "../_lib/patient-tabs"
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -166,9 +166,19 @@ function ContactInformationSection({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Phone className="size-4" />
-          Información de contacto
+        <CardTitle className="flex items-center justify-between gap-2 text-sm">
+          <span className="flex items-center gap-2">
+            <Phone className="size-4" />
+            Información de contacto
+          </span>
+          {patient.companions.length > 0 && (
+            <Link
+              to={patientTabUrl(patient.id, "acompanantes")}
+              className="text-primary text-xs font-medium hover:underline"
+            >
+              Ver todos los acompañantes ({patient.companions.length})
+            </Link>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -605,13 +615,6 @@ export function OverviewSection({
       </Card>
       {patient.role !== "COMPANION" && (
         <ContactInformationSection patient={patient} />
-      )}
-      {patient.role !== "COMPANION" && (
-        <PatientCompanionsSection
-          patientId={patient.id}
-          companions={patient.companions}
-          canEdit={canEditProfile}
-        />
       )}
       {canEditProfile && (
         <PatientProfileDialog

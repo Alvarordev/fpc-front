@@ -1067,6 +1067,23 @@ export interface paths {
         patch: operations["PatientDocumentsController_archive"];
         trace?: never;
     };
+    "/patients/{patientId}/psychooncology-support-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient psycho-oncology support assessments */
+        get: operations["PatientPsychooncologySupportAssessmentsController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/psychooncology-appointments": {
         parameters: {
             query?: never;
@@ -1939,6 +1956,12 @@ export interface components {
             limitations?: components["schemas"]["CreatePatientLimitationDto"][];
             familyCancerHistory?: components["schemas"]["CreatePatientFamilyCancerHistoryDto"][];
         };
+        EnrollmentPsychooncologySupportAssessmentDto: {
+            excessiveWorry?: boolean;
+            emotionalDistressScore?: number;
+            /** @enum {string} */
+            preferredModality?: "CALL" | "VIDEO_CALL";
+        };
         CreateEnrollmentFamilyTalkInterestDto: {
             talkName: string;
             familyMemberName: string;
@@ -1968,6 +1991,7 @@ export interface components {
             addresses?: components["schemas"]["EnrollmentAddressDto"][];
             symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
             healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
+            psychooncologySupportAssessment?: components["schemas"]["EnrollmentPsychooncologySupportAssessmentDto"];
             currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
             entrySource?: string;
@@ -2413,6 +2437,9 @@ export interface components {
             currentDiagnosis: components["schemas"]["CurrentDiagnosisResponseDto"] | null;
             currentDepartment: string | null;
             latestFollowUp: components["schemas"]["LatestFollowUpResponseDto"] | null;
+            /** @enum {string|null} */
+            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
+            primaryCompanionName: string | null;
         };
         PatientListResponseDto: {
             data: components["schemas"]["PatientListItemResponseDto"][];
@@ -2702,6 +2729,20 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        PatientPsychooncologySupportAssessmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            excessiveWorry: boolean | null;
+            emotionalDistressScore: number | null;
+            /** @enum {string|null} */
+            preferredModality: "CALL" | "VIDEO_CALL" | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
         PatientDetailsWithSummaryResponseDto: {
             /** Format: uuid */
             id: string;
@@ -2741,6 +2782,7 @@ export interface components {
             sisAffiliations: components["schemas"]["PatientSisAffiliationResponseDto"][];
             symptomReports: components["schemas"]["PatientSymptomReportResponseDto"][];
             healthBackgroundAssessments: components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"][];
+            psychooncologySupportAssessments: components["schemas"]["PatientPsychooncologySupportAssessmentResponseDto"][];
             companions: components["schemas"]["CompanionPatientResponseDto"][];
         };
         UpdatePatientDto: {
@@ -7078,6 +7120,39 @@ export interface operations {
             };
             /** @description Document not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientPsychooncologySupportAssessmentsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientPsychooncologySupportAssessmentResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

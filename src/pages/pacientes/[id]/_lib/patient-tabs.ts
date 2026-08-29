@@ -1,5 +1,6 @@
 export const PATIENT_TABS = [
   "resumen",
+  "acompanantes",
   "seguimiento",
   "psicooncologia",
   "recordatorios",

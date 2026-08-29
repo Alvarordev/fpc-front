@@ -14,6 +14,7 @@ import { SeguimientoTab } from "./seguimiento-tab"
 import { PsicoTab } from "./psico-tab"
 import { RecordatoriosTab } from "./recordatorios-tab"
 import { PatientDocumentsTab } from "./patient-documents-tab"
+import { AcompanantesTab } from "./acompanantes-tab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { roleLabels } from "../_lib/clinical-labels"
 import { useAuthStore } from "@/store/auth-store"
@@ -182,6 +183,16 @@ export function PatientDetailContent() {
       <Tabs value={visibleActiveTab} onValueChange={handleTabChange}>
         <TabsList className="mb-4 max-w-full overflow-x-auto">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          {patient.role !== "COMPANION" && (
+            <TabsTrigger value="acompanantes" className="gap-1.5">
+              Acompañantes
+              {patient.companions.length > 0 && (
+                <Badge variant="secondary" className="px-1.5 text-[10px]">
+                  {patient.companions.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
           <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
           <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
@@ -200,6 +211,14 @@ export function PatientDetailContent() {
             />
           </div>
         </TabsContent>
+        {patient.role !== "COMPANION" && (
+          <TabsContent value="acompanantes">
+            <AcompanantesTab
+              patientId={patient.id}
+              birthDate={patient.birthDate}
+            />
+          </TabsContent>
+        )}
         <TabsContent value="seguimiento">
           <SeguimientoTab pacienteId={patient.id} />
         </TabsContent>

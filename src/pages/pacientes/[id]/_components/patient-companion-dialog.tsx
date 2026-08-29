@@ -7,6 +7,7 @@ import { Loader2, Pencil, User } from "lucide-react"
 import {
   patientsApi,
   type CompanionPatient,
+  type CreateCompanionInput,
   type PatientResponse,
   type UpdateCompanionLinkInput,
   type UpdatePatientInput,
@@ -175,30 +176,64 @@ function companionName(link: CompanionPatient, person?: PatientResponse) {
 
 interface PatientCompanionDialogProps {
   patientId: string
-  companion: CompanionPatient
+  companion: CompanionPatient | null
+  existingCompanions: CompanionPatient[]
   canEdit: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+function contactRoleTaken(
+  companions: CompanionPatient[],
+  role: ContactRole,
+  excludeLinkId?: string,
+) {
+  return companions.some(
+    (link) =>
+      link.id !== excludeLinkId &&
+      (link.contactRole === role ||
+        (role === "PRIMARY" && link.isPrimaryContact)),
+  )
+}
+
+function buildCompanionInput(values: CompanionFormValues): CreateCompanionInput {
+  return {
+    fullName: values.fullName.trim(),
+    primaryPhone: values.primaryPhone.trim(),
+    secondaryPhone: optionalText(values.secondaryPhone),
+    dni: optionalText(values.dni),
+    birthDate: optionalText(values.birthDate),
+    gender: optionalText(values.gender),
+    hasWhatsapp: values.hasWhatsapp,
+    email: optionalText(values.email),
+    relationship: optionalText(values.relationship),
+    contactRole: values.contactRole || null,
+    isPrimaryContact: values.isPrimaryContact,
+    isPrimaryInformant: values.isPrimaryInformant,
+    isCaregiver: values.isCaregiver,
+  }
+}
+
 export function PatientCompanionDialog({
   patientId,
   companion,
+  existingCompanions,
   canEdit,
   open,
   onOpenChange,
 }: PatientCompanionDialogProps) {
+  const isCreateMode = companion === null
   const queryClient = useQueryClient()
   const companionQuery = useQuery({
-    queryKey: ["patient-profile", companion.companionId],
+    queryKey: ["patient-profile", companion?.companionId],
     queryFn: async () => {
-      const result = await patientsApi.getById(companion.companionId)
+      const result = await patientsApi.getById(companion!.companionId)
       return result
     },
-    enabled: open && !companion.companion,
+    enabled: open && !isCreateMode && !companion?.companion,
     staleTime: 30_000,
   })
-  const person = companion.companion ?? companionQuery.data
+  const person = companion?.companion ?? companionQuery.data
 
   const {
     control,
@@ -206,6 +241,7 @@ export function PatientCompanionDialog({
     handleSubmit,
     reset,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<CompanionFormValues>({ defaultValues: DEFAULT_FORM_VALUES })
   const gender = useWatch({ control, name: "gender" }) ?? ""
@@ -217,22 +253,104 @@ export function PatientCompanionDialog({
   const isPrimaryInformant =
     useWatch({ control, name: "isPrimaryInformant" }) ?? false
   const isCaregiver = useWatch({ control, name: "isCaregiver" }) ?? false
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(isCreateMode)
 
   useEffect(() => {
     if (open) {
-      reset(personFromLink(companion, person))
+      if (isCreateMode) {
+        reset(DEFAULT_FORM_VALUES)
+        setIsEditing(true)
+      } else if (companion) {
+        reset(personFromLink(companion, person))
+        setIsEditing(false)
+      }
     }
-  }, [companion, open, person, reset])
+  }, [companion, isCreateMode, open, person, reset])
 
   const genderItems = withCurrentOption(GENDER_OPTIONS, gender)
   const relationshipItems = withCurrentOption(
     RELATIONSHIP_OPTIONS,
     relationship,
   )
+  const availableContactRoles = CONTACT_ROLE_OPTIONS.filter((option) => {
+    if (
+      option.value === "PRIMARY" &&
+      contactRoleTaken(existingCompanions, "PRIMARY", companion?.id)
+    ) {
+      return false
+    }
+    if (
+      option.value === "SECONDARY" &&
+      contactRoleTaken(existingCompanions, "SECONDARY", companion?.id)
+    ) {
+      return false
+    }
+    return true
+  })
+
+  const invalidateCompanionQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["patient-profile", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-companions", patientId],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["patients"] }),
+      ...(companion
+        ? [
+            queryClient.invalidateQueries({
+              queryKey: ["patient-profile", companion.companionId],
+            }),
+          ]
+        : []),
+    ])
+  }
+
+  const createMutation = useMutation({
+    mutationFn: async (values: CompanionFormValues) => {
+      if (
+        values.contactRole === "PRIMARY" &&
+        contactRoleTaken(existingCompanions, "PRIMARY")
+      ) {
+        throw new Error("Ya existe un contacto principal para este paciente")
+      }
+      if (
+        values.contactRole === "SECONDARY" &&
+        contactRoleTaken(existingCompanions, "SECONDARY")
+      ) {
+        throw new Error("Ya existe un contacto secundario para este paciente")
+      }
+      await patientsApi.createCompanion(patientId, buildCompanionInput(values))
+    },
+    onSuccess: async () => {
+      await invalidateCompanionQueries()
+      onOpenChange(false)
+      toast.success("Acompañante agregado")
+    },
+    onError: (error) => {
+      toast.error("No se pudo agregar el acompañante", {
+        description:
+          error instanceof Error ? error.message : "Error inesperado",
+      })
+    },
+  })
 
   const updateMutation = useMutation({
     mutationFn: async (values: CompanionFormValues) => {
+      if (!companion) return
+      if (
+        values.contactRole === "PRIMARY" &&
+        contactRoleTaken(existingCompanions, "PRIMARY", companion.id)
+      ) {
+        throw new Error("Ya existe un contacto principal para este paciente")
+      }
+      if (
+        values.contactRole === "SECONDARY" &&
+        contactRoleTaken(existingCompanions, "SECONDARY", companion.id)
+      ) {
+        throw new Error("Ya existe un contacto secundario para este paciente")
+      }
       const personInput: UpdatePatientInput = {
         fullName: values.fullName.trim(),
         primaryPhone: values.primaryPhone.trim(),
@@ -255,18 +373,7 @@ export function PatientCompanionDialog({
       await patientsApi.updateCompanionLink(patientId, companion.id, linkInput)
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["patient-profile", patientId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["patient-companions", patientId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["patient-profile", companion.companionId],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["patients"] }),
-      ])
+      await invalidateCompanionQueries()
       setIsEditing(false)
       onOpenChange(false)
       toast.success("Acompañante actualizado")
@@ -280,40 +387,41 @@ export function PatientCompanionDialog({
   })
 
   function handleDialogChange(nextOpen: boolean) {
-    if (!updateMutation.isPending) onOpenChange(nextOpen)
+    if (!updateMutation.isPending && !createMutation.isPending) onOpenChange(nextOpen)
   }
 
   function cancelEditing() {
-    reset(personFromLink(companion, person))
+    if (isCreateMode) {
+      onOpenChange(false)
+      return
+    }
+    if (companion) reset(personFromLink(companion, person))
     setIsEditing(false)
   }
 
-  const isLoadingPerson = !person && companionQuery.isLoading
-  const hasPersonError = !person && companionQuery.isError
-  const name = companionName(companion, person)
+  const isPending = updateMutation.isPending || createMutation.isPending
+  const isLoadingPerson = !isCreateMode && !person && companionQuery.isLoading
+  const hasPersonError = !isCreateMode && !person && companionQuery.isError
+  const name = companion ? companionName(companion, person) : "Nuevo acompañante"
 
-  return (
-    <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar acompañante" : name}</DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Actualiza los datos personales y la relación con el paciente."
-              : "Información personal y relación registrada con este paciente."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {isLoadingPerson ? (
-          <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
-            <Loader2 className="size-4 animate-spin" />
-            Cargando datos del acompañante...
-          </div>
-        ) : isEditing ? (
-          <form
-            onSubmit={handleSubmit((values) => updateMutation.mutate(values))}
-            className="space-y-5"
-          >
+  const formContent = (
+    <form
+      onSubmit={handleSubmit((values) => {
+        if (isCreateMode && !values.relationship.trim()) {
+          setError("relationship", {
+            type: "required",
+            message: "El parentesco es obligatorio",
+          })
+          return
+        }
+        if (isCreateMode) {
+          createMutation.mutate(values)
+        } else {
+          updateMutation.mutate(values)
+        }
+      })}
+      className="space-y-5"
+    >
             <section className="space-y-3">
               <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 Datos personales
@@ -447,7 +555,9 @@ export function PatientCompanionDialog({
                     items={relationshipItems}
                     value={relationship}
                     onValueChange={(value) =>
-                      setValue("relationship", value ?? "")
+                      setValue("relationship", value ?? "", {
+                        shouldValidate: true,
+                      })
                     }
                   >
                     <SelectTrigger id="companion-relationship">
@@ -461,11 +571,16 @@ export function PatientCompanionDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.relationship && (
+                    <p className="text-destructive text-xs">
+                      {errors.relationship.message}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Rol de contacto</Label>
                   <Select
-                    items={CONTACT_ROLE_OPTIONS}
+                    items={availableContactRoles}
                     value={contactRole}
                     onValueChange={(value) =>
                       setValue("contactRole", (value ?? "") as ContactRole | "")
@@ -475,7 +590,7 @@ export function PatientCompanionDialog({
                       <SelectValue placeholder="Sin rol de contacto" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CONTACT_ROLE_OPTIONS.map((item) => (
+                      {availableContactRoles.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
                           {item.label}
                         </SelectItem>
@@ -520,16 +635,47 @@ export function PatientCompanionDialog({
                 type="button"
                 variant="outline"
                 onClick={cancelEditing}
-                disabled={updateMutation.isPending}
+                disabled={isPending}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+              <Button type="submit" disabled={isPending}>
+                {isPending
+                  ? "Guardando..."
+                  : isCreateMode
+                    ? "Agregar acompañante"
+                    : "Guardar cambios"}
               </Button>
             </DialogFooter>
           </form>
-        ) : (
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={handleDialogChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {isCreateMode
+              ? "Agregar acompañante"
+              : isEditing
+                ? "Editar acompañante"
+                : name}
+          </DialogTitle>
+          <DialogDescription>
+            {isCreateMode || isEditing
+              ? "Registra los datos personales y la relación con el paciente."
+              : "Información personal y relación registrada con este paciente."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoadingPerson ? (
+          <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
+            <Loader2 className="size-4 animate-spin" />
+            Cargando datos del acompañante...
+          </div>
+        ) : isEditing ? (
+          formContent
+        ) : companion ? (
           <>
             {hasPersonError ? (
               <p className="text-destructive py-4 text-sm">
@@ -707,7 +853,7 @@ export function PatientCompanionDialog({
               )}
             </DialogFooter>
           </>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   )

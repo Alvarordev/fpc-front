@@ -11,6 +11,7 @@ describe("patient tabs", () => {
     expect(getPatientTab(null)).toBe("resumen")
     expect(getPatientTab("unknown")).toBe("resumen")
     expect(isPatientTab("recordatorios")).toBe(true)
+    expect(isPatientTab("acompanantes")).toBe(true)
     expect(isPatientTab("documentos")).toBe(true)
     expect(isPatientTab("unknown")).toBe(false)
   })
@@ -18,6 +19,9 @@ describe("patient tabs", () => {
   it("builds a direct URL for a patient tab", () => {
     expect(patientTabUrl("patient-1", "recordatorios")).toBe(
       "/pacientes/patient-1?tab=recordatorios",
+    )
+    expect(patientTabUrl("patient-1", "acompanantes")).toBe(
+      "/pacientes/patient-1?tab=acompanantes",
     )
     expect(patientTabUrl("patient-1")).toBe("/pacientes/patient-1")
   })

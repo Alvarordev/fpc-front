@@ -1,7 +1,15 @@
 import type { ColumnDef } from "@tanstack/react-table"
+import { Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { PatientListItem } from "@/api/patients"
+import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
+import { healthPhaseLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
+
+const healthPhaseStyles: Record<PatientHealthPhase, string> = {
+  CANCER_DIAGNOSIS: "bg-rose-50 text-rose-700 border-rose-200",
+  ANNUAL_CHECKUP: "bg-sky-50 text-sky-700 border-sky-200",
+  SIGNS_AND_SYMPTOMS: "bg-amber-50 text-amber-700 border-amber-200",
+}
 
 const date = (value: string | null) =>
   value
@@ -55,6 +63,46 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
         {row.original.currentDepartment ?? "-"}
       </span>
     ),
+  },
+  {
+    id: "healthPhase",
+    header: "Tipo",
+    cell: ({ row }) => {
+      const phase = row.original.healthPhase
+      if (!phase) {
+        return (
+          <span className="text-muted-foreground text-sm">Sin clasificar</span>
+        )
+      }
+      return (
+        <Badge className={cn("border font-medium", healthPhaseStyles[phase])}>
+          {healthPhaseLabels[phase]}
+        </Badge>
+      )
+    },
+  },
+  {
+    id: "primaryCompanion",
+    header: "Acompañante principal",
+    cell: ({ row }) => {
+      const name = row.original.primaryCompanionName
+      if (!name) {
+        return (
+          <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+            <Users className="size-3.5 opacity-50" />
+            Sin acompañante
+          </span>
+        )
+      }
+      return (
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm">{name}</span>
+          <Badge variant="outline" className="shrink-0 text-[10px]">
+            Principal
+          </Badge>
+        </div>
+      )
+    },
   },
   {
     accessorKey: "primaryPhone",
