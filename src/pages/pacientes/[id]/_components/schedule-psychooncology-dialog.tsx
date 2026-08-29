@@ -87,7 +87,7 @@ export function SchedulePsychooncologyDialog({
   const [satisfactionComment, setSatisfactionComment] = useState("")
 
   const volunteerId =
-    ownVolunteerId ?? appointment?.volunteerId ?? selectedVolunteerId
+    ownVolunteerId ?? selectedVolunteerId ?? appointment?.volunteerId
 
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],
@@ -104,7 +104,8 @@ export function SchedulePsychooncologyDialog({
   const availableSlots = (slotsQuery.data ?? []).filter(
     (slot) =>
       (slot.status === "AVAILABLE" && isAvailabilitySlotInFuture(slot)) ||
-      slot.id === appointment?.availabilityId,
+      (slot.id === appointment?.availabilityId &&
+        slot.volunteerId === volunteerId),
   )
   const availableVolunteers = (volunteersQuery.data ?? []).filter(
     (volunteer) => volunteer.isActive,
@@ -211,7 +212,7 @@ export function SchedulePsychooncologyDialog({
               : followUpId
                 ? "La cita quedará vinculada al seguimiento actual."
                 : isEdit
-                  ? "Podés reprogramar el horario, actualizar la modalidad y el motivo de derivación."
+                  ? "Podés reprogramar el horario o cambiar el psicooncólogo, además de actualizar la modalidad y el motivo de derivación."
                   : "Esta cita se registrará de forma independiente."}
           </DialogDescription>
         </DialogHeader>
@@ -225,11 +226,11 @@ export function SchedulePsychooncologyDialog({
               }))}
               value={volunteerId}
               onValueChange={(value) => {
-                if (ownVolunteerId || isEdit) return
+                if (ownVolunteerId) return
                 setSelectedVolunteerId(value ?? undefined)
                 setSelectedSlotId(undefined)
               }}
-              disabled={Boolean(ownVolunteerId) || isEdit}
+              disabled={Boolean(ownVolunteerId)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar psicooncólogo" />
