@@ -96,68 +96,161 @@ export function buildEnrollmentPayload({
   if (primaryContactSource === "CALLER" && !callerIsComplete) {
     throw new Error("Completa los datos de quien llama")
   }
-  const hasDiagnosis =
-    healthPhase === "CANCER_DIAGNOSIS" &&
-    Boolean(value(draft.diagnosis.diagnosis))
-  const treatmentType = value(draft.treatment.treatmentType)
-  const hasTreatment =
-    healthPhase === "CANCER_DIAGNOSIS" &&
-    Boolean(treatmentType) &&
-    Boolean(value(draft.diagnosis.diagnosis))
-  const isOperation =
-    draft.treatment.isOperation ?? Boolean(draft.treatment.operationName)
-  const treatmentStartDate = value(draft.treatment.startDate)
-  const treatmentEndDate = value(draft.treatment.endDate)
-  const isReferred = draft.treatment.isReferred ?? false
-  const receivesTeleconsultation =
-    draft.treatment.receivesTeleconsultation ?? undefined
-  const teleconsultationSpecialties = (
-    draft.treatment.teleconsultationSpecialties ?? []
-  )
-    .map((specialty) => value(specialty))
-    .filter((specialty): specialty is string => Boolean(specialty))
-  if (
-    hasTreatment &&
-    draft.treatment.treatmentSituation === "ABANDONED" &&
-    !value(draft.treatment.treatmentAbandonmentReason)
-  ) {
-    throw new Error("Indica el motivo de abandono del tratamiento")
-  }
-  if (hasTreatment && isOperation && !value(draft.treatment.operationName)) {
-    throw new Error("Ingresa el nombre de la operación")
-  }
-  if (
-    hasTreatment &&
-    treatmentStartDate &&
-    treatmentEndDate &&
-    treatmentEndDate < treatmentStartDate
-  )
-    throw new Error(
-      "La fecha de fin del tratamiento debe ser posterior o igual a la fecha de inicio",
-    )
+  const diagnosisDrafts =
+    healthPhase === "CANCER_DIAGNOSIS" ? draft.diagnoses : []
+  const diagnosisPayloads = diagnosisDrafts.map((diagnosis, index) => {
+    if (!value(diagnosis.diagnosis))
+      throw new Error(`Completa el diagnóstico ${index + 1}`)
+    return {
+      clientRef: diagnosis.draftId,
+      mode: "PARALLEL" as const,
+      diagnosis: diagnosis.diagnosis.trim(),
+      cancerStage: diagnosis.cancerStage ?? undefined,
+      diagnosisDate: value(diagnosis.diagnosisDate),
+      firstSymptomsDate: value(diagnosis.firstSymptomsDate),
+      healthCenterId: value(diagnosis.healthCenterId),
+      diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
+      symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
+      waitTimeForDiagnosis: diagnosis.waitTimeForDiagnosisManuallyEdited
+        ? duration(
+            diagnosis.waitTimeForDiagnosis,
+            `tiempo de espera para el diagnóstico ${index + 1}`,
+          )
+        : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
+          ? undefined
+          : duration(
+              diagnosis.waitTimeForDiagnosis,
+              `tiempo de espera para el diagnóstico ${index + 1}`,
+            ),
+      hasMedicalReport: diagnosis.hasMedicalReport ?? undefined,
+    }
+  })
+  if (healthPhase === "CANCER_DIAGNOSIS" && diagnosisPayloads.length === 0)
+    throw new Error("Completa al menos un diagnóstico oncológico")
 
-  if (hasDiagnosis && hasTreatment) {
+  const diagnosisRefs = new Set(
+    diagnosisPayloads.map((diagnosis) => diagnosis.clientRef),
+  )
+  const treatmentDrafts =
+    healthPhase === "CANCER_DIAGNOSIS" ? draft.treatments : []
+  const treatmentPayloads = treatmentDrafts.map((treatment, index) => {
+    const treatmentType = value(treatment.treatmentType)
+    if (!treatmentType)
+      throw new Error(`Completa el tipo del tratamiento ${index + 1}`)
+    if (!diagnosisRefs.has(treatment.diagnosisRef))
+      throw new Error(
+        `Asocia el tratamiento ${index + 1} a un diagnóstico válido`,
+      )
+    const isOperation =
+      treatment.isOperation ?? Boolean(treatment.operationName)
+    const treatmentStartDate = value(treatment.startDate)
+    const treatmentEndDate = value(treatment.endDate)
+    const isReferred = treatment.isReferred ?? false
+    const receivesTeleconsultation =
+      treatment.receivesTeleconsultation ?? undefined
+    const teleconsultationSpecialties = (
+      treatment.teleconsultationSpecialties ?? []
+    )
+      .map((specialty) => value(specialty))
+      .filter((specialty): specialty is string => Boolean(specialty))
     if (
-      isReferred &&
-      (!draft.treatment.sourceHealthCenterId ||
-        !draft.treatment.receivingHealthCenterId)
+      treatment.treatmentSituation === "ABANDONED" &&
+      !value(treatment.treatmentAbandonmentReason)
     )
       throw new Error(
-        "Completa el hospital de origen y el hospital receptor del tratamiento derivado",
+        `Indica el motivo de abandono del tratamiento ${index + 1}`,
+      )
+    if (isOperation && !value(treatment.operationName))
+      throw new Error(`Ingresa el nombre de la operación ${index + 1}`)
+    if (
+      treatmentStartDate &&
+      treatmentEndDate &&
+      treatmentEndDate < treatmentStartDate
+    )
+      throw new Error(
+        `La fecha de fin del tratamiento ${index + 1} debe ser posterior o igual a la fecha de inicio`,
       )
     if (
       isReferred &&
-      draft.treatment.sourceHealthCenterId ===
-        draft.treatment.receivingHealthCenterId
+      (!treatment.sourceHealthCenterId || !treatment.receivingHealthCenterId)
+    )
+      throw new Error(
+        `Completa el hospital de origen y el hospital receptor del tratamiento ${index + 1}`,
+      )
+    if (
+      isReferred &&
+      treatment.sourceHealthCenterId === treatment.receivingHealthCenterId
     )
       throw new Error(
         "El hospital de origen y el receptor deben ser diferentes",
       )
-    if (!isReferred && draft.treatment.sourceHealthCenterId)
+    if (!isReferred && treatment.sourceHealthCenterId)
       throw new Error(
-        "El hospital de origen solo aplica a tratamientos derivados",
+        `El hospital de origen solo aplica a tratamientos derivados (tratamiento ${index + 1})`,
       )
-  }
+    const medications = (treatment.medications ?? []).map(
+      (medication, medicationIndex) => {
+        const name = value(medication.name)
+        if (!name)
+          throw new Error(
+            `Completa el nombre del medicamento ${medicationIndex + 1} del tratamiento ${index + 1}`,
+          )
+        return {
+          name,
+          doseAmount: medication.doseAmount,
+          doseUnit: medication.doseUnit,
+          doseDescription: value(medication.doseDescription),
+          route: medication.route,
+          frequency: duration(
+            medication.frequency,
+            `frecuencia del medicamento ${medicationIndex + 1} del tratamiento ${index + 1}`,
+          ),
+          startDate: value(medication.startDate),
+          endDate: value(medication.endDate),
+          isActive: medication.isActive,
+          notes: value(medication.notes),
+        }
+      },
+    )
+    return {
+      diagnosisRef: treatment.diagnosisRef,
+      treatmentType,
+      treatmentFrequency: duration(
+        treatment.treatmentFrequency,
+        `frecuencia del tratamiento ${index + 1}`,
+      ),
+      isReferred,
+      sourceHealthCenterId: treatment.sourceHealthCenterId,
+      receivingHealthCenterId: treatment.receivingHealthCenterId,
+      startDate: treatmentStartDate,
+      endDate: treatmentEndDate,
+      notReceivingReason: value(treatment.notReceivingReason),
+      operationName: isOperation ? value(treatment.operationName) : undefined,
+      careProgram: treatment.careProgram ?? undefined,
+      receivesTeleconsultation,
+      ...(receivesTeleconsultation
+        ? {
+            teleconsultationNote: value(treatment.teleconsultationNote),
+            ...(teleconsultationSpecialties.length
+              ? { teleconsultationSpecialties }
+              : {}),
+          }
+        : {}),
+      treatmentSituation: treatment.treatmentSituation ?? undefined,
+      ...(treatment.treatmentSituation === "ABANDONED"
+        ? {
+            treatmentAbandonmentReason: value(
+              treatment.treatmentAbandonmentReason,
+            ),
+          }
+        : {}),
+      hasLatestPrescription: treatment.hasLatestPrescription,
+      latestPrescriptionDate: value(treatment.latestPrescriptionDate),
+      ...(medications.length ? { medications } : {}),
+    }
+  })
+  const hasDiagnosis = diagnosisPayloads.length > 0
+  const hasTreatment = treatmentPayloads.length > 0
   const consultationStatus: MedicalConsultationStatus | undefined =
     draft.symptomReport.consultationStatus ?? undefined
   const symptom = draft.symptomReport
@@ -277,28 +370,6 @@ export function buildEnrollmentPayload({
       validFrom: value(address.validFrom),
       validTo: value(address.validTo),
     }))
-  const medications = hasTreatment
-    ? (draft.treatment.medications ?? []).map((medication, index) => {
-        const name = value(medication.name)
-        if (!name)
-          throw new Error(`Completa el nombre del medicamento ${index + 1}`)
-        return {
-          name,
-          doseAmount: medication.doseAmount,
-          doseUnit: medication.doseUnit,
-          doseDescription: value(medication.doseDescription),
-          route: medication.route,
-          frequency: duration(
-            medication.frequency,
-            `frecuencia del medicamento ${index + 1}`,
-          ),
-          startDate: value(medication.startDate),
-          endDate: value(medication.endDate),
-          isActive: medication.isActive,
-          notes: value(medication.notes),
-        }
-      })
-    : []
   const talks = draft.familyPreventionTalkInterests
     .filter((item) => value(item.talkName) && value(item.familyMemberName))
     .map((item) => ({
@@ -417,86 +488,8 @@ export function buildEnrollmentPayload({
           },
         }
       : {}),
-    ...(hasDiagnosis
-      ? {
-          diagnosis: {
-            mode: "PARALLEL",
-            diagnosis: draft.diagnosis.diagnosis.trim(),
-            cancerStage: draft.diagnosis.cancerStage ?? undefined,
-            diagnosisDate: value(draft.diagnosis.diagnosisDate),
-            firstSymptomsDate: value(draft.diagnosis.firstSymptomsDate),
-            healthCenterId: value(draft.diagnosis.healthCenterId),
-            diagnosisSpecialty: value(draft.diagnosis.diagnosisSpecialty),
-            symptomLeadingToCheckup: value(
-              draft.diagnosis.symptomLeadingToCheckup,
-            ),
-            waitTimeForDiagnosis: draft.diagnosis
-              .waitTimeForDiagnosisManuallyEdited
-              ? duration(
-                  draft.diagnosis.waitTimeForDiagnosis,
-                  "tiempo de espera para el diagnóstico",
-                )
-              : draft.diagnosis.firstSymptomsDate &&
-                  draft.diagnosis.diagnosisDate
-                ? undefined
-                : duration(
-                    draft.diagnosis.waitTimeForDiagnosis,
-                    "tiempo de espera para el diagnóstico",
-                  ),
-            hasMedicalReport: draft.diagnosis.hasMedicalReport ?? undefined,
-          },
-        }
-      : {}),
-    ...(hasDiagnosis && hasTreatment
-      ? {
-          treatments: [
-            {
-              treatmentType: treatmentType!,
-              treatmentFrequency: duration(
-                draft.treatment.treatmentFrequency,
-                "frecuencia del tratamiento",
-              ),
-              isReferred,
-              sourceHealthCenterId: draft.treatment.sourceHealthCenterId,
-              receivingHealthCenterId: draft.treatment.receivingHealthCenterId,
-              startDate: treatmentStartDate,
-              endDate: treatmentEndDate,
-              notReceivingReason: value(draft.treatment.notReceivingReason),
-              operationName:
-                draft.treatment.isOperation === true ||
-                Boolean(draft.treatment.operationName)
-                  ? value(draft.treatment.operationName)
-                  : undefined,
-              careProgram: draft.treatment.careProgram ?? undefined,
-              receivesTeleconsultation,
-              ...(receivesTeleconsultation
-                ? {
-                    teleconsultationNote: value(
-                      draft.treatment.teleconsultationNote,
-                    ),
-                    ...(teleconsultationSpecialties.length
-                      ? { teleconsultationSpecialties }
-                      : {}),
-                  }
-                : {}),
-              treatmentSituation:
-                draft.treatment.treatmentSituation ?? undefined,
-              ...(draft.treatment.treatmentSituation === "ABANDONED"
-                ? {
-                    treatmentAbandonmentReason: value(
-                      draft.treatment.treatmentAbandonmentReason,
-                    ),
-                  }
-                : {}),
-              hasLatestPrescription: draft.treatment.hasLatestPrescription,
-              latestPrescriptionDate: value(
-                draft.treatment.latestPrescriptionDate,
-              ),
-              ...(medications.length ? { medications } : {}),
-            },
-          ],
-        }
-      : {}),
+    ...(hasDiagnosis ? { diagnoses: diagnosisPayloads } : {}),
+    ...(hasTreatment ? { treatments: treatmentPayloads } : {}),
     ...(addresses.length ? { addresses } : {}),
     ...(appointmentToSend
       ? {

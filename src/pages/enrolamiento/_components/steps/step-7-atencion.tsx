@@ -1,6 +1,12 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useEnrollmentStore } from "../../_store/enrollment-store"
+import {
+  createEnrollmentDiagnosisDraft,
+  createEnrollmentTreatmentDraft,
+  useEnrollmentStore,
+  type EnrollmentDiagnosisDraft,
+  type EnrollmentTreatmentDraft,
+} from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -160,12 +166,38 @@ const EMPTY_APPOINTMENT: AddMedicalAppointmentRequest = {
   isFirstConsultation: false,
 }
 
+const EMPTY_DIAGNOSIS: EnrollmentDiagnosisDraft = {
+  draftId: "",
+  diagnosis: "",
+  isCurrent: true,
+}
+
+const EMPTY_TREATMENT: EnrollmentTreatmentDraft = {
+  draftId: "",
+  diagnosisRef: "",
+  treatmentType: "",
+  isCurrent: true,
+  isReferred: false,
+}
+
 export function Step7Atencion() {
   const { draft, updateDraft, nextStep, prevStep, categoriaClinica } =
     useEnrollmentStore()
   const sr = draft.symptomReport
-  const dx = draft.diagnosis
-  const tx = draft.treatment
+  const diagnoses = draft.diagnoses
+  const treatments = draft.treatments
+  const [selectedDiagnosisIndex, setSelectedDiagnosisIndex] = useState(0)
+  const [selectedTreatmentIndex, setSelectedTreatmentIndex] = useState(0)
+  const diagnosisIndex = diagnoses.length
+    ? Math.min(selectedDiagnosisIndex, diagnoses.length - 1)
+    : 0
+  const treatmentIndex = treatments.length
+    ? Math.min(selectedTreatmentIndex, treatments.length - 1)
+    : 0
+  const selectedDiagnosis = diagnoses[diagnosisIndex]
+  const selectedTreatment = treatments[treatmentIndex]
+  const dx = selectedDiagnosis ?? EMPTY_DIAGNOSIS
+  const tx = selectedTreatment ?? EMPTY_TREATMENT
   const sis = draft.sisAffiliation
   const details = draft.details
   const meta = draft.enrollmentMetadata
@@ -178,10 +210,21 @@ export function Step7Atencion() {
   const [newHospitalOpen, setNewHospitalOpen] = useState(false)
 
   const knownDiagnoses = DIAGNOSIS_OPTIONS as readonly string[]
-  const [isOtherDiagnosis, setIsOtherDiagnosis] = useState(() => {
-    const d = dx.diagnosis
-    return !!d && !knownDiagnoses.includes(d)
-  })
+  const [otherDiagnosisIds, setOtherDiagnosisIds] = useState<Set<string>>(
+    () =>
+      new Set(
+        diagnoses
+          .filter(
+            (diagnosis) =>
+              Boolean(diagnosis.diagnosis) &&
+              !knownDiagnoses.includes(diagnosis.diagnosis),
+          )
+          .map((diagnosis) => diagnosis.draftId),
+      ),
+  )
+  const isOtherDiagnosis =
+    Boolean(dx.diagnosis && !knownDiagnoses.includes(dx.diagnosis)) ||
+    otherDiagnosisIds.has(dx.draftId)
   const diagnosisSelectValue = isOtherDiagnosis
     ? OTHER_VALUE
     : dx.diagnosis && knownDiagnoses.includes(dx.diagnosis)
@@ -223,6 +266,76 @@ export function Step7Atencion() {
     updateDraft({ medicalAppointments: [{ ...appointment, ...partial }] })
   }
 
+  function updateDiagnosis(partial: Partial<EnrollmentDiagnosisDraft>) {
+    if (!selectedDiagnosis) return
+    updateDraft({
+      diagnoses: diagnoses.map((diagnosis, index) =>
+        index === diagnosisIndex ? { ...diagnosis, ...partial } : diagnosis,
+      ),
+    })
+  }
+
+  function updateTreatment(partial: Partial<EnrollmentTreatmentDraft>) {
+    if (!selectedTreatment) return
+    updateDraft({
+      treatments: treatments.map((treatment, index) =>
+        index === treatmentIndex ? { ...treatment, ...partial } : treatment,
+      ),
+    })
+  }
+
+  function addDiagnosis() {
+    const nextDiagnosis = createEnrollmentDiagnosisDraft()
+    updateDraft({ diagnoses: [...diagnoses, nextDiagnosis] })
+    setSelectedDiagnosisIndex(diagnoses.length)
+  }
+
+  function removeDiagnosis(index: number) {
+    const diagnosis = diagnoses[index]
+    if (!diagnosis || diagnoses.length === 1) return
+    if (
+      treatments.some(
+        (treatment) => treatment.diagnosisRef === diagnosis.draftId,
+      )
+    )
+      return
+    const updatedDiagnoses = diagnoses.filter(
+      (_, diagnosisIndex) => diagnosisIndex !== index,
+    )
+    updateDraft({ diagnoses: updatedDiagnoses })
+    setOtherDiagnosisIds((previous) => {
+      const next = new Set(previous)
+      next.delete(diagnosis.draftId)
+      return next
+    })
+    setSelectedDiagnosisIndex((current) =>
+      current > index
+        ? current - 1
+        : Math.min(current, updatedDiagnoses.length - 1),
+    )
+  }
+
+  function addTreatment() {
+    if (!diagnoses.length) return
+    const nextTreatment = createEnrollmentTreatmentDraft(
+      diagnoses[diagnosisIndex]?.draftId ?? diagnoses[0].draftId,
+    )
+    updateDraft({ treatments: [...treatments, nextTreatment] })
+    setSelectedTreatmentIndex(treatments.length)
+  }
+
+  function removeTreatment(index: number) {
+    const updatedTreatments = treatments.filter(
+      (_, treatmentIndex) => treatmentIndex !== index,
+    )
+    updateDraft({ treatments: updatedTreatments })
+    setSelectedTreatmentIndex((current) =>
+      current > index
+        ? current - 1
+        : Math.min(current, Math.max(updatedTreatments.length - 1, 0)),
+    )
+  }
+
   function clearAppointment() {
     updateDraft({ medicalAppointments: [] })
   }
@@ -233,50 +346,67 @@ export function Step7Atencion() {
   ) {
     const nextDiagnosis = { ...dx, [field]: date || null }
     updateDraft({
-      diagnosis: {
-        ...nextDiagnosis,
-        waitTimeForDiagnosis: calculateDurationBetweenDates(
-          nextDiagnosis.firstSymptomsDate,
-          nextDiagnosis.diagnosisDate,
-        ),
-        waitTimeForDiagnosisManuallyEdited: false,
-      },
+      diagnoses: diagnoses.map((diagnosis, index) =>
+        index === diagnosisIndex
+          ? {
+              ...nextDiagnosis,
+              waitTimeForDiagnosis: calculateDurationBetweenDates(
+                nextDiagnosis.firstSymptomsDate,
+                nextDiagnosis.diagnosisDate,
+              ),
+              waitTimeForDiagnosisManuallyEdited: false,
+            }
+          : diagnosis,
+      ),
     })
   }
 
   function updateMedication(
-    index: number,
+    medicationIndex: number,
     partial: Partial<AddTreatmentMedicationRequest>,
   ) {
     updateDraft({
-      treatment: {
-        ...tx,
-        medications: medications.map((medication, medicationIndex) =>
-          medicationIndex === index
-            ? { ...medication, ...partial }
-            : medication,
-        ),
-      },
+      treatments: treatments.map((treatment, treatmentIndexInList) =>
+        treatmentIndexInList === treatmentIndex
+          ? {
+              ...treatment,
+              medications: medications.map(
+                (medication, currentMedicationIndex) =>
+                  currentMedicationIndex === medicationIndex
+                    ? { ...medication, ...partial }
+                    : medication,
+              ),
+            }
+          : treatment,
+      ),
     })
   }
 
   function addMedication() {
     updateDraft({
-      treatment: {
-        ...tx,
-        medications: [...medications, { name: "", isActive: true }],
-      },
+      treatments: treatments.map((treatment, index) =>
+        index === treatmentIndex
+          ? {
+              ...treatment,
+              medications: [...medications, { name: "", isActive: true }],
+            }
+          : treatment,
+      ),
     })
   }
 
   function removeMedication(index: number) {
     updateDraft({
-      treatment: {
-        ...tx,
-        medications: medications.filter(
-          (_, medicationIndex) => medicationIndex !== index,
-        ),
-      },
+      treatments: treatments.map((treatment, treatmentIndexInList) =>
+        treatmentIndexInList === treatmentIndex
+          ? {
+              ...treatment,
+              medications: medications.filter(
+                (_, medicationIndex) => medicationIndex !== index,
+              ),
+            }
+          : treatment,
+      ),
     })
   }
 
@@ -968,6 +1098,80 @@ export function Step7Atencion() {
         <>
           <section className="flex flex-col gap-5">
             <SectionHeader icon={Stethoscope} title="Diagnóstico Oncológico" />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">
+                    Diagnósticos registrados
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Registra uno o varios diagnósticos. Cada tratamiento se
+                    asociará a uno de ellos.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={addDiagnosis}
+                >
+                  <Plus className="size-3.5" />
+                  Agregar diagnóstico
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {diagnoses.map((diagnosis, index) => {
+                  const hasTreatments = treatments.some(
+                    (treatment) => treatment.diagnosisRef === diagnosis.draftId,
+                  )
+                  return (
+                    <div
+                      key={diagnosis.draftId}
+                      className={`flex items-center gap-2 rounded-lg border p-2 ${
+                        index === diagnosisIndex
+                          ? "border-primary bg-primary/5"
+                          : "border-border/60 bg-muted/20"
+                      }`}
+                    >
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-auto min-w-0 flex-1 justify-start px-2 py-1.5 text-left"
+                        aria-pressed={index === diagnosisIndex}
+                        onClick={() => setSelectedDiagnosisIndex(index)}
+                      >
+                        <span className="flex min-w-0 flex-col items-start">
+                          <span className="text-xs font-semibold">
+                            Diagnóstico {index + 1}
+                          </span>
+                          <span className="text-muted-foreground w-full truncate text-xs">
+                            {diagnosis.diagnosis.trim() || "Sin especificar"}
+                          </span>
+                        </span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground/60 hover:text-destructive h-7 w-7 shrink-0 p-0"
+                        disabled={diagnoses.length === 1 || hasTreatments}
+                        title={
+                          hasTreatments
+                            ? "Reasigna o elimina los tratamientos antes de eliminar este diagnóstico"
+                            : diagnoses.length === 1
+                              ? "Debe existir al menos un diagnóstico"
+                              : "Eliminar diagnóstico"
+                        }
+                        onClick={() => removeDiagnosis(index)}
+                      >
+                        <Minus className="size-3.5" />
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <Label className={flGrid}>
@@ -986,11 +1190,17 @@ export function Step7Atencion() {
                   onValueChange={(v) => {
                     if (!v) return
                     if (v === OTHER_VALUE) {
-                      setIsOtherDiagnosis(true)
-                      updateDraft({ diagnosis: { ...dx, diagnosis: "" } })
+                      setOtherDiagnosisIds((previous) =>
+                        new Set(previous).add(dx.draftId),
+                      )
+                      updateDiagnosis({ diagnosis: "" })
                     } else {
-                      setIsOtherDiagnosis(false)
-                      updateDraft({ diagnosis: { ...dx, diagnosis: v } })
+                      setOtherDiagnosisIds((previous) => {
+                        const next = new Set(previous)
+                        next.delete(dx.draftId)
+                        return next
+                      })
+                      updateDiagnosis({ diagnosis: v })
                     }
                   }}
                 >
@@ -1021,11 +1231,8 @@ export function Step7Atencion() {
                   }))}
                   value={dx.cancerStage ?? ""}
                   onValueChange={(v) =>
-                    updateDraft({
-                      diagnosis: {
-                        ...dx,
-                        cancerStage: (v as CancerStage) || null,
-                      },
+                    updateDiagnosis({
+                      cancerStage: (v as CancerStage) || null,
                     })
                   }
                 >
@@ -1048,9 +1255,7 @@ export function Step7Atencion() {
                 <Input
                   value={dx.diagnosis}
                   onChange={(e) =>
-                    updateDraft({
-                      diagnosis: { ...dx, diagnosis: e.target.value },
-                    })
+                    updateDiagnosis({ diagnosis: e.target.value })
                   }
                   placeholder="Describa el diagnóstico oncológico..."
                   className="bg-card border"
@@ -1064,11 +1269,8 @@ export function Step7Atencion() {
               <Textarea
                 value={dx.symptomLeadingToCheckup ?? ""}
                 onChange={(e) =>
-                  updateDraft({
-                    diagnosis: {
-                      ...dx,
-                      symptomLeadingToCheckup: e.target.value || null,
-                    },
+                  updateDiagnosis({
+                    symptomLeadingToCheckup: e.target.value || null,
                   })
                 }
                 placeholder="Motivo o síntoma principal"
@@ -1117,13 +1319,10 @@ export function Step7Atencion() {
               singleValue
               value={visibleWaitTime}
               onChange={(waitTimeForDiagnosis) =>
-                updateDraft({
-                  diagnosis: {
-                    ...dx,
-                    waitTimeForDiagnosis,
-                    waitTimeForDiagnosisManuallyEdited:
-                      waitTimeForDiagnosis !== undefined,
-                  },
+                updateDiagnosis({
+                  waitTimeForDiagnosis,
+                  waitTimeForDiagnosisManuallyEdited:
+                    waitTimeForDiagnosis !== undefined,
                 })
               }
             />
@@ -1138,9 +1337,7 @@ export function Step7Atencion() {
                     }))}
                     value={dx.healthCenterId ?? ""}
                     onValueChange={(v) =>
-                      updateDraft({
-                        diagnosis: { ...dx, healthCenterId: v || null },
-                      })
+                      updateDiagnosis({ healthCenterId: v || null })
                     }
                   >
                     <SelectTrigger className="bg-card flex-1 border">
@@ -1171,11 +1368,8 @@ export function Step7Atencion() {
                 <Input
                   value={dx.diagnosisSpecialty ?? ""}
                   onChange={(e) =>
-                    updateDraft({
-                      diagnosis: {
-                        ...dx,
-                        diagnosisSpecialty: e.target.value || null,
-                      },
+                    updateDiagnosis({
+                      diagnosisSpecialty: e.target.value || null,
                     })
                   }
                   placeholder="Especialidad"
@@ -1197,9 +1391,7 @@ export function Step7Atencion() {
                       : ""
                 }
                 onValueChange={(v) =>
-                  updateDraft({
-                    diagnosis: { ...dx, hasMedicalReport: v === "Sí" },
-                  })
+                  updateDiagnosis({ hasMedicalReport: v === "Sí" })
                 }
               >
                 <SelectTrigger className={sc}>
@@ -1333,424 +1525,16 @@ export function Step7Atencion() {
           </section>
 
           <section className="flex flex-col gap-5">
-            <SectionHeader icon={HeartPulse} title="Tratamiento" />
-            <div className="flex flex-col gap-2">
-              <Label className={fl}>
-                ¿Recibe este tratamiento por derivación?
-              </Label>
-              <Select
-                items={YES_NO_OPTIONS}
-                value={tx.isReferred === true ? "Sí" : "No"}
-                onValueChange={(v) => {
-                  const isReferred = v === "Sí"
-                  updateDraft({
-                    treatment: {
-                      ...tx,
-                      isReferred,
-                      sourceHealthCenterId: isReferred
-                        ? (tx.sourceHealthCenterId ??
-                          details.primaryHealthCenterId ??
-                          undefined)
-                        : undefined,
-                    },
-                  })
-                }}
-              >
-                <SelectTrigger className={sc}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sí">Sí</SelectItem>
-                  <SelectItem value="No">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {tx.isReferred ? (
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label className={flGrid}>
-                    Hospital de origen{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    items={activeCenters.map((c) => ({
-                      value: c.id,
-                      label: `${c.name} — ${c.department}`,
-                    }))}
-                    value={tx.sourceHealthCenterId ?? ""}
-                    onValueChange={(v) =>
-                      updateDraft({
-                        treatment: {
-                          ...tx,
-                          sourceHealthCenterId: v || undefined,
-                        },
-                      })
-                    }
-                  >
-                    <SelectTrigger className={sc}>
-                      <SelectValue placeholder="Seleccionar origen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeCenters.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} — {c.department}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={flGrid}>
-                    Hospital receptor{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="flex gap-2">
-                    <Select
-                      items={activeCenters.map((c) => ({
-                        value: c.id,
-                        label: `${c.name} — ${c.department}`,
-                      }))}
-                      value={tx.receivingHealthCenterId ?? ""}
-                      onValueChange={(v) =>
-                        updateDraft({
-                          treatment: {
-                            ...tx,
-                            receivingHealthCenterId: v || undefined,
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger className="bg-card flex-1 border">
-                        <SelectValue placeholder="Seleccionar receptor..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeCenters.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} — {c.department}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1"
-                      onClick={() => setNewHospitalOpen(true)}
-                    >
-                      <Building2 className="size-3.5" />
-                      <Plus className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>
-                  Hospital donde recibe el tratamiento
-                </Label>
-                <div className="flex gap-2">
-                  <Select
-                    items={activeCenters.map((c) => ({
-                      value: c.id,
-                      label: `${c.name} — ${c.department}`,
-                    }))}
-                    value={tx.receivingHealthCenterId ?? ""}
-                    onValueChange={(v) =>
-                      updateDraft({
-                        treatment: {
-                          ...tx,
-                          receivingHealthCenterId: v || undefined,
-                        },
-                      })
-                    }
-                  >
-                    <SelectTrigger className="bg-card flex-1 border">
-                      <SelectValue placeholder="Opcional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeCenters.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} — {c.department}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1"
-                    onClick={() => setNewHospitalOpen(true)}
-                  >
-                    <Building2 className="size-3.5" />
-                    <Plus className="size-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>Situación del tratamiento</Label>
-                <Select
-                  items={TREATMENT_SITUATIONS}
-                  value={tx.treatmentSituation ?? ""}
-                  onValueChange={(v) =>
-                    updateDraft({
-                      treatment: {
-                        ...tx,
-                        treatmentSituation: (v || undefined) as
-                          | TreatmentSituation
-                          | undefined,
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TREATMENT_SITUATIONS.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>
-                  ¿Qué tipo de tratamiento recibe?
-                </Label>
-                <Input
-                  value={tx.treatmentType}
-                  onChange={(e) =>
-                    updateDraft({
-                      treatment: { ...tx, treatmentType: e.target.value },
-                    })
-                  }
-                  placeholder="Ej: Quimioterapia"
-                  className="bg-card border"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>¿Es una operación?</Label>
-                <Select
-                  items={YES_NO_OPTIONS}
-                  value={
-                    (tx.isOperation ?? Boolean(tx.operationName)) === true
-                      ? "Sí"
-                      : (tx.isOperation ?? Boolean(tx.operationName)) === false
-                        ? "No"
-                        : ""
-                  }
-                  onValueChange={(value) =>
-                    updateDraft({
-                      treatment: {
-                        ...tx,
-                        isOperation: value === "Sí",
-                        operationName: value === "Sí" ? tx.operationName : null,
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {YES_NO_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {(tx.isOperation ?? Boolean(tx.operationName)) && (
-                <div className="flex flex-col gap-2">
-                  <Label className={flGrid}>Nombre de la operación</Label>
-                  <Input
-                    value={tx.operationName ?? ""}
-                    onChange={(e) =>
-                      updateDraft({
-                        treatment: {
-                          ...tx,
-                          operationName: e.target.value || null,
-                        },
-                      })
-                    }
-                    placeholder="Ej: Mastectomía"
-                    className="bg-card border"
-                  />
-                </div>
-              )}
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>Programa de atención</Label>
-                <Select
-                  items={CARE_PROGRAMS}
-                  value={tx.careProgram ?? ""}
-                  onValueChange={(value) =>
-                    updateDraft({
-                      treatment: {
-                        ...tx,
-                        careProgram: (value || undefined) as
-                          | CareProgram
-                          | undefined,
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar programa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CARE_PROGRAMS.map((program) => (
-                      <SelectItem key={program.value} value={program.value}>
-                        {program.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <DurationInput
-                label="Frecuencia del tratamiento"
-                units={["DAY", "WEEK", "MONTH", "YEAR"]}
-                defaultUnit="WEEK"
-                singleValue
-                value={tx.treatmentFrequency}
-                onChange={(treatmentFrequency) =>
-                  updateDraft({ treatment: { ...tx, treatmentFrequency } })
-                }
-              />
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>Fecha de inicio</Label>
-                <Input
-                  type="date"
-                  value={tx.startDate ?? ""}
-                  onChange={(e) =>
-                    updateDraft({
-                      treatment: { ...tx, startDate: e.target.value || null },
-                    })
-                  }
-                  className="bg-card border"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>Fecha de fin (opcional)</Label>
-                <Input
-                  type="date"
-                  value={tx.endDate ?? ""}
-                  min={tx.startDate ?? undefined}
-                  onChange={(e) =>
-                    updateDraft({
-                      treatment: { ...tx, endDate: e.target.value || null },
-                    })
-                  }
-                  className="bg-card border"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={flGrid}>¿Recibe teleconsulta?</Label>
-                <Select
-                  items={TRI_STATE_OPTIONS}
-                  value={
-                    tx.receivesTeleconsultation === true
-                      ? "SI"
-                      : tx.receivesTeleconsultation === false
-                        ? "NO"
-                        : "SIN_DATO"
-                  }
-                  onValueChange={(value) =>
-                    updateDraft({
-                      treatment: {
-                        ...tx,
-                        receivesTeleconsultation:
-                          value === "SIN_DATO" ? undefined : value === "SI",
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRI_STATE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {tx.receivesTeleconsultation === true && (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <Label className={flGrid}>Nota de teleconsulta</Label>
-                    <Textarea
-                      value={tx.teleconsultationNote ?? ""}
-                      onChange={(e) =>
-                        updateDraft({
-                          treatment: {
-                            ...tx,
-                            teleconsultationNote: e.target.value || null,
-                          },
-                        })
-                      }
-                      placeholder="Detalle de la teleconsulta"
-                      className="bg-card min-h-16 border"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label className={flGrid}>
-                      Especialidades de teleconsulta
-                    </Label>
-                    <Input
-                      value={(tx.teleconsultationSpecialties ?? []).join(", ")}
-                      onChange={(e) =>
-                        updateDraft({
-                          treatment: {
-                            ...tx,
-                            teleconsultationSpecialties: e.target.value
-                              .split(",")
-                              .map((specialty) => specialty.trim())
-                              .filter(Boolean),
-                          },
-                        })
-                      }
-                      placeholder="Ej: Oncología, Psicología"
-                      className="bg-card border"
-                    />
-                  </div>
-                </>
-              )}
-              {tx.treatmentSituation === "ABANDONED" && (
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <Label className={flGrid}>Motivo de abandono</Label>
-                  <Textarea
-                    value={tx.treatmentAbandonmentReason ?? ""}
-                    onChange={(e) =>
-                      updateDraft({
-                        treatment: {
-                          ...tx,
-                          treatmentAbandonmentReason: e.target.value || null,
-                        },
-                      })
-                    }
-                    placeholder="Describe el motivo del abandono"
-                    className="bg-card min-h-16 border"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-3">
+            <SectionHeader icon={HeartPulse} title="Tratamientos" />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium">Medicamentos actuales</p>
+                  <p className="text-sm font-medium">
+                    Tratamientos registrados
+                  </p>
                   <p className="text-muted-foreground text-xs">
-                    Registra la medicación asociada al tratamiento. La
-                    frecuencia usa la misma estructura de duración.
+                    Opcional. Puedes registrar varios tratamientos y asociar
+                    cada uno a un diagnóstico.
                   </p>
                 </div>
                 <Button
@@ -1758,188 +1542,687 @@ export function Step7Atencion() {
                   variant="outline"
                   size="sm"
                   className="shrink-0 gap-1.5"
-                  onClick={addMedication}
+                  onClick={addTreatment}
+                  disabled={!diagnoses.length}
                 >
                   <Plus className="size-3.5" />
-                  Agregar
+                  Agregar tratamiento
                 </Button>
               </div>
-              {medications.map((medication, index) => (
-                <div
-                  key={index}
-                  className="border-border/60 bg-muted/20 flex flex-col gap-4 rounded-xl border p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-muted-foreground text-xs font-semibold">
-                      Medicamento {index + 1}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground/60 hover:text-destructive h-7 w-7 p-0"
-                      onClick={() => removeMedication(index)}
-                    >
-                      <Minus className="size-3.5" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {treatments.length > 0 && (
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  {treatments.map((treatment, index) => {
+                    const diagnosis = diagnoses.find(
+                      (item) => item.draftId === treatment.diagnosisRef,
+                    )
+                    return (
+                      <div
+                        key={treatment.draftId}
+                        className={`flex items-center gap-2 rounded-lg border p-2 ${
+                          index === treatmentIndex
+                            ? "border-primary bg-primary/5"
+                            : "border-border/60 bg-muted/20"
+                        }`}
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-auto min-w-0 flex-1 justify-start px-2 py-1.5 text-left"
+                          aria-pressed={index === treatmentIndex}
+                          onClick={() => setSelectedTreatmentIndex(index)}
+                        >
+                          <span className="flex min-w-0 flex-col items-start">
+                            <span className="text-xs font-semibold">
+                              Tratamiento {index + 1}
+                            </span>
+                            <span className="text-muted-foreground w-full truncate text-xs">
+                              {treatment.treatmentType.trim() ||
+                                "Sin especificar"}
+                              {diagnosis
+                                ? ` · ${diagnosis.diagnosis.trim() || `Diagnóstico ${diagnoses.indexOf(diagnosis) + 1}`}`
+                                : " · Sin diagnóstico"}
+                            </span>
+                          </span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground/60 hover:text-destructive h-7 w-7 shrink-0 p-0"
+                          title="Eliminar tratamiento"
+                          onClick={() => removeTreatment(index)}
+                        >
+                          <Minus className="size-3.5" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            {selectedTreatment ? (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>
+                    Diagnóstico asociado{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    items={diagnoses.map((diagnosis, index) => ({
+                      value: diagnosis.draftId,
+                      label:
+                        diagnosis.diagnosis.trim() ||
+                        `Diagnóstico ${index + 1}`,
+                    }))}
+                    value={tx.diagnosisRef}
+                    onValueChange={(value) =>
+                      updateTreatment({ diagnosisRef: value ?? "" })
+                    }
+                  >
+                    <SelectTrigger className={sc}>
+                      <SelectValue placeholder="Seleccionar diagnóstico..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {diagnoses.map((diagnosis, index) => (
+                        <SelectItem
+                          key={diagnosis.draftId}
+                          value={diagnosis.draftId}
+                        >
+                          {diagnosis.diagnosis.trim() ||
+                            `Diagnóstico ${index + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>
+                    ¿Recibe este tratamiento por derivación?
+                  </Label>
+                  <Select
+                    items={YES_NO_OPTIONS}
+                    value={tx.isReferred === true ? "Sí" : "No"}
+                    onValueChange={(v) => {
+                      const isReferred = v === "Sí"
+                      updateTreatment({
+                        isReferred,
+                        sourceHealthCenterId: isReferred
+                          ? (tx.sourceHealthCenterId ??
+                            details.primaryHealthCenterId ??
+                            undefined)
+                          : undefined,
+                      })
+                    }}
+                  >
+                    <SelectTrigger className={sc}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Sí">Sí</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {tx.isReferred ? (
+                  <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
                       <Label className={flGrid}>
-                        Nombre <span className="text-destructive">*</span>
+                        Hospital de origen{" "}
+                        <span className="text-destructive">*</span>
                       </Label>
-                      <Input
-                        value={medication.name}
-                        onChange={(e) =>
-                          updateMedication(index, { name: e.target.value })
-                        }
-                        placeholder="Ej: Tamoxifeno"
-                        className="bg-card border"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className={flGrid}>Descripción de dosis</Label>
-                      <Input
-                        value={medication.doseDescription ?? ""}
-                        onChange={(e) =>
-                          updateMedication(index, {
-                            doseDescription: e.target.value || undefined,
-                          })
-                        }
-                        placeholder="Ej: 2 tabletas"
-                        className="bg-card border"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-2">
-                        <Label className={flGrid}>Cantidad</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          defaultValue={medication.doseAmount ?? ""}
-                          onBlur={(e) => {
-                            const raw = e.target.value.trim().replace(",", ".")
-                            if (!raw) {
-                              updateMedication(index, { doseAmount: undefined })
-                              return
-                            }
-                            const parsed = Number(raw)
-                            if (!Number.isFinite(parsed) || parsed < 0) {
-                              e.currentTarget.value =
-                                medication.doseAmount?.toString() ?? ""
-                              return
-                            }
-                            updateMedication(index, { doseAmount: parsed })
-                          }}
-                          className="bg-card border"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Label className={flGrid}>Unidad</Label>
-                        <Select
-                          items={DOSE_UNITS}
-                          value={medication.doseUnit ?? ""}
-                          onValueChange={(v) =>
-                            updateMedication(index, {
-                              doseUnit: (v || undefined) as
-                                | MedicationDoseUnit
-                                | undefined,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="bg-card border">
-                            <SelectValue placeholder="Unidad" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DOSE_UNITS.map((unit) => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className={flGrid}>Vía de administración</Label>
                       <Select
-                        items={MEDICATION_ROUTES}
-                        value={medication.route ?? ""}
+                        items={activeCenters.map((c) => ({
+                          value: c.id,
+                          label: `${c.name} — ${c.department}`,
+                        }))}
+                        value={tx.sourceHealthCenterId ?? ""}
                         onValueChange={(v) =>
-                          updateMedication(index, {
-                            route: (v || undefined) as
-                              | MedicationRoute
-                              | undefined,
+                          updateTreatment({
+                            sourceHealthCenterId: v || undefined,
                           })
                         }
                       >
-                        <SelectTrigger className="bg-card border">
-                          <SelectValue placeholder="Seleccionar vía" />
+                        <SelectTrigger className={sc}>
+                          <SelectValue placeholder="Seleccionar origen..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {MEDICATION_ROUTES.map((route) => (
-                            <SelectItem key={route.value} value={route.value}>
-                              {route.label}
+                          {activeCenters.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name} — {c.department}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <DurationInput
-                    label="Frecuencia del medicamento"
-                    units={["HOUR", "DAY", "WEEK", "MONTH"]}
-                    defaultUnit="HOUR"
-                    singleValue
-                    value={medication.frequency}
-                    onChange={(frequency) =>
-                      updateMedication(index, { frequency })
-                    }
-                  />
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="flex flex-col gap-2">
-                      <Label className={flGrid}>Fecha de inicio</Label>
-                      <Input
-                        type="date"
-                        value={medication.startDate ?? ""}
-                        onChange={(e) =>
-                          updateMedication(index, {
-                            startDate: e.target.value || undefined,
-                          })
-                        }
-                        className="bg-card border"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className={flGrid}>Fecha de fin</Label>
-                      <Input
-                        type="date"
-                        value={medication.endDate ?? ""}
-                        onChange={(e) =>
-                          updateMedication(index, {
-                            endDate: e.target.value || undefined,
-                          })
-                        }
-                        className="bg-card border"
-                      />
+                      <Label className={flGrid}>
+                        Hospital receptor{" "}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="flex gap-2">
+                        <Select
+                          items={activeCenters.map((c) => ({
+                            value: c.id,
+                            label: `${c.name} — ${c.department}`,
+                          }))}
+                          value={tx.receivingHealthCenterId ?? ""}
+                          onValueChange={(v) =>
+                            updateTreatment({
+                              receivingHealthCenterId: v || undefined,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="bg-card flex-1 border">
+                            <SelectValue placeholder="Seleccionar receptor..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeCenters.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name} — {c.department}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 gap-1"
+                          onClick={() => setNewHospitalOpen(true)}
+                        >
+                          <Building2 className="size-3.5" />
+                          <Plus className="size-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                ) : (
                   <div className="flex flex-col gap-2">
-                    <Label className={fl}>Notas</Label>
-                    <Textarea
-                      value={medication.notes ?? ""}
-                      onChange={(e) =>
-                        updateMedication(index, {
-                          notes: e.target.value || undefined,
+                    <Label className={fl}>
+                      Hospital donde recibe el tratamiento
+                    </Label>
+                    <div className="flex gap-2">
+                      <Select
+                        items={activeCenters.map((c) => ({
+                          value: c.id,
+                          label: `${c.name} — ${c.department}`,
+                        }))}
+                        value={tx.receivingHealthCenterId ?? ""}
+                        onValueChange={(v) =>
+                          updateTreatment({
+                            receivingHealthCenterId: v || undefined,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-card flex-1 border">
+                          <SelectValue placeholder="Opcional" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeCenters.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name} — {c.department}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1"
+                        onClick={() => setNewHospitalOpen(true)}
+                      >
+                        <Building2 className="size-3.5" />
+                        <Plus className="size-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>Situación del tratamiento</Label>
+                    <Select
+                      items={TREATMENT_SITUATIONS}
+                      value={tx.treatmentSituation ?? ""}
+                      onValueChange={(v) =>
+                        updateTreatment({
+                          treatmentSituation: (v || undefined) as
+                            | TreatmentSituation
+                            | undefined,
                         })
                       }
-                      placeholder="Indicaciones o notas adicionales"
-                      className="bg-card min-h-16 border"
-                    />
+                    >
+                      <SelectTrigger className={sc}>
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TREATMENT_SITUATIONS.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>
+                      ¿Qué tipo de tratamiento recibe?
+                    </Label>
+                    <Input
+                      value={tx.treatmentType}
+                      onChange={(e) =>
+                        updateTreatment({ treatmentType: e.target.value })
+                      }
+                      placeholder="Ej: Quimioterapia"
+                      className="bg-card border"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>¿Es una operación?</Label>
+                    <Select
+                      items={YES_NO_OPTIONS}
+                      value={
+                        (tx.isOperation ?? Boolean(tx.operationName)) === true
+                          ? "Sí"
+                          : (tx.isOperation ?? Boolean(tx.operationName)) ===
+                              false
+                            ? "No"
+                            : ""
+                      }
+                      onValueChange={(value) =>
+                        updateTreatment({
+                          isOperation: value === "Sí",
+                          operationName:
+                            value === "Sí" ? tx.operationName : null,
+                        })
+                      }
+                    >
+                      <SelectTrigger className={sc}>
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YES_NO_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(tx.isOperation ?? Boolean(tx.operationName)) && (
+                    <div className="flex flex-col gap-2">
+                      <Label className={flGrid}>Nombre de la operación</Label>
+                      <Input
+                        value={tx.operationName ?? ""}
+                        onChange={(e) =>
+                          updateTreatment({
+                            operationName: e.target.value || null,
+                          })
+                        }
+                        placeholder="Ej: Mastectomía"
+                        className="bg-card border"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>Programa de atención</Label>
+                    <Select
+                      items={CARE_PROGRAMS}
+                      value={tx.careProgram ?? ""}
+                      onValueChange={(value) =>
+                        updateTreatment({
+                          careProgram: (value || undefined) as
+                            | CareProgram
+                            | undefined,
+                        })
+                      }
+                    >
+                      <SelectTrigger className={sc}>
+                        <SelectValue placeholder="Seleccionar programa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CARE_PROGRAMS.map((program) => (
+                          <SelectItem key={program.value} value={program.value}>
+                            {program.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DurationInput
+                    label="Frecuencia del tratamiento"
+                    units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                    defaultUnit="WEEK"
+                    singleValue
+                    value={tx.treatmentFrequency}
+                    onChange={(treatmentFrequency) =>
+                      updateTreatment({ treatmentFrequency })
+                    }
+                  />
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>Fecha de inicio</Label>
+                    <Input
+                      type="date"
+                      value={tx.startDate ?? ""}
+                      onChange={(e) =>
+                        updateTreatment({ startDate: e.target.value || null })
+                      }
+                      className="bg-card border"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>Fecha de fin (opcional)</Label>
+                    <Input
+                      type="date"
+                      value={tx.endDate ?? ""}
+                      min={tx.startDate ?? undefined}
+                      onChange={(e) =>
+                        updateTreatment({ endDate: e.target.value || null })
+                      }
+                      className="bg-card border"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className={flGrid}>¿Recibe teleconsulta?</Label>
+                    <Select
+                      items={TRI_STATE_OPTIONS}
+                      value={
+                        tx.receivesTeleconsultation === true
+                          ? "SI"
+                          : tx.receivesTeleconsultation === false
+                            ? "NO"
+                            : "SIN_DATO"
+                      }
+                      onValueChange={(value) =>
+                        updateTreatment({
+                          receivesTeleconsultation:
+                            value === "SIN_DATO" ? undefined : value === "SI",
+                        })
+                      }
+                    >
+                      <SelectTrigger className={sc}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TRI_STATE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {tx.receivesTeleconsultation === true && (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <Label className={flGrid}>Nota de teleconsulta</Label>
+                        <Textarea
+                          value={tx.teleconsultationNote ?? ""}
+                          onChange={(e) =>
+                            updateTreatment({
+                              teleconsultationNote: e.target.value || null,
+                            })
+                          }
+                          placeholder="Detalle de la teleconsulta"
+                          className="bg-card min-h-16 border"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label className={flGrid}>
+                          Especialidades de teleconsulta
+                        </Label>
+                        <Input
+                          value={(tx.teleconsultationSpecialties ?? []).join(
+                            ", ",
+                          )}
+                          onChange={(e) =>
+                            updateTreatment({
+                              teleconsultationSpecialties: e.target.value
+                                .split(",")
+                                .map((specialty) => specialty.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                          placeholder="Ej: Oncología, Psicología"
+                          className="bg-card border"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {tx.treatmentSituation === "ABANDONED" && (
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                      <Label className={flGrid}>Motivo de abandono</Label>
+                      <Textarea
+                        value={tx.treatmentAbandonmentReason ?? ""}
+                        onChange={(e) =>
+                          updateTreatment({
+                            treatmentAbandonmentReason: e.target.value || null,
+                          })
+                        }
+                        placeholder="Describe el motivo del abandono"
+                        className="bg-card min-h-16 border"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">
+                        Medicamentos actuales
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        Registra la medicación asociada al tratamiento. La
+                        frecuencia usa la misma estructura de duración.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      onClick={addMedication}
+                    >
+                      <Plus className="size-3.5" />
+                      Agregar
+                    </Button>
+                  </div>
+                  {medications.map((medication, index) => (
+                    <div
+                      key={`${tx.draftId}-${index}`}
+                      className="border-border/60 bg-muted/20 flex flex-col gap-4 rounded-xl border p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-muted-foreground text-xs font-semibold">
+                          Medicamento {index + 1}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground/60 hover:text-destructive h-7 w-7 p-0"
+                          onClick={() => removeMedication(index)}
+                        >
+                          <Minus className="size-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>
+                            Nombre <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            value={medication.name}
+                            onChange={(e) =>
+                              updateMedication(index, { name: e.target.value })
+                            }
+                            placeholder="Ej: Tamoxifeno"
+                            className="bg-card border"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>Descripción de dosis</Label>
+                          <Input
+                            value={medication.doseDescription ?? ""}
+                            onChange={(e) =>
+                              updateMedication(index, {
+                                doseDescription: e.target.value || undefined,
+                              })
+                            }
+                            placeholder="Ej: 2 tabletas"
+                            className="bg-card border"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex flex-col gap-2">
+                            <Label className={flGrid}>Cantidad</Label>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              defaultValue={medication.doseAmount ?? ""}
+                              onBlur={(e) => {
+                                const raw = e.target.value
+                                  .trim()
+                                  .replace(",", ".")
+                                if (!raw) {
+                                  updateMedication(index, {
+                                    doseAmount: undefined,
+                                  })
+                                  return
+                                }
+                                const parsed = Number(raw)
+                                if (!Number.isFinite(parsed) || parsed < 0) {
+                                  e.currentTarget.value =
+                                    medication.doseAmount?.toString() ?? ""
+                                  return
+                                }
+                                updateMedication(index, { doseAmount: parsed })
+                              }}
+                              className="bg-card border"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label className={flGrid}>Unidad</Label>
+                            <Select
+                              items={DOSE_UNITS}
+                              value={medication.doseUnit ?? ""}
+                              onValueChange={(v) =>
+                                updateMedication(index, {
+                                  doseUnit: (v || undefined) as
+                                    | MedicationDoseUnit
+                                    | undefined,
+                                })
+                              }
+                            >
+                              <SelectTrigger className="bg-card border">
+                                <SelectValue placeholder="Unidad" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DOSE_UNITS.map((unit) => (
+                                  <SelectItem
+                                    key={unit.value}
+                                    value={unit.value}
+                                  >
+                                    {unit.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>
+                            Vía de administración
+                          </Label>
+                          <Select
+                            items={MEDICATION_ROUTES}
+                            value={medication.route ?? ""}
+                            onValueChange={(v) =>
+                              updateMedication(index, {
+                                route: (v || undefined) as
+                                  | MedicationRoute
+                                  | undefined,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="bg-card border">
+                              <SelectValue placeholder="Seleccionar vía" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MEDICATION_ROUTES.map((route) => (
+                                <SelectItem
+                                  key={route.value}
+                                  value={route.value}
+                                >
+                                  {route.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DurationInput
+                        label="Frecuencia del medicamento"
+                        units={["HOUR", "DAY", "WEEK", "MONTH"]}
+                        defaultUnit="HOUR"
+                        singleValue
+                        value={medication.frequency}
+                        onChange={(frequency) =>
+                          updateMedication(index, { frequency })
+                        }
+                      />
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>Fecha de inicio</Label>
+                          <Input
+                            type="date"
+                            value={medication.startDate ?? ""}
+                            onChange={(e) =>
+                              updateMedication(index, {
+                                startDate: e.target.value || undefined,
+                              })
+                            }
+                            className="bg-card border"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>Fecha de fin</Label>
+                          <Input
+                            type="date"
+                            value={medication.endDate ?? ""}
+                            onChange={(e) =>
+                              updateMedication(index, {
+                                endDate: e.target.value || undefined,
+                              })
+                            }
+                            className="bg-card border"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label className={fl}>Notas</Label>
+                        <Textarea
+                          value={medication.notes ?? ""}
+                          onChange={(e) =>
+                            updateMedication(index, {
+                              notes: e.target.value || undefined,
+                            })
+                          }
+                          placeholder="Indicaciones o notas adicionales"
+                          className="bg-card min-h-16 border"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+                No hay tratamientos registrados. Agrega uno si corresponde.
+              </p>
+            )}
           </section>
         </>
       )}

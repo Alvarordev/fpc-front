@@ -98,12 +98,17 @@ runDescribe("enrollment flow against Nest", () => {
             },
           ],
           insurance: { insuranceType: "EPS", epsProvider: "RIMAC" },
-          diagnosis: {
-            diagnosis: "Cáncer de mama",
-            healthCenterId: healthCenter?.id,
-          },
+          diagnoses: [
+            {
+              clientRef: "diagnosis-1",
+              mode: "PARALLEL",
+              diagnosis: "Cáncer de mama",
+              healthCenterId: healthCenter?.id,
+            },
+          ],
           treatments: [
             {
+              diagnosisRef: "diagnosis-1",
               treatmentType: "Quimioterapia",
               treatmentSituation: "EN_CURSO",
               treatmentFrequency: { valueMin: 3, unit: "WEEK" },

@@ -25,7 +25,9 @@ function step7Script(
   categoriaClinica: CategoriaClinica,
 ): string {
   const hasInsurance = draft.insurance.insuranceType !== "NONE"
-  const hasMedicalReport = draft.diagnosis.hasMedicalReport
+  const hasMedicalReport = draft.diagnoses.some(
+    (diagnosis) => diagnosis.hasMedicalReport,
+  )
   const hasSoughtConsultation = draft.symptomReport.hasSoughtMedicalConsultation
 
   const baseScript = (() => {

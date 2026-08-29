@@ -16,8 +16,9 @@ function draft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
       ...DEFAULT_DRAFT.symptomReport,
       ...overrides.symptomReport,
     },
-    diagnosis: { ...DEFAULT_DRAFT.diagnosis, ...overrides.diagnosis },
-    treatment: { ...DEFAULT_DRAFT.treatment, ...overrides.treatment },
+    diagnoses: overrides.diagnoses ?? structuredClone(DEFAULT_DRAFT.diagnoses),
+    treatments:
+      overrides.treatments ?? structuredClone(DEFAULT_DRAFT.treatments),
     sisAffiliation: {
       ...DEFAULT_DRAFT.sisAffiliation,
       ...overrides.sisAffiliation,
@@ -76,31 +77,37 @@ describe("step 8 Nest enrollment payload", () => {
           epsProvider: "RIMAC",
           isCurrent: true,
         },
-        diagnosis: {
-          diagnosis: "Cáncer de mama",
-          cancerStage: "STAGE_2",
-          firstSymptomsDate: "2026-01-01",
-          diagnosisDate: "2026-02-15",
-          isCurrent: true,
-        },
-        treatment: {
-          diagnosisId: "legacy",
-          treatmentType: "Quimioterapia",
-          treatmentFrequency: { valueMin: 3, unit: "WEEK" },
-          treatmentSituation: "EN_CURSO",
-          isReferred: true,
-          sourceHealthCenterId: "center-1",
-          receivingHealthCenterId: "center-2",
-          startDate: "2026-02-20",
-          endDate: "2026-08-20",
-          medications: [
-            {
-              name: "Tamoxifeno",
-              frequency: { valueMin: 1, unit: "DAY" },
-            },
-          ],
-          isCurrent: true,
-        },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "Cáncer de mama",
+            cancerStage: "STAGE_2",
+            firstSymptomsDate: "2026-01-01",
+            diagnosisDate: "2026-02-15",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "Quimioterapia",
+            treatmentFrequency: { valueMin: 3, unit: "WEEK" },
+            treatmentSituation: "EN_CURSO",
+            isReferred: true,
+            sourceHealthCenterId: "center-1",
+            receivingHealthCenterId: "center-2",
+            startDate: "2026-02-20",
+            endDate: "2026-08-20",
+            medications: [
+              {
+                name: "Tamoxifeno",
+                frequency: { valueMin: 1, unit: "DAY" },
+              },
+            ],
+            isCurrent: true,
+          },
+        ],
         medicalAppointments: [
           {
             specialty: "Oncología",
@@ -141,8 +148,8 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.affiliationType).toBe("SELF")
     expect(payload.healthPhase).toBe("CANCER_DIAGNOSIS")
     expect(payload.insurance?.insuranceType).toBe("EPS")
-    expect(payload.diagnosis?.diagnosis).toBe("Cáncer de mama")
-    expect(payload.diagnosis?.mode).toBe("PARALLEL")
+    expect(payload.diagnoses?.[0]?.diagnosis).toBe("Cáncer de mama")
+    expect(payload.diagnoses?.[0]?.mode).toBe("PARALLEL")
     expect(payload.treatments?.[0]?.treatmentType).toBe("Quimioterapia")
     expect(payload.treatments?.[0]?.treatmentFrequency).toEqual({
       valueMin: 3,
@@ -189,9 +196,80 @@ describe("step 8 Nest enrollment payload", () => {
       nextAppointmentSpecialty: "Radioterapia",
     })
     expect(payload.callStartedAt).toMatch(/^2026-06-25T/)
-    expect(payload.diagnosis?.waitTimeForDiagnosis).toBeUndefined()
+    expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toBeUndefined()
     expect(payload.surveyAccepted).toBe(true)
     expect("followUpQualityRating" in payload).toBe(false)
+  })
+
+  it("maps multiple diagnoses and keeps treatments attached to their diagnosis", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-breast",
+            diagnosis: "Cáncer de mama",
+            isCurrent: true,
+          },
+          {
+            draftId: "diagnosis-thyroid",
+            diagnosis: "Cáncer de tiroides",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-chemotherapy",
+            diagnosisRef: "diagnosis-breast",
+            treatmentType: "Quimioterapia",
+            isCurrent: true,
+          },
+          {
+            draftId: "treatment-surgery",
+            diagnosisRef: "diagnosis-thyroid",
+            treatmentType: "Cirugía",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.diagnoses).toHaveLength(2)
+    expect(payload.diagnoses?.map(({ clientRef }) => clientRef)).toEqual([
+      "diagnosis-breast",
+      "diagnosis-thyroid",
+    ])
+    expect(payload.treatments).toEqual([
+      expect.objectContaining({
+        diagnosisRef: "diagnosis-breast",
+        treatmentType: "Quimioterapia",
+      }),
+      expect.objectContaining({
+        diagnosisRef: "diagnosis-thyroid",
+        treatmentType: "Cirugía",
+      }),
+    ])
+  })
+
+  it("allows a diagnosis without a treatment", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-only",
+            diagnosis: "Cáncer en evaluación",
+            isCurrent: true,
+          },
+        ],
+        treatments: [],
+      }),
+    })
+
+    expect(payload.diagnoses).toHaveLength(1)
+    expect(payload.treatments).toBeUndefined()
   })
 
   it("maps the signs branch, SIS request, and family companion", () => {
@@ -252,32 +330,38 @@ describe("step 8 Nest enrollment payload", () => {
       agentId: "agent-1",
       categoriaClinica: "CANCER_DIAGNOSIS",
       draft: draft({
-        diagnosis: {
-          diagnosis: "Cáncer de mama",
-          diagnosisSpecialty: "Oncología",
-          isSepaActiveReferral: true,
-          isCurrent: true,
-        },
-        treatment: {
-          diagnosisId: "diagnosis-1",
-          treatmentType: "Cirugía",
-          operationName: "Mastectomía",
-          careProgram: "COPHOES",
-          receivesTeleconsultation: true,
-          teleconsultationNote: "Control remoto",
-          teleconsultationSpecialties: ["Oncología", "Psicología"],
-          treatmentSituation: "ABANDONED",
-          treatmentAbandonmentReason: "Cambio de ciudad",
-          isCurrent: true,
-        },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "Cáncer de mama",
+            diagnosisSpecialty: "Oncología",
+            isSepaActiveReferral: true,
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "Cirugía",
+            operationName: "Mastectomía",
+            careProgram: "COPHOES",
+            receivesTeleconsultation: true,
+            teleconsultationNote: "Control remoto",
+            teleconsultationSpecialties: ["Oncología", "Psicología"],
+            treatmentSituation: "ABANDONED",
+            treatmentAbandonmentReason: "Cambio de ciudad",
+            isCurrent: true,
+          },
+        ],
         enrollmentMetadata: { currentlyReceivingTreatment: false },
       }),
     })
 
-    expect(payload.diagnosis).toMatchObject({
+    expect(payload.diagnoses?.[0]).toMatchObject({
       diagnosisSpecialty: "Oncología",
     })
-    expect(payload.diagnosis).not.toHaveProperty("isSepaActiveReferral")
+    expect(payload.diagnoses?.[0]).not.toHaveProperty("isSepaActiveReferral")
     expect(payload.treatments?.[0]).toMatchObject({
       operationName: "Mastectomía",
       careProgram: "COPHOES",
@@ -378,7 +462,7 @@ describe("step 8 Nest enrollment payload", () => {
       hasReferralSheet: false,
       referralNotProvidedReason: "No fue necesario referir",
     })
-    expect(payload.diagnosis).toBeUndefined()
+    expect(payload.diagnoses).toBeUndefined()
     expect(payload.treatments).toBeUndefined()
   })
 
@@ -494,6 +578,13 @@ describe("step 8 Nest enrollment payload", () => {
       categoriaClinica: "CANCER_DIAGNOSIS",
       today: "2026-06-25",
       draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "Cáncer de mama",
+            isCurrent: true,
+          },
+        ],
         enrollmentMetadata: {
           enrollmentNotes: [
             { text: "Primera observación" },
@@ -517,18 +608,21 @@ describe("step 8 Nest enrollment payload", () => {
       categoriaClinica: "CANCER_DIAGNOSIS",
       draft: draft({
         patientData: { fullName: "Paciente Test", primaryPhone: "988111222" },
-        diagnosis: {
-          diagnosis: "Cáncer de mama",
-          firstSymptomsDate: "2026-01-01",
-          diagnosisDate: "2026-03-02",
-          waitTimeForDiagnosis: { valueMin: 1.5, unit: "MONTH" },
-          waitTimeForDiagnosisManuallyEdited: true,
-          isCurrent: true,
-        },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "Cáncer de mama",
+            firstSymptomsDate: "2026-01-01",
+            diagnosisDate: "2026-03-02",
+            waitTimeForDiagnosis: { valueMin: 1.5, unit: "MONTH" },
+            waitTimeForDiagnosisManuallyEdited: true,
+            isCurrent: true,
+          },
+        ],
       }),
     })
 
-    expect(payload.diagnosis?.waitTimeForDiagnosis).toEqual({
+    expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toEqual({
       valueMin: 1.5,
       unit: "MONTH",
     })
@@ -541,14 +635,23 @@ describe("step 8 Nest enrollment payload", () => {
         categoriaClinica: "CANCER_DIAGNOSIS",
         draft: draft({
           patientData: { fullName: "Paciente Test", primaryPhone: "988111222" },
-          diagnosis: { diagnosis: "Cáncer de mama", isCurrent: true },
-          treatment: {
-            diagnosisId: "legacy",
-            treatmentType: "Quimioterapia",
-            startDate: "2026-08-20",
-            endDate: "2026-02-20",
-            isCurrent: true,
-          },
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "Cáncer de mama",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "Quimioterapia",
+              startDate: "2026-08-20",
+              endDate: "2026-02-20",
+              isCurrent: true,
+            },
+          ],
         }),
       }),
     ).toThrow("La fecha de fin del tratamiento")

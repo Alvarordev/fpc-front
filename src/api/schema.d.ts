@@ -1813,6 +1813,8 @@ export interface components {
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
+            /** @description Temporary client reference used to associate enrollment treatments; required for diagnoses[] and omitted only by the legacy diagnosis field */
+            clientRef?: string;
         };
         CreateTreatmentMedicationDto: {
             name: string;
@@ -1854,6 +1856,8 @@ export interface components {
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
+            /** @description Temporary clientRef of the diagnosis for this treatment; required when diagnoses[] is used and omitted only for the legacy diagnosis field */
+            diagnosisRef?: string;
         };
         EnrollmentMedicalAppointmentDto: {
             /** Format: uuid */
@@ -1958,6 +1962,7 @@ export interface components {
             insurance?: components["schemas"]["EnrollmentInsuranceDto"];
             sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
             diagnosis?: components["schemas"]["EnrollmentDiagnosisDto"];
+            diagnoses?: components["schemas"]["EnrollmentDiagnosisDto"][];
             treatments?: components["schemas"]["EnrollmentTreatmentDto"][];
             medicalAppointments?: components["schemas"]["EnrollmentMedicalAppointmentDto"][];
             addresses?: components["schemas"]["EnrollmentAddressDto"][];
