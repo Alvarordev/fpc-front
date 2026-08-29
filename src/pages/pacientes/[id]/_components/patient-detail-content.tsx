@@ -183,6 +183,9 @@ export function PatientDetailContent() {
       <Tabs value={visibleActiveTab} onValueChange={handleTabChange}>
         <TabsList className="mb-4 max-w-full overflow-x-auto">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
+          <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
+          <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
           {patient.role !== "COMPANION" && (
             <TabsTrigger value="acompanantes" className="gap-1.5">
               Acompañantes
@@ -193,9 +196,6 @@ export function PatientDetailContent() {
               )}
             </TabsTrigger>
           )}
-          <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
-          <TabsTrigger value="psicooncologia">Psicooncología</TabsTrigger>
-          <TabsTrigger value="recordatorios">Recordatorios</TabsTrigger>
           {canViewDocuments && (
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
           )}
@@ -211,14 +211,6 @@ export function PatientDetailContent() {
             />
           </div>
         </TabsContent>
-        {patient.role !== "COMPANION" && (
-          <TabsContent value="acompanantes">
-            <AcompanantesTab
-              patientId={patient.id}
-              birthDate={patient.birthDate}
-            />
-          </TabsContent>
-        )}
         <TabsContent value="seguimiento">
           <SeguimientoTab pacienteId={patient.id} />
         </TabsContent>
@@ -228,6 +220,14 @@ export function PatientDetailContent() {
         <TabsContent value="recordatorios">
           <RecordatoriosTab pacienteId={patient.id} />
         </TabsContent>
+        {patient.role !== "COMPANION" && (
+          <TabsContent value="acompanantes">
+            <AcompanantesTab
+              patientId={patient.id}
+              birthDate={patient.birthDate}
+            />
+          </TabsContent>
+        )}
         {canViewDocuments && (
           <TabsContent value="documentos">
             <PatientDocumentsTab

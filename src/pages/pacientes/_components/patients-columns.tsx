@@ -11,15 +11,6 @@ const healthPhaseStyles: Record<PatientHealthPhase, string> = {
   SIGNS_AND_SYMPTOMS: "bg-amber-50 text-amber-700 border-amber-200",
 }
 
-const date = (value: string | null) =>
-  value
-    ? new Date(value).toLocaleDateString("es-PE", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "-"
-
 export const patientColumns: ColumnDef<PatientListItem>[] = [
   {
     accessorKey: "fullName",
@@ -52,15 +43,6 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm">
         {row.original.currentDiagnosis?.diagnosis ?? "-"}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "currentDepartment",
-    header: "Departamento",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">
-        {row.original.currentDepartment ?? "-"}
       </span>
     ),
   },
@@ -103,24 +85,6 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
         </div>
       )
     },
-  },
-  {
-    accessorKey: "primaryPhone",
-    header: "Teléfono",
-    cell: ({ getValue }) => (
-      <span className="text-muted-foreground text-sm">
-        {getValue() as string}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "latestFollowUp",
-    header: "Último seguimiento",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">
-        {date(row.original.latestFollowUp?.occurredAt ?? null)}
-      </span>
-    ),
   },
   {
     id: "status",

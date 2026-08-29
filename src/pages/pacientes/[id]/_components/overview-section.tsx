@@ -129,7 +129,7 @@ function ContactInformationSection({
   patient: PatientDetailsResponse
 }) {
   const primaryCompanion = patient.companions.find(
-    (link) => link.isPrimaryContact,
+    (link) => link.contactRole === "PRIMARY" || link.isPrimaryContact,
   )
   const primaryContact = primaryCompanion?.companion
   const primaryContactName =
