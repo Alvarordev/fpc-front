@@ -6,6 +6,7 @@ import { useVolunteerProfile } from "@/hooks/use-volunteer-profile";
 import { useMySlots, useDeleteSlot } from "../_hooks/use-disponibilidad";
 import { DisponibilidadCalendar } from "./disponibilidad-calendar";
 import { AddAvailabilitySheet } from "./add-availability-sheet";
+import { DisponibilidadConsentNotice } from "./disponibilidad-consent-notice";
 
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
@@ -115,6 +116,8 @@ export function DisponibilidadContent() {
           Agregar
         </Button>
       </div>
+
+      <DisponibilidadConsentNotice />
 
       <div className="flex items-center justify-between">
         <CalendarHeader

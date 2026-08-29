@@ -862,7 +862,11 @@ export function FollowUpContent() {
         patientId={followUp.subjectPatientId}
         followUpId={followUp.id}
         isPending={false}
-        onSubmit={async (input) => draftStore.setPsico(input)}
+        onSubmit={async (payload) => {
+          if (payload.mode === "create") {
+            draftStore.setPsico(payload.input)
+          }
+        }}
       />
       <CreateAlertDialog
         open={alertOpen}

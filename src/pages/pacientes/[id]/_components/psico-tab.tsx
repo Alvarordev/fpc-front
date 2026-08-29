@@ -1,14 +1,38 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { BrainCircuit, CalendarPlus, PhoneCall, Video } from "lucide-react"
+import {
+  BrainCircuit,
+  CalendarDays,
+  CalendarPlus,
+  Clock3,
+  Edit,
+  PhoneCall,
+  Video,
+} from "lucide-react"
 import { toast } from "sonner"
-import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
+import {
+  psychooncologyAppointmentsApi,
+  type PsychooncologyAppointment,
+} from "@/api/psychooncology-appointments"
 import { volunteersApi } from "@/api/volunteers"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { useAuthStore } from "@/store/auth-store"
-import { SchedulePsychooncologyDialog } from "./schedule-psychooncology-dialog"
+import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
+import {
+  SchedulePsychooncologyDialog,
+  type SchedulePsychooncologySubmitInput,
+} from "./schedule-psychooncology-dialog"
 
 interface PsicoTabProps {
   pacienteId: string
@@ -21,125 +45,369 @@ const statusLabels: Record<string, string> = {
   NO_ANSWER: "No contestó",
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleString("es-PE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+const statusStyles: Record<string, string> = {
+  SCHEDULED: "border-violet-200 bg-violet-50/70 hover:border-violet-300",
+  NO_ANSWER: "border-amber-200 bg-amber-50/70 hover:border-amber-300",
+  COMPLETED: "border-emerald-200 bg-emerald-50/60 hover:border-emerald-300",
+  CANCELLED: "border-border bg-muted/40 hover:border-muted-foreground/30",
+}
+
+function formatScheduledParts(date: string) {
+  const value = new Date(date)
+  return {
+    day: value.toLocaleDateString("es-PE", { day: "numeric" }),
+    month: value
+      .toLocaleDateString("es-PE", { month: "short" })
+      .replace(".", "")
+      .toUpperCase(),
+    year: value.toLocaleDateString("es-PE", { year: "numeric" }),
+    date: value.toLocaleDateString("es-PE", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+    time: value.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }
+}
+
+function ratingLabel(rating: number | null | undefined) {
+  return ENROLLMENT_RATING_OPTIONS.find(
+    (option) => option.value === String(rating),
+  )?.label
+}
+
+function PsychoSessionCard({
+  appointment,
+  volunteerName,
+  canManage,
+  canMarkNoAnswer,
+  onEdit,
+  onComplete,
+  onNoAnswer,
+  onCancel,
+}: {
+  appointment: PsychooncologyAppointment
+  volunteerName: string
+  canManage: boolean
+  canMarkNoAnswer: boolean
+  onEdit: () => void
+  onComplete: () => void
+  onNoAnswer: () => void
+  onCancel: () => void
+}) {
+  const date = formatScheduledParts(appointment.scheduledAt)
+  const isScheduled = appointment.status === "SCHEDULED"
+  const isNoAnswer = appointment.status === "NO_ANSWER"
+  const isActionable = isScheduled || isNoAnswer
+  const ModalityIcon = appointment.modality === "CALL" ? PhoneCall : Video
+
+  return (
+    <article
+      className={`rounded-2xl border p-3 transition-[border-color,box-shadow] duration-200 hover:shadow-sm sm:p-4 ${statusStyles[appointment.status] ?? statusStyles.SCHEDULED}`}
+    >
+      <div className="flex items-stretch gap-3 sm:gap-5">
+        <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-white/70 py-2 text-violet-900 sm:w-16">
+          <span className="text-2xl leading-none font-semibold tracking-tight">
+            {date.day}
+          </span>
+          <span className="text-muted-foreground mt-1 text-[10px] font-semibold tracking-wider">
+            {date.month}
+          </span>
+          <span className="text-muted-foreground text-[10px]">{date.year}</span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                <ModalityIcon className="size-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold sm:text-base">
+                  Sesión {appointment.sessionNumber}
+                </p>
+                <p className="text-muted-foreground text-xs">{volunteerName}</p>
+              </div>
+              <Badge variant="outline">{statusLabels[appointment.status]}</Badge>
+            </div>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 shadow-2xs transition-colors hover:bg-red-600 hover:text-white"
+              title="Editar sesión"
+            >
+              <Edit className="size-3.5" />
+              <span>Editar</span>
+            </button>
+          </div>
+
+          <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm">
+            <span className="flex items-center gap-1.5">
+              <CalendarDays className="size-3.5" />
+              <span className="capitalize">{date.date}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock3 className="size-3.5" />
+              {date.time}
+            </span>
+          </div>
+
+          {appointment.schedulingNotes && (
+            <p className="text-muted-foreground mt-3 line-clamp-2 text-sm leading-relaxed">
+              <span className="font-medium text-foreground/80">Derivación: </span>
+              {appointment.schedulingNotes}
+            </p>
+          )}
+
+          {appointment.noAnswerNote && (
+            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-amber-900/80">
+              <span className="font-medium">Nota (no contestó): </span>
+              {appointment.noAnswerNote}
+            </p>
+          )}
+
+          {appointment.status === "COMPLETED" &&
+            (appointment.satisfactionRating || appointment.satisfactionComment) && (
+              <div className="mt-3 rounded-xl border border-emerald-200/80 bg-white/60 p-3 text-sm">
+                {appointment.satisfactionRating && (
+                  <p className="font-medium text-emerald-900">
+                    Encuesta: {ratingLabel(appointment.satisfactionRating)}
+                  </p>
+                )}
+                {appointment.satisfactionComment && (
+                  <p className="text-muted-foreground mt-1 leading-relaxed">
+                    {appointment.satisfactionComment}
+                  </p>
+                )}
+              </div>
+            )}
+
+          {appointment.followUpId && (
+            <p className="text-muted-foreground mt-2 text-xs">
+              Vinculada a un seguimiento
+            </p>
+          )}
+
+          {isActionable && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(canManage || canMarkNoAnswer) && (
+                <Button size="sm" onClick={onComplete}>
+                  Completar
+                </Button>
+              )}
+              {canMarkNoAnswer && isScheduled && (
+                <Button size="sm" variant="outline" onClick={onNoAnswer}>
+                  No contestó
+                </Button>
+              )}
+              {canManage && isScheduled && (
+                <Button size="sm" variant="outline" onClick={onCancel}>
+                  Cancelar
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  )
 }
 
 export function PsicoTab({ pacienteId }: PsicoTabProps) {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const canSchedule = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT" || user?.role === "VOLUNTEER"
-  const canManage = user?.role === "ADMIN" || user?.role === "FOUNDATION" || user?.role === "AGENT"
+  const [editingAppointment, setEditingAppointment] =
+    useState<PsychooncologyAppointment | null>(null)
+  const [completeIntent, setCompleteIntent] = useState(false)
+  const [noAnswerTarget, setNoAnswerTarget] =
+    useState<PsychooncologyAppointment | null>(null)
+  const [noAnswerNote, setNoAnswerNote] = useState("")
+
+  const canSchedule =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT" ||
+    user?.role === "VOLUNTEER"
+  const canManage =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT"
+
   const appointmentsQuery = useQuery({
-    queryKey: ["psychooncology-appointments"],
-    queryFn: () => psychooncologyAppointmentsApi.list({ patientId: pacienteId }),
+    queryKey: ["psychooncology-appointments", pacienteId],
+    queryFn: () =>
+      psychooncologyAppointmentsApi.list({ patientId: pacienteId }),
   })
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],
     queryFn: volunteersApi.list,
     staleTime: 300_000,
   })
+
+  const invalidate = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-appointments", pacienteId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-timeline", pacienteId],
+      }),
+    ])
+  }
+
   const createMutation = useMutation({
     mutationFn: psychooncologyAppointmentsApi.create,
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
-        queryClient.invalidateQueries({ queryKey: ["patient-timeline", pacienteId] }),
-      ])
+      await invalidate()
       toast.success("Cita de psicooncología agendada")
     },
-    onError: (error: Error) => toast.error("No se pudo agendar la cita", { description: error.message }),
+    onError: (error: Error) =>
+      toast.error("No se pudo agendar la cita", { description: error.message }),
   })
+
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "COMPLETED" | "NO_ANSWER" }) =>
-      psychooncologyAppointmentsApi.update(id, { status }),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input: Parameters<typeof psychooncologyAppointmentsApi.update>[1]
+    }) => psychooncologyAppointmentsApi.update(id, input),
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
-        queryClient.invalidateQueries({ queryKey: ["patient-timeline", pacienteId] }),
-      ])
+      await invalidate()
       toast.success("Cita actualizada")
     },
-    onError: (error: Error) => toast.error("No se pudo actualizar la cita", { description: error.message }),
+    onError: (error: Error) =>
+      toast.error("No se pudo actualizar la cita", { description: error.message }),
   })
+
   const cancelMutation = useMutation({
     mutationFn: psychooncologyAppointmentsApi.cancel,
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["psychooncology-appointments"] }),
-        queryClient.invalidateQueries({ queryKey: ["patient-timeline", pacienteId] }),
-      ])
+      await invalidate()
       toast.success("Cita cancelada")
     },
-    onError: (error: Error) => toast.error("No se pudo cancelar la cita", { description: error.message }),
+    onError: (error: Error) =>
+      toast.error("No se pudo cancelar la cita", { description: error.message }),
   })
 
-  const appointments = (appointmentsQuery.data ?? [])
-    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
-  const ownVolunteerId = user?.role === "VOLUNTEER"
-    ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)?.id
-    : undefined
+  const appointments = (appointmentsQuery.data ?? []).sort((a, b) =>
+    a.scheduledAt.localeCompare(b.scheduledAt),
+  )
+  const ownVolunteerId =
+    user?.role === "VOLUNTEER"
+      ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)?.id
+      : undefined
+
+  async function handleDialogSubmit(payload: SchedulePsychooncologySubmitInput) {
+    if (payload.mode === "create") {
+      await createMutation.mutateAsync(payload.input)
+      return
+    }
+    await updateMutation.mutateAsync({
+      id: payload.id,
+      input: payload.input,
+    })
+  }
+
+  function openEdit(appointment: PsychooncologyAppointment, complete = false) {
+    setEditingAppointment(appointment)
+    setCompleteIntent(complete)
+    setScheduleOpen(true)
+  }
+
+  function closeDialog() {
+    setScheduleOpen(false)
+    setEditingAppointment(null)
+    setCompleteIntent(false)
+  }
+
+  async function submitNoAnswer() {
+    if (!noAnswerTarget) return
+    if (!noAnswerNote.trim()) {
+      toast.error("Agrega una nota sobre el intento de contacto")
+      return
+    }
+    await updateMutation.mutateAsync({
+      id: noAnswerTarget.id,
+      input: {
+        status: "NO_ANSWER",
+        noAnswerNote: noAnswerNote.trim(),
+      },
+    })
+    setNoAnswerTarget(null)
+    setNoAnswerNote("")
+  }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold">Sesiones de psicooncología</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{appointments.length} cita{appointments.length === 1 ? "" : "s"} registradas</p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {appointments.length} cita{appointments.length === 1 ? "" : "s"}{" "}
+            registradas
+          </p>
         </div>
         {canSchedule && (
-          <Button size="sm" className="gap-1.5" onClick={() => setScheduleOpen(true)}>
-            <CalendarPlus className="size-4" />Agendar cita
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              setEditingAppointment(null)
+              setCompleteIntent(false)
+              setScheduleOpen(true)
+            }}
+          >
+            <CalendarPlus className="size-4" />
+            Agendar cita
           </Button>
         )}
       </div>
 
       {appointmentsQuery.isLoading ? (
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Cargando citas...</div>
+        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+          Cargando citas...
+        </div>
       ) : appointments.length === 0 ? (
         <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
-          <BrainCircuit className="size-8 text-muted-foreground/40" />
+          <BrainCircuit className="text-muted-foreground/40 size-8" />
           <p className="text-sm font-medium">Sin citas de psicooncología</p>
-          <p className="text-xs text-muted-foreground">Podés crear una cita independiente o vincularla desde un seguimiento.</p>
+          <p className="text-muted-foreground text-xs">
+            Podés crear una cita independiente o vincularla desde un seguimiento.
+          </p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
           {appointments.map((appointment) => {
-            const volunteer = volunteersQuery.data?.find((item) => item.id === appointment.volunteerId)
-            const isScheduled = appointment.status === "SCHEDULED"
+            const volunteer = volunteersQuery.data?.find(
+              (item) => item.id === appointment.volunteerId,
+            )
+            const volunteerName = volunteer
+              ? `${volunteer.firstName} ${volunteer.lastName}`
+              : "Psicooncólogo"
             const canMarkNoAnswer = user?.role === "VOLUNTEER" || canManage
 
             return (
-              <Card key={appointment.id} size="sm">
-                <CardContent className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      {appointment.modality === "CALL" ? <PhoneCall className="size-4 text-purple-600" /> : <Video className="size-4 text-purple-600" />}
-                      <div>
-                        <p className="font-medium">Sesión {appointment.sessionNumber}</p>
-                        <p className="text-xs text-muted-foreground">{volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "Psicooncólogo"}</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline">{statusLabels[appointment.status]}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{formatDate(appointment.scheduledAt)}</p>
-                  <p className="text-xs text-muted-foreground">{appointment.followUpId ? "Vinculada a un seguimiento" : "Cita independiente"}</p>
-                  {isScheduled && (
-                    <div className="flex flex-wrap gap-2">
-                      {canManage && <Button size="sm" onClick={() => updateMutation.mutate({ id: appointment.id, status: "COMPLETED" })}>Completar</Button>}
-                      {canMarkNoAnswer && <Button size="sm" variant="outline" onClick={() => updateMutation.mutate({ id: appointment.id, status: "NO_ANSWER" })}>No contestó</Button>}
-                      {canManage && <Button size="sm" variant="outline" onClick={() => cancelMutation.mutate(appointment.id)}>Cancelar</Button>}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <PsychoSessionCard
+                key={appointment.id}
+                appointment={appointment}
+                volunteerName={volunteerName}
+                canManage={canManage}
+                canMarkNoAnswer={canMarkNoAnswer}
+                onEdit={() => openEdit(appointment)}
+                onComplete={() => openEdit(appointment, true)}
+                onNoAnswer={() => {
+                  setNoAnswerTarget(appointment)
+                  setNoAnswerNote(appointment.noAnswerNote ?? "")
+                }}
+                onCancel={() => cancelMutation.mutate(appointment.id)}
+              />
             )
           })}
         </div>
@@ -147,14 +415,61 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
 
       <SchedulePsychooncologyDialog
         open={scheduleOpen}
-        onOpenChange={setScheduleOpen}
+        onOpenChange={(open) => (open ? setScheduleOpen(true) : closeDialog())}
         patientId={pacienteId}
         ownVolunteerId={ownVolunteerId}
-        isPending={createMutation.isPending}
-        onSubmit={async (input) => {
-          await createMutation.mutateAsync(input)
-        }}
+        appointment={editingAppointment}
+        completeIntent={completeIntent}
+        isPending={createMutation.isPending || updateMutation.isPending}
+        onSubmit={handleDialogSubmit}
       />
+
+      <Dialog
+        open={Boolean(noAnswerTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNoAnswerTarget(null)
+            setNoAnswerNote("")
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Marcar como no contestó</DialogTitle>
+            <DialogDescription>
+              Registra una nota del intento de contacto. Podrás reprogramar o
+              completar la sesión después.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="no-answer-note">Nota</Label>
+            <Textarea
+              id="no-answer-note"
+              value={noAnswerNote}
+              onChange={(event) => setNoAnswerNote(event.target.value)}
+              placeholder="Ej.: llamé dos veces, dejó mensaje en buzón..."
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNoAnswerTarget(null)
+                setNoAnswerNote("")
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={submitNoAnswer}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Guardando..." : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

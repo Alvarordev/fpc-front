@@ -5,8 +5,8 @@ export type User = components["schemas"]["UserResponseDto"]
 export type CreateUserInput = components["schemas"]["CreateUserDto"]
 
 export const usersApi = {
-  async list({ limit = 100, offset = 0 } = {}) {
-    const { data, response } = await api.GET("/users", { params: { query: { limit, offset } } })
+  async list({ limit = 100, offset = 0, role }: { limit?: number; offset?: number; role?: User["role"] } = {}) {
+    const { data, response } = await api.GET("/users", { params: { query: { limit, offset, role } } })
     if (!data) throw new Error(`No se pudieron obtener los usuarios (${response.status})`)
     return data
   },

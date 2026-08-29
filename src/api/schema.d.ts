@@ -3163,6 +3163,7 @@ export interface components {
             isAdditionalSession?: boolean;
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
+            schedulingNotes?: string;
         };
         PsychooncologyAppointmentResponseDto: {
             /** Format: uuid */
@@ -3194,6 +3195,10 @@ export interface components {
             additionalObservations: string | null;
             recommendations: string | null;
             referral: string | null;
+            schedulingNotes: string | null;
+            noAnswerNote: string | null;
+            satisfactionRating: number | null;
+            satisfactionComment: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3202,8 +3207,17 @@ export interface components {
         UpdatePsychooncologyAppointmentDto: {
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: uuid */
+            availabilityId?: string;
+            /** @enum {string} */
+            modality?: "CALL" | "VIDEO_CALL";
+            /** Format: uri */
+            zoomLink?: string | null;
             patientEmail?: string;
-            isAdditionalSession?: boolean;
+            schedulingNotes?: string | null;
+            noAnswerNote?: string | null;
+            satisfactionRating?: number | null;
+            satisfactionComment?: string | null;
             topicAddressed?: string;
             sessionDetails?: string;
             additionalObservations?: string;
@@ -7652,6 +7666,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                role?: "ADMIN" | "FOUNDATION" | "AGENT" | "VOLUNTEER";
             };
             header?: never;
             path?: never;

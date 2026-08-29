@@ -8,6 +8,7 @@ import { getVolunteerColumns } from "./volunteers-columns";
 import { AvailabilityCalendar } from "./availability-calendar";
 import { CalendarHeader } from "./calendar-header";
 import { CalendarLegend } from "./calendar-legend";
+import { SepaTeamTab } from "./sepa-team-tab";
 
 const NOW = new Date();
 
@@ -93,6 +94,7 @@ export function VolunteersContent() {
         <TabsList className="mb-4">
           <TabsTrigger value="calendario">Calendario</TabsTrigger>
           <TabsTrigger value="voluntarios">Voluntarios</TabsTrigger>
+          <TabsTrigger value="equipo-sepa">Equipo SEPA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="calendario" className="space-y-4">
@@ -120,6 +122,10 @@ export function VolunteersContent() {
             data={filtered}
             columns={getVolunteerColumns(slots)}
           />
+        </TabsContent>
+
+        <TabsContent value="equipo-sepa">
+          <SepaTeamTab />
         </TabsContent>
       </Tabs>
     </div>

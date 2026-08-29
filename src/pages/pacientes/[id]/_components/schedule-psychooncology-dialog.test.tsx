@@ -104,11 +104,15 @@ describe("SchedulePsychooncologyDialog", () => {
     await user.click(screen.getByRole("button", { name: "Agendar cita" }))
 
     expect(mocks.onSubmit).toHaveBeenCalledWith({
-      patientId: "patient-1",
-      availabilityId: "slot-1",
-      followUpId: undefined,
-      modality: "VIDEO_CALL",
-      zoomLink: "https://zoom.us/j/123456789",
+      mode: "create",
+      input: {
+        patientId: "patient-1",
+        availabilityId: "slot-1",
+        followUpId: undefined,
+        modality: "VIDEO_CALL",
+        zoomLink: "https://zoom.us/j/123456789",
+        schedulingNotes: undefined,
+      },
     })
   })
 })
