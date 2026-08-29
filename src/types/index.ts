@@ -75,6 +75,8 @@ export type MedicalConsultationStatus =
   | "SCHEDULED"
   | "ATTENDED"
 
+export type PsychooncologySupportModality = "CALL" | "VIDEO_CALL"
+
 export type AddressType = "PERMANENT" | "TEMPORARY"
 
 export type PeruDepartment =
@@ -160,6 +162,12 @@ export interface EnrollPatientDetailsRequest {
   hasConadisCard?: boolean | null
   knowsAboutFissal?: boolean | null
   isDeceased?: boolean | null
+}
+
+export interface PsychooncologySupportAssessmentRequest {
+  excessiveWorry?: boolean
+  emotionalDistressScore?: number
+  preferredModality?: PsychooncologySupportModality
 }
 
 export interface AddInsuranceRequest {

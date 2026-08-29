@@ -30,6 +30,10 @@ function draft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
     medicalAppointments: overrides.medicalAppointments ?? [],
     familyPreventionTalkInterests:
       overrides.familyPreventionTalkInterests ?? [],
+    psychooncologySupportAssessment: {
+      ...DEFAULT_DRAFT.psychooncologySupportAssessment,
+      ...overrides.psychooncologySupportAssessment,
+    },
     companion: { ...DEFAULT_DRAFT.companion, ...overrides.companion },
   }
 }
@@ -128,6 +132,11 @@ describe("step 8 Nest enrollment payload", () => {
             familyMemberEmail: "rosa@example.com",
           },
         ],
+        psychooncologySupportAssessment: {
+          excessiveWorry: true,
+          emotionalDistressScore: 7,
+          preferredModality: "VIDEO_CALL",
+        },
         enrollmentMetadata: {
           affiliationType: "PATIENT",
           comments: "Caso diagnóstico",
@@ -191,6 +200,11 @@ describe("step 8 Nest enrollment payload", () => {
     })
     expect(payload.details?.referredToSocialWorker).toBe(true)
     expect(payload.familyPreventionTalkInterests).toHaveLength(1)
+    expect(payload.psychooncologySupportAssessment).toEqual({
+      excessiveWorry: true,
+      emotionalDistressScore: 7,
+      preferredModality: "VIDEO_CALL",
+    })
     expect(payload.medicalAppointments?.[0]).toMatchObject({
       nextAppointmentDate: "2026-07-15",
       nextAppointmentSpecialty: "Radioterapia",
@@ -295,6 +309,11 @@ describe("step 8 Nest enrollment payload", () => {
           cantAffiliateReason: "Documento pendiente",
         },
         enrollmentMetadata: { affiliationType: "FAMILY" },
+        psychooncologySupportAssessment: {
+          excessiveWorry: true,
+          emotionalDistressScore: 9,
+          preferredModality: "CALL",
+        },
         companion: {
           fullName: "Ana Test",
           primaryPhone: "999000333",
@@ -323,6 +342,7 @@ describe("step 8 Nest enrollment payload", () => {
       symptomDuration: { valueMin: 2, valueMax: 4, unit: "MONTH" },
       symptomFrequency: { valueMin: 1, unit: "WEEK" },
     })
+    expect(payload.psychooncologySupportAssessment).toBeUndefined()
   })
 
   it("maps the new clinical fields and omits cancer treatment status metadata", () => {

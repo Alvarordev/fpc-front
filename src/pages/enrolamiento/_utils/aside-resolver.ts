@@ -60,6 +60,15 @@ function step7Script(
   const parts: string[] = [baseScript]
   if (medAppointmentGuidance) parts.push(medAppointmentGuidance)
 
+  if (categoriaClinica === "CANCER_DIAGNOSIS") {
+    const isPatientEnrollment =
+      draft.enrollmentMetadata.affiliationType === "PATIENT"
+    const psychooncologyScript = isPatientEnrollment
+      ? "<strong>PSICOONCOLOGÍA</strong>\n\nComéntele al paciente que la Fundación Peruana de Cáncer ofrece cuatro sesiones individuales de soporte emocional. Cada consulta tiene una duración de entre 30 y 45 minutos. Si requiere sesiones adicionales, se continuará según la indicación del profesional de psicooncología y la autorización de la Fundación; el costo social se encuentra en evaluación.\n\nTambién puede participar de forma ilimitada en las sesiones grupales de la alianza Desde el Jardín de los Cerezos. El asesor confirmará la fecha y hora de la consulta en un plazo máximo de 48 horas, según la solicitud y necesidad del paciente. Lo óptimo es que transcurran de 5 a 7 días calendario entre las sesiones individuales.\n\nSi el paciente es pediátrico, los padres decidirán quién lo acompañará a las consultas. También podrá atenderse individualmente con un psicooncólogo pediátrico, según la indicación del profesional."
+      : "<strong>PSICOONCOLOGÍA</strong>\n\nEl soporte emocional individual está dirigido al paciente. Para la familia se ofrece la participación en grupos de acompañamiento mutuo; el Grupo Fortaleza se encuentra pendiente de reapertura.\n\nEl asesor confirmará la fecha y hora de la consulta de psicooncología en un plazo máximo de 48 horas, según la solicitud y necesidad del paciente. Si el paciente es pediátrico, los padres decidirán quién lo acompañará a las consultas y el profesional determinará si corresponde una atención individual con un psicooncólogo pediátrico."
+    parts.push(psychooncologyScript)
+  }
+
   if (hasMedicalReport !== undefined && hasMedicalReport !== null) {
     const informeMedico = hasMedicalReport
       ? "<strong>INFORME MÉDICO</strong>\n\nSI TIENE INFORME MÉDICO: De acuerdo, le pedimos que por favor nos pueda enviar su informe médico a nuestro número de WhatsApp 923514021.\n\nNO TIENE INFORME MÉDICO: Le recomendamos que pueda acercarse al establecimiento de salud en donde se atiende para que pueda solicitar su informe médico. En cuanto lo tenga disponible, por favor nos lo hace llegar vía WhatsApp o correo electrónico sepa@fpc.pe"

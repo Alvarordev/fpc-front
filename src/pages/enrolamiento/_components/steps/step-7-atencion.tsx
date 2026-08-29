@@ -23,6 +23,7 @@ import {
   Activity,
   Stethoscope,
   HeartPulse,
+  HeartHandshake,
   Building2,
   Plus,
   Users,
@@ -201,6 +202,11 @@ export function Step7Atencion() {
   const sis = draft.sisAffiliation
   const details = draft.details
   const meta = draft.enrollmentMetadata
+  const psychooncologySupport = draft.psychooncologySupportAssessment
+  const hasPsychooncologySupportResponse =
+    typeof psychooncologySupport.excessiveWorry === "boolean" ||
+    psychooncologySupport.emotionalDistressScore !== undefined ||
+    psychooncologySupport.preferredModality !== undefined
   const seguro = draft.insurance.insuranceType
   const tieneSeguroReal = seguro && seguro !== "NONE"
   const esSignos = categoriaClinica === "SIGNS_AND_SYMPTOMS"
@@ -2257,6 +2263,150 @@ export function Step7Atencion() {
             </Select>
           </div>
         </div>
+        {esDx && meta.affiliationType === "PATIENT" && (
+          <div className="border-border/60 bg-muted/20 flex flex-col gap-5 rounded-xl border p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+                  <HeartHandshake className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Psicooncología</p>
+                  <p className="text-muted-foreground text-xs">
+                    Preguntas opcionales para conocer las necesidades de soporte
+                    emocional del paciente.
+                  </p>
+                </div>
+              </div>
+              {hasPsychooncologySupportResponse && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground shrink-0"
+                  onClick={() =>
+                    updateDraft({ psychooncologySupportAssessment: {} })
+                  }
+                >
+                  Limpiar
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                ¿En las últimas 2 semanas ha experimentado preocupaciones
+                excesivas sobre su enfermedad?
+              </Label>
+              <Select
+                items={YES_NO_OPTIONS}
+                value={
+                  psychooncologySupport.excessiveWorry === true
+                    ? "Sí"
+                    : psychooncologySupport.excessiveWorry === false
+                      ? "No"
+                      : ""
+                }
+                onValueChange={(v) =>
+                  updateDraft({
+                    psychooncologySupportAssessment: {
+                      ...psychooncologySupport,
+                      excessiveWorry:
+                        v === "Sí" ? true : v === "No" ? false : undefined,
+                    },
+                  })
+                }
+              >
+                <SelectTrigger className={sc}>
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sí">Sí</SelectItem>
+                  <SelectItem value="No">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="space-y-1">
+                <Label className={fl}>Termómetro de Malestar Emocional</Label>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Del 1 al 10, indique cuál es su malestar emocional, siendo 1
+                  la menor puntuación y 10 la mayor.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 10 }, (_, index) => index + 1).map(
+                  (score) => (
+                    <Button
+                      key={score}
+                      type="button"
+                      size="sm"
+                      variant={
+                        psychooncologySupport.emotionalDistressScore === score
+                          ? "default"
+                          : "outline"
+                      }
+                      className="size-9 p-0"
+                      aria-label={`Nivel de malestar ${score} de 10`}
+                      aria-pressed={
+                        psychooncologySupport.emotionalDistressScore === score
+                      }
+                      onClick={() =>
+                        updateDraft({
+                          psychooncologySupportAssessment: {
+                            ...psychooncologySupport,
+                            emotionalDistressScore:
+                              psychooncologySupport.emotionalDistressScore ===
+                              score
+                                ? undefined
+                                : score,
+                          },
+                        })
+                      }
+                    >
+                      {score}
+                    </Button>
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Para la consulta de soporte emocional, ¿le gustaría que sea por
+                llamada telefónica o por videollamada (WhatsApp/Zoom/Meet)?
+              </Label>
+              <Select
+                items={[
+                  { value: "CALL", label: "Llamada telefónica" },
+                  { value: "VIDEO_CALL", label: "Videollamada" },
+                ]}
+                value={psychooncologySupport.preferredModality ?? ""}
+                onValueChange={(preferredModality) =>
+                  updateDraft({
+                    psychooncologySupportAssessment: {
+                      ...psychooncologySupport,
+                      preferredModality:
+                        preferredModality === "CALL" ||
+                        preferredModality === "VIDEO_CALL"
+                          ? preferredModality
+                          : undefined,
+                    },
+                  })
+                }
+              >
+                <SelectTrigger className={sc}>
+                  <SelectValue placeholder="Seleccionar modalidad..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CALL">Llamada telefónica</SelectItem>
+                  <SelectItem value="VIDEO_CALL">Videollamada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <Label className={fl}>
             ¿Familiares interesados en charlas de prevención del cáncer?

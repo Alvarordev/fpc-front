@@ -378,6 +378,13 @@ export function buildEnrollmentPayload({
       familyMemberPhone: value(item.familyMemberPhone),
       familyMemberEmail: value(item.familyMemberEmail),
     }))
+  const psychooncologySupport = draft.psychooncologySupportAssessment
+  const hasPsychooncologySupportResponse =
+    meta.affiliationType === "PATIENT" &&
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    (typeof psychooncologySupport.excessiveWorry === "boolean" ||
+      psychooncologySupport.emotionalDistressScore !== undefined ||
+      psychooncologySupport.preferredModality !== undefined)
   const secondaryContactSource = draft.secondaryContactEnabled
     ? (draft.secondaryContactSource ??
       (callerIsComplete && primaryContactSource !== "CALLER"
@@ -618,6 +625,16 @@ export function buildEnrollmentPayload({
     caseComments: comments,
     callStartedAt: localDateTime(today, meta.startTime),
     callEndedAt: localDateTime(today, meta.endTime),
+    ...(hasPsychooncologySupportResponse
+      ? {
+          psychooncologySupportAssessment: {
+            excessiveWorry: psychooncologySupport.excessiveWorry,
+            emotionalDistressScore:
+              psychooncologySupport.emotionalDistressScore,
+            preferredModality: psychooncologySupport.preferredModality,
+          },
+        }
+      : {}),
     ...(talks.length ? { familyPreventionTalkInterests: talks } : {}),
   }
 }

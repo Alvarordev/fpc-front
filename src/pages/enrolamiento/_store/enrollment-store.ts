@@ -14,6 +14,7 @@ import type {
   EnrollmentMetadataRequest,
   PatientHealthPhase,
   EnrollmentContactSource,
+  PsychooncologySupportAssessmentRequest,
 } from "@/types"
 import { normalizeDuration } from "@/types/duration"
 
@@ -80,6 +81,7 @@ export interface EnrollmentDraft {
   addresses: EnrollmentAddressRequest[]
   medicalAppointments: AddMedicalAppointmentRequest[]
   familyPreventionTalkInterests: FamilyPreventionTalkInterestRequest[]
+  psychooncologySupportAssessment: PsychooncologySupportAssessmentRequest
   sisAffiliation: AddSisAffiliationRequest
   companion: CompanionDraft
   primaryContactSource?: EnrollmentContactSource
@@ -159,6 +161,7 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   addresses: [],
   medicalAppointments: [],
   familyPreventionTalkInterests: [],
+  psychooncologySupportAssessment: {},
   sisAffiliation: { canAffiliate: true },
   companion: { fullName: "", primaryPhone: "" },
   primaryContactSource: undefined,
@@ -325,13 +328,13 @@ function normalizeDraft(
 
   const hasLegacyTreatmentData = Boolean(
     legacyTreatment &&
-      Object.entries(legacyTreatment).some(([key, value]) => {
-        if (key === "diagnosisId" || key === "isCurrent") return false
-        if (value == null) return false
-        if (typeof value === "string") return value.trim().length > 0
-        if (Array.isArray(value)) return value.length > 0
-        return true
-      }),
+    Object.entries(legacyTreatment).some(([key, value]) => {
+      if (key === "diagnosisId" || key === "isCurrent") return false
+      if (value == null) return false
+      if (typeof value === "string") return value.trim().length > 0
+      if (Array.isArray(value)) return value.length > 0
+      return true
+    }),
   )
   const treatmentInputs = Array.isArray(raw?.treatments)
     ? raw.treatments
@@ -395,6 +398,7 @@ function normalizeDraft(
     addresses: migratedAddresses,
     medicalAppointments: raw?.medicalAppointments ?? [],
     familyPreventionTalkInterests: raw?.familyPreventionTalkInterests ?? [],
+    psychooncologySupportAssessment: raw?.psychooncologySupportAssessment ?? {},
     sisAffiliation: {
       ...DEFAULT_DRAFT.sisAffiliation,
       ...raw?.sisAffiliation,
