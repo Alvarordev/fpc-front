@@ -32,6 +32,8 @@ import type {
   DashboardDemographics,
   DashboardEpidemiology,
 } from "@/api/dashboard"
+import { RegionalIndicatorsMap } from "./_components/regional-indicators-map"
+import { createDepartmentIndicatorMap } from "./_components/regional-indicators"
 import { useDashboardData } from "./_hooks/use-dashboard-data"
 import { useDashboardIndicators } from "./_hooks/use-dashboard-indicators"
 
@@ -268,16 +270,11 @@ function LegacyDashboard({
           </CardContent>
         </Card>
       </section>
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section>
         <TableCard
           title="Hospitales con más pacientes"
           header="Hospital"
           data={data.hospitals}
-        />
-        <TableCard
-          title="Regiones con mayor movimiento"
-          header="Región"
-          data={data.regions}
         />
       </section>
     </>
@@ -293,11 +290,21 @@ function DemographicsSection({ data }: { data: DashboardDemographics }) {
         <IndicatorCard title="Sexo" distribution={data.gender} />
         <IndicatorCard title="Seguro" distribution={data.insuranceType} />
       </div>
-      <div className="grid gap-6 xl:grid-cols-3">
-        <IndicatorCard
-          title="Departamento de residencia"
-          distribution={data.department}
-        />
+      <RegionalIndicatorsMap
+        indicators={[
+          {
+            id: "residence",
+            label: "Pacientes por residencia",
+            description:
+              "La distribución usa el departamento de residencia registrado. Los pacientes sin una residencia conocida se muestran en la cobertura y no se asignan a otra ubicación.",
+            data: createDepartmentIndicatorMap(data.department.items),
+            known: data.department.known,
+            unknown: data.department.unknown,
+            coveragePct: data.department.coveragePct,
+          },
+        ]}
+      />
+      <div className="grid gap-6 xl:grid-cols-2">
         <IndicatorCard
           title="Provincia de residencia"
           distribution={data.province}
