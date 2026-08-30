@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { useCreateUser } from "../_hooks/use-users"
 import { agentsApi } from "@/api/agents"
+import { foundationsApi } from "@/api/foundations"
 import { volunteersApi } from "@/api/volunteers"
 import type { UserRole } from "@/types"
 
@@ -44,7 +45,7 @@ const schema = z
     completedDesignThinkingModule: z.boolean(),
   })
   .superRefine((data, ctx) => {
-    if (data.role !== "VOLUNTEER" && data.role !== "AGENT") return
+    if (data.role !== "VOLUNTEER" && data.role !== "AGENT" && data.role !== "FOUNDATION") return
 
     if (!data.firstName || data.firstName.trim().length < 2) {
       ctx.addIssue({
@@ -118,6 +119,14 @@ export function CreateUserDialog({
       queryClient.invalidateQueries({ queryKey: ["agents"] })
     },
   })
+  const createFoundation = useMutation({
+    mutationFn: foundationsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["foundations"] })
+      queryClient.invalidateQueries({ queryKey: ["users", "foundation-team"] })
+    },
+  })
   const createVolunteer = useMutation({
     mutationFn: volunteersApi.create,
     onSuccess: () => {
@@ -125,7 +134,6 @@ export function CreateUserDialog({
       queryClient.invalidateQueries({ queryKey: ["volunteers"] })
     },
   })
-
   const {
     register,
     handleSubmit,
@@ -155,7 +163,10 @@ export function CreateUserDialog({
 
   const selectedRole = watch("role")
   const isPending =
-    createUser.isPending || createAgent.isPending || createVolunteer.isPending
+    createUser.isPending ||
+    createAgent.isPending ||
+    createFoundation.isPending ||
+    createVolunteer.isPending
 
   function handleClose() {
     onOpenChange(false)
@@ -191,6 +202,17 @@ export function CreateUserDialog({
         additionalComments: values.additionalComments?.trim() || undefined,
         completedSustainabilityModule: values.completedSustainabilityModule,
         completedDesignThinkingModule: values.completedDesignThinkingModule,
+      })
+      handleClose()
+      return
+    }
+    if (values.role === "FOUNDATION") {
+      await createFoundation.mutateAsync({
+        email: values.email,
+        password: values.password,
+        firstName: values.firstName!,
+        lastName: values.lastName!,
+        phone: values.phone!,
       })
       handleClose()
       return
@@ -261,7 +283,9 @@ export function CreateUserDialog({
             )}
           </div>
 
-          {(selectedRole === "VOLUNTEER" || selectedRole === "AGENT") && (
+          {(selectedRole === "VOLUNTEER" ||
+            selectedRole === "AGENT" ||
+            selectedRole === "FOUNDATION") && (
             <>
               <div className="mt-4 border-t pt-4">
                 <p className="text-muted-foreground mb-3 text-xs font-medium">
@@ -432,6 +456,7 @@ export function CreateUserDialog({
 
         {(createUser.isError ||
           createAgent.isError ||
+          createFoundation.isError ||
           createVolunteer.isError ||
           stepError) && (
           <div className="border-destructive/20 bg-destructive/5 mt-2 rounded-xl border p-4">
@@ -439,6 +464,7 @@ export function CreateUserDialog({
               {stepError ??
                 (createUser.error as Error)?.message ??
                 (createAgent.error as Error)?.message ??
+                (createFoundation.error as Error)?.message ??
                 (createVolunteer.error as Error)?.message ??
                 "Error al crear usuario"}
             </p>

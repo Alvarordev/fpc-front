@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Building2 } from "lucide-react"
-import { usersApi, type User } from "@/api/users"
+import { foundationsApi, type Foundation } from "@/api/foundations"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 
@@ -13,13 +13,14 @@ function formatDate(value: string) {
   })
 }
 
+function fullName(member: Foundation) {
+  return `${member.firstName} ${member.lastName}`.trim()
+}
+
 export function SepaTeamTab() {
   const teamQuery = useQuery({
-    queryKey: ["users", "foundation-team"],
-    queryFn: async () => {
-      const page = await usersApi.list({ role: "FOUNDATION", limit: 100 })
-      return page.data
-    },
+    queryKey: ["foundations"],
+    queryFn: foundationsApi.list,
     staleTime: 60_000,
   })
 
@@ -33,26 +34,43 @@ export function SepaTeamTab() {
     )
   }
 
-  const columns: ColumnDef<User>[] = [
+  const columns: ColumnDef<Foundation>[] = [
     {
-      id: "profile",
-      header: "Perfil FPC",
-      cell: () => (
-        <div className="flex items-center gap-3">
-          <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-            FPC
-          </span>
-          <span className="text-muted-foreground text-sm italic">
-            Sin datos de perfil
-          </span>
-        </div>
-      ),
+      id: "name",
+      header: "Nombre",
+      accessorFn: (member) => fullName(member),
+      cell: ({ row }) => {
+        const member = row.original
+        const initials = `${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}`
+          .toUpperCase()
+          .trim()
+
+        return (
+          <div className="flex items-center gap-3">
+            <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {initials || "FPC"}
+            </span>
+            <span className="text-foreground text-sm font-medium">
+              {fullName(member)}
+            </span>
+          </div>
+        )
+      },
     },
     {
       accessorKey: "email",
       header: "Correo electrónico",
       cell: ({ getValue }) => (
         <span className="text-foreground text-sm">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Celular",
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground text-sm">
+          {getValue() as string}
+        </span>
       ),
     },
     {
