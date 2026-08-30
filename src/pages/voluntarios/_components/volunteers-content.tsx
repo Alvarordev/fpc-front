@@ -1,133 +1,196 @@
-import { useMemo, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthStore } from "@/store/auth-store";
-import { useVolunteers, useVolunteerCalendar } from "../_hooks/use-volunteers";
-import { VolunteersToolbar } from "./volunteers-toolbar";
-import { VolunteersTable } from "./volunteers-table";
-import { getVolunteerColumns } from "./volunteers-columns";
-import { AvailabilityCalendar } from "./availability-calendar";
-import { CalendarHeader } from "./calendar-header";
-import { CalendarLegend } from "./calendar-legend";
-import { SepaTeamTab } from "./sepa-team-tab";
+import { useMemo, useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuthStore } from "@/store/auth-store"
+import { VolunteerCommitmentBanner } from "@/components/volunteer-commitment-banner"
+import { useVolunteers, useVolunteerCalendar } from "../_hooks/use-volunteers"
+import { VolunteersToolbar } from "./volunteers-toolbar"
+import { VolunteersTable } from "./volunteers-table"
+import { getVolunteerColumns } from "./volunteers-columns"
+import { AvailabilityCalendar } from "./availability-calendar"
+import { CalendarHeader } from "./calendar-header"
+import { CalendarLegend } from "./calendar-legend"
+import { SepaTeamTab } from "./sepa-team-tab"
+import { VolunteerProfileDialog } from "./volunteer-profile-dialog"
 
-const NOW = new Date();
+const NOW = new Date()
 
 export function VolunteersContent() {
-  const role = useAuthStore((s) => s.user?.role);
-  const isReadOnly = role === "VOLUNTEER";
+  const user = useAuthStore((s) => s.user)
+  const role = user?.role
+  const isReadOnly = role === "VOLUNTEER"
 
-  const [volunteerId, setVolunteerId] = useState("all");
-  const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
-  const [year, setYear] = useState(NOW.getFullYear());
-  const [month, setMonth] = useState(NOW.getMonth());
+  const [volunteerId, setVolunteerId] = useState("all")
+  const [profileVolunteerId, setProfileVolunteerId] = useState<string | null>(
+    null,
+  )
+  const [activeFilter, setActiveFilter] = useState<boolean | null>(null)
+  const [year, setYear] = useState(NOW.getFullYear())
+  const [month, setMonth] = useState(NOW.getMonth())
 
-  const range = useMemo(() => ({ from: new Date(year, month, 1).toISOString().slice(0, 10), to: new Date(year, month + 1, 0).toISOString().slice(0, 10) }), [year, month]);
-  const { data: volunteers = [] } = useVolunteers();
-  const { data: calendar } = useVolunteerCalendar(range.from, range.to);
-  const slots = useMemo(() => (calendar?.volunteers ?? []).flatMap((volunteer) => volunteer.availabilitySlots.map((slot) => ({ ...slot, volunteerId: volunteer.id }))), [calendar]);
+  const range = useMemo(
+    () => ({
+      from: new Date(year, month, 1).toISOString().slice(0, 10),
+      to: new Date(year, month + 1, 0).toISOString().slice(0, 10),
+    }),
+    [year, month],
+  )
+  const { data: volunteers = [] } = useVolunteers()
+  const { data: calendar } = useVolunteerCalendar(
+    range.from,
+    range.to,
+    !isReadOnly,
+  )
+  const visibleVolunteers = isReadOnly
+    ? volunteers.filter((volunteer) => volunteer.userId === user?.id)
+    : volunteers
+  const profileVolunteer =
+    visibleVolunteers.find(
+      (volunteer) => volunteer.id === profileVolunteerId,
+    ) ?? null
+  const slots = useMemo(
+    () =>
+      (calendar?.volunteers ?? []).flatMap((volunteer) =>
+        volunteer.availabilitySlots.map((slot) => ({
+          ...slot,
+          volunteerId: volunteer.id,
+        })),
+      ),
+    [calendar],
+  )
 
   const patientNameByAvailabilityId = useMemo(() => {
-    const result = new Map<string, string>();
+    const result = new Map<string, string>()
     for (const volunteer of calendar?.volunteers ?? []) {
       for (const appointment of volunteer.appointments) {
-        if (appointment.status === "SCHEDULED") result.set(appointment.availabilityId, appointment.patientName);
+        if (appointment.status === "SCHEDULED")
+          result.set(appointment.availabilityId, appointment.patientName)
       }
     }
-    return result;
-  }, [calendar]);
+    return result
+  }, [calendar])
 
-  const filtered = volunteers.filter((v) => {
-    const matchesVolunteer = volunteerId === "all" || v.id === volunteerId;
-    const matchesActive =
-      activeFilter === null || v.isActive === activeFilter;
-    return matchesVolunteer && matchesActive;
-  });
+  const filtered = visibleVolunteers.filter((v) => {
+    const matchesVolunteer = volunteerId === "all" || v.id === volunteerId
+    const matchesActive = activeFilter === null || v.isActive === activeFilter
+    return matchesVolunteer && matchesActive
+  })
 
   const highlightedIds =
     volunteerId !== "all" || activeFilter !== null
       ? filtered.map((v) => v.id)
-      : [];
+      : []
 
   function prevMonth() {
     if (month === 0) {
-      setYear((y) => y - 1);
-      setMonth(11);
+      setYear((y) => y - 1)
+      setMonth(11)
     } else {
-      setMonth((m) => m - 1);
+      setMonth((m) => m - 1)
     }
   }
 
   function nextMonth() {
     if (month === 11) {
-      setYear((y) => y + 1);
-      setMonth(0);
+      setYear((y) => y + 1)
+      setMonth(0)
     } else {
-      setMonth((m) => m + 1);
+      setMonth((m) => m + 1)
     }
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-foreground text-xl font-semibold tracking-tight">
           Voluntarios
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {volunteers.length} voluntarios registrados
+        <p className="text-muted-foreground mt-0.5 text-sm">
+          {visibleVolunteers.length} voluntario
+          {visibleVolunteers.length === 1 ? "" : "s"} registrado
+          {visibleVolunteers.length === 1 ? "" : "s"}
         </p>
         {isReadOnly && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-xs">
             Vista de solo lectura.
           </p>
         )}
       </div>
 
-      <VolunteersToolbar
-        volunteerId={volunteerId}
-        onVolunteerIdChange={setVolunteerId}
-        volunteers={volunteers}
-        activeFilter={activeFilter}
-        onActiveFilterChange={setActiveFilter}
-      />
+      {role !== "VOLUNTEER" && (
+        <VolunteerCommitmentBanner volunteers={volunteers} />
+      )}
 
-      <Tabs defaultValue="calendario">
+      {!isReadOnly && (
+        <VolunteersToolbar
+          volunteerId={volunteerId}
+          onVolunteerIdChange={setVolunteerId}
+          volunteers={volunteers}
+          activeFilter={activeFilter}
+          onActiveFilterChange={setActiveFilter}
+        />
+      )}
+
+      <Tabs defaultValue={isReadOnly ? "voluntarios" : "calendario"}>
         <TabsList className="mb-4">
-          <TabsTrigger value="calendario">Calendario</TabsTrigger>
+          {!isReadOnly && (
+            <TabsTrigger value="calendario">Calendario</TabsTrigger>
+          )}
           <TabsTrigger value="voluntarios">Voluntarios</TabsTrigger>
-          <TabsTrigger value="equipo-sepa">Equipo SEPA</TabsTrigger>
+          {!isReadOnly && (
+            <TabsTrigger value="equipo-sepa">Equipo SEPA</TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="calendario" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <CalendarHeader
+        {!isReadOnly && (
+          <TabsContent value="calendario" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <CalendarHeader
+                year={year}
+                month={month}
+                onPrev={prevMonth}
+                onNext={nextMonth}
+              />
+              <CalendarLegend />
+            </div>
+            <AvailabilityCalendar
               year={year}
               month={month}
-              onPrev={prevMonth}
-              onNext={nextMonth}
+              slots={slots}
+              volunteers={filtered}
+              highlightedIds={highlightedIds}
+              patientNameByAvailabilityId={patientNameByAvailabilityId}
             />
-            <CalendarLegend />
-          </div>
-          <AvailabilityCalendar
-            year={year}
-            month={month}
-            slots={slots}
-            volunteers={filtered}
-            highlightedIds={highlightedIds}
-            patientNameByAvailabilityId={patientNameByAvailabilityId}
-          />
-        </TabsContent>
+          </TabsContent>
+        )}
 
         <TabsContent value="voluntarios">
           <VolunteersTable
             data={filtered}
             columns={getVolunteerColumns(slots)}
+            onVolunteerClick={(volunteer) =>
+              setProfileVolunteerId(volunteer.id)
+            }
           />
         </TabsContent>
 
-        <TabsContent value="equipo-sepa">
-          <SepaTeamTab />
-        </TabsContent>
+        {!isReadOnly && (
+          <TabsContent value="equipo-sepa">
+            <SepaTeamTab />
+          </TabsContent>
+        )}
       </Tabs>
+
+      {profileVolunteer && (
+        <VolunteerProfileDialog
+          key={profileVolunteer.id}
+          volunteer={profileVolunteer}
+          canEdit={role === "ADMIN"}
+          open
+          onOpenChange={(open) => {
+            if (!open) setProfileVolunteerId(null)
+          }}
+        />
+      )}
     </div>
-  );
+  )
 }

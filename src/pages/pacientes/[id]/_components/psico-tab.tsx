@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuthStore } from "@/store/auth-store"
 import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
 import {
@@ -51,6 +52,8 @@ const statusStyles: Record<string, string> = {
   COMPLETED: "border-emerald-200 bg-emerald-50/60 hover:border-emerald-300",
   CANCELLED: "border-border bg-muted/40 hover:border-muted-foreground/30",
 }
+
+type SessionBeneficiaryTab = "PATIENT" | "COMPANION"
 
 function formatScheduledParts(date: string) {
   const value = new Date(date)
@@ -84,7 +87,7 @@ function PsychoSessionCard({
   appointment,
   volunteerName,
   canManage,
-  canMarkNoAnswer,
+  canRecordResult,
   onEdit,
   onComplete,
   onNoAnswer,
@@ -93,7 +96,7 @@ function PsychoSessionCard({
   appointment: PsychooncologyAppointment
   volunteerName: string
   canManage: boolean
-  canMarkNoAnswer: boolean
+  canRecordResult: boolean
   onEdit: () => void
   onComplete: () => void
   onNoAnswer: () => void
@@ -131,18 +134,27 @@ function PsychoSessionCard({
                   Sesión {appointment.sessionNumber}
                 </p>
                 <p className="text-muted-foreground text-xs">{volunteerName}</p>
+                {appointment.beneficiaryType === "COMPANION" && (
+                  <p className="text-muted-foreground text-xs">
+                    Para: {appointment.companionFullName ?? "Acompañante"}
+                  </p>
+                )}
               </div>
-              <Badge variant="outline">{statusLabels[appointment.status]}</Badge>
+              <Badge variant="outline">
+                {statusLabels[appointment.status]}
+              </Badge>
             </div>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 shadow-2xs transition-colors hover:bg-red-600 hover:text-white"
-              title="Editar sesión"
-            >
-              <Edit className="size-3.5" />
-              <span>Editar</span>
-            </button>
+            {(canManage || canRecordResult) && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 shadow-2xs transition-colors hover:bg-red-600 hover:text-white"
+                title="Editar sesión"
+              >
+                <Edit className="size-3.5" />
+                <span>Editar</span>
+              </button>
+            )}
           </div>
 
           <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm">
@@ -158,7 +170,9 @@ function PsychoSessionCard({
 
           {appointment.schedulingNotes && (
             <p className="text-muted-foreground mt-3 line-clamp-2 text-sm leading-relaxed">
-              <span className="font-medium text-foreground/80">Derivación: </span>
+              <span className="text-foreground/80 font-medium">
+                Derivación:{" "}
+              </span>
               {appointment.schedulingNotes}
             </p>
           )}
@@ -171,7 +185,8 @@ function PsychoSessionCard({
           )}
 
           {appointment.status === "COMPLETED" &&
-            (appointment.satisfactionRating || appointment.satisfactionComment) && (
+            (appointment.satisfactionRating ||
+              appointment.satisfactionComment) && (
               <div className="mt-3 rounded-xl border border-emerald-200/80 bg-white/60 p-3 text-sm">
                 {appointment.satisfactionRating && (
                   <p className="font-medium text-emerald-900">
@@ -194,17 +209,17 @@ function PsychoSessionCard({
 
           {isActionable && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {(canManage || canMarkNoAnswer) && (
+              {canRecordResult && (
                 <Button size="sm" onClick={onComplete}>
                   Completar
                 </Button>
               )}
-              {canMarkNoAnswer && isScheduled && (
+              {canRecordResult && isScheduled && (
                 <Button size="sm" variant="outline" onClick={onNoAnswer}>
                   No contestó
                 </Button>
               )}
-              {canManage && isScheduled && (
+              {canRecordResult && isScheduled && (
                 <Button size="sm" variant="outline" onClick={onCancel}>
                   Cancelar
                 </Button>
@@ -227,6 +242,8 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
   const [noAnswerTarget, setNoAnswerTarget] =
     useState<PsychooncologyAppointment | null>(null)
   const [noAnswerNote, setNoAnswerNote] = useState("")
+  const [beneficiaryTab, setBeneficiaryTab] =
+    useState<SessionBeneficiaryTab>("PATIENT")
 
   const canSchedule =
     user?.role === "ADMIN" ||
@@ -283,7 +300,9 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
       toast.success("Cita actualizada")
     },
     onError: (error: Error) =>
-      toast.error("No se pudo actualizar la cita", { description: error.message }),
+      toast.error("No se pudo actualizar la cita", {
+        description: error.message,
+      }),
   })
 
   const cancelMutation = useMutation({
@@ -293,18 +312,32 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
       toast.success("Cita cancelada")
     },
     onError: (error: Error) =>
-      toast.error("No se pudo cancelar la cita", { description: error.message }),
+      toast.error("No se pudo cancelar la cita", {
+        description: error.message,
+      }),
   })
 
-  const appointments = (appointmentsQuery.data ?? []).sort((a, b) =>
-    a.scheduledAt.localeCompare(b.scheduledAt),
+  const appointments = [...(appointmentsQuery.data ?? [])].sort((a, b) => {
+    const scheduledDifference = b.scheduledAt.localeCompare(a.scheduledAt)
+    return scheduledDifference || b.id.localeCompare(a.id)
+  })
+  const patientAppointments = appointments.filter(
+    (appointment) => (appointment.beneficiaryType ?? "PATIENT") === "PATIENT",
   )
+  const companionAppointments = appointments.filter(
+    (appointment) => (appointment.beneficiaryType ?? "PATIENT") === "COMPANION",
+  )
+  const visibleAppointments =
+    beneficiaryTab === "PATIENT" ? patientAppointments : companionAppointments
   const ownVolunteerId =
     user?.role === "VOLUNTEER"
-      ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)?.id
+      ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)
+          ?.id
       : undefined
 
-  async function handleDialogSubmit(payload: SchedulePsychooncologySubmitInput) {
+  async function handleDialogSubmit(
+    payload: SchedulePsychooncologySubmitInput,
+  ) {
     if (payload.mode === "create") {
       await createMutation.mutateAsync(payload.input)
       return
@@ -371,49 +404,82 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
       </div>
 
       {appointmentsQuery.isLoading ? (
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
           Cargando citas...
         </div>
-      ) : appointments.length === 0 ? (
-        <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
-          <BrainCircuit className="text-muted-foreground/40 size-8" />
-          <p className="text-sm font-medium">Sin citas de psicooncología</p>
-          <p className="text-muted-foreground text-xs">
-            Podés crear una cita independiente o vincularla desde un seguimiento.
-          </p>
-        </div>
       ) : (
-        <div className="space-y-3">
-          {appointments.map((appointment) => {
-            const volunteer = volunteersQuery.data?.find(
-              (item) => item.id === appointment.volunteerId,
-            )
-            const volunteerName = volunteer
-              ? `${volunteer.firstName} ${volunteer.lastName}`
-              : "Psicooncólogo"
-            const canMarkNoAnswer = user?.role === "VOLUNTEER" || canManage
+        <Tabs
+          value={beneficiaryTab}
+          onValueChange={(value) =>
+            setBeneficiaryTab(value as SessionBeneficiaryTab)
+          }
+        >
+          <TabsList className="w-full sm:w-fit">
+            <TabsTrigger value="PATIENT" className="flex-1 sm:flex-none">
+              Paciente
+              <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">
+                {patientAppointments.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="COMPANION" className="flex-1 sm:flex-none">
+              Acompañantes
+              <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">
+                {companionAppointments.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-            return (
-              <PsychoSessionCard
-                key={appointment.id}
-                appointment={appointment}
-                volunteerName={volunteerName}
-                canManage={canManage}
-                canMarkNoAnswer={canMarkNoAnswer}
-                onEdit={() => openEdit(appointment)}
-                onComplete={() => openEdit(appointment, true)}
-                onNoAnswer={() => {
-                  setNoAnswerTarget(appointment)
-                  setNoAnswerNote(appointment.noAnswerNote ?? "")
-                }}
-                onCancel={() => cancelMutation.mutate(appointment.id)}
-              />
-            )
-          })}
-        </div>
+          <TabsContent value={beneficiaryTab} className="mt-3">
+            {visibleAppointments.length === 0 ? (
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
+                <BrainCircuit className="text-muted-foreground/40 size-8" />
+                <p className="text-sm font-medium">
+                  Sin sesiones para{" "}
+                  {beneficiaryTab === "PATIENT"
+                    ? "el paciente"
+                    : "acompañantes"}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Podés crear una cita independiente o vincularla desde un
+                  seguimiento.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {visibleAppointments.map((appointment) => {
+                  const volunteer = volunteersQuery.data?.find(
+                    (item) => item.id === appointment.volunteerId,
+                  )
+                  const volunteerName = volunteer
+                    ? `${volunteer.firstName} ${volunteer.lastName}`
+                    : "Psicooncólogo"
+                  const canRecordResult = user?.role === "VOLUNTEER"
+
+                  return (
+                    <PsychoSessionCard
+                      key={appointment.id}
+                      appointment={appointment}
+                      volunteerName={volunteerName}
+                      canManage={canManage}
+                      canRecordResult={canRecordResult}
+                      onEdit={() => openEdit(appointment)}
+                      onComplete={() => openEdit(appointment, true)}
+                      onNoAnswer={() => {
+                        setNoAnswerTarget(appointment)
+                        setNoAnswerNote(appointment.noAnswerNote ?? "")
+                      }}
+                      onCancel={() => cancelMutation.mutate(appointment.id)}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
 
       <SchedulePsychooncologyDialog
+        key={editingAppointment?.id ?? "new"}
         open={scheduleOpen}
         onOpenChange={(open) => (open ? setScheduleOpen(true) : closeDialog())}
         patientId={pacienteId}

@@ -41,6 +41,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Mi Agenda", url: "/agenda", icon: CalendarDays },
         { title: "Mis Pacientes", url: "/pacientes", icon: Users },
         { title: "Disponibilidad", url: "/disponibilidad", icon: Clock },
+        { title: "Mi perfil", url: "/voluntarios", icon: UserCheck },
       ],
     },
   ],

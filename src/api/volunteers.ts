@@ -2,9 +2,12 @@ import type { components } from "./schema"
 import { api } from "./client"
 
 export type Volunteer = components["schemas"]["VolunteerResponseDto"]
-export type VolunteerAvailability = components["schemas"]["VolunteerAvailabilityResponseDto"]
+export type VolunteerAvailability =
+  components["schemas"]["VolunteerAvailabilityResponseDto"]
 export type CreateVolunteerInput = components["schemas"]["CreateVolunteerDto"]
-export type CreateAvailabilityInput = components["schemas"]["CreateVolunteerAvailabilityDto"]
+export type UpdateVolunteerInput = components["schemas"]["UpdateVolunteerDto"]
+export type CreateAvailabilityInput =
+  components["schemas"]["CreateVolunteerAvailabilityDto"]
 
 export class VolunteersApiError extends Error {
   readonly status: number
@@ -24,10 +27,15 @@ export const volunteersApi = {
     return data
   },
 
-  async listAvailability(volunteerId: string): Promise<VolunteerAvailability[]> {
-    const { data, response } = await api.GET("/volunteers/{volunteerId}/availability", {
-      params: { path: { volunteerId } },
-    })
+  async listAvailability(
+    volunteerId: string,
+  ): Promise<VolunteerAvailability[]> {
+    const { data, response } = await api.GET(
+      "/volunteers/{volunteerId}/availability",
+      {
+        params: { path: { volunteerId } },
+      },
+    )
 
     if (!data) throw new VolunteersApiError(response.status)
     return data
@@ -39,14 +47,32 @@ export const volunteersApi = {
     return data
   },
 
-  async createAvailability(volunteerId: string, input: CreateAvailabilityInput): Promise<VolunteerAvailability> {
-    const { data, response } = await api.POST("/volunteers/{volunteerId}/availability", { params: { path: { volunteerId } }, body: input })
+  async update(id: string, input: UpdateVolunteerInput): Promise<Volunteer> {
+    const { data, response } = await api.PATCH("/volunteers/{id}", {
+      params: { path: { id } },
+      body: input,
+    })
+    if (!data) throw new VolunteersApiError(response.status)
+    return data
+  },
+
+  async createAvailability(
+    volunteerId: string,
+    input: CreateAvailabilityInput,
+  ): Promise<VolunteerAvailability> {
+    const { data, response } = await api.POST(
+      "/volunteers/{volunteerId}/availability",
+      { params: { path: { volunteerId } }, body: input },
+    )
     if (!data) throw new VolunteersApiError(response.status)
     return data
   },
 
   async deleteAvailability(volunteerId: string, id: string): Promise<void> {
-    const { response } = await api.DELETE("/volunteers/{volunteerId}/availability/{id}", { params: { path: { volunteerId, id } } })
+    const { response } = await api.DELETE(
+      "/volunteers/{volunteerId}/availability/{id}",
+      { params: { path: { volunteerId, id } } },
+    )
     if (!response.ok) throw new VolunteersApiError(response.status)
   },
 }

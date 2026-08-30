@@ -69,7 +69,9 @@ export const router = createBrowserRouter([
       {
         path: "voluntarios",
         element: (
-          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
+          <RoleGuard
+            allowedRoles={["ADMIN", "AGENT", "FOUNDATION", "VOLUNTEER"]}
+          >
             <VolunteersPage />
           </RoleGuard>
         ),

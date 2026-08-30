@@ -3151,6 +3151,10 @@ export interface components {
             offset: number;
         };
         CreatePsychooncologyAppointmentDto: {
+            /** @enum {string} */
+            beneficiaryType?: "PATIENT" | "COMPANION";
+            /** Format: uuid */
+            companionId?: string | null;
             /** Format: uuid */
             patientId: string;
             /** Format: uuid */
@@ -3170,6 +3174,11 @@ export interface components {
             id: string;
             /** Format: uuid */
             patientId: string;
+            /** @enum {string} */
+            beneficiaryType: "PATIENT" | "COMPANION";
+            /** Format: uuid */
+            companionId: string | null;
+            companionFullName: string | null;
             /** Format: uuid */
             volunteerId: string;
             /** Format: uuid */
@@ -3205,6 +3214,10 @@ export interface components {
             updatedAt: string;
         };
         UpdatePsychooncologyAppointmentDto: {
+            /** @enum {string} */
+            beneficiaryType?: "PATIENT" | "COMPANION";
+            /** Format: uuid */
+            companionId?: string | null;
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: uuid */
@@ -3287,6 +3300,16 @@ export interface components {
             createdAt: string;
         };
         CreateVolunteerDto: {
+            /** Format: date */
+            birthDate?: string;
+            /** Format: date */
+            commitmentStartAt?: string;
+            /** Format: date */
+            commitmentEndAt?: string;
+            hasVolunteerCertificate?: boolean;
+            additionalComments?: string;
+            completedSustainabilityModule?: boolean;
+            completedDesignThinkingModule?: boolean;
             /** Format: email */
             email: string;
             password: string;
@@ -3306,6 +3329,16 @@ export interface components {
             /** Format: email */
             email: string;
             phone: string;
+            /** Format: date */
+            birthDate: string | null;
+            /** Format: date */
+            commitmentStartAt: string | null;
+            /** Format: date */
+            commitmentEndAt: string | null;
+            hasVolunteerCertificate: boolean;
+            additionalComments: string | null;
+            completedSustainabilityModule: boolean;
+            completedDesignThinkingModule: boolean;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -3319,6 +3352,13 @@ export interface components {
             /** Format: email */
             email?: string;
             phone?: string;
+            birthDate?: string | null;
+            commitmentStartAt?: string | null;
+            commitmentEndAt?: string | null;
+            hasVolunteerCertificate?: boolean;
+            additionalComments?: string | null;
+            completedSustainabilityModule?: boolean;
+            completedDesignThinkingModule?: boolean;
         };
         VolunteerCalendarAvailabilityDto: {
             /** Format: uuid */

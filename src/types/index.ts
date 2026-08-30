@@ -381,6 +381,13 @@ export interface Volunteer {
   specialty: string
   email: string
   phone: string
+  birthDate: string | null
+  commitmentStartAt: string | null
+  commitmentEndAt: string | null
+  hasVolunteerCertificate: boolean
+  additionalComments: string | null
+  completedSustainabilityModule: boolean
+  completedDesignThinkingModule: boolean
   isActive: boolean
   createdAt: string
   updatedAt: string
