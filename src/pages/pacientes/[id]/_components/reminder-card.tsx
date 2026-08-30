@@ -1,12 +1,34 @@
-import { Calendar, CheckCircle2, Pencil, XCircle } from "lucide-react"
+import { Calendar, CheckCircle2, Pencil, Stethoscope, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Reminder } from "@/api/reminders"
 
-const STATUS_CONFIG: Record<Reminder["status"], { label: string; className: string }> = {
-  PENDING: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
-  DONE: { label: "Completado", className: "bg-green-100 text-green-800 border-green-300" },
-  DISMISSED: { label: "Descartado", className: "bg-red-100 text-red-800 border-red-300" },
+const STATUS_CONFIG: Record<
+  Reminder["status"],
+  { label: string; className: string }
+> = {
+  PENDING: {
+    label: "Pendiente",
+    className: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  },
+  DONE: {
+    label: "Completado",
+    className: "bg-green-100 text-green-800 border-green-300",
+  },
+  DISMISSED: {
+    label: "Descartado",
+    className: "bg-red-100 text-red-800 border-red-300",
+  },
+}
+
+const APPOINTMENT_STATUS_LABELS: Record<
+  NonNullable<Reminder["medicalAppointment"]>["status"],
+  string
+> = {
+  SCHEDULED: "Programada",
+  COMPLETED: "Asistió",
+  CANCELLED: "Cancelada",
+  NO_ANSWER: "No asistió",
 }
 
 function formatDate(value: string) {
@@ -26,9 +48,17 @@ interface ReminderCardProps {
   onDismiss: (reminder: Reminder) => void
 }
 
-export function ReminderCard({ reminder, canManage, onEdit, onComplete, onDismiss }: ReminderCardProps) {
+export function ReminderCard({
+  reminder,
+  canManage,
+  onEdit,
+  onComplete,
+  onDismiss,
+}: ReminderCardProps) {
   const statusCfg = STATUS_CONFIG[reminder.status]
   const isPending = reminder.status === "PENDING"
+  const isMedical = reminder.kind === "MEDICAL_APPOINTMENT"
+  const appointment = reminder.medicalAppointment
 
   return (
     <div
@@ -38,18 +68,51 @@ export function ReminderCard({ reminder, canManage, onEdit, onComplete, onDismis
         reminder.status === "DISMISSED" && "opacity-50",
       )}
     >
-      <div className="absolute inset-y-0 left-0 w-1 bg-purple-500" />
+      <div
+        className={cn(
+          "absolute inset-y-0 left-0 w-1",
+          isMedical ? "bg-red-500" : "bg-purple-500",
+        )}
+      />
 
       <div className="py-3.5 pl-5 pr-4">
         <div className="mb-2 flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{reminder.description}</p>
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              {isMedical && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase text-red-700">
+                  <Stethoscope className="size-3" />
+                  Cita médica
+                </span>
+              )}
+              {appointment && (
+                <span className="rounded-full border border-border px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                  {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                </span>
+              )}
+            </div>
+            <p className="truncate text-sm font-semibold text-foreground">
+              {reminder.description}
+            </p>
             <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
               <Calendar className="size-3" />
               {formatDate(reminder.dueAt)}
             </span>
+            {appointment && (
+              <p className="text-muted-foreground mt-1 text-[11px]">
+                {appointment.specialty}
+                {appointment.healthCenterName
+                  ? ` · ${appointment.healthCenterName}`
+                  : ""}
+              </p>
+            )}
           </div>
-          <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase", statusCfg.className)}>
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
+              statusCfg.className,
+            )}
+          >
             {statusCfg.label}
           </span>
         </div>
@@ -63,7 +126,8 @@ export function ReminderCard({ reminder, canManage, onEdit, onComplete, onDismis
               className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => onEdit(reminder)}
             >
-              <Pencil className="size-3" />Editar
+              <Pencil className="size-3" />
+              Editar
             </Button>
             <Button
               type="button"
@@ -72,7 +136,8 @@ export function ReminderCard({ reminder, canManage, onEdit, onComplete, onDismis
               className="h-7 gap-1 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
               onClick={() => onComplete(reminder)}
             >
-              <CheckCircle2 className="size-3" />Completar
+              <CheckCircle2 className="size-3" />
+              Completar
             </Button>
             <Button
               type="button"
@@ -81,7 +146,8 @@ export function ReminderCard({ reminder, canManage, onEdit, onComplete, onDismis
               className="h-7 gap-1 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
               onClick={() => onDismiss(reminder)}
             >
-              <XCircle className="size-3" />Cancelar
+              <XCircle className="size-3" />
+              Cancelar
             </Button>
           </div>
         )}

@@ -3,7 +3,11 @@ import { api } from "./client"
 
 export type CreateReminderInput = components["schemas"]["CreateReminderDto"]
 export type UpdateReminderInput = components["schemas"]["UpdateReminderDto"]
+export type CompleteReminderInput = components["schemas"]["CompleteReminderDto"]
 export type Reminder = components["schemas"]["ReminderResponseDto"]
+export type ReminderKind = NonNullable<CreateReminderInput["kind"]>
+export type ReminderMedicalAppointmentSummary =
+  components["schemas"]["ReminderMedicalAppointmentSummaryDto"]
 
 export class RemindersApiError extends Error {
   readonly status: number
@@ -17,7 +21,9 @@ export class RemindersApiError extends Error {
 
 export const remindersApi = {
   async list(filters: { patientId?: string } = {}): Promise<Reminder[]> {
-    const { data, response } = await api.GET("/reminders", { params: { query: filters } })
+    const { data, response } = await api.GET("/reminders", {
+      params: { query: filters },
+    })
 
     if (!data) throw new RemindersApiError(response.status)
     return data
@@ -40,10 +46,13 @@ export const remindersApi = {
     return data
   },
 
-  async complete(id: string): Promise<Reminder> {
+  async complete(
+    id: string,
+    input: CompleteReminderInput = {},
+  ): Promise<Reminder> {
     const { data, response } = await api.PATCH("/reminders/{id}/complete", {
       params: { path: { id } },
-      body: {},
+      body: input,
     })
 
     if (!data) throw new RemindersApiError(response.status)

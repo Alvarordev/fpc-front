@@ -52,6 +52,11 @@ import { CreateAlertDialog } from "./create-alert-dialog"
 import { ClinicalRecordDetailSheet } from "./clinical-record-detail-sheet"
 import { FollowUpAside } from "./follow-up-aside"
 import {
+  ReminderFormDialog,
+  type ReminderFormValues,
+} from "../../_components/reminder-form-dialog"
+import { resolveSpecialty } from "@/components/medical-appointment-fields"
+import {
   FollowUpStatusConfirmationDialog,
   type FollowUpStatusAction,
 } from "./follow-up-status-confirmation-dialog"
@@ -118,8 +123,7 @@ export function FollowUpContent() {
   const [nextOpen, setNextOpen] = useState(false)
   const [psychooncologyOpen, setPsychooncologyOpen] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
-  const [reminderDescription, setReminderDescription] = useState("")
-  const [reminderAt, setReminderAt] = useState("")
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [statusConfirmation, setStatusConfirmation] = useState<{
     action: FollowUpStatusAction
@@ -543,6 +547,11 @@ export function FollowUpContent() {
           description: reminder.description,
           assignedAgentId: followUp.agentId,
           createdFromFollowUpId: followUpId,
+          kind: reminder.kind,
+          medicalAppointment:
+            reminder.kind === "MEDICAL_APPOINTMENT"
+              ? reminder.medicalAppointment
+              : undefined,
         })
       } catch (error) {
         toast.error("No se pudo crear un recordatorio", {
@@ -647,13 +656,27 @@ export function FollowUpContent() {
     void handleEditSave()
   }
 
-  function addReminderDraft() {
+  function addReminderDraft(values: ReminderFormValues) {
+    const specialty = resolveSpecialty(values.medicalAppointment)
     draftStore.addReminder({
-      description: reminderDescription,
-      dueAt: reminderAt,
+      kind: values.kind,
+      description:
+        values.kind === "MEDICAL_APPOINTMENT"
+          ? values.description.trim() || `Cita: ${specialty}`
+          : values.description,
+      dueAt: values.dueAt,
+      medicalAppointment:
+        values.kind === "MEDICAL_APPOINTMENT"
+          ? {
+              specialty,
+              healthCenterId:
+                values.medicalAppointment.healthCenterId || undefined,
+              isFirstConsultation:
+                values.medicalAppointment.isFirstConsultation,
+            }
+          : undefined,
     })
-    setReminderDescription("")
-    setReminderAt("")
+    setReminderDialogOpen(false)
   }
 
   return (
@@ -899,16 +922,21 @@ export function FollowUpContent() {
             onNextContactOpen={() => setNextOpen(true)}
             hasNextContactDraft={Boolean(nextFollowUpDraft)}
             onClearNextContact={() => draftStore.clearNextFollowUp()}
-            reminderDescription={reminderDescription}
-            onReminderDescriptionChange={setReminderDescription}
-            reminderAt={reminderAt}
-            onReminderAtChange={setReminderAt}
-            onAddReminder={addReminderDraft}
+            onReminderOpen={() => setReminderDialogOpen(true)}
             reminderDrafts={reminderDrafts}
             onRemoveReminder={(index) => draftStore.removeReminder(index)}
           />
         </div>
       ) : null}
+
+      <ReminderFormDialog
+        open={reminderDialogOpen}
+        onOpenChange={setReminderDialogOpen}
+        hideAgentSelection
+        draftMode
+        isPending={false}
+        onSave={addReminderDraft}
+      />
 
       <ScheduleFollowUpDialog
         open={nextOpen}

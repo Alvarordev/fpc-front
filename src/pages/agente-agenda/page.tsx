@@ -260,9 +260,17 @@ export default function AgentAgendaPage() {
     reminderUpdateMutation.mutate({
       id: editingReminder.id,
       input: {
-        description: values.description,
+        description:
+          values.kind === "MEDICAL_APPOINTMENT"
+            ? values.description.trim() ||
+              `Cita: ${values.medicalAppointment.specialty}`
+            : values.description,
         dueAt: new Date(values.dueAt).toISOString(),
         assignedAgentId: agentId,
+        healthCenterId:
+          values.kind === "MEDICAL_APPOINTMENT"
+            ? values.medicalAppointment.healthCenterId || undefined
+            : undefined,
       },
     })
   }

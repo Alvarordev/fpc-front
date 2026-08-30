@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Bell,
   Brain,
+  Calendar,
   ClipboardList,
   FileText,
   HeartPulse,
@@ -29,6 +30,7 @@ const outcomeIcons: Record<
   SOCIAL_NOTE: FileText,
   REMINDER: Bell,
   PSYCHOONCOLOGY_APPOINTMENT: Brain,
+  MEDICAL_APPOINTMENT: Calendar,
   ALERT: AlertTriangle,
 }
 

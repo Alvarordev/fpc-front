@@ -2174,15 +2174,38 @@ export interface components {
             scheduledAt?: string;
             completedAt?: string;
         };
+        CreateReminderMedicalAppointmentDto: {
+            /** Format: uuid */
+            healthCenterId?: string;
+            specialty: string;
+            isFirstConsultation?: boolean;
+        };
         CreateReminderDto: {
             /** Format: uuid */
             subjectPatientId: string;
             dueAt: string;
-            description: string;
+            description?: string;
             /** Format: uuid */
             assignedAgentId?: string;
             /** Format: uuid */
             createdFromFollowUpId?: string;
+            /** @enum {string} */
+            kind?: "GENERIC" | "MEDICAL_APPOINTMENT";
+            medicalAppointment?: components["schemas"]["CreateReminderMedicalAppointmentDto"];
+        };
+        ReminderMedicalAppointmentSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            specialty: string;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName: string | null;
+            /** Format: date */
+            appointmentDate: string | null;
+            appointmentTime: string | null;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            isFirstConsultation: boolean;
         };
         ReminderResponseDto: {
             /** Format: uuid */
@@ -2196,6 +2219,11 @@ export interface components {
             /** Format: date-time */
             dueAt: string;
             description: string;
+            /** @enum {string} */
+            kind: "GENERIC" | "MEDICAL_APPOINTMENT";
+            /** Format: uuid */
+            medicalAppointmentId: string | null;
+            medicalAppointment?: components["schemas"]["ReminderMedicalAppointmentSummaryDto"] | null;
             /** @enum {string} */
             status: "PENDING" | "DONE" | "DISMISSED";
             /** Format: date-time */
@@ -2277,6 +2305,10 @@ export interface components {
             referralNotProvidedReason: string | null;
             difficulties: string | null;
             isFirstConsultation: boolean;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: uuid */
+            reminderId: string | null;
             isCurrent: boolean;
             changeReason: string | null;
             /** Format: date-time */
@@ -2302,7 +2334,7 @@ export interface components {
         };
         PatientTimelineOutcomeDto: {
             /** @enum {string} */
-            type: "DIAGNOSIS" | "TREATMENT" | "MEDICATION" | "SYMPTOM" | "INSURANCE" | "SIS_AFFILIATION" | "ADDRESS" | "SOCIAL_NOTE" | "REMINDER" | "PSYCHOONCOLOGY_APPOINTMENT" | "ALERT";
+            type: "DIAGNOSIS" | "TREATMENT" | "MEDICATION" | "SYMPTOM" | "INSURANCE" | "SIS_AFFILIATION" | "ADDRESS" | "SOCIAL_NOTE" | "REMINDER" | "PSYCHOONCOLOGY_APPOINTMENT" | "MEDICAL_APPOINTMENT" | "ALERT";
             /** Format: uuid */
             recordId: string;
             /** @description Etiqueta legible del tipo de registro */
@@ -2708,6 +2740,10 @@ export interface components {
             referralNotProvidedReason: string | null;
             difficulties: string | null;
             isFirstConsultation: boolean;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: uuid */
+            reminderId: string | null;
             isCurrent: boolean;
             changeReason: string | null;
             /** Format: date-time */
@@ -3317,10 +3353,24 @@ export interface components {
             assignedAgentId?: string;
             dueAt?: string;
             description?: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+        };
+        CompleteReminderMedicalAppointmentDto: {
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            hasReferralSheet?: boolean;
+            referredTo?: string;
+            referralNotProvidedReason?: string;
+            difficulties?: string;
+            nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
+            changeReason: string;
         };
         CompleteReminderDto: {
             /** Format: uuid */
             resultingFollowUpId?: string;
+            medicalAppointment?: components["schemas"]["CompleteReminderMedicalAppointmentDto"];
         };
         CreateUserDto: {
             /**
