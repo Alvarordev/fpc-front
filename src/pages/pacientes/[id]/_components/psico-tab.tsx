@@ -565,6 +565,11 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         appointment={detailAppointment}
         patientName={patientName}
         volunteerName={detailAppointment ? detailVolunteerName : ""}
+        onRegister={
+          user?.role === "VOLUNTEER" && detailAppointment?.status === "SCHEDULED"
+            ? () => openResult(detailAppointment)
+            : undefined
+        }
       />
 
       {isMobile ? (

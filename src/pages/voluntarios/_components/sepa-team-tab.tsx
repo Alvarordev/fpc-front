@@ -3,15 +3,6 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { Building2 } from "lucide-react"
 import { foundationsApi, type Foundation } from "@/api/foundations"
 import { DataTable } from "@/components/data-table"
-import { Badge } from "@/components/ui/badge"
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("es-PE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
 
 function fullName(member: Foundation) {
   return `${member.firstName} ${member.lastName}`.trim()
@@ -72,27 +63,6 @@ export function SepaTeamTab() {
           {getValue() as string}
         </span>
       ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Fecha de registro",
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground text-sm">
-          {formatDate(getValue() as string)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "isActive",
-      header: "Estado",
-      cell: ({ getValue }) => {
-        const active = getValue() as boolean
-        return (
-          <Badge variant={active ? "default" : "secondary"}>
-            {active ? "Activo" : "Inactivo"}
-          </Badge>
-        )
-      },
     },
   ]
 

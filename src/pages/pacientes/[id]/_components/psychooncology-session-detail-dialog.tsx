@@ -28,6 +28,7 @@ interface PsychooncologySessionDetailDialogProps {
   appointment: PsychooncologyAppointment | null
   patientName: string
   volunteerName: string
+  onRegister?: () => void
 }
 
 const statusLabels: Record<PsychooncologyAppointment["status"], string> = {
@@ -58,6 +59,7 @@ export function PsychooncologySessionDetailDialog({
   appointment,
   patientName,
   volunteerName,
+  onRegister,
 }: PsychooncologySessionDetailDialogProps) {
   if (!appointment) return null
 
@@ -234,10 +236,20 @@ export function PsychooncologySessionDetailDialog({
           </DetailSection>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
+          {appointment.status === "SCHEDULED" && onRegister ? (
+            <Button
+              onClick={() => {
+                onOpenChange(false)
+                onRegister()
+              }}
+            >
+              Registrar
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

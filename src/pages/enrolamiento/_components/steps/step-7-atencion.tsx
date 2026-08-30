@@ -466,6 +466,7 @@ export function Step7Atencion() {
   }
 
   return (
+    <>
     <form
       onSubmit={(e) => {
         e.preventDefault()
@@ -2618,11 +2619,13 @@ export function Step7Atencion() {
         </section>
       )}
 
+      <StepNav currentStep={7} onPrev={prevStep} />
+    </form>
+
       <CreateHealthCenterDialog
         open={newHospitalOpen}
         onOpenChange={setNewHospitalOpen}
       />
-      <StepNav currentStep={7} onPrev={prevStep} />
-    </form>
+    </>
   )
 }

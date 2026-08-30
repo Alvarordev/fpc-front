@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -67,11 +68,19 @@ export function CreateHealthCenterDialog({
   }
 
   async function onSubmit(values: FormValues) {
-    await createMutation.mutateAsync({
-      name: values.name.toUpperCase(),
-      department: values.department as CreateHealthCenterInput["department"],
-    });
-    handleClose();
+    const name = values.name.toUpperCase();
+    try {
+      await createMutation.mutateAsync({
+        name,
+        department: values.department as CreateHealthCenterInput["department"],
+      });
+      toast.success(`"${name}" creado`);
+      handleClose();
+    } catch (err) {
+      toast.error("Error al crear el centro de salud", {
+        description: err instanceof Error ? err.message : "Error inesperado",
+      });
+    }
   }
 
   return (
@@ -84,7 +93,13 @@ export function CreateHealthCenterDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+        <form
+          onSubmit={(e) => {
+            e.stopPropagation();
+            void handleSubmit(onSubmit)(e);
+          }}
+          className="space-y-4 py-2"
+        >
           <div className="space-y-2">
             <Label>Nombre del establecimiento</Label>
             <Input

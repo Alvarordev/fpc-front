@@ -185,6 +185,11 @@ export function AgendaContent() {
             : ""
         }
         volunteerName={volunteerName}
+        onRegister={
+          detailAppointment?.status === "SCHEDULED"
+            ? () => openResult(detailAppointment)
+            : undefined
+        }
       />
 
       {isMobile ? (
