@@ -1,26 +1,28 @@
 import { useState } from "react"
 import {
-  Bell,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Phone,
+  Video,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import {
-  filterAgendaEvents,
-  formatAgendaTime,
-  toDateKey,
-  type AgendaEvent,
-  type AgendaEventFilters,
-} from "../_lib/agenda"
-import { PatientHealthSubcategoryDot } from "@/components/patient-health-subcategory-badge"
+import { formatAgendaTime, toDateKey } from "@/pages/agente-agenda/_lib/agenda"
+import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments"
 
-interface AgentAgendaCalendarProps {
-  events: AgendaEvent[]
-  onSelectEvent: (event: AgendaEvent) => void
+export interface VolunteerAgendaEvent {
+  id: string
+  patientId: string
+  patientName: string
+  startsAt: string
+  appointment: PsychooncologyAppointment
+}
+
+interface VolunteerAgendaCalendarProps {
+  events: VolunteerAgendaEvent[]
+  onSelectEvent: (event: VolunteerAgendaEvent) => void
 }
 
 const monthNames = [
@@ -40,22 +42,33 @@ const monthNames = [
 
 const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
-export function AgentAgendaCalendar({
+const statusLabels: Record<PsychooncologyAppointment["status"], string> = {
+  SCHEDULED: "Programada",
+  COMPLETED: "Completada",
+  CANCELLED: "Cancelada",
+  NO_ANSWER: "No contestó",
+}
+
+const statusStyles: Record<PsychooncologyAppointment["status"], string> = {
+  SCHEDULED:
+    "border-violet-200 bg-violet-50 text-violet-950 hover:bg-violet-100",
+  COMPLETED:
+    "border-emerald-200 bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
+  CANCELLED: "border-border bg-muted/60 text-muted-foreground hover:bg-muted",
+  NO_ANSWER: "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100",
+}
+
+export function VolunteerAgendaCalendar({
   events,
   onSelectEvent,
-}: AgentAgendaCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [filters, setFilters] = useState<AgendaEventFilters>({
-    "follow-up": true,
-    reminder: true,
-  })
-  const visibleEvents = filterAgendaEvents(events, filters)
+}: VolunteerAgendaCalendarProps) {
+  const [currentDate, setCurrentDate] = useState(() => new Date())
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const firstDayIndex = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const todayKey = toDateKey(new Date())
-  const eventsByDate = visibleEvents.reduce<Record<string, AgendaEvent[]>>(
+  const eventsByDate = events.reduce<Record<string, VolunteerAgendaEvent[]>>(
     (groups, event) => {
       const dateKey = toDateKey(event.startsAt)
       if (!dateKey) return groups
@@ -90,7 +103,8 @@ export function AgentAgendaCalendar({
               {monthNames[month]} {year}
             </h2>
             <p className="text-muted-foreground text-xs">
-              {visibleEvents.length} tarea{visibleEvents.length === 1 ? "" : "s"} en tu agenda
+              {events.length} sesión{events.length === 1 ? "" : "es"} en tu
+              agenda
             </p>
           </div>
         </div>
@@ -125,21 +139,9 @@ export function AgentAgendaCalendar({
         </div>
       </div>
 
-      <div className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs">
-        <Legend
-          color="bg-amber-500"
-          icon={Phone}
-          label="Seguimientos"
-          active={filters["follow-up"]}
-          onToggle={() => setFilters((current) => ({ ...current, "follow-up": !current["follow-up"] }))}
-        />
-        <Legend
-          color="bg-violet-500"
-          icon={Bell}
-          label="Recordatorios"
-          active={filters.reminder}
-          onToggle={() => setFilters((current) => ({ ...current, reminder: !current.reminder }))}
-        />
+      <div className="text-muted-foreground flex items-center gap-2 px-1 text-xs">
+        <span className="size-2 rounded-full bg-violet-500" />
+        <span>Sesiones psicooncológicas</span>
         <span className="ml-auto hidden items-center gap-1.5 sm:flex">
           <span className="bg-primary size-2 rounded-full" /> Hoy
         </span>
@@ -201,8 +203,8 @@ export function AgentAgendaCalendar({
 
                   <div className="flex max-h-[98px] flex-1 flex-col gap-1 overflow-y-auto pr-0.5">
                     {dayEvents.map((event) => (
-                      <AgendaEventButton
-                        key={`${event.kind}-${event.id}`}
+                      <SessionEventButton
+                        key={event.id}
                         event={event}
                         onClick={() => onSelectEvent(event)}
                       />
@@ -218,48 +220,19 @@ export function AgentAgendaCalendar({
   )
 }
 
-function Legend({
-  color,
-  icon: Icon,
-  label,
-  active,
-  onToggle,
-}: {
-  color: string
-  icon: typeof Phone
-  label: string
-  active: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      aria-label={`${active ? "Ocultar" : "Mostrar"} ${label.toLowerCase()}`}
-      onClick={onToggle}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-opacity",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground/50 opacity-60",
-      )}
-    >
-      <span className={cn("size-2 rounded-full", color, !active && "opacity-40")} />
-      <Icon className="size-3.5" />
-      {label}
-    </button>
-  )
-}
-
-function AgendaEventButton({
+function SessionEventButton({
   event,
   onClick,
 }: {
-  event: AgendaEvent
+  event: VolunteerAgendaEvent
   onClick: () => void
 }) {
-  const isFollowUp = event.kind === "follow-up"
-  const Icon = isFollowUp ? Phone : Bell
+  const isVideo = event.appointment.modality === "VIDEO_CALL"
+  const Icon = isVideo ? Video : Phone
+  const sessionLabel =
+    event.appointment.sessionNumber === 0 || !event.appointment.sessionNumber
+      ? "Sesión extra"
+      : `Sesión ${event.appointment.sessionNumber}`
 
   return (
     <button
@@ -267,30 +240,23 @@ function AgendaEventButton({
       onClick={onClick}
       className={cn(
         "group focus-visible:ring-ring w-full rounded-lg border p-1.5 text-left text-[11px] transition-colors focus-visible:ring-2 focus-visible:outline-none",
-        isFollowUp
-          ? "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
-          : "border-violet-200 bg-violet-50 text-violet-950 hover:bg-violet-100",
+        statusStyles[event.appointment.status],
       )}
-      title={`${event.patientName} · ${event.title}`}
+      title={`${event.patientName} · ${sessionLabel}`}
     >
       <div className="flex items-center gap-1">
-        <Icon
-          className={cn(
-            "size-3 shrink-0",
-            isFollowUp ? "text-amber-600" : "text-violet-600",
-          )}
-        />
-        <span className="flex min-w-0 items-center gap-1 truncate font-semibold">
-          <PatientHealthSubcategoryDot
-            subcategory={event.healthSubcategory}
-          />
-          <span className="truncate">{event.patientName}</span>
+        <Icon className="size-3 shrink-0 text-violet-600" />
+        <span className="min-w-0 truncate font-semibold">
+          {event.patientName}
         </span>
       </div>
       <div className="text-muted-foreground mt-0.5 flex items-center gap-1 truncate text-[10px]">
         <Clock3 className="size-2.5 shrink-0" />
         {formatAgendaTime(event.startsAt)}
-        <span className="truncate">· {event.title}</span>
+        <span className="truncate">· {sessionLabel}</span>
+      </div>
+      <div className="text-muted-foreground mt-0.5 truncate text-[10px]">
+        {statusLabels[event.appointment.status]}
       </div>
     </button>
   )

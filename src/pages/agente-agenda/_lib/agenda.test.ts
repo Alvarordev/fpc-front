@@ -49,7 +49,12 @@ describe("agent agenda helpers", () => {
         followUp({ id: "follow-up-without-date", scheduledAt: null }),
       ],
       [reminder()],
-      new Map([["patient-2", "Luis Perez"]]),
+      new Map([
+        [
+          "patient-2",
+          { name: "Luis Perez", healthSubcategory: "UNDER_CONTROLS" as const },
+        ],
+      ]),
     )
 
     expect(events).toHaveLength(2)
@@ -62,7 +67,7 @@ describe("agent agenda helpers", () => {
     const events = buildAgendaEvents(
       [followUp()],
       [reminder()],
-      new Map([["patient-2", "Luis Perez"]]),
+      new Map([["patient-2", { name: "Luis Perez", healthSubcategory: null }]]),
     )
 
     expect(filterAgendaEvents(events, { "follow-up": true, reminder: false }).map((event) => event.kind)).toEqual(["follow-up"])

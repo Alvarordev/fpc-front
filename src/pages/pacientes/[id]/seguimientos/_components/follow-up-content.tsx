@@ -22,6 +22,8 @@ import {
   patientsApi,
   type PatientDetailsInput,
   type PatientDiagnosis,
+  type PatientHealthPhase,
+  type PatientHealthSubcategory,
   type PatientTreatment,
 } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
@@ -60,6 +62,12 @@ import {
 } from "../_store/follow-up-draft-store"
 import { usePatient } from "../../_hooks/use-patient"
 import { toDurationInput } from "@/types/duration"
+import {
+  patientHealthPhaseLabels,
+  patientHealthSubcategoryOptions,
+  patientHealthSubcategoryPhase,
+  requiresActiveDiagnosis,
+} from "@/lib/patient-health-subcategory"
 import { patientTabUrl } from "../../_lib/patient-tabs"
 import {
   followUpPurposeLabels,
@@ -75,6 +83,16 @@ const EDITABLE_STATUS_OPTIONS = [
   { value: "NO_ANSWER", label: "No contestó" },
   { value: "CANCELLED", label: "Cancelado" },
 ] as const
+
+const NO_SUBCATEGORY_VALUE = "UNASSIGNED"
+
+const HEALTH_SUBCATEGORY_SELECT_ITEMS = [
+  { value: NO_SUBCATEGORY_VALUE, label: "Sin subcategoría" },
+  ...patientHealthSubcategoryOptions.map(({ value, label }) => ({
+    value,
+    label,
+  })),
+]
 
 function isClosedFollowUpStatus(
   status: FollowUp["status"],
@@ -150,6 +168,31 @@ export function FollowUpContent() {
     staleTime: 60_000,
   })
   const patientQuery = usePatient(patientId ?? "")
+  const healthSubcategoryMutation = useMutation({
+    mutationFn: (subcategory: PatientHealthSubcategory | null) =>
+      patientsApi.updateDetails(patientId!, {
+        healthSubcategory: subcategory,
+        healthPhase:
+          subcategory !== null
+            ? patientHealthSubcategoryPhase[subcategory]
+            : (patientQuery.data?.details?.healthPhase ?? undefined),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["patient-profile", patientId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["patients"] }),
+        queryClient.invalidateQueries({ queryKey: ["agenda-patients"] }),
+      ])
+      toast.success("Subcategoría del paciente actualizada")
+    },
+    onError: (error: Error) => {
+      toast.error("No se pudo actualizar la subcategoría", {
+        description: error.message,
+      })
+    },
+  })
   const notesKey = followUpId ? followUpNotesKey(user?.id, followUpId) : null
   const hasNotesDraft = notesKey
     ? Object.prototype.hasOwnProperty.call(notesDrafts, notesKey)
@@ -270,6 +313,23 @@ export function FollowUpContent() {
     (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
       event.kind === "FOLLOW_UP" && event.followUpId === followUp.id,
   )
+  const patientSubcategory = patientQuery.data?.details?.healthSubcategory ?? null
+  const hasActiveDiagnosis = Boolean(
+    patientQuery.data?.diagnoses.some((diagnosis) => diagnosis.isCurrent),
+  )
+  const canEditSubcategory =
+    canManage && patientQuery.data?.role === "PATIENT"
+  const healthSubcategoryControl = canEditSubcategory ? (
+    <PatientHealthSubcategoryControl
+      value={patientSubcategory}
+      healthPhase={patientQuery.data?.details?.healthPhase ?? null}
+      hasActiveDiagnosis={hasActiveDiagnosis}
+      isPending={healthSubcategoryMutation.isPending}
+      onChange={(subcategory) =>
+        healthSubcategoryMutation.mutate(subcategory)
+      }
+    />
+  ) : null
 
   function resolveNextFollowUpAgentId(values: ScheduleFollowUpFormValues) {
     const ownAgent = agentsQuery.data?.find(
@@ -672,6 +732,7 @@ export function FollowUpContent() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+                  {healthSubcategoryControl}
                   {hasNotesDraft && notesKey && (
                     <Button
                       type="button"
@@ -722,6 +783,7 @@ export function FollowUpContent() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+                  {healthSubcategoryControl}
                   {hasNotesDraft && notesKey && (
                     <Button
                       type="button"
@@ -895,6 +957,81 @@ export function FollowUpContent() {
         }}
         onConfirm={confirmStatusChange}
       />
+    </div>
+  )
+}
+
+function PatientHealthSubcategoryControl({
+  value,
+  healthPhase,
+  hasActiveDiagnosis,
+  isPending,
+  onChange,
+}: {
+  value: PatientHealthSubcategory | null
+  healthPhase: PatientHealthPhase | null
+  hasActiveDiagnosis: boolean
+  isPending: boolean
+  onChange: (value: PatientHealthSubcategory | null) => void
+}) {
+  const selectedValue = value ?? NO_SUBCATEGORY_VALUE
+  const selectedPhase = value
+    ? patientHealthSubcategoryPhase[value]
+    : healthPhase
+
+  return (
+    <div className="min-w-56 space-y-1.5">
+      <Label htmlFor="patient-follow-up-health-subcategory">
+        Subcategoría
+      </Label>
+      <Select
+        items={HEALTH_SUBCATEGORY_SELECT_ITEMS}
+        value={selectedValue}
+        onValueChange={(nextValue) => {
+          if (!nextValue || nextValue === NO_SUBCATEGORY_VALUE) {
+            onChange(null)
+            return
+          }
+          onChange(nextValue as PatientHealthSubcategory)
+        }}
+        disabled={isPending}
+      >
+        <SelectTrigger
+          id="patient-follow-up-health-subcategory"
+          aria-label="Subcategoría del paciente"
+          className="h-8 w-full text-xs"
+        >
+          <SelectValue placeholder="Seleccionar subcategoría" />
+        </SelectTrigger>
+        <SelectContent className="max-h-72">
+          <SelectItem value={NO_SUBCATEGORY_VALUE}>
+            Sin subcategoría
+          </SelectItem>
+          {patientHealthSubcategoryOptions.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              disabled={
+                requiresActiveDiagnosis(option.value) && !hasActiveDiagnosis
+              }
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-muted-foreground text-[11px]">
+        Fase de salud:{" "}
+        {selectedPhase
+          ? patientHealthPhaseLabels[selectedPhase]
+          : "Sin clasificar"}
+      </p>
+      {!hasActiveDiagnosis && (
+        <p className="text-muted-foreground text-[11px]">
+          Agrega un diagnóstico activo para habilitar las subcategorías
+          oncológicas.
+        </p>
+      )}
     </div>
   )
 }

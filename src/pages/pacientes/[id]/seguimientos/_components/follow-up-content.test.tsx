@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   listTimeline: vi.fn(),
   listAgents: vi.fn(),
   getPatient: vi.fn(),
+  updateDetails: vi.fn(),
 }))
 
 vi.mock("react-router-dom", () => ({
@@ -37,7 +38,10 @@ vi.mock("@/api/agents", () => ({
 
 vi.mock("@/api/alerts", () => ({ alertsApi: { create: vi.fn() } }))
 vi.mock("@/api/patients", () => ({
-  patientsApi: { getById: mocks.getPatient },
+  patientsApi: {
+    getById: mocks.getPatient,
+    updateDetails: mocks.updateDetails,
+  },
 }))
 vi.mock("@/api/psychooncology-appointments", () => ({
   psychooncologyAppointmentsApi: { create: vi.fn() },
@@ -143,6 +147,36 @@ describe("FollowUpContent closed follow-up editing", () => {
       expect(mocks.update).toHaveBeenCalledWith("follow-up-1", {
         status: "NO_ANSWER",
         notes: "Nota corregida",
+      })
+    })
+  })
+
+  it("updates the patient subcategory and derives its health phase", async () => {
+    const user = userEvent.setup()
+    mocks.getPatient.mockResolvedValue({
+      role: "PATIENT",
+      details: {
+        healthPhase: "CANCER_DIAGNOSIS",
+        healthSubcategory: null,
+      },
+      diagnoses: [{ isCurrent: true }],
+      treatments: [],
+    })
+    mocks.updateDetails.mockResolvedValue({})
+    renderFollowUp()
+
+    const subcategory = await screen.findByRole("combobox", {
+      name: "Subcategoría del paciente",
+    })
+    await user.click(subcategory)
+    await user.click(
+      await screen.findByRole("option", { name: "Pacientes en Controles" }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.updateDetails).toHaveBeenCalledWith("patient-1", {
+        healthSubcategory: "UNDER_CONTROLS",
+        healthPhase: "CANCER_DIAGNOSIS",
       })
     })
   })

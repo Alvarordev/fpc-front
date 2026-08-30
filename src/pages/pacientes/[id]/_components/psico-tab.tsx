@@ -15,6 +15,7 @@ import {
   type PsychooncologyAppointment,
 } from "@/api/psychooncology-appointments"
 import { volunteersApi } from "@/api/volunteers"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -30,6 +31,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuthStore } from "@/store/auth-store"
 import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
+import { AgendaSessionResultDialog } from "@/pages/agenda/_components/agenda-session-result-dialog"
+import { AgendaSessionResultSheet } from "@/pages/agenda/_components/agenda-session-result-sheet"
+import { PsychooncologySessionDetailDialog } from "./psychooncology-session-detail-dialog"
 import {
   SchedulePsychooncologyDialog,
   type SchedulePsychooncologySubmitInput,
@@ -37,6 +41,7 @@ import {
 
 interface PsicoTabProps {
   pacienteId: string
+  patientName: string
 }
 
 const statusLabels: Record<string, string> = {
@@ -77,7 +82,8 @@ function formatScheduledParts(date: string) {
   }
 }
 
-function ratingLabel(rating: number | null | undefined) {
+function ratingLabel(rating: unknown) {
+  if (typeof rating !== "number" && typeof rating !== "string") return undefined
   return ENROLLMENT_RATING_OPTIONS.find(
     (option) => option.value === String(rating),
   )?.label
@@ -88,8 +94,9 @@ function PsychoSessionCard({
   volunteerName,
   canManage,
   canRecordResult,
+  onView,
   onEdit,
-  onComplete,
+  onRegister,
   onNoAnswer,
   onCancel,
 }: {
@@ -97,12 +104,17 @@ function PsychoSessionCard({
   volunteerName: string
   canManage: boolean
   canRecordResult: boolean
+  onView: () => void
   onEdit: () => void
-  onComplete: () => void
+  onRegister: () => void
   onNoAnswer: () => void
   onCancel: () => void
 }) {
   const date = formatScheduledParts(appointment.scheduledAt)
+  const companionName = textValue(appointment.companionFullName)
+  const schedulingNotes = textValue(appointment.schedulingNotes)
+  const noAnswerNote = textValue(appointment.noAnswerNote)
+  const satisfactionComment = textValue(appointment.satisfactionComment)
   const isScheduled = appointment.status === "SCHEDULED"
   const isNoAnswer = appointment.status === "NO_ANSWER"
   const isActionable = isScheduled || isNoAnswer
@@ -110,6 +122,17 @@ function PsychoSessionCard({
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      aria-label={`Ver detalle de la sesión ${appointment.sessionNumber}`}
+      onClick={onView}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onView()
+        }
+      }}
       className={`rounded-2xl border p-3 transition-[border-color,box-shadow] duration-200 hover:shadow-sm sm:p-4 ${statusStyles[appointment.status] ?? statusStyles.SCHEDULED}`}
     >
       <div className="flex items-stretch gap-3 sm:gap-5">
@@ -136,7 +159,7 @@ function PsychoSessionCard({
                 <p className="text-muted-foreground text-xs">{volunteerName}</p>
                 {appointment.beneficiaryType === "COMPANION" && (
                   <p className="text-muted-foreground text-xs">
-                    Para: {appointment.companionFullName ?? "Acompañante"}
+                    Para: {companionName ?? "Acompañante"}
                   </p>
                 )}
               </div>
@@ -147,7 +170,10 @@ function PsychoSessionCard({
             {(canManage || canRecordResult) && (
               <button
                 type="button"
-                onClick={onEdit}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onEdit()
+                }}
                 className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 shadow-2xs transition-colors hover:bg-red-600 hover:text-white"
                 title="Editar sesión"
               >
@@ -168,34 +194,34 @@ function PsychoSessionCard({
             </span>
           </div>
 
-          {appointment.schedulingNotes && (
+          {schedulingNotes && (
             <p className="text-muted-foreground mt-3 line-clamp-2 text-sm leading-relaxed">
               <span className="text-foreground/80 font-medium">
                 Derivación:{" "}
               </span>
-              {appointment.schedulingNotes}
+              {schedulingNotes}
             </p>
           )}
 
-          {appointment.noAnswerNote && (
+          {noAnswerNote && (
             <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-amber-900/80">
               <span className="font-medium">Nota (no contestó): </span>
-              {appointment.noAnswerNote}
+              {noAnswerNote}
             </p>
           )}
 
           {appointment.status === "COMPLETED" &&
-            (appointment.satisfactionRating ||
-              appointment.satisfactionComment) && (
+            (textValue(appointment.satisfactionRating) ||
+              satisfactionComment) && (
               <div className="mt-3 rounded-xl border border-emerald-200/80 bg-white/60 p-3 text-sm">
                 {appointment.satisfactionRating && (
                   <p className="font-medium text-emerald-900">
                     Encuesta: {ratingLabel(appointment.satisfactionRating)}
                   </p>
                 )}
-                {appointment.satisfactionComment && (
+                {satisfactionComment && (
                   <p className="text-muted-foreground mt-1 leading-relaxed">
-                    {appointment.satisfactionComment}
+                    {satisfactionComment}
                   </p>
                 )}
               </div>
@@ -210,17 +236,37 @@ function PsychoSessionCard({
           {isActionable && (
             <div className="mt-3 flex flex-wrap gap-2">
               {canRecordResult && (
-                <Button size="sm" onClick={onComplete}>
-                  Completar
+                <Button
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onRegister()
+                  }}
+                >
+                  Registrar
                 </Button>
               )}
               {canRecordResult && isScheduled && (
-                <Button size="sm" variant="outline" onClick={onNoAnswer}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onNoAnswer()
+                  }}
+                >
                   No contestó
                 </Button>
               )}
               {canRecordResult && isScheduled && (
-                <Button size="sm" variant="outline" onClick={onCancel}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onCancel()
+                  }}
+                >
                   Cancelar
                 </Button>
               )}
@@ -232,13 +278,18 @@ function PsychoSessionCard({
   )
 }
 
-export function PsicoTab({ pacienteId }: PsicoTabProps) {
+export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
+  const isMobile = useIsMobile()
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [editingAppointment, setEditingAppointment] =
     useState<PsychooncologyAppointment | null>(null)
-  const [completeIntent, setCompleteIntent] = useState(false)
+  const [detailAppointment, setDetailAppointment] =
+    useState<PsychooncologyAppointment | null>(null)
+  const [resultAppointment, setResultAppointment] =
+    useState<PsychooncologyAppointment | null>(null)
+  const [resultOpen, setResultOpen] = useState(false)
   const [noAnswerTarget, setNoAnswerTarget] =
     useState<PsychooncologyAppointment | null>(null)
   const [noAnswerNote, setNoAnswerNote] = useState("")
@@ -334,6 +385,14 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
       ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)
           ?.id
       : undefined
+  const detailVolunteer = detailAppointment
+    ? volunteersQuery.data?.find(
+        (volunteer) => volunteer.id === detailAppointment.volunteerId,
+      )
+    : undefined
+  const detailVolunteerName = detailVolunteer
+    ? `${detailVolunteer.firstName} ${detailVolunteer.lastName}`
+    : "Psicooncólogo"
 
   async function handleDialogSubmit(
     payload: SchedulePsychooncologySubmitInput,
@@ -348,16 +407,25 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
     })
   }
 
-  function openEdit(appointment: PsychooncologyAppointment, complete = false) {
+  function openEdit(appointment: PsychooncologyAppointment) {
     setEditingAppointment(appointment)
-    setCompleteIntent(complete)
     setScheduleOpen(true)
   }
 
   function closeDialog() {
     setScheduleOpen(false)
     setEditingAppointment(null)
-    setCompleteIntent(false)
+  }
+
+  function openResult(appointment: PsychooncologyAppointment) {
+    setDetailAppointment(null)
+    setResultAppointment(appointment)
+    setResultOpen(true)
+  }
+
+  function closeResult(nextOpen: boolean) {
+    setResultOpen(nextOpen)
+    if (!nextOpen) setResultAppointment(null)
   }
 
   async function submitNoAnswer() {
@@ -393,7 +461,6 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
             className="gap-1.5"
             onClick={() => {
               setEditingAppointment(null)
-              setCompleteIntent(false)
               setScheduleOpen(true)
             }}
           >
@@ -462,11 +529,14 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
                       volunteerName={volunteerName}
                       canManage={canManage}
                       canRecordResult={canRecordResult}
+                      onView={() => setDetailAppointment(appointment)}
                       onEdit={() => openEdit(appointment)}
-                      onComplete={() => openEdit(appointment, true)}
+                      onRegister={() => openResult(appointment)}
                       onNoAnswer={() => {
                         setNoAnswerTarget(appointment)
-                        setNoAnswerNote(appointment.noAnswerNote ?? "")
+                        setNoAnswerNote(
+                          textValue(appointment.noAnswerNote) ?? "",
+                        )
                       }}
                       onCancel={() => cancelMutation.mutate(appointment.id)}
                     />
@@ -485,10 +555,37 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
         patientId={pacienteId}
         ownVolunteerId={ownVolunteerId}
         appointment={editingAppointment}
-        completeIntent={completeIntent}
         isPending={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleDialogSubmit}
       />
+
+      <PsychooncologySessionDetailDialog
+        open={Boolean(detailAppointment)}
+        onOpenChange={(open) => !open && setDetailAppointment(null)}
+        appointment={detailAppointment}
+        patientName={patientName}
+        volunteerName={detailAppointment ? detailVolunteerName : ""}
+      />
+
+      {isMobile ? (
+        <AgendaSessionResultSheet
+          open={resultOpen}
+          onOpenChange={closeResult}
+          appointment={resultAppointment}
+          patientName={patientName}
+          patientId={pacienteId}
+          volunteerId={ownVolunteerId}
+        />
+      ) : (
+        <AgendaSessionResultDialog
+          open={resultOpen}
+          onOpenChange={closeResult}
+          appointment={resultAppointment}
+          patientName={patientName}
+          patientId={pacienteId}
+          volunteerId={ownVolunteerId}
+        />
+      )}
 
       <Dialog
         open={Boolean(noAnswerTarget)}
@@ -538,4 +635,10 @@ export function PsicoTab({ pacienteId }: PsicoTabProps) {
       </Dialog>
     </div>
   )
+}
+
+function textValue(value: unknown): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null
+  const result = String(value).trim()
+  return result || null
 }

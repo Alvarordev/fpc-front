@@ -20,6 +20,9 @@ export type PatientDetailsResponse =
 export type PatientHealthPhase = NonNullable<
   NonNullable<PatientDetailsResponse["details"]>["healthPhase"]
 >
+export type PatientHealthSubcategory = NonNullable<
+  NonNullable<PatientDetailsResponse["details"]>["healthSubcategory"]
+>
 export type PatientHealthPhaseHistory = NonNullable<
   NonNullable<PatientDetailsResponse["details"]>["healthPhaseHistory"]
 >[number]
@@ -27,6 +30,9 @@ export type PatientListItem =
   components["schemas"]["PatientListItemResponseDto"]
 export type PatientActivityStatus = PatientListItem["activityStatus"]
 export type PatientListSegment = NonNullable<PatientListFilters["segment"]>
+export type PatientHealthSubcategoryFilter = NonNullable<
+  PatientListFilters["healthSubcategory"]
+>
 export type PatientDiagnosis =
   components["schemas"]["PatientDiagnosisResponseDto"]
 export type PatientTreatment =

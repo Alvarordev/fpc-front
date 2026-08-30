@@ -1,5 +1,6 @@
 import type { FollowUp } from "@/api/follow-ups"
 import type { Reminder } from "@/api/reminders"
+import type { PatientHealthSubcategory } from "@/api/patients"
 import {
   followUpPurposeLabels,
   followUpTypeLabels,
@@ -11,12 +12,18 @@ export {
   followUpTypeLabels,
 } from "@/lib/follow-up-labels"
 
+export interface AgendaPatientInfo {
+  name: string
+  healthSubcategory: PatientHealthSubcategory | null
+}
+
 export type AgendaEvent =
   | {
       id: string
       kind: "follow-up"
       patientId: string
       patientName: string
+      healthSubcategory: PatientHealthSubcategory | null
       startsAt: string
       title: string
       detail: string
@@ -27,6 +34,7 @@ export type AgendaEvent =
       kind: "reminder"
       patientId: string
       patientName: string
+      healthSubcategory: PatientHealthSubcategory | null
       startsAt: string
       title: string
       detail: string
@@ -97,7 +105,7 @@ export function sortByStart(a: AgendaEvent, b: AgendaEvent) {
 export function buildAgendaEvents(
   followUps: FollowUp[],
   reminders: Reminder[],
-  patientNames: Map<string, string>,
+  patientInfo: Map<string, AgendaPatientInfo>,
 ): AgendaEvent[] {
   const followUpEvents: AgendaEvent[] = followUps.flatMap((followUp) => {
     if (!followUp.scheduledAt) return []
@@ -108,6 +116,8 @@ export function buildAgendaEvents(
         kind: "follow-up",
         patientId: followUp.subjectPatientId,
         patientName: followUp.subjectPatientName ?? "Paciente desconocido",
+        healthSubcategory:
+          patientInfo.get(followUp.subjectPatientId)?.healthSubcategory ?? null,
         startsAt: followUp.scheduledAt,
         title: followUpTypeLabels[followUp.type],
         detail: followUpPurposeLabels[followUp.purpose],
@@ -121,7 +131,10 @@ export function buildAgendaEvents(
     kind: "reminder",
     patientId: reminder.subjectPatientId,
     patientName:
-      patientNames.get(reminder.subjectPatientId) ?? "Paciente desconocido",
+      patientInfo.get(reminder.subjectPatientId)?.name ??
+      "Paciente desconocido",
+    healthSubcategory:
+      patientInfo.get(reminder.subjectPatientId)?.healthSubcategory ?? null,
     startsAt: reminder.dueAt,
     title: reminder.description,
     detail: "Recordatorio",

@@ -54,6 +54,7 @@ import { getAge } from "@/pages/enrolamiento/_utils/patient-age"
 import { PatientRecordsSection } from "./patient-records-section"
 import { TreatmentCard } from "./treatment-card"
 import { PatientProfileDialog } from "./patient-profile-dialog"
+import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { useAuthStore } from "@/store/auth-store"
 import { usePatientSocialNotes } from "../_hooks/use-patient-records"
 import { patientTabUrl } from "../_lib/patient-tabs"
@@ -395,6 +396,14 @@ export function OverviewSection({
                     details?.healthPhase
                       ? healthPhaseLabels[details.healthPhase]
                       : "Sin clasificar"
+                  }
+                />
+                <Field
+                  label="Subcategoría"
+                  value={
+                    <PatientHealthSubcategoryBadge
+                      subcategory={details?.healthSubcategory}
+                    />
                   }
                 />
                 <Field

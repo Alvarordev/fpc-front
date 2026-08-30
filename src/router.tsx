@@ -11,6 +11,7 @@ import FollowUpPage from "@/pages/pacientes/[id]/seguimientos/page"
 import VolunteersPage from "@/pages/voluntarios/page"
 import AgendaPage from "@/pages/agenda/page"
 import DisponibilidadPage from "@/pages/disponibilidad/page"
+import EquipoSepaPage from "@/pages/equipo-sepa/page"
 import UsersPage from "@/pages/usuarios/page"
 import HealthCentersPage from "@/pages/hospitales/page"
 import AlertsPage from "@/pages/alertas/page"
@@ -52,6 +53,14 @@ export const router = createBrowserRouter([
           </RoleGuard>
         ),
       },
+      {
+        path: "equipo-sepa",
+        element: (
+          <RoleGuard allowedRoles={["VOLUNTEER"]}>
+            <EquipoSepaPage />
+          </RoleGuard>
+        ),
+      },
       { path: "pacientes", element: <PatientsPage /> },
       {
         path: "prospectos",
@@ -69,9 +78,7 @@ export const router = createBrowserRouter([
       {
         path: "voluntarios",
         element: (
-          <RoleGuard
-            allowedRoles={["ADMIN", "AGENT", "FOUNDATION", "VOLUNTEER"]}
-          >
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
             <VolunteersPage />
           </RoleGuard>
         ),

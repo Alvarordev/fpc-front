@@ -1766,6 +1766,8 @@ export interface components {
         UpsertPatientDetailsDto: {
             /** @enum {string} */
             healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+            /** @enum {string|null} */
+            healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
             birthDepartment?: string;
             /** Format: uuid */
             primaryHealthCenterId?: string;
@@ -2439,6 +2441,8 @@ export interface components {
             latestFollowUp: components["schemas"]["LatestFollowUpResponseDto"] | null;
             /** @enum {string|null} */
             healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
+            /** @enum {string|null} */
+            healthSubcategory: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
             primaryCompanionName: string | null;
         };
         PatientListResponseDto: {
@@ -2480,6 +2484,8 @@ export interface components {
             patientId: string;
             /** @enum {string|null} */
             healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
+            /** @enum {string|null} */
+            healthSubcategory: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
             birthDepartment: string | null;
             /** Format: uuid */
             primaryHealthCenterId: string | null;
@@ -5181,6 +5187,8 @@ export interface operations {
                 role?: "UNKNOWN" | "PATIENT" | "COMPANION";
                 status?: "UNENROLLED" | "ENROLLED";
                 activityStatus?: "ACTIVE" | "INACTIVE" | "REACTIVE";
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | "UNASSIGNED";
                 segment?: "CARE" | "PROSPECTS";
                 search?: string;
                 limit?: number;
@@ -5776,6 +5784,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PatientDetailsResponseDto"];
                 };
+            };
+            /** @description An active diagnosis is required for this subcategory */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: {
                 headers: {

@@ -7,6 +7,7 @@ import {
   type PatientDetailsInput,
   type PatientDetailsResponse,
   type PatientHealthPhase,
+  type PatientHealthSubcategory,
   type UpdatePatientInput,
 } from "@/api/patients"
 import { healthCentersApi } from "@/api/health-centers"
@@ -34,9 +35,16 @@ import {
   DEPARTMENT_LABELS,
 } from "@/pages/hospitales/_utils/departments"
 import { educationLabels, genderLabels } from "../_lib/clinical-labels"
+import {
+  patientHealthPhaseLabels,
+  patientHealthSubcategoryOptions,
+  patientHealthSubcategoryPhase,
+  requiresActiveDiagnosis,
+} from "@/lib/patient-health-subcategory"
 
 type EducationValue = NonNullable<PatientDetailsInput["educationLevel"]>
 type HealthPhaseValue = PatientHealthPhase
+type HealthSubcategoryValue = PatientHealthSubcategory | "UNASSIGNED"
 
 export type PatientProfileFormValues = {
   fullName: string
@@ -49,6 +57,7 @@ export type PatientProfileFormValues = {
   email: string
   birthDepartment: string
   healthPhase: HealthPhaseValue | ""
+  healthSubcategory: HealthSubcategoryValue
   primaryHealthCenterId: string
   emergencyContactName: string
   emergencyContactPhone: string
@@ -71,6 +80,7 @@ const DEFAULT_FORM_VALUES: PatientProfileFormValues = {
   email: "",
   birthDepartment: "",
   healthPhase: "",
+  healthSubcategory: "UNASSIGNED",
   primaryHealthCenterId: "",
   emergencyContactName: "",
   emergencyContactPhone: "",
@@ -93,6 +103,14 @@ const HEALTH_PHASE_OPTIONS: { value: HealthPhaseValue; label: string }[] = [
   { value: "CANCER_DIAGNOSIS", label: "Diagnóstico de Cáncer" },
   { value: "ANNUAL_CHECKUP", label: "Control Anual" },
   { value: "SIGNS_AND_SYMPTOMS", label: "Signos y Síntomas" },
+]
+
+const HEALTH_SUBCATEGORY_OPTIONS = [
+  { value: "UNASSIGNED" as const, label: "Sin subcategoría" },
+  ...patientHealthSubcategoryOptions.map(({ value, label }) => ({
+    value,
+    label,
+  })),
 ]
 
 function optionalText(value: string) {
@@ -126,6 +144,7 @@ function formValuesFromPatient(
     email: patient.email ?? "",
     birthDepartment: patient.details?.birthDepartment ?? "",
     healthPhase: patient.details?.healthPhase ?? "",
+    healthSubcategory: patient.details?.healthSubcategory ?? "UNASSIGNED",
     primaryHealthCenterId: patient.details?.primaryHealthCenterId ?? "",
     emergencyContactName: patient.details?.emergencyContactName ?? "",
     emergencyContactPhone: patient.details?.emergencyContactPhone ?? "",
@@ -170,10 +189,14 @@ export function PatientProfileDialog({
   const gender = formValues.gender ?? ""
   const birthDepartment = formValues.birthDepartment ?? ""
   const healthPhase = formValues.healthPhase ?? ""
+  const healthSubcategory = formValues.healthSubcategory ?? "UNASSIGNED"
   const primaryHealthCenterId = formValues.primaryHealthCenterId ?? ""
   const educationLevel = formValues.educationLevel ?? ""
   const hasWhatsapp = formValues.hasWhatsapp ?? false
   const requiresTranslation = formValues.requiresTranslation ?? false
+  const hasActiveDiagnosis = patient.diagnoses.some(
+    (diagnosis) => diagnosis.isCurrent,
+  )
 
   const genderItems = withCurrentOption(
     GENDER_OPTIONS,
@@ -220,6 +243,10 @@ export function PatientProfileDialog({
         const detailsInput: PatientDetailsInput = {
           birthDepartment: optionalText(values.birthDepartment),
           healthPhase: values.healthPhase || undefined,
+          healthSubcategory:
+            values.healthSubcategory === "UNASSIGNED"
+              ? null
+              : values.healthSubcategory,
           primaryHealthCenterId: optionalText(values.primaryHealthCenterId),
           emergencyContactName: optionalText(values.emergencyContactName),
           emergencyContactPhone: optionalText(values.emergencyContactPhone),
@@ -441,12 +468,18 @@ export function PatientProfileDialog({
                   <Select
                     items={HEALTH_PHASE_OPTIONS}
                     value={healthPhase}
-                    onValueChange={(value) =>
-                      setValue(
-                        "healthPhase",
-                        (value ?? "") as HealthPhaseValue | "",
-                      )
-                    }
+                    onValueChange={(value) => {
+                      const nextPhase = (value ?? "") as HealthPhaseValue | ""
+                      setValue("healthPhase", nextPhase)
+                      if (
+                        nextPhase &&
+                        healthSubcategory !== "UNASSIGNED" &&
+                        patientHealthSubcategoryPhase[healthSubcategory] !==
+                          nextPhase
+                      ) {
+                        setValue("healthSubcategory", "UNASSIGNED")
+                      }
+                    }}
                   >
                     <SelectTrigger id="patient-health-phase">
                       <SelectValue placeholder="Seleccionar fase" />
@@ -459,6 +492,57 @@ export function PatientProfileDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Subcategoría</Label>
+                  <Select
+                    items={HEALTH_SUBCATEGORY_OPTIONS}
+                    value={healthSubcategory}
+                    onValueChange={(value) => {
+                      if (!value || value === "UNASSIGNED") {
+                        setValue("healthSubcategory", "UNASSIGNED")
+                        return
+                      }
+                      const nextSubcategory =
+                        value as PatientHealthSubcategory
+                      setValue("healthSubcategory", nextSubcategory)
+                      setValue(
+                        "healthPhase",
+                        patientHealthSubcategoryPhase[nextSubcategory],
+                      )
+                    }}
+                  >
+                    <SelectTrigger id="patient-health-subcategory">
+                      <SelectValue placeholder="Seleccionar subcategoría" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {HEALTH_SUBCATEGORY_OPTIONS.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                          disabled={
+                            option.value !== "UNASSIGNED" &&
+                            requiresActiveDiagnosis(option.value) &&
+                            !hasActiveDiagnosis
+                          }
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-muted-foreground text-xs">
+                    Fase de salud:{" "}
+                    {healthPhase
+                      ? patientHealthPhaseLabels[healthPhase]
+                      : "Sin clasificar"}
+                  </p>
+                  {!hasActiveDiagnosis && (
+                    <p className="text-muted-foreground text-xs">
+                      Agrega un diagnóstico activo para usar las subcategorías
+                      oncológicas.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Nivel educativo</Label>

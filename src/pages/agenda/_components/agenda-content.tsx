@@ -1,80 +1,101 @@
-import { useState } from "react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useVolunteerProfile } from "@/hooks/use-volunteer-profile";
-import { useAgenda } from "../_hooks/use-agenda";
-import { AgendaSessionCard } from "./agenda-session-card";
-import { AgendaSessionResultSheet } from "./agenda-session-result-sheet";
-import { AgendaSessionResultDialog } from "./agenda-session-result-dialog";
-import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments";
+import { useMemo, useState } from "react"
+import { CalendarClock, CalendarDays, List, Loader2 } from "lucide-react"
+import type { PsychooncologyAppointment } from "@/api/psychooncology-appointments"
+import { Card, CardContent } from "@/components/ui/card"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { useVolunteerProfile } from "@/hooks/use-volunteer-profile"
+import { isOverdue, isToday } from "@/pages/agente-agenda/_lib/agenda"
+import { PsychooncologySessionDetailDialog } from "@/pages/pacientes/[id]/_components/psychooncology-session-detail-dialog"
+import { useAgenda } from "../_hooks/use-agenda"
+import { AgendaSessionResultDialog } from "./agenda-session-result-dialog"
+import { AgendaSessionResultSheet } from "./agenda-session-result-sheet"
+import {
+  VolunteerAgendaCalendar,
+  type VolunteerAgendaEvent,
+} from "./volunteer-agenda-calendar"
+import { VolunteerAgendaTable } from "./volunteer-agenda-table"
 
-type Filter = "proximas" | "pasadas" | "todas";
-
-const TODAY = new Date().toISOString().slice(0, 10);
-
-function isTodayAppointment(iso: string): boolean {
-  return iso.slice(0, 10) === TODAY;
-}
-
-function filterAppointments(
-  appointments: PsychooncologyAppointment[],
-  filter: Filter,
-): PsychooncologyAppointment[] {
-  return appointments
-    .filter((a) => {
-      const date = a.scheduledAt.slice(0, 10);
-      if (filter === "proximas") return date >= TODAY;
-      if (filter === "pasadas") return date < TODAY;
-      return true;
-    })
-    .sort((a, b) => {
-      if (filter === "pasadas")
-        return b.scheduledAt.localeCompare(a.scheduledAt);
-      return a.scheduledAt.localeCompare(b.scheduledAt);
-    });
-}
+type ViewMode = "calendar" | "table"
 
 export function AgendaContent() {
-  const { volunteerId, isLoading: loadingProfile } =
-    useVolunteerProfile();
-  const isMobile = useIsMobile();
-
-  const [filter, setFilter] = useState<Filter>("proximas");
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [activeAppointment, setActiveAppointment] =
-    useState<PsychooncologyAppointment | null>(null);
+  const {
+    volunteer,
+    volunteerId,
+    isLoading: loadingProfile,
+  } = useVolunteerProfile()
+  const isMobile = useIsMobile()
+  const [viewMode, setViewMode] = useState<ViewMode>("calendar")
+  const [detailAppointment, setDetailAppointment] =
+    useState<PsychooncologyAppointment | null>(null)
+  const [resultAppointment, setResultAppointment] =
+    useState<PsychooncologyAppointment | null>(null)
+  const [resultOpen, setResultOpen] = useState(false)
 
   const {
     appointments,
     patients,
     isLoading: loadingAgenda,
-  } = useAgenda(volunteerId);
+  } = useAgenda(volunteerId)
 
-  const todayAppointments = appointments.filter((a) =>
-    isTodayAppointment(a.scheduledAt),
-  );
-  const filtered = filterAppointments(appointments, filter);
+  const sortedAppointments = useMemo(
+    () =>
+      [...appointments].sort((a, b) =>
+        a.scheduledAt.localeCompare(b.scheduledAt),
+      ),
+    [appointments],
+  )
+  const events = useMemo<VolunteerAgendaEvent[]>(
+    () =>
+      sortedAppointments.map((appointment) => ({
+        id: appointment.id,
+        patientId: appointment.patientId,
+        patientName:
+          patients.get(appointment.patientId)?.fullName ??
+          "Paciente desconocido",
+        startsAt: appointment.scheduledAt,
+        appointment,
+      })),
+    [patients, sortedAppointments],
+  )
+  const pendingCount = appointments.filter(
+    (appointment) => appointment.status === "SCHEDULED",
+  ).length
+  const todayCount = appointments.filter(
+    (appointment) =>
+      appointment.status === "SCHEDULED" && isToday(appointment.scheduledAt),
+  ).length
+  const overdueCount = appointments.filter(
+    (appointment) =>
+      appointment.status === "SCHEDULED" && isOverdue(appointment.scheduledAt),
+  ).length
 
-  function openResultSheet(appointment: PsychooncologyAppointment) {
-    setActiveAppointment(appointment);
-    setSheetOpen(true);
+  const activePatientName = resultAppointment
+    ? (patients.get(resultAppointment.patientId)?.fullName ??
+      "Paciente desconocido")
+    : ""
+  const activePatientId = resultAppointment?.patientId ?? ""
+  const volunteerName = volunteer
+    ? `${volunteer.firstName} ${volunteer.lastName}`
+    : "Voluntario"
+
+  function openResult(appointment: PsychooncologyAppointment) {
+    setDetailAppointment(null)
+    setResultAppointment(appointment)
+    setResultOpen(true)
   }
 
-  const activePatientName = activeAppointment
-    ? patients.get(activeAppointment.patientId)?.fullName ??
-      "Paciente desconocido"
-    : "";
-
-  const activePatientId = activeAppointment?.patientId ?? "";
+  function closeResult(nextOpen: boolean) {
+    setResultOpen(nextOpen)
+    if (!nextOpen) setResultAppointment(null)
+  }
 
   if (loadingProfile || loadingAgenda) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <p className="text-muted-foreground text-sm">
-          Cargando agenda...
-        </p>
+        <Loader2 className="text-muted-foreground mr-2 size-4 animate-spin" />
+        <p className="text-muted-foreground text-sm">Cargando agenda...</p>
       </div>
-    );
+    )
   }
 
   if (!volunteerId) {
@@ -84,124 +105,168 @@ export function AgendaContent() {
           Tu cuenta no está vinculada a un perfil de voluntario.
         </p>
       </div>
-    );
+    )
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-foreground text-xl font-semibold tracking-tight">
-          Mi Agenda
-        </h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          {appointments.length} sesiones en total
-        </p>
-      </div>
-
-      {/* Today's sessions */}
-      <div className="space-y-3">
-        <h2 className="text-foreground text-sm font-semibold">Hoy</h2>
-        {todayAppointments.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Sin sesiones hoy.
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-primary mb-2 text-xs font-semibold tracking-[0.18em] uppercase">
+            Tu espacio de trabajo
           </p>
-        ) : (
-          <div className="space-y-2">
-            {todayAppointments.map((a) => (
-              <AgendaSessionCard
-                key={a.id}
-                appointment={a}
-                patientName={
-                  patients.get(a.patientId)?.fullName ??
-                  "Paciente desconocido"
-                }
-                isToday
-                onComplete={openResultSheet}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* All sessions with filter */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-foreground text-sm font-semibold">
-            Sesiones
-          </h2>
-          <Tabs
-            value={filter}
-            onValueChange={(v) => setFilter(v as Filter)}
-          >
-            <TabsList className="h-8">
-              <TabsTrigger
-                value="proximas"
-                className="h-6 px-3 text-xs"
-              >
-                Próximas
-              </TabsTrigger>
-              <TabsTrigger
-                value="pasadas"
-                className="h-6 px-3 text-xs"
-              >
-                Pasadas
-              </TabsTrigger>
-              <TabsTrigger
-                value="todas"
-                className="h-6 px-3 text-xs"
-              >
-                Todas
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <h1 className="text-2xl font-semibold tracking-tight">Mi agenda</h1>
+          <p className="text-muted-foreground mt-1 max-w-xl text-sm">
+            Organiza tus sesiones de psicooncología y consulta el detalle de
+            cada atención.
+          </p>
         </div>
+        <div className="bg-muted/40 flex w-fit items-center rounded-xl border p-1 text-xs">
+          <ViewButton
+            active={viewMode === "calendar"}
+            icon={CalendarDays}
+            onClick={() => setViewMode("calendar")}
+          >
+            Calendario
+          </ViewButton>
+          <ViewButton
+            active={viewMode === "table"}
+            icon={List}
+            onClick={() => setViewMode("table")}
+          >
+            Tabla
+          </ViewButton>
+        </div>
+      </header>
 
-        {filtered.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No hay sesiones para mostrar.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map((a) => (
-              <AgendaSessionCard
-                key={a.id}
-                appointment={a}
-                patientName={
-                  patients.get(a.patientId)?.fullName ??
-                  "Paciente desconocido"
-                }
-                onComplete={openResultSheet}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <section className="grid gap-3 sm:grid-cols-3">
+        <AgendaMetric
+          icon={CalendarClock}
+          label="Sesiones pendientes"
+          value={pendingCount}
+          tone="violet"
+        />
+        <AgendaMetric
+          icon={CalendarDays}
+          label="Para hoy"
+          value={todayCount}
+          tone="primary"
+        />
+        <AgendaMetric
+          icon={CalendarClock}
+          label="Vencidas"
+          value={overdueCount}
+          tone="amber"
+        />
+      </section>
+
+      {viewMode === "calendar" ? (
+        <VolunteerAgendaCalendar
+          events={events}
+          onSelectEvent={(event) => setDetailAppointment(event.appointment)}
+        />
+      ) : (
+        <VolunteerAgendaTable
+          appointments={sortedAppointments}
+          patients={patients}
+          onSelectAppointment={setDetailAppointment}
+          onRegister={openResult}
+        />
+      )}
+
+      <PsychooncologySessionDetailDialog
+        open={Boolean(detailAppointment)}
+        onOpenChange={(open) => !open && setDetailAppointment(null)}
+        appointment={detailAppointment}
+        patientName={
+          detailAppointment
+            ? (patients.get(detailAppointment.patientId)?.fullName ??
+              "Paciente desconocido")
+            : ""
+        }
+        volunteerName={volunteerName}
+      />
 
       {isMobile ? (
         <AgendaSessionResultSheet
-          open={sheetOpen}
-          onOpenChange={(open) => {
-            setSheetOpen(open);
-            if (!open) setActiveAppointment(null);
-          }}
-          appointment={activeAppointment}
+          open={resultOpen}
+          onOpenChange={closeResult}
+          appointment={resultAppointment}
           patientName={activePatientName}
           patientId={activePatientId}
           volunteerId={volunteerId}
         />
       ) : (
         <AgendaSessionResultDialog
-          open={sheetOpen}
-          onOpenChange={(open) => {
-            setSheetOpen(open);
-            if (!open) setActiveAppointment(null);
-          }}
-          appointment={activeAppointment}
+          open={resultOpen}
+          onOpenChange={closeResult}
+          appointment={resultAppointment}
           patientName={activePatientName}
           patientId={activePatientId}
           volunteerId={volunteerId}
         />
       )}
     </div>
-  );
+  )
+}
+
+function ViewButton({
+  active,
+  icon: Icon,
+  onClick,
+  children,
+}: {
+  active: boolean
+  icon: typeof CalendarDays
+  onClick: () => void
+  children: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors ${
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      <Icon className="size-3.5" />
+      {children}
+    </button>
+  )
+}
+
+function AgendaMetric({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: typeof CalendarClock
+  label: string
+  value: number
+  tone: "amber" | "primary" | "violet"
+}) {
+  const toneClasses = {
+    amber: "bg-amber-50 text-amber-600",
+    primary: "bg-primary/10 text-primary",
+    violet: "bg-violet-50 text-violet-600",
+  }
+
+  return (
+    <Card size="sm">
+      <CardContent className="flex items-center gap-3 p-4">
+        <div
+          className={`flex size-10 items-center justify-center rounded-xl ${toneClasses[tone]}`}
+        >
+          <Icon className="size-5" />
+        </div>
+        <div>
+          <p className="text-2xl leading-none font-semibold">{value}</p>
+          <p className="text-muted-foreground mt-1 text-xs">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }

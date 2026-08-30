@@ -123,6 +123,10 @@ export function AgendaSessionResultSheet({
     onSuccess: () => {
       toast.success("Sesión registrada correctamente")
       queryClient.invalidateQueries({ queryKey: ["agenda"] })
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-appointments"],
+      })
+      queryClient.invalidateQueries({ queryKey: ["patient-timeline"] })
       clearDraft()
     },
     onError: () => {
@@ -135,6 +139,10 @@ export function AgendaSessionResultSheet({
     onSuccess: () => {
       toast.success("Sesión cancelada")
       queryClient.invalidateQueries({ queryKey: ["agenda"] })
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-appointments"],
+      })
+      queryClient.invalidateQueries({ queryKey: ["patient-timeline"] })
       clearDraft()
     },
     onError: () => {

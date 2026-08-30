@@ -215,7 +215,7 @@ export function PatientDetailContent() {
           <SeguimientoTab pacienteId={patient.id} />
         </TabsContent>
         <TabsContent value="psicooncologia">
-          <PsicoTab pacienteId={patient.id} />
+          <PsicoTab pacienteId={patient.id} patientName={patient.fullName} />
         </TabsContent>
         <TabsContent value="recordatorios">
           <RecordatoriosTab pacienteId={patient.id} />

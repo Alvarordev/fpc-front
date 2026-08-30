@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { cn } from "@/lib/utils"
 import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
 import { healthPhaseLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
@@ -62,6 +63,15 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
         </Badge>
       )
     },
+  },
+  {
+    id: "healthSubcategory",
+    header: "Subcategoría",
+    cell: ({ row }) => (
+      <PatientHealthSubcategoryBadge
+        subcategory={row.original.healthSubcategory}
+      />
+    ),
   },
   {
     id: "primaryCompanion",

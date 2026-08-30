@@ -22,6 +22,7 @@ import { patientsApi } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
 import { remindersApi, type Reminder } from "@/api/reminders"
 import { volunteersApi } from "@/api/volunteers"
+import { PatientHealthSubcategoryDot } from "@/components/patient-health-subcategory-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,6 +49,7 @@ import {
   formatAgendaTime,
   isOverdue,
   isToday,
+  type AgendaPatientInfo,
   type AgendaEvent,
 } from "./_lib/agenda"
 
@@ -155,13 +157,16 @@ export default function AgentAgendaPage() {
     (reminder) =>
       reminder.status === "PENDING" && reminder.assignedAgentId === agentId,
   )
-  const patientNames = new Map(
+  const patientInfo = new Map<string, AgendaPatientInfo>(
     (patientsQuery.data?.data ?? []).map((patient) => [
       patient.id,
-      patient.fullName,
+      {
+        name: patient.fullName,
+        healthSubcategory: patient.healthSubcategory,
+      },
     ]),
   )
-  const events = buildAgendaEvents(followUps, reminders, patientNames)
+  const events = buildAgendaEvents(followUps, reminders, patientInfo)
   const followUpEvents = events.filter(
     (event): event is Extract<AgendaEvent, { kind: "follow-up" }> =>
       event.kind === "follow-up",
@@ -321,7 +326,7 @@ export default function AgentAgendaPage() {
           followUpEvents={followUpEvents}
           reminderEvents={reminderEvents}
           sessions={sessions}
-          patientNames={patientNames}
+          patientInfo={patientInfo}
           volunteers={volunteers}
           onSelectEvent={openEvent}
           onOpenPatient={(patientId) =>
@@ -351,7 +356,7 @@ export default function AgentAgendaPage() {
         reminder={selectedReminder}
         patientName={
           selectedReminder
-            ? (patientNames.get(selectedReminder.subjectPatientId) ??
+            ? (patientInfo.get(selectedReminder.subjectPatientId)?.name ??
               "Paciente desconocido")
             : ""
         }
@@ -440,7 +445,7 @@ function AgendaSummary({
   followUpEvents,
   reminderEvents,
   sessions,
-  patientNames,
+  patientInfo,
   volunteers,
   onSelectEvent,
   onOpenPatient,
@@ -448,7 +453,7 @@ function AgendaSummary({
   followUpEvents: Extract<AgendaEvent, { kind: "follow-up" }>[]
   reminderEvents: Extract<AgendaEvent, { kind: "reminder" }>[]
   sessions: Awaited<ReturnType<typeof psychooncologyAppointmentsApi.list>>
-  patientNames: Map<string, string>
+  patientInfo: Map<string, AgendaPatientInfo>
   volunteers: Map<string, { firstName: string; lastName: string }>
   onSelectEvent: (event: AgendaEvent) => void
   onOpenPatient: (patientId: string) => void
@@ -476,7 +481,7 @@ function AgendaSummary({
       />
       <PsychooncologyCard
         sessions={sessions}
-        patientNames={patientNames}
+        patientInfo={patientInfo}
         volunteers={volunteers}
         onOpenPatient={onOpenPatient}
       />
@@ -572,7 +577,12 @@ function BentoTaskRow({
     >
       <span className={`h-10 w-1 shrink-0 rounded-full ${accent}`} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{event.patientName}</p>
+        <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+          <PatientHealthSubcategoryDot
+            subcategory={event.healthSubcategory}
+          />
+          <span className="truncate">{event.patientName}</span>
+        </p>
         <p className="text-muted-foreground mt-0.5 truncate text-xs">
           {event.title} · {event.detail}
         </p>
@@ -598,12 +608,12 @@ function BentoTaskRow({
 
 function PsychooncologyCard({
   sessions,
-  patientNames,
+  patientInfo,
   volunteers,
   onOpenPatient,
 }: {
   sessions: Awaited<ReturnType<typeof psychooncologyAppointmentsApi.list>>
-  patientNames: Map<string, string>
+  patientInfo: Map<string, AgendaPatientInfo>
   volunteers: Map<string, { firstName: string; lastName: string }>
   onOpenPatient: (patientId: string) => void
 }) {
@@ -647,9 +657,16 @@ function PsychooncologyCard({
                     <Icon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {patientNames.get(session.patientId) ??
-                        "Paciente desconocido"}
+                    <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                      <PatientHealthSubcategoryDot
+                        subcategory={
+                          patientInfo.get(session.patientId)?.healthSubcategory
+                        }
+                      />
+                      <span className="truncate">
+                        {patientInfo.get(session.patientId)?.name ??
+                          "Paciente desconocido"}
+                      </span>
                     </p>
                     <p className="text-muted-foreground mt-0.5 truncate text-xs">
                       Sesión {session.sessionNumber}

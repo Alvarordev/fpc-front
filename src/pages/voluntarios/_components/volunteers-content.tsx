@@ -9,7 +9,6 @@ import { getVolunteerColumns } from "./volunteers-columns"
 import { AvailabilityCalendar } from "./availability-calendar"
 import { CalendarHeader } from "./calendar-header"
 import { CalendarLegend } from "./calendar-legend"
-import { SepaTeamTab } from "./sepa-team-tab"
 import { VolunteerProfileDialog } from "./volunteer-profile-dialog"
 
 const NOW = new Date()
@@ -17,7 +16,6 @@ const NOW = new Date()
 export function VolunteersContent() {
   const user = useAuthStore((s) => s.user)
   const role = user?.role
-  const isReadOnly = role === "VOLUNTEER"
 
   const [volunteerId, setVolunteerId] = useState("all")
   const [profileVolunteerId, setProfileVolunteerId] = useState<string | null>(
@@ -35,14 +33,8 @@ export function VolunteersContent() {
     [year, month],
   )
   const { data: volunteers = [] } = useVolunteers()
-  const { data: calendar } = useVolunteerCalendar(
-    range.from,
-    range.to,
-    !isReadOnly,
-  )
-  const visibleVolunteers = isReadOnly
-    ? volunteers.filter((volunteer) => volunteer.userId === user?.id)
-    : volunteers
+  const { data: calendar } = useVolunteerCalendar(range.from, range.to, true)
+  const visibleVolunteers = volunteers
   const profileVolunteer =
     visibleVolunteers.find(
       (volunteer) => volunteer.id === profileVolunteerId,
@@ -109,59 +101,43 @@ export function VolunteersContent() {
           {visibleVolunteers.length === 1 ? "" : "s"} registrado
           {visibleVolunteers.length === 1 ? "" : "s"}
         </p>
-        {isReadOnly && (
-          <p className="text-muted-foreground mt-1 text-xs">
-            Vista de solo lectura.
-          </p>
-        )}
       </div>
 
-      {role !== "VOLUNTEER" && (
-        <VolunteerCommitmentBanner volunteers={volunteers} />
-      )}
+      <VolunteerCommitmentBanner volunteers={volunteers} />
 
-      {!isReadOnly && (
-        <VolunteersToolbar
-          volunteerId={volunteerId}
-          onVolunteerIdChange={setVolunteerId}
-          volunteers={volunteers}
-          activeFilter={activeFilter}
-          onActiveFilterChange={setActiveFilter}
-        />
-      )}
+      <VolunteersToolbar
+        volunteerId={volunteerId}
+        onVolunteerIdChange={setVolunteerId}
+        volunteers={volunteers}
+        activeFilter={activeFilter}
+        onActiveFilterChange={setActiveFilter}
+      />
 
-      <Tabs defaultValue={isReadOnly ? "voluntarios" : "calendario"}>
+      <Tabs defaultValue="calendario">
         <TabsList className="mb-4">
-          {!isReadOnly && (
-            <TabsTrigger value="calendario">Calendario</TabsTrigger>
-          )}
+          <TabsTrigger value="calendario">Calendario</TabsTrigger>
           <TabsTrigger value="voluntarios">Voluntarios</TabsTrigger>
-          {!isReadOnly && (
-            <TabsTrigger value="equipo-sepa">Equipo SEPA</TabsTrigger>
-          )}
         </TabsList>
 
-        {!isReadOnly && (
-          <TabsContent value="calendario" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <CalendarHeader
-                year={year}
-                month={month}
-                onPrev={prevMonth}
-                onNext={nextMonth}
-              />
-              <CalendarLegend />
-            </div>
-            <AvailabilityCalendar
+        <TabsContent value="calendario" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <CalendarHeader
               year={year}
               month={month}
-              slots={slots}
-              volunteers={filtered}
-              highlightedIds={highlightedIds}
-              patientNameByAvailabilityId={patientNameByAvailabilityId}
+              onPrev={prevMonth}
+              onNext={nextMonth}
             />
-          </TabsContent>
-        )}
+            <CalendarLegend />
+          </div>
+          <AvailabilityCalendar
+            year={year}
+            month={month}
+            slots={slots}
+            volunteers={filtered}
+            highlightedIds={highlightedIds}
+            patientNameByAvailabilityId={patientNameByAvailabilityId}
+          />
+        </TabsContent>
 
         <TabsContent value="voluntarios">
           <VolunteersTable
@@ -172,12 +148,6 @@ export function VolunteersContent() {
             }
           />
         </TabsContent>
-
-        {!isReadOnly && (
-          <TabsContent value="equipo-sepa">
-            <SepaTeamTab />
-          </TabsContent>
-        )}
       </Tabs>
 
       {profileVolunteer && (
