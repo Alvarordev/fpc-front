@@ -24,11 +24,13 @@ import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateHealthCenter } from "../_hooks/use-health-centers";
 import { DEPARTMENTS } from "../_utils/departments";
+import { HEALTH_CENTER_CATEGORIES } from "../_utils/categories";
 import type { HealthCenter, UpdateHealthCenterInput } from "@/api/health-centers";
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
   department: z.string().min(1, "Requerido"),
+  category: z.string().min(1, "Requerido"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -55,10 +57,11 @@ export function EditHealthCenterDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", department: "" },
+    defaultValues: { name: "", department: "", category: "" },
   });
 
   const department = watch("department");
+  const category = watch("category");
 
   // Pre-fill the form when dialog opens with a center
   useEffect(() => {
@@ -66,6 +69,7 @@ export function EditHealthCenterDialog({
       reset({
         name: center.name,
         department: center.department,
+        category: center.category ?? "",
       });
     }
   }, [open, center, reset]);
@@ -80,14 +84,14 @@ export function EditHealthCenterDialog({
 
     const name = values.name.toUpperCase();
     const department = values.department as UpdateHealthCenterInput["department"];
+    const category = values.category as NonNullable<
+      UpdateHealthCenterInput["category"]
+    >;
 
     try {
       await updateMutation.mutateAsync({
         id: center.id,
-        data:
-          name !== center.name || department !== center.department
-            ? { name, department }
-            : { name, department }, // always send both for consistency
+        data: { name, department, category },
       });
       toast.success("Centro de salud actualizado");
       handleClose();
@@ -152,13 +156,41 @@ export function EditHealthCenterDialog({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Categoría</Label>
+            <Select
+              items={HEALTH_CENTER_CATEGORIES.map((item) => ({
+                value: item.value,
+                label: item.label,
+              }))}
+              value={category}
+              onValueChange={(v) => setValue("category", v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar categoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                {HEALTH_CENTER_CATEGORIES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && (
+              <p className="text-xs text-destructive">
+                {errors.category.message}
+              </p>
+            )}
+          </div>
+
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={!department || updateMutation.isPending}
+              disabled={!department || !category || updateMutation.isPending}
             >
               {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
             </Button>

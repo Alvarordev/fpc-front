@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Building2, MapPin, MoreHorizontal, Pencil, Power, PowerOff } from "lucide-react";
 import type { HealthCenter } from "@/api/health-centers";
+import { CATEGORY_LABELS } from "../_utils/categories";
 
 const departmentLabels: Record<string, string> = {
   AMAZONAS: "Amazonas",
@@ -74,6 +75,21 @@ export function healthCenterColumns({
           <span className="text-sm text-muted-foreground flex items-center gap-1">
             <MapPin className="size-3" />
             {departmentLabels[dep] ?? dep}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "category",
+      header: "Categoría",
+      cell: ({ getValue }) => {
+        const category = getValue() as HealthCenter["category"];
+        if (!category) {
+          return <span className="text-sm text-muted-foreground">—</span>;
+        }
+        return (
+          <span className="text-sm text-muted-foreground">
+            {CATEGORY_LABELS[category] ?? category}
           </span>
         );
       },

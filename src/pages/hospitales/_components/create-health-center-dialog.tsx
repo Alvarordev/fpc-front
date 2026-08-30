@@ -25,10 +25,12 @@ import { MapPin } from "lucide-react";
 import { healthCentersApi } from "@/api/health-centers";
 import type { CreateHealthCenterInput } from "@/api/health-centers";
 import { DEPARTMENTS } from "../_utils/departments";
+import { HEALTH_CENTER_CATEGORIES } from "../_utils/categories";
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
   department: z.string().min(1, "Requerido"),
+  category: z.string().min(1, "Requerido"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -57,10 +59,11 @@ export function CreateHealthCenterDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", department: "" },
+    defaultValues: { name: "", department: "", category: "" },
   });
 
   const department = watch("department");
+  const category = watch("category");
 
   function handleClose() {
     onOpenChange(false);
@@ -73,6 +76,7 @@ export function CreateHealthCenterDialog({
       await createMutation.mutateAsync({
         name,
         department: values.department as CreateHealthCenterInput["department"],
+        category: values.category as CreateHealthCenterInput["category"],
       });
       toast.success(`"${name}" creado`);
       handleClose();
@@ -143,13 +147,41 @@ export function CreateHealthCenterDialog({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Categoría</Label>
+            <Select
+              items={HEALTH_CENTER_CATEGORIES.map((item) => ({
+                value: item.value,
+                label: item.label,
+              }))}
+              value={category}
+              onValueChange={(v) => setValue("category", v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar categoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                {HEALTH_CENTER_CATEGORIES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && (
+              <p className="text-xs text-destructive">
+                {errors.category.message}
+              </p>
+            )}
+          </div>
+
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={!department || createMutation.isPending}
+              disabled={!department || !category || createMutation.isPending}
             >
               {createMutation.isPending ? "Guardando..." : "Guardar"}
             </Button>

@@ -2209,6 +2209,8 @@ export interface components {
             name: string;
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** @enum {string} */
+            category: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2";
         };
         HealthCenterResponseDto: {
             /** Format: uuid */
@@ -2217,6 +2219,8 @@ export interface components {
             slug: string;
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** @enum {string|null} */
+            category: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2" | null;
             isActive: boolean;
             patientCount: number;
             /** Format: date-time */
@@ -2228,6 +2232,8 @@ export interface components {
             name?: string;
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** @enum {string} */
+            category?: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2";
             isActive?: boolean;
         };
         CreateMedicalAppointmentDto: {

@@ -18,6 +18,7 @@ import type { HealthCenter } from "@/api/health-centers";
 export function HealthCentersContent() {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
+  const [category, setCategory] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Edit dialog state
@@ -39,13 +40,17 @@ export function HealthCentersContent() {
       }
     }
 
+    if (category !== "all") {
+      result = result.filter((c) => c.category === category);
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((c) => c.name.toLowerCase().includes(q));
     }
 
     return result;
-  }, [centers, search, department]);
+  }, [centers, search, department, category]);
 
   const handleEdit = useCallback((center: HealthCenter) => {
     setEditingCenter(center);
@@ -110,6 +115,8 @@ export function HealthCentersContent() {
         onSearchChange={setSearch}
         department={department}
         onDepartmentChange={setDepartment}
+        category={category}
+        onCategoryChange={setCategory}
       />
 
       <DataTable
