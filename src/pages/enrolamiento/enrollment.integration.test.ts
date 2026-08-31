@@ -77,7 +77,6 @@ runDescribe("enrollment flow against Nest", () => {
           healthPhase: "CANCER_DIAGNOSIS",
           details: {
             travelTimeToHospital: { valueMin: 45, unit: "MINUTE" },
-            referredToSocialWorker: true,
           },
           addresses: [
             {

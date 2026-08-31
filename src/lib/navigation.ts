@@ -10,6 +10,7 @@ import {
   ShieldUser,
   Calendar,
   UserRound,
+  GraduationCap,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -30,6 +31,11 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
         { title: "Citas Médicas", url: "/citas", icon: Calendar },
+        {
+          title: "Charlas de prevención",
+          url: "/charlas",
+          icon: GraduationCap,
+        },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -62,6 +68,11 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Call center", url: "/callcenter", icon: Headset },
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
         { title: "Citas Médicas", url: "/citas", icon: Calendar },
+        {
+          title: "Charlas de prevención",
+          url: "/charlas",
+          icon: GraduationCap,
+        },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -74,6 +85,11 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
+        {
+          title: "Charlas de prevención",
+          url: "/charlas",
+          icon: GraduationCap,
+        },
       ],
     },
   ],
@@ -91,6 +107,7 @@ export const pathTitles: Record<string, string> = {
   "/voluntarios": "Voluntarios",
   "/alertas": "Alertas",
   "/citas": "Citas Médicas",
+  "/charlas": "Charlas de prevención",
   "/hospitales": "Hospitales",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { FileUp, X } from "lucide-react"
 import type { PatientDiagnosis, PatientTreatment } from "@/api/patients"
 import {
@@ -50,6 +50,9 @@ interface PatientDocumentUploadDialogProps {
   treatments: PatientTreatment[]
   isPending: boolean
   onSubmit: (input: CreatePatientDocumentInput) => void
+  defaultDocumentType?: PatientDocumentType
+  lockedTreatmentId?: string
+  hideTypeSelect?: boolean
 }
 
 export function PatientDocumentUploadDialog({
@@ -59,14 +62,29 @@ export function PatientDocumentUploadDialog({
   treatments,
   isPending,
   onSubmit,
+  defaultDocumentType = "OTHER",
+  lockedTreatmentId,
+  hideTypeSelect = false,
 }: PatientDocumentUploadDialogProps) {
   const [file, setFile] = useState<File | null>(null)
-  const [documentType, setDocumentType] = useState<PatientDocumentType>("OTHER")
+  const [documentType, setDocumentType] =
+    useState<PatientDocumentType>(defaultDocumentType)
   const [diagnosisId, setDiagnosisId] = useState("")
-  const [treatmentId, setTreatmentId] = useState("")
+  const [treatmentId, setTreatmentId] = useState(lockedTreatmentId ?? "")
   const [description, setDescription] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
+
+  useEffect(() => {
+    if (!open) return
+    setDocumentType(defaultDocumentType)
+    setTreatmentId(lockedTreatmentId ?? "")
+    setDiagnosisId("")
+    setDescription("")
+    setFile(null)
+    setError(null)
+    setFileInputKey((value) => value + 1)
+  }, [open, defaultDocumentType, lockedTreatmentId])
 
   const diagnosisItems = diagnoses.map((diagnosis) => ({
     value: diagnosis.id,
@@ -76,6 +94,9 @@ export function PatientDocumentUploadDialog({
     value: treatment.id,
     label: treatmentLabel(treatment),
   }))
+  const lockedTreatment = lockedTreatmentId
+    ? treatments.find((treatment) => treatment.id === lockedTreatmentId)
+    : undefined
 
   function handleFileChange(nextFile: File | undefined) {
     setError(null)
@@ -103,13 +124,14 @@ export function PatientDocumentUploadDialog({
     const nextType = (value ?? "OTHER") as PatientDocumentType
     setDocumentType(nextType)
     setDiagnosisId("")
-    setTreatmentId("")
+    setTreatmentId(lockedTreatmentId ?? "")
     setError(null)
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextDescription = description.trim()
+    const resolvedTreatmentId = lockedTreatmentId || treatmentId
 
     if (!file) {
       setError("Selecciona un archivo para continuar.")
@@ -119,7 +141,7 @@ export function PatientDocumentUploadDialog({
       setError("Selecciona el diagnóstico relacionado.")
       return
     }
-    if (documentType === "PRESCRIPTION" && !treatmentId) {
+    if (documentType === "PRESCRIPTION" && !resolvedTreatmentId) {
       setError("Selecciona el tratamiento relacionado.")
       return
     }
@@ -132,7 +154,8 @@ export function PatientDocumentUploadDialog({
       file,
       documentType,
       diagnosisId: documentType === "MEDICAL_REPORT" ? diagnosisId : undefined,
-      treatmentId: documentType === "PRESCRIPTION" ? treatmentId : undefined,
+      treatmentId:
+        documentType === "PRESCRIPTION" ? resolvedTreatmentId : undefined,
       description: nextDescription || undefined,
     })
   }
@@ -183,26 +206,28 @@ export function PatientDocumentUploadDialog({
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Tipo documental</Label>
-            <Select
-              items={DOCUMENT_TYPES}
-              value={documentType}
-              onValueChange={handleTypeChange}
-              disabled={isPending}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {DOCUMENT_TYPES.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!hideTypeSelect && (
+            <div className="space-y-2">
+              <Label>Tipo documental</Label>
+              <Select
+                items={DOCUMENT_TYPES}
+                value={documentType}
+                onValueChange={handleTypeChange}
+                disabled={isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_TYPES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {documentType === "MEDICAL_REPORT" && (
             <div className="space-y-2">
@@ -235,24 +260,35 @@ export function PatientDocumentUploadDialog({
           {documentType === "PRESCRIPTION" && (
             <div className="space-y-2">
               <Label>Tratamiento relacionado</Label>
-              <Select
-                items={treatmentItems}
-                value={treatmentId}
-                onValueChange={(value) => setTreatmentId(value ?? "")}
-                disabled={isPending || treatmentItems.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tratamiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {treatmentItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {treatmentItems.length === 0 && (
+              {lockedTreatmentId ? (
+                <Input
+                  value={
+                    lockedTreatment
+                      ? treatmentLabel(lockedTreatment)
+                      : "Tratamiento seleccionado"
+                  }
+                  disabled
+                />
+              ) : (
+                <Select
+                  items={treatmentItems}
+                  value={treatmentId}
+                  onValueChange={(value) => setTreatmentId(value ?? "")}
+                  disabled={isPending || treatmentItems.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tratamiento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {treatmentItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!lockedTreatmentId && treatmentItems.length === 0 && (
                 <p className="text-xs text-amber-700">
                   Este paciente aún no tiene tratamientos registrados.
                 </p>

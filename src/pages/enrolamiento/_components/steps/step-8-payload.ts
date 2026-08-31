@@ -146,13 +146,6 @@ export function buildEnrollmentPayload({
     const treatmentStartDate = value(treatment.startDate)
     const treatmentEndDate = value(treatment.endDate)
     const isReferred = treatment.isReferred ?? false
-    const receivesTeleconsultation =
-      treatment.receivesTeleconsultation ?? undefined
-    const teleconsultationSpecialties = (
-      treatment.teleconsultationSpecialties ?? []
-    )
-      .map((specialty) => value(specialty))
-      .filter((specialty): specialty is string => Boolean(specialty))
     if (
       treatment.treatmentSituation === "ABANDONED" &&
       !value(treatment.treatmentAbandonmentReason)
@@ -226,16 +219,6 @@ export function buildEnrollmentPayload({
       endDate: treatmentEndDate,
       notReceivingReason: value(treatment.notReceivingReason),
       operationName: isOperation ? value(treatment.operationName) : undefined,
-      careProgram: treatment.careProgram ?? undefined,
-      receivesTeleconsultation,
-      ...(receivesTeleconsultation
-        ? {
-            teleconsultationNote: value(treatment.teleconsultationNote),
-            ...(teleconsultationSpecialties.length
-              ? { teleconsultationSpecialties }
-              : {}),
-          }
-        : {}),
       treatmentSituation: treatment.treatmentSituation ?? undefined,
       ...(treatment.treatmentSituation === "ABANDONED"
         ? {
@@ -472,7 +455,6 @@ export function buildEnrollmentPayload({
       nativeLanguage: value(draft.details.nativeLanguage),
       requiresTranslation: draft.details.requiresTranslation ?? undefined,
       isWorking: draft.details.isWorking ?? undefined,
-      referredToSocialWorker: draft.details.referredToSocialWorker ?? undefined,
     },
     ...(draft.insurance.insuranceType &&
     draft.insurance.insuranceType !== "NONE"

@@ -359,6 +359,7 @@ export function FollowUpContent() {
         mode,
         replacementDiagnosisId,
         waitTimeForDiagnosisManuallyEdited,
+        changeReason: _changeReason,
         ...diagnosisDraft
       } = diagnosisDecision
       const waitTimeForDiagnosis = waitTimeForDiagnosisManuallyEdited
@@ -441,8 +442,6 @@ export function FollowUpContent() {
           treatmentDraft.treatmentSituation === "ABANDONED"
             ? treatmentDraft.treatmentAbandonmentReason
             : undefined,
-        hasLatestPrescription: treatmentDraft.hasLatestPrescription,
-        latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
         treatmentFrequency: normalizedFrequency,
         ...(normalizedMedications?.length
           ? { medications: normalizedMedications }

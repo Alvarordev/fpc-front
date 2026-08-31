@@ -67,7 +67,7 @@ interface CreateAlertDialogProps {
 
 export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: CreateAlertDialogProps) {
   const { data: hospitals = [] } = useQuery({
-    queryKey: ["health-centers"],
+    queryKey: ["healthCenters"],
     queryFn: () => healthCentersApi.list(),
     staleTime: 5 * 60 * 1000,
     enabled: open,

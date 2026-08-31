@@ -7,7 +7,6 @@ import {
   Calendar,
   ChevronDown,
   Clock,
-  FileText,
   Loader2,
   Pencil,
   Pill,
@@ -170,11 +169,6 @@ export function TreatmentCard({
           }
           icon={Building2}
         />
-        <Detail
-          label="Receta"
-          value={prescriptionLabel(treatment)}
-          icon={FileText}
-        />
       </div>
 
       {open && (
@@ -221,11 +215,6 @@ export function TreatmentCard({
                   icon={Building2}
                 />
               )}
-              <Detail
-                label="Receta más reciente"
-                value={prescriptionLabel(treatment)}
-                icon={FileText}
-              />
               {treatment.operationName && (
                 <Detail label="Operación" value={treatment.operationName} />
               )}
@@ -284,16 +273,6 @@ function periodLabel(treatment: PatientTreatment) {
   if (!treatment.startDate && !treatment.endDate) return "Sin fechas"
   if (!treatment.startDate) return `Hasta ${date(treatment.endDate)}`
   return `Desde ${date(treatment.startDate)}${treatment.endDate ? ` hasta ${date(treatment.endDate)}` : " (en curso)"}`
-}
-
-function prescriptionLabel(treatment: PatientTreatment) {
-  if (treatment.hasLatestPrescription === true) {
-    return treatment.latestPrescriptionDate
-      ? `Registrada el ${date(treatment.latestPrescriptionDate)}`
-      : "Registrada"
-  }
-  if (treatment.hasLatestPrescription === false) return "No registrada"
-  return "Sin dato"
 }
 
 function Detail({

@@ -47,7 +47,10 @@ export function CreateHealthCenterDialog({
   const queryClient = useQueryClient();
   const createMutation = useMutation({
     mutationFn: healthCentersApi.create,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["healthCenters"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["healthCenters"] })
+      queryClient.invalidateQueries({ queryKey: ["health-centers"] })
+    },
   });
 
   const {

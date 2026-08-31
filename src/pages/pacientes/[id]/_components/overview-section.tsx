@@ -706,12 +706,6 @@ export function OverviewSection({
                           icon={Clock}
                         />
                       )}
-                      {item.changeReason && (
-                        <Field
-                          label="Motivo de cambio"
-                          value={item.changeReason}
-                        />
-                      )}
                     </div>
                   </div>
                 ))}
@@ -774,6 +768,12 @@ export function OverviewSection({
                       {epsLabels[item.epsProvider]}
                     </span>
                   )}
+                  {item.insuranceType === "ESSALUD" &&
+                    item.affiliatedViaSepa != null && (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        · SEPA: {item.affiliatedViaSepa ? "Sí" : "No"}
+                      </span>
+                    )}
                 </span>
                 {item.isCurrent && (
                   <Badge variant="secondary" className="shrink-0 text-[10px]">

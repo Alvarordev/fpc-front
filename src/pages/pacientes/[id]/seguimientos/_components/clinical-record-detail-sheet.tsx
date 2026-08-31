@@ -159,11 +159,6 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
           <Detail label="ID del seguimiento" value={diagnosis.followUpId} />
           <Detail label="ID del registro" value={diagnosis.id} />
         </DetailGrid>
-        <Detail
-          label="Motivo del cambio"
-          value={diagnosis.changeReason}
-          fullWidth
-        />
       </DetailSection>
     </div>
   )
@@ -251,15 +246,6 @@ function TreatmentDetails({
           <Detail
             label="Especialidades de teleconsulta"
             value={treatment.teleconsultationSpecialties?.join(", ")}
-          />
-          <Detail
-            label="Tiene receta más reciente"
-            value={booleanLabel(treatment.hasLatestPrescription)}
-          />
-          <Detail
-            label="Fecha de receta"
-            value={formatDate(treatment.latestPrescriptionDate)}
-            icon={Calendar}
           />
           <Detail
             label="Motivo de no recibir tratamiento"

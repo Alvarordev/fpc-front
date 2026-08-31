@@ -52,7 +52,6 @@ describe("step 8 Nest enrollment payload", () => {
         },
         details: {
           birthDepartment: "AREQUIPA",
-          referredToSocialWorker: true,
           travelTimeToHospital: { valueMin: 45, unit: "MINUTE" },
           zoneType: "RURAL",
         },
@@ -198,7 +197,7 @@ describe("step 8 Nest enrollment payload", () => {
       isPrimary: false,
       address: "Jr. Temporal 456",
     })
-    expect(payload.details?.referredToSocialWorker).toBe(true)
+    expect(payload.details).not.toHaveProperty("referredToSocialWorker")
     expect(payload.familyPreventionTalkInterests).toHaveLength(1)
     expect(payload.psychooncologySupportAssessment).toEqual({
       excessiveWorry: true,
@@ -365,10 +364,6 @@ describe("step 8 Nest enrollment payload", () => {
             diagnosisRef: "diagnosis-1",
             treatmentType: "Cirugía",
             operationName: "Mastectomía",
-            careProgram: "COPHOES",
-            receivesTeleconsultation: true,
-            teleconsultationNote: "Control remoto",
-            teleconsultationSpecialties: ["Oncología", "Psicología"],
             treatmentSituation: "ABANDONED",
             treatmentAbandonmentReason: "Cambio de ciudad",
             isCurrent: true,
@@ -384,13 +379,17 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.diagnoses?.[0]).not.toHaveProperty("isSepaActiveReferral")
     expect(payload.treatments?.[0]).toMatchObject({
       operationName: "Mastectomía",
-      careProgram: "COPHOES",
-      receivesTeleconsultation: true,
-      teleconsultationNote: "Control remoto",
-      teleconsultationSpecialties: ["Oncología", "Psicología"],
       treatmentSituation: "ABANDONED",
       treatmentAbandonmentReason: "Cambio de ciudad",
     })
+    expect(payload.treatments?.[0]).not.toHaveProperty("careProgram")
+    expect(payload.treatments?.[0]).not.toHaveProperty(
+      "receivesTeleconsultation",
+    )
+    expect(payload.treatments?.[0]).not.toHaveProperty("teleconsultationNote")
+    expect(payload.treatments?.[0]).not.toHaveProperty(
+      "teleconsultationSpecialties",
+    )
     expect(payload.healthBackgroundAssessment).toBeUndefined()
     expect("currentlyReceivingTreatment" in payload).toBe(false)
   })

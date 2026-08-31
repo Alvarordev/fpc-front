@@ -37,7 +37,6 @@ import { calculateDurationBetweenDates } from "@/types/duration"
 import type {
   AddMedicalAppointmentRequest,
   AddTreatmentMedicationRequest,
-  CareProgram,
   CancerStage,
   MedicalConsultationStatus,
   MedicationDoseUnit,
@@ -110,17 +109,6 @@ const CONSULTATION_STATUS_OPTIONS: Array<{
   { value: "NOT_OBTAINED", label: "No obtuvo consulta" },
   { value: "SCHEDULED", label: "Consulta programada" },
   { value: "ATTENDED", label: "Consulta atendida" },
-]
-
-const TRI_STATE_OPTIONS = [
-  { value: "SIN_DATO", label: "Sin dato" },
-  { value: "SI", label: "Sí" },
-  { value: "NO", label: "No" },
-] as const
-
-const CARE_PROGRAMS: Array<{ value: CareProgram; label: string }> = [
-  { value: "COPHOES", label: "COPHOES" },
-  { value: "PADOMI", label: "PADOMI" },
 ]
 
 const DOSE_UNITS: Array<{ value: MedicationDoseUnit; label: string }> = [
@@ -1873,31 +1861,6 @@ export function Step7Atencion() {
                       />
                     </div>
                   )}
-                  <div className="flex flex-col gap-2">
-                    <Label className={flGrid}>Programa de atención</Label>
-                    <Select
-                      items={CARE_PROGRAMS}
-                      value={tx.careProgram ?? ""}
-                      onValueChange={(value) =>
-                        updateTreatment({
-                          careProgram: (value || undefined) as
-                            | CareProgram
-                            | undefined,
-                        })
-                      }
-                    >
-                      <SelectTrigger className={sc}>
-                        <SelectValue placeholder="Seleccionar programa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CARE_PROGRAMS.map((program) => (
-                          <SelectItem key={program.value} value={program.value}>
-                            {program.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <DurationInput
                     label="Frecuencia del tratamiento"
                     units={["DAY", "WEEK", "MONTH", "YEAR"]}
@@ -1931,73 +1894,6 @@ export function Step7Atencion() {
                       className="bg-card border"
                     />
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <Label className={flGrid}>¿Recibe teleconsulta?</Label>
-                    <Select
-                      items={TRI_STATE_OPTIONS}
-                      value={
-                        tx.receivesTeleconsultation === true
-                          ? "SI"
-                          : tx.receivesTeleconsultation === false
-                            ? "NO"
-                            : "SIN_DATO"
-                      }
-                      onValueChange={(value) =>
-                        updateTreatment({
-                          receivesTeleconsultation:
-                            value === "SIN_DATO" ? undefined : value === "SI",
-                        })
-                      }
-                    >
-                      <SelectTrigger className={sc}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TRI_STATE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {tx.receivesTeleconsultation === true && (
-                    <>
-                      <div className="flex flex-col gap-2">
-                        <Label className={flGrid}>Nota de teleconsulta</Label>
-                        <Textarea
-                          value={tx.teleconsultationNote ?? ""}
-                          onChange={(e) =>
-                            updateTreatment({
-                              teleconsultationNote: e.target.value || null,
-                            })
-                          }
-                          placeholder="Detalle de la teleconsulta"
-                          className="bg-card min-h-16 border"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Label className={flGrid}>
-                          Especialidades de teleconsulta
-                        </Label>
-                        <Input
-                          value={(tx.teleconsultationSpecialties ?? []).join(
-                            ", ",
-                          )}
-                          onChange={(e) =>
-                            updateTreatment({
-                              teleconsultationSpecialties: e.target.value
-                                .split(",")
-                                .map((specialty) => specialty.trim())
-                                .filter(Boolean),
-                            })
-                          }
-                          placeholder="Ej: Oncología, Psicología"
-                          className="bg-card border"
-                        />
-                      </div>
-                    </>
-                  )}
                   {tx.treatmentSituation === "ABANDONED" && (
                     <div className="flex flex-col gap-2 md:col-span-2">
                       <Label className={flGrid}>Motivo de abandono</Label>
@@ -2236,34 +2132,6 @@ export function Step7Atencion() {
 
       <section className="flex flex-col gap-5">
         <SectionHeader icon={Users} title="Servicios de Apoyo" />
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>¿Se derivó con la asistenta social?</Label>
-            <Select
-              items={YES_NO_OPTIONS}
-              value={
-                details.referredToSocialWorker === true
-                  ? "Sí"
-                  : details.referredToSocialWorker === false
-                    ? "No"
-                    : ""
-              }
-              onValueChange={(v) =>
-                updateDraft({
-                  details: { ...details, referredToSocialWorker: v === "Sí" },
-                })
-              }
-            >
-              <SelectTrigger className={sc}>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Sí">Sí</SelectItem>
-                <SelectItem value="No">No</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
         {esDx && meta.affiliationType === "PATIENT" && (
           <div className="border-border/60 bg-muted/20 flex flex-col gap-5 rounded-xl border p-4">
             <div className="flex items-start justify-between gap-3">

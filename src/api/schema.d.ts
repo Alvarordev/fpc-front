@@ -381,6 +381,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/family-talk-interests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List family members interested in cancer prevention talks
+         * @description Returns interests collected during enrollment, with the related patient.
+         */
+        get: operations["FamilyTalkInterestsController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/follow-ups": {
         parameters: {
             query?: never;
@@ -1862,6 +1882,7 @@ export interface components {
             changeReason?: string;
             startDate?: string;
             endDate?: string;
+            affiliatedViaSepa?: boolean;
         };
         EnrollmentSisAffiliationDto: {
             canAffiliate: boolean;
@@ -2104,6 +2125,25 @@ export interface components {
         };
         UpdateEnrollmentSurveyDto: {
             followUpQualityRating: number;
+        };
+        FamilyTalkInterestResponseDto: {
+            /** Format: uuid */
+            id: string;
+            talkName: string;
+            familyMemberName: string;
+            familyMemberPhone: string | null;
+            familyMemberEmail: string | null;
+            /** Format: uuid */
+            patientId: string;
+            patientFullName: string;
+            /** Format: uuid */
+            enrollmentId: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        FamilyTalkInterestListResponseDto: {
+            data: components["schemas"]["FamilyTalkInterestResponseDto"][];
+            total: number;
         };
         CreateFollowUpDto: {
             /** Format: uuid */
@@ -2714,6 +2754,7 @@ export interface components {
             startDate: string | null;
             /** Format: date */
             endDate: string | null;
+            affiliatedViaSepa: boolean | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2951,6 +2992,7 @@ export interface components {
             changeReason?: string;
             startDate?: string;
             endDate?: string;
+            affiliatedViaSepa?: boolean;
         };
         CreatePatientMedicalAppointmentDto: {
             /** Format: uuid */
@@ -4677,6 +4719,43 @@ export interface operations {
             };
             /** @description JWT missing, invalid, or expired */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FamilyTalkInterestsController_findAll: {
+        parameters: {
+            query?: {
+                /** @description Search by family member name or patient name */
+                search?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyTalkInterestListResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
