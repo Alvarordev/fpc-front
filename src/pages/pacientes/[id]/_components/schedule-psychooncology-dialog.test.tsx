@@ -238,7 +238,7 @@ describe("SchedulePsychooncologyDialog", () => {
       relationshipLabel.parentElement?.querySelector('[role="combobox"]')
     if (!relationshipTrigger) throw new Error("Relationship trigger not found")
     await user.click(relationshipTrigger)
-    await user.click(await screen.findByRole("option", { name: "Hijo/a" }))
+    await user.click(await screen.findByRole("option", { name: "Hijo(a)" }))
 
     const scheduleLabel = screen.getByText("Horario disponible")
     const scheduleTrigger =

@@ -97,7 +97,7 @@ describe("PatientCompanionsSection", () => {
     ).toBeTruthy()
     expect(screen.getByText("87654321")).toBeTruthy()
     expect(screen.getByText("maria@example.com")).toBeTruthy()
-    expect(screen.getAllByText("Madre").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Mamá").length).toBeGreaterThan(0)
     expect(screen.getAllByText("Informante principal").length).toBeGreaterThan(
       0,
     )
