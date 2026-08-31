@@ -78,6 +78,10 @@ export type PatientHealthBackgroundAssessment =
   components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"]
 export type CompanionPatient =
   components["schemas"]["CompanionPatientResponseDto"]
+export type PatientDiagnosticStatusEvent =
+  components["schemas"]["PatientDiagnosticStatusEventResponseDto"]
+export type TransitionPatientDiagnosticStatusDto =
+  components["schemas"]["TransitionPatientDiagnosticStatusDto"]
 
 export class PatientsApiError extends Error {
   readonly status: number
@@ -508,6 +512,55 @@ export const patientsApi = {
     const { data, response } = await api.GET("/patients/{id}/accompanies", {
       params: { path: { id } },
     })
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async getDiagnosticStatus(patientId: string) {
+    const { data, response } = await api.GET(
+      "/patients/{patientId}/diagnostic-status",
+      {
+        params: { path: { patientId } },
+      },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async getCurrentDiagnosticStatus(patientId: string) {
+    const { data, response } = await api.GET(
+      "/patients/{patientId}/diagnostic-status/current",
+      {
+        params: { path: { patientId } },
+      },
+    )
+
+    if (!response.ok) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data ?? null
+  },
+
+  async transitionDiagnosticStatus(
+    patientId: string,
+    body: TransitionPatientDiagnosticStatusDto,
+  ) {
+    const { data, response } = await api.POST(
+      "/patients/{patientId}/diagnostic-status/transition",
+      {
+        params: { path: { patientId } },
+        body,
+      },
+    )
 
     if (!data) {
       throw new PatientsApiError(response.status)

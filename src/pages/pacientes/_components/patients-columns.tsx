@@ -1,10 +1,10 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { cn } from "@/lib/utils"
 import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
 import { healthPhaseLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
+import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
 
 const healthPhaseStyles: Record<PatientHealthPhase, string> = {
   CANCER_DIAGNOSIS: "bg-rose-50 text-rose-700 border-rose-200",
@@ -48,8 +48,23 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
     ),
   },
   {
+    id: "currentDepartment",
+    header: "Departamento",
+    cell: ({ row }) => {
+      const department = row.original.currentDepartment
+      if (!department) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      return (
+        <span className="text-muted-foreground text-sm">
+          {DEPARTMENT_LABELS[department] ?? department}
+        </span>
+      )
+    },
+  },
+  {
     id: "healthPhase",
-    header: "Tipo",
+    header: "Fase de salud",
     cell: ({ row }) => {
       const phase = row.original.healthPhase
       if (!phase) {
@@ -74,45 +89,10 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
     ),
   },
   {
-    id: "primaryCompanion",
-    header: "Acompañante principal",
-    cell: ({ row }) => {
-      const name = row.original.primaryCompanionName
-      if (!name) {
-        return (
-          <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
-            <Users className="size-3.5 opacity-50" />
-            Sin acompañante
-          </span>
-        )
-      }
-      return (
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm">{name}</span>
-          <Badge variant="outline" className="shrink-0 text-[10px]">
-            Principal
-          </Badge>
-        </div>
-      )
-    },
-  },
-  {
     id: "status",
     header: "Estado",
     cell: ({ row }) => {
       const patient = row.original
-      const typeLabel =
-        patient.role === "COMPANION"
-          ? "Acompañante"
-          : patient.status === "ENROLLED"
-            ? "Enrolado"
-            : "Prospecto"
-      const typeClass =
-        patient.role === "COMPANION"
-          ? "bg-amber-50 text-amber-700"
-          : patient.status === "ENROLLED"
-            ? "bg-blue-50 text-blue-700"
-            : "bg-violet-50 text-violet-700"
       const activityClass =
         patient.activityStatus === "ACTIVE"
           ? "bg-emerald-50 text-emerald-700"
@@ -126,10 +106,7 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
             ? "Inactivo"
             : "Reactivo"
       return (
-        <div className="flex flex-wrap gap-1">
-          <Badge className={cn("border", typeClass)}>{typeLabel}</Badge>
-          <Badge className={cn("border", activityClass)}>{activityLabel}</Badge>
-        </div>
+        <Badge className={cn("border", activityClass)}>{activityLabel}</Badge>
       )
     },
   },

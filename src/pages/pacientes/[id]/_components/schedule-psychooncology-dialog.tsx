@@ -29,7 +29,10 @@ import type {
 } from "@/api/psychooncology-appointments"
 import { isAvailabilitySlotInFuture } from "@/lib/calendar-helpers"
 import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
-import { relationshipLabels } from "../_lib/clinical-labels"
+import {
+  relationshipLabels,
+  relationshipSelectOptions,
+} from "../_lib/clinical-labels"
 
 export type SchedulePsychooncologySubmitInput =
   | { mode: "create"; input: CreatePsychooncologyAppointmentInput }
@@ -82,9 +85,7 @@ const BENEFICIARY_OPTIONS = [
   { value: "COMPANION", label: "Acompañante" },
 ] as const
 
-const RELATIONSHIP_OPTIONS = Object.entries(relationshipLabels).map(
-  ([value, label]) => ({ value, label }),
-)
+const RELATIONSHIP_OPTIONS = [...relationshipSelectOptions]
 
 const ADD_NEW_COMPANION = "ADD_NEW"
 

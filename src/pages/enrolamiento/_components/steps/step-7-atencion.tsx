@@ -775,7 +775,7 @@ export function Step7Atencion() {
                       className="bg-card border"
                     />
                   </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
                     <div className="flex flex-col gap-2">
                       <Label className={fl}>
                         {sr.consultationStatus === "ATTENDED"
@@ -791,35 +791,6 @@ export function Step7Atencion() {
                             appointmentDate: e.target.value || null,
                           })
                         }
-                        className="bg-card border"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className={fl}>Próxima consulta</Label>
-                      <Input
-                        type="date"
-                        value={appointment.nextAppointmentDate ?? ""}
-                        min={appointment.appointmentDate ?? undefined}
-                        onChange={(e) =>
-                          updateAppointment({
-                            nextAppointmentDate: e.target.value || null,
-                          })
-                        }
-                        className="bg-card border"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className={fl}>
-                        Especialidad de la siguiente consulta
-                      </Label>
-                      <Input
-                        value={appointment.nextAppointmentSpecialty ?? ""}
-                        onChange={(e) =>
-                          updateAppointment({
-                            nextAppointmentSpecialty: e.target.value || null,
-                          })
-                        }
-                        placeholder="Ej: Oncología"
                         className="bg-card border"
                       />
                     </div>
@@ -992,6 +963,37 @@ export function Step7Atencion() {
               </p>
             </div>
           )}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                ¿Cuándo es su siguiente consulta médica?
+              </Label>
+              <Input
+                type="date"
+                value={appointment.nextAppointmentDate ?? ""}
+                min={appointment.appointmentDate ?? undefined}
+                onChange={(e) =>
+                  updateAppointment({
+                    nextAppointmentDate: e.target.value || null,
+                  })
+                }
+                className="bg-card border"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>Especialidad de la siguiente consulta</Label>
+              <Input
+                value={appointment.nextAppointmentSpecialty ?? ""}
+                onChange={(e) =>
+                  updateAppointment({
+                    nextAppointmentSpecialty: e.target.value || null,
+                  })
+                }
+                placeholder="Ej: Oncología"
+                className="bg-card border"
+              />
+            </div>
+          </div>
           <div className="flex flex-col gap-2">
             <Label className={fl}>
               ¿Actualmente recibe el tratamiento que le informaron?{" "}

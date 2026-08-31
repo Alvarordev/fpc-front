@@ -31,6 +31,7 @@ import type {
   PatientSocialNote,
   PatientSisAffiliation,
   PatientTreatment,
+  TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
 import { patientsApi } from "@/api/patients"
 import { followUpsApi } from "@/api/follow-ups"
@@ -67,11 +68,18 @@ import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-
 import { PatientDocumentUploadDialog } from "../../_components/patient-document-upload-dialog"
 import { usePatient } from "../../_hooks/use-patient"
 import {
+  accessBarrierLabels,
   cancerStageLabels as cancerStageOptions,
+  diagnosticStatusLabels,
   educationLabels as educationOptions,
   epsLabels as epsOptions,
   insuranceLabels as insuranceOptions,
+  interruptionReasonLabels,
+  labelMapToSelectItems,
   normalizeZoneType,
+  programDropoutReasonCodeLabels,
+  shelterSepaProviderLabels,
+  transportationSepaProviderLabels,
   type CancerStage,
   type EducationLevel,
   type EpsProvider,
@@ -125,6 +133,37 @@ type TreatmentSituation = NonNullable<
   CreatePatientTreatmentInput["treatmentSituation"]
 >
 type CareProgram = NonNullable<CreatePatientTreatmentInput["careProgram"]>
+type InterruptionReason = NonNullable<
+  CreatePatientTreatmentInput["interruptionReason"]
+>
+type AccessBarrierCode = NonNullable<
+  CreatePatientTreatmentInput["accessBarrierCode"]
+>
+type TransportationSepaProvider = NonNullable<
+  PatientDetailsInput["transportationSepaProvider"]
+>
+type ShelterSepaProvider = NonNullable<
+  PatientDetailsInput["shelterSepaProvider"]
+>
+type ProgramDropoutReasonCode = NonNullable<
+  PatientDetailsInput["programDropoutReasonCode"]
+>
+type DiagnosticStatus = NonNullable<
+  TransitionPatientDiagnosticStatusDto["status"]
+>
+
+const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(interruptionReasonLabels)
+const ACCESS_BARRIER_ITEMS = labelMapToSelectItems(accessBarrierLabels)
+const TRANSPORTATION_SEPA_PROVIDER_ITEMS = labelMapToSelectItems(
+  transportationSepaProviderLabels,
+)
+const SHELTER_SEPA_PROVIDER_ITEMS = labelMapToSelectItems(
+  shelterSepaProviderLabels,
+)
+const PROGRAM_DROPOUT_REASON_CODE_ITEMS = labelMapToSelectItems(
+  programDropoutReasonCodeLabels,
+)
+const DIAGNOSTIC_STATUS_ITEMS = labelMapToSelectItems(diagnosticStatusLabels)
 
 const CARE_PROGRAMS = [
   { value: "COPHOES", label: "COPHOES" },
@@ -301,9 +340,14 @@ export function ClinicalDataTabs({
 
   const diagnoses = patient?.diagnoses ?? []
   const currentDiagnoses = diagnoses.filter((diagnosis) => diagnosis.isCurrent)
+  const isSignsAndSymptoms =
+    patient?.details?.healthPhase === "SIGNS_AND_SYMPTOMS"
 
   return (
     <>
+    {isSignsAndSymptoms ? (
+      <DiagnosticStatusCard patientId={patientId} followUpId={followUpId} />
+    ) : null}
     <Tabs
       orientation="vertical"
       value={activeTab}
@@ -2054,6 +2098,15 @@ interface TreatmentFormValues {
   teleconsultationNote: string
   teleconsultationSpecialties: string
   treatmentAbandonmentReason: string
+  treatmentViaSepa: boolean | undefined
+  interruptionReason: InterruptionReason | undefined
+  interruptionReasonOther: string
+  scheduledSessions: string
+  completedSessions: string
+  hormonalTreatmentCompleted: boolean | undefined
+  accessBarrierCode: AccessBarrierCode | undefined
+  accessBarrierOther: string
+  orientedRegardingBarriers: boolean | undefined
   isReferred: boolean
   sourceHealthCenterId: string | undefined
   receivingHealthCenterId: string | undefined
@@ -2107,6 +2160,21 @@ function TratamientosForm({
         teleconsultationSpecialties:
           initial?.teleconsultationSpecialties?.join(", ") ?? "",
         treatmentAbandonmentReason: initial?.treatmentAbandonmentReason ?? "",
+        treatmentViaSepa: initial?.treatmentViaSepa,
+        interruptionReason: initial?.interruptionReason,
+        interruptionReasonOther: initial?.interruptionReasonOther ?? "",
+        scheduledSessions:
+          initial?.scheduledSessions != null
+            ? String(initial.scheduledSessions)
+            : "",
+        completedSessions:
+          initial?.completedSessions != null
+            ? String(initial.completedSessions)
+            : "",
+        hormonalTreatmentCompleted: initial?.hormonalTreatmentCompleted,
+        accessBarrierCode: initial?.accessBarrierCode,
+        accessBarrierOther: initial?.accessBarrierOther ?? "",
+        orientedRegardingBarriers: initial?.orientedRegardingBarriers,
         isReferred: initial?.isReferred ?? false,
         sourceHealthCenterId: initial?.sourceHealthCenterId ?? undefined,
         receivingHealthCenterId: initial?.receivingHealthCenterId ?? undefined,
@@ -2136,6 +2204,11 @@ function TratamientosForm({
   const treatmentSituation = watched.treatmentSituation
   const isOperation = watched.isOperation
   const receivesTeleconsultation = watched.receivesTeleconsultation
+  const treatmentViaSepa = watched.treatmentViaSepa
+  const interruptionReason = watched.interruptionReason
+  const accessBarrierCode = watched.accessBarrierCode
+  const hormonalTreatmentCompleted = watched.hormonalTreatmentCompleted
+  const orientedRegardingBarriers = watched.orientedRegardingBarriers
   const startDate = watched.startDate ?? ""
   const medications = watched.medications ?? []
   const canPickDiagnosis =
@@ -2218,6 +2291,23 @@ function TratamientosForm({
       teleconsultationSpecialties:
         treatment.teleconsultationSpecialties?.join(", ") ?? "",
       treatmentAbandonmentReason: treatment.treatmentAbandonmentReason ?? "",
+      treatmentViaSepa: treatment.treatmentViaSepa ?? undefined,
+      interruptionReason: treatment.interruptionReason ?? undefined,
+      interruptionReasonOther: treatment.interruptionReasonOther ?? "",
+      scheduledSessions:
+        treatment.scheduledSessions != null
+          ? String(treatment.scheduledSessions)
+          : "",
+      completedSessions:
+        treatment.completedSessions != null
+          ? String(treatment.completedSessions)
+          : "",
+      hormonalTreatmentCompleted:
+        treatment.hormonalTreatmentCompleted ?? undefined,
+      accessBarrierCode: treatment.accessBarrierCode ?? undefined,
+      accessBarrierOther: treatment.accessBarrierOther ?? "",
+      orientedRegardingBarriers:
+        treatment.orientedRegardingBarriers ?? undefined,
       isReferred: treatment.isReferred,
       sourceHealthCenterId: treatment.sourceHealthCenterId ?? undefined,
       receivingHealthCenterId: treatment.receivingHealthCenterId ?? undefined,
@@ -2296,6 +2386,21 @@ function TratamientosForm({
       teleconsultationSpecialties:
         decision.teleconsultationSpecialties?.join(", ") ?? "",
       treatmentAbandonmentReason: decision.treatmentAbandonmentReason ?? "",
+      treatmentViaSepa: decision.treatmentViaSepa,
+      interruptionReason: decision.interruptionReason,
+      interruptionReasonOther: decision.interruptionReasonOther ?? "",
+      scheduledSessions:
+        decision.scheduledSessions != null
+          ? String(decision.scheduledSessions)
+          : "",
+      completedSessions:
+        decision.completedSessions != null
+          ? String(decision.completedSessions)
+          : "",
+      hormonalTreatmentCompleted: decision.hormonalTreatmentCompleted,
+      accessBarrierCode: decision.accessBarrierCode,
+      accessBarrierOther: decision.accessBarrierOther ?? "",
+      orientedRegardingBarriers: decision.orientedRegardingBarriers,
       isReferred: decision.isReferred ?? false,
       sourceHealthCenterId: decision.sourceHealthCenterId,
       receivingHealthCenterId: decision.receivingHealthCenterId,
@@ -2338,6 +2443,24 @@ function TratamientosForm({
       !values.treatmentAbandonmentReason.trim()
     ) {
       toast.error("Indica el motivo de abandono del tratamiento")
+      return
+    }
+    if (values.treatmentSituation === "INTERRUMPIDO" && !values.interruptionReason) {
+      toast.error("Indica el motivo de interrupción del tratamiento")
+      return
+    }
+    if (
+      values.interruptionReason === "OTHER" &&
+      !values.interruptionReasonOther.trim()
+    ) {
+      toast.error("Especificá el motivo de interrupción")
+      return
+    }
+    if (
+      values.accessBarrierCode === "OTHER" &&
+      !values.accessBarrierOther.trim()
+    ) {
+      toast.error("Especificá la barrera de acceso")
       return
     }
     if (values.isOperation && !values.operationName.trim()) {
@@ -2403,6 +2526,27 @@ function TratamientosForm({
       })
     }
 
+    const parseOptionalSessions = (raw: string, label: string) => {
+      const trimmed = raw.trim()
+      if (!trimmed) return undefined
+      const parsed = Number(trimmed)
+      if (!Number.isFinite(parsed) || parsed < 0 || !Number.isInteger(parsed)) {
+        toast.error(`${label} debe ser un número entero mayor o igual a 0`)
+        return null
+      }
+      return parsed
+    }
+    const scheduledSessions = parseOptionalSessions(
+      values.scheduledSessions,
+      "Sesiones programadas",
+    )
+    if (scheduledSessions === null) return
+    const completedSessions = parseOptionalSessions(
+      values.completedSessions,
+      "Sesiones realizadas",
+    )
+    if (completedSessions === null) return
+
     const nextDecision: TreatmentDraft = {
       diagnosisId: values.diagnosisId,
       treatmentType: values.treatmentType.trim(),
@@ -2437,6 +2581,25 @@ function TratamientosForm({
               values.treatmentAbandonmentReason.trim() || undefined,
           }
         : {}),
+      treatmentViaSepa: values.treatmentViaSepa,
+      ...(values.treatmentSituation === "INTERRUMPIDO"
+        ? {
+            interruptionReason: values.interruptionReason,
+            interruptionReasonOther:
+              values.interruptionReason === "OTHER"
+                ? values.interruptionReasonOther.trim() || undefined
+                : undefined,
+          }
+        : {}),
+      scheduledSessions,
+      completedSessions,
+      hormonalTreatmentCompleted: values.hormonalTreatmentCompleted,
+      accessBarrierCode: values.accessBarrierCode,
+      accessBarrierOther:
+        values.accessBarrierCode === "OTHER"
+          ? values.accessBarrierOther.trim() || undefined
+          : undefined,
+      orientedRegardingBarriers: values.orientedRegardingBarriers,
       isReferred: values.isReferred,
       sourceHealthCenterId: values.isReferred
         ? values.sourceHealthCenterId
@@ -2490,6 +2653,15 @@ function TratamientosForm({
       teleconsultationNote: "",
       teleconsultationSpecialties: "",
       treatmentAbandonmentReason: "",
+      treatmentViaSepa: undefined,
+      interruptionReason: undefined,
+      interruptionReasonOther: "",
+      scheduledSessions: "",
+      completedSessions: "",
+      hormonalTreatmentCompleted: undefined,
+      accessBarrierCode: undefined,
+      accessBarrierOther: "",
+      orientedRegardingBarriers: undefined,
       isReferred: false,
       sourceHealthCenterId: undefined,
       receivingHealthCenterId: undefined,
@@ -2788,6 +2960,115 @@ function TratamientosForm({
                   placeholder="Ej: Oncología, Psicología"
                 />
               </div>
+            </>
+          )}
+          <TriSelect
+            label="¿Tratamiento desde SEPA?"
+            value={treatmentViaSepa}
+            onChange={(value) => setValue("treatmentViaSepa", value)}
+          />
+          <div className="space-y-2">
+            <Label>Sesiones programadas</Label>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              {...register("scheduledSessions")}
+              placeholder="Ej: 4"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Sesiones realizadas</Label>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              {...register("completedSessions")}
+              placeholder="Ej: 2"
+            />
+          </div>
+          <TriSelect
+            label="¿Cumplió el tratamiento hormonal?"
+            value={hormonalTreatmentCompleted}
+            onChange={(value) =>
+              setValue("hormonalTreatmentCompleted", value)
+            }
+          />
+          <div className="space-y-2">
+            <Label>Barrera de acceso</Label>
+            <Select
+              items={ACCESS_BARRIER_ITEMS}
+              value={accessBarrierCode ?? ""}
+              onValueChange={(value) =>
+                setValue(
+                  "accessBarrierCode",
+                  (value as AccessBarrierCode | null) ?? undefined,
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar barrera" />
+              </SelectTrigger>
+              <SelectContent>
+                {ACCESS_BARRIER_ITEMS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {accessBarrierCode === "OTHER" && (
+            <div className="space-y-2">
+              <Label>Otra barrera de acceso</Label>
+              <Input
+                {...register("accessBarrierOther")}
+                placeholder="Especificá la barrera"
+              />
+            </div>
+          )}
+          <TriSelect
+            label="¿Orientado ante barreras de acceso?"
+            value={orientedRegardingBarriers}
+            onChange={(value) =>
+              setValue("orientedRegardingBarriers", value)
+            }
+          />
+          {treatmentSituation === "INTERRUMPIDO" && (
+            <>
+              <div className="space-y-2">
+                <Label>Motivo de interrupción</Label>
+                <Select
+                  items={INTERRUPTION_REASON_ITEMS}
+                  value={interruptionReason ?? ""}
+                  onValueChange={(value) =>
+                    setValue(
+                      "interruptionReason",
+                      (value as InterruptionReason | null) ?? undefined,
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INTERRUPTION_REASON_ITEMS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {interruptionReason === "OTHER" && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Otro motivo de interrupción</Label>
+                  <Textarea
+                    {...register("interruptionReasonOther")}
+                    placeholder="Describe el motivo"
+                  />
+                </div>
+              )}
             </>
           )}
           {treatmentSituation === "ABANDONED" && (
@@ -3433,6 +3714,15 @@ interface SocialFormValues {
   knowsAboutFissal: boolean | undefined
   programDropoutDate: string
   programDropoutReason: string
+  programDropoutReasonCode: ProgramDropoutReasonCode | undefined
+  transportationViaSepa: boolean | undefined
+  transportationSepaProvider: TransportationSepaProvider | undefined
+  transportationSepaProviderOther: string
+  shelterViaSepa: boolean | undefined
+  shelterSepaProvider: ShelterSepaProvider | undefined
+  shelterSepaProviderOther: string
+  attendedEducationalTalk: boolean | undefined
+  attendedEducationalTalkAt: string
 }
 
 const SOCIAL_NOTE_SECTIONS: Array<{
@@ -3507,6 +3797,40 @@ function SeguimientoSocialForm({
           draft?.programDropoutReason ??
           currentDetails?.programDropoutReason ??
           "",
+        programDropoutReasonCode:
+          draft?.programDropoutReasonCode ??
+          currentDetails?.programDropoutReasonCode ??
+          undefined,
+        transportationViaSepa:
+          draft?.transportationViaSepa ??
+          currentDetails?.transportationViaSepa ??
+          undefined,
+        transportationSepaProvider:
+          draft?.transportationSepaProvider ??
+          currentDetails?.transportationSepaProvider ??
+          undefined,
+        transportationSepaProviderOther:
+          draft?.transportationSepaProviderOther ??
+          currentDetails?.transportationSepaProviderOther ??
+          "",
+        shelterViaSepa:
+          draft?.shelterViaSepa ?? currentDetails?.shelterViaSepa ?? undefined,
+        shelterSepaProvider:
+          draft?.shelterSepaProvider ??
+          currentDetails?.shelterSepaProvider ??
+          undefined,
+        shelterSepaProviderOther:
+          draft?.shelterSepaProviderOther ??
+          currentDetails?.shelterSepaProviderOther ??
+          "",
+        attendedEducationalTalk:
+          draft?.attendedEducationalTalk ??
+          currentDetails?.attendedEducationalTalk ??
+          undefined,
+        attendedEducationalTalkAt:
+          draft?.attendedEducationalTalkAt ??
+          currentDetails?.attendedEducationalTalkAt ??
+          "",
       },
     })
   const [notes, setNotes] = useState<Record<SocialNoteType, string>>(() => ({
@@ -3548,6 +3872,40 @@ function SeguimientoSocialForm({
         draft?.programDropoutReason ??
         currentDetails?.programDropoutReason ??
         "",
+      programDropoutReasonCode:
+        draft?.programDropoutReasonCode ??
+        currentDetails?.programDropoutReasonCode ??
+        undefined,
+      transportationViaSepa:
+        draft?.transportationViaSepa ??
+        currentDetails?.transportationViaSepa ??
+        undefined,
+      transportationSepaProvider:
+        draft?.transportationSepaProvider ??
+        currentDetails?.transportationSepaProvider ??
+        undefined,
+      transportationSepaProviderOther:
+        draft?.transportationSepaProviderOther ??
+        currentDetails?.transportationSepaProviderOther ??
+        "",
+      shelterViaSepa:
+        draft?.shelterViaSepa ?? currentDetails?.shelterViaSepa ?? undefined,
+      shelterSepaProvider:
+        draft?.shelterSepaProvider ??
+        currentDetails?.shelterSepaProvider ??
+        undefined,
+      shelterSepaProviderOther:
+        draft?.shelterSepaProviderOther ??
+        currentDetails?.shelterSepaProviderOther ??
+        "",
+      attendedEducationalTalk:
+        draft?.attendedEducationalTalk ??
+        currentDetails?.attendedEducationalTalk ??
+        undefined,
+      attendedEducationalTalkAt:
+        draft?.attendedEducationalTalkAt ??
+        currentDetails?.attendedEducationalTalkAt ??
+        "",
     })
   }, [currentDetails, draft, reset])
 
@@ -3568,6 +3926,32 @@ function SeguimientoSocialForm({
         knowsAboutFissal: values.knowsAboutFissal,
         programDropoutDate: values.programDropoutDate || undefined,
         programDropoutReason: values.programDropoutReason || undefined,
+        programDropoutReasonCode: values.programDropoutReasonCode,
+        transportationViaSepa: values.transportationViaSepa,
+        transportationSepaProvider:
+          values.transportationViaSepa === true
+            ? values.transportationSepaProvider
+            : undefined,
+        transportationSepaProviderOther:
+          values.transportationViaSepa === true &&
+          values.transportationSepaProvider === "OTHER"
+            ? values.transportationSepaProviderOther.trim() || undefined
+            : undefined,
+        shelterViaSepa: values.shelterViaSepa,
+        shelterSepaProvider:
+          values.shelterViaSepa === true
+            ? values.shelterSepaProvider
+            : undefined,
+        shelterSepaProviderOther:
+          values.shelterViaSepa === true &&
+          values.shelterSepaProvider === "OTHER"
+            ? values.shelterSepaProviderOther.trim() || undefined
+            : undefined,
+        attendedEducationalTalk: values.attendedEducationalTalk,
+        attendedEducationalTalkAt:
+          values.attendedEducationalTalk === true
+            ? values.attendedEducationalTalkAt || undefined
+            : undefined,
       },
       nextNotes,
     )
@@ -3632,15 +4016,152 @@ function SeguimientoSocialForm({
           onChange={(v) => setValue("knowsAboutFissal", v)}
         />
 
+        <TriSelect
+          label="¿Accedió al beneficio de traslado por gestión de SEPA?"
+          value={watch("transportationViaSepa")}
+          onChange={(v) => {
+            setValue("transportationViaSepa", v)
+            if (v !== true) {
+              setValue("transportationSepaProvider", undefined)
+              setValue("transportationSepaProviderOther", "")
+            }
+          }}
+        />
+        {watch("transportationViaSepa") === true && (
+          <>
+            <div className="space-y-2">
+              <Label>Proveedor de traslado SEPA</Label>
+              <Select
+                items={TRANSPORTATION_SEPA_PROVIDER_ITEMS}
+                value={watch("transportationSepaProvider") ?? ""}
+                onValueChange={(value) =>
+                  setValue(
+                    "transportationSepaProvider",
+                    (value as TransportationSepaProvider | null) ?? undefined,
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar proveedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRANSPORTATION_SEPA_PROVIDER_ITEMS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {watch("transportationSepaProvider") === "OTHER" && (
+              <div className="space-y-2">
+                <Label>Otro proveedor de traslado</Label>
+                <Input
+                  {...register("transportationSepaProviderOther")}
+                  placeholder="Especificá el proveedor"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        <TriSelect
+          label="¿Accedió a un servicio de albergue por orientación de SEPA?"
+          value={watch("shelterViaSepa")}
+          onChange={(v) => {
+            setValue("shelterViaSepa", v)
+            if (v !== true) {
+              setValue("shelterSepaProvider", undefined)
+              setValue("shelterSepaProviderOther", "")
+            }
+          }}
+        />
+        {watch("shelterViaSepa") === true && (
+          <>
+            <div className="space-y-2">
+              <Label>Albergue / proveedor SEPA</Label>
+              <Select
+                items={SHELTER_SEPA_PROVIDER_ITEMS}
+                value={watch("shelterSepaProvider") ?? ""}
+                onValueChange={(value) =>
+                  setValue(
+                    "shelterSepaProvider",
+                    (value as ShelterSepaProvider | null) ?? undefined,
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar albergue" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHELTER_SEPA_PROVIDER_ITEMS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {watch("shelterSepaProvider") === "OTHER" && (
+              <div className="space-y-2">
+                <Label>Otro albergue</Label>
+                <Input
+                  {...register("shelterSepaProviderOther")}
+                  placeholder="Especificá el albergue"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        <TriSelect
+          label="¿Asistió a charla o taller educativo de FPC?"
+          value={watch("attendedEducationalTalk")}
+          onChange={(v) => {
+            setValue("attendedEducationalTalk", v)
+            if (v !== true) setValue("attendedEducationalTalkAt", "")
+          }}
+        />
+        {watch("attendedEducationalTalk") === true && (
+          <div className="space-y-2">
+            <Label>Fecha de la charla educativa</Label>
+            <Input type="date" {...register("attendedEducationalTalkAt")} />
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label>Fecha de abandono del programa</Label>
           <Input type="date" {...register("programDropoutDate")} />
         </div>
         <div className="space-y-2">
-          <Label>Motivo de abandono</Label>
+          <Label>Motivo de abandono del programa</Label>
+          <Select
+            items={PROGRAM_DROPOUT_REASON_CODE_ITEMS}
+            value={watch("programDropoutReasonCode") ?? ""}
+            onValueChange={(value) =>
+              setValue(
+                "programDropoutReasonCode",
+                (value as ProgramDropoutReasonCode | null) ?? undefined,
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              {PROGRAM_DROPOUT_REASON_CODE_ITEMS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Detalle / otro motivo de abandono</Label>
           <Input
             {...register("programDropoutReason")}
-            placeholder="Motivo..."
+            placeholder="Detalle adicional del motivo..."
           />
         </div>
       </div>
@@ -3706,6 +4227,127 @@ function SeguimientoSocialForm({
         </Button>
         <DraftBadge saved={Boolean(draft || noteDrafts?.length)} />
       </div>
+    </form>
+  )
+}
+
+// ── Estado diagnóstico (signos y síntomas) ──
+
+function DiagnosticStatusCard({
+  patientId,
+  followUpId,
+}: {
+  patientId: string
+  followUpId: string
+}) {
+  const queryClient = useQueryClient()
+  const { data: current, isLoading } = useQuery({
+    queryKey: ["patient-diagnostic-status-current", patientId],
+    queryFn: () => patientsApi.getCurrentDiagnosticStatus(patientId),
+  })
+  const [status, setStatus] = useState<DiagnosticStatus | "">("")
+  const [supportedBySepa, setSupportedBySepa] = useState<boolean | undefined>()
+  const [notes, setNotes] = useState("")
+
+  useEffect(() => {
+    setStatus(current?.status ?? "")
+    setSupportedBySepa(current?.supportedBySepa ?? undefined)
+    setNotes(current?.notes ?? "")
+  }, [current])
+
+  const transitionMutation = useMutation({
+    mutationFn: (body: TransitionPatientDiagnosticStatusDto) =>
+      patientsApi.transitionDiagnosticStatus(patientId, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["patient-diagnostic-status-current", patientId],
+      })
+      await queryClient.invalidateQueries({
+        queryKey: ["patient", patientId],
+      })
+      toast.success("Estado diagnóstico actualizado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo actualizar el estado diagnóstico", {
+        description: error.message,
+      }),
+  })
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!status) {
+      toast.error("Seleccioná el nuevo estado diagnóstico")
+      return
+    }
+    transitionMutation.mutate({
+      status,
+      followUpId,
+      supportedBySepa,
+      notes: notes.trim() || undefined,
+    })
+  }
+
+  const currentLabel = current?.status
+    ? diagnosticStatusLabels[current.status]
+    : "Sin registrar"
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="border-border/60 mb-3 space-y-3 rounded-xl border p-3"
+    >
+      <div>
+        <p className="text-sm font-medium">Estado diagnóstico (SEPA)</p>
+        <p className="text-muted-foreground text-xs">
+          Actual: {isLoading ? "Cargando…" : currentLabel}
+          {current?.supportedBySepa != null
+            ? ` · Soporte SEPA: ${current.supportedBySepa ? "Sí" : "No"}`
+            : ""}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Nuevo estado</Label>
+          <Select
+            items={DIAGNOSTIC_STATUS_ITEMS}
+            value={status}
+            onValueChange={(value) =>
+              setStatus((value as DiagnosticStatus | null) ?? "")
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar estado" />
+            </SelectTrigger>
+            <SelectContent>
+              {DIAGNOSTIC_STATUS_ITEMS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <TriSelect
+          label="¿Soportado por SEPA?"
+          value={supportedBySepa}
+          onChange={setSupportedBySepa}
+        />
+        <div className="space-y-2 md:col-span-2">
+          <Label>Notas (opcional)</Label>
+          <Input
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Detalle del cambio de estado"
+          />
+        </div>
+      </div>
+      <Button
+        type="submit"
+        size="sm"
+        disabled={transitionMutation.isPending || !status}
+      >
+        {transitionMutation.isPending ? "Guardando…" : "Registrar transición"}
+      </Button>
     </form>
   )
 }

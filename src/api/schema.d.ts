@@ -156,6 +156,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/indicators/management": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SEPA management dashboard indicators */
+        get: operations["DashboardController_getManagement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/indicators/productivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SEPA productivity dashboard indicators */
+        get: operations["DashboardController_getProductivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/indicators/adherence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SEPA adherence dashboard indicators */
+        get: operations["DashboardController_getAdherence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/indicators/abandonment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get SEPA abandonment dashboard indicators */
+        get: operations["DashboardController_getAbandonment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dashboard/indicators/epidemiology": {
         parameters: {
             query?: never;
@@ -1625,6 +1693,53 @@ export interface components {
             insuranceType: components["schemas"]["DashboardIndicatorDistributionDto"];
             epsProvider: components["schemas"]["DashboardIndicatorDistributionDto"];
         };
+        DashboardManagementResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            sisAffiliatedViaSepa: number;
+            essaludAffiliatedViaSepa: number;
+            primaryCareViaSepa: number;
+            referredViaSepa: number;
+            specialtyForDiagnosis: components["schemas"]["DashboardIndicatorDistributionDto"];
+            diagnosticRuledOutViaSepa: number;
+            diagnosticConfirmedViaSepa: number;
+            treatmentViaSepa: number;
+            transportationViaSepa: number;
+            transportationSepaProviders: components["schemas"]["DashboardIndicatorDistributionDto"];
+            shelterViaSepa: number;
+            shelterSepaProviders: components["schemas"]["DashboardIndicatorDistributionDto"];
+        };
+        DashboardProductivityResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            /** @description Average days from enrollment to SIS affiliation (affiliated_via_sepa only). Null when unknown. */
+            avgDaysEnrollmentToSis: number | null;
+            avgDaysPrimaryCareToDiagnosis: number | null;
+            avgDaysDiagnosisToTreatment: number | null;
+            activePatients: number;
+            benefitSupport: number;
+            benefitPsychooncology: number;
+            benefitEducationalTalks: number;
+            allThreeBenefits: number;
+        };
+        DashboardAdherenceResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            /** @description Percentage of completed vs scheduled chemo/radio sessions where both values are known. */
+            chemoRadioCompliancePct: number;
+            hormonalCompleted: number;
+            hormonalPatients: number;
+            withAccessBarriers: number;
+            orientedRegardingBarriers: number;
+            abandonedWithBarriers: number;
+            interruptedAdverseReaction: number;
+            palliativeNoActiveTreatment: number;
+        };
+        DashboardAbandonmentResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            dropoutReasons: components["schemas"]["DashboardIndicatorDistributionDto"];
+            voluntary: number;
+            unlocatable: number;
+            deceased: number;
+            other: number;
+        };
         DashboardEpidemiologyEventsDto: {
             deaths: number;
             diagnosticConfirmed: number;
@@ -1873,6 +1988,19 @@ export interface components {
             programDropoutReason?: string;
             /** Format: date */
             programDropoutDate?: string;
+            transportationViaSepa?: boolean;
+            /** @enum {string} */
+            transportationSepaProvider?: "CRUZ_DEL_SUR" | "LATAM_AVION_SOLIDARIO" | "OTHER";
+            transportationSepaProviderOther?: string;
+            shelterViaSepa?: boolean;
+            /** @enum {string} */
+            shelterSepaProvider?: "FRIEDA_HELLER" | "CASA_MAGIA" | "CASA_RONALD_MCDONALD" | "INSPIRA" | "ALINEN" | "OTHER";
+            shelterSepaProviderOther?: string;
+            attendedEducationalTalk?: boolean;
+            /** Format: date */
+            attendedEducationalTalkAt?: string;
+            /** @enum {string} */
+            programDropoutReasonCode?: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "OTHER";
         };
         EnrollmentInsuranceDto: {
             /** @enum {string} */
@@ -1956,6 +2084,17 @@ export interface components {
             /** @enum {string} */
             treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
             treatmentAbandonmentReason?: string;
+            /** @enum {string} */
+            interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
+            interruptionReasonOther?: string;
+            treatmentViaSepa?: boolean;
+            scheduledSessions?: number;
+            completedSessions?: number;
+            hormonalTreatmentCompleted?: boolean;
+            /** @enum {string} */
+            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierOther?: string;
+            orientedRegardingBarriers?: boolean;
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
@@ -1976,6 +2115,8 @@ export interface components {
             difficulties?: string;
             isFirstConsultation?: boolean;
             changeReason?: string;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
         };
         EnrollmentAddressDto: {
             /** @enum {string} */
@@ -2319,6 +2460,8 @@ export interface components {
             referralNotProvidedReason?: string;
             difficulties?: string;
             isFirstConsultation?: boolean;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
         };
         MedicalAppointmentResponseDto: {
             /** Format: uuid */
@@ -2345,6 +2488,8 @@ export interface components {
             referralNotProvidedReason: string | null;
             difficulties: string | null;
             isFirstConsultation: boolean;
+            attendedViaSepa: boolean | null;
+            referredViaSepa: boolean | null;
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: uuid */
@@ -2370,6 +2515,8 @@ export interface components {
             referralNotProvidedReason?: string;
             difficulties?: string;
             isFirstConsultation?: boolean;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
             changeReason: string;
         };
         PatientTimelineOutcomeDto: {
@@ -2650,6 +2797,19 @@ export interface components {
             programDropoutReason: string | null;
             /** Format: date */
             programDropoutDate: string | null;
+            transportationViaSepa: boolean | null;
+            /** @enum {string|null} */
+            transportationSepaProvider: "CRUZ_DEL_SUR" | "LATAM_AVION_SOLIDARIO" | "OTHER" | null;
+            transportationSepaProviderOther: string | null;
+            shelterViaSepa: boolean | null;
+            /** @enum {string|null} */
+            shelterSepaProvider: "FRIEDA_HELLER" | "CASA_MAGIA" | "CASA_RONALD_MCDONALD" | "INSPIRA" | "ALINEN" | "OTHER" | null;
+            shelterSepaProviderOther: string | null;
+            attendedEducationalTalk: boolean | null;
+            /** Format: date */
+            attendedEducationalTalkAt: string | null;
+            /** @enum {string|null} */
+            programDropoutReasonCode: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "OTHER" | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2731,6 +2891,17 @@ export interface components {
             /** @enum {string|null} */
             treatmentSituation: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION" | null;
             treatmentAbandonmentReason: string | null;
+            treatmentViaSepa: boolean | null;
+            /** @enum {string|null} */
+            interruptionReason: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER" | null;
+            interruptionReasonOther: string | null;
+            scheduledSessions: number | null;
+            completedSessions: number | null;
+            hormonalTreatmentCompleted: boolean | null;
+            /** @enum {string|null} */
+            accessBarrierCode: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER" | null;
+            accessBarrierOther: string | null;
+            orientedRegardingBarriers: boolean | null;
             hasLatestPrescription: boolean | null;
             /** Format: date */
             latestPrescriptionDate: string | null;
@@ -2781,6 +2952,8 @@ export interface components {
             referralNotProvidedReason: string | null;
             difficulties: string | null;
             isFirstConsultation: boolean;
+            attendedViaSepa: boolean | null;
+            referredViaSepa: boolean | null;
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: uuid */
@@ -3010,6 +3183,8 @@ export interface components {
             difficulties?: string;
             isFirstConsultation?: boolean;
             changeReason?: string;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
         };
         CreatePatientSisAffiliationDto: {
             /** Format: uuid */
@@ -3048,6 +3223,17 @@ export interface components {
             /** @enum {string} */
             treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
             treatmentAbandonmentReason?: string;
+            /** @enum {string} */
+            interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
+            interruptionReasonOther?: string;
+            treatmentViaSepa?: boolean;
+            scheduledSessions?: number;
+            completedSessions?: number;
+            hormonalTreatmentCompleted?: boolean;
+            /** @enum {string} */
+            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierOther?: string;
+            orientedRegardingBarriers?: boolean;
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
@@ -3407,6 +3593,8 @@ export interface components {
             difficulties?: string;
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
             changeReason: string;
         };
         CompleteReminderDto: {
@@ -4055,6 +4243,210 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardDemographicsResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getManagement: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardManagementResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getProductivity: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardProductivityResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getAdherence: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardAdherenceResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getAbandonment: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardAbandonmentResponseDto"];
                 };
             };
             /** @description The indicator period or timezone is invalid */

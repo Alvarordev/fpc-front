@@ -110,18 +110,34 @@ export const healthPhaseLabels: Record<PatientHealthPhase, string> = {
   SIGNS_AND_SYMPTOMS: "Signos y Síntomas",
 }
 
+/** Catálogo alineado al PDF de observaciones CRM (parentesco de contactos). */
 export const relationshipLabels: Record<string, string> = {
-  MOTHER: "Madre",
-  FATHER: "Padre",
-  SON_DAUGHTER: "Hijo/a",
-  SIBLING: "Hermano/a",
+  FATHER: "Papá",
+  MOTHER: "Mamá",
+  SIBLING: "Hermano(a)",
+  SON_DAUGHTER: "Hijo(a)",
+  COUSIN: "Primo(a)",
+  UNCLE_AUNT: "Tío(a)",
+  NEPHEW_NIECE: "Sobrino(a)",
+  OTHER: "Otro",
+  // Valores históricos conservados para lectura de registros existentes
   SPOUSE: "Cónyuge",
   GRANDPARENT: "Abuelo/a",
-  UNCLE_AUNT: "Tío/a",
   LEGAL_GUARDIAN: "Tutor legal",
   FRIEND: "Amigo/a",
-  OTHER: "Otro",
 }
+
+/** Opciones que se ofrecen al crear/editar un contacto (sin valores solo históricos). */
+export const relationshipSelectOptions = [
+  { value: "FATHER", label: relationshipLabels.FATHER },
+  { value: "MOTHER", label: relationshipLabels.MOTHER },
+  { value: "SIBLING", label: relationshipLabels.SIBLING },
+  { value: "SON_DAUGHTER", label: relationshipLabels.SON_DAUGHTER },
+  { value: "COUSIN", label: relationshipLabels.COUSIN },
+  { value: "UNCLE_AUNT", label: relationshipLabels.UNCLE_AUNT },
+  { value: "NEPHEW_NIECE", label: relationshipLabels.NEPHEW_NIECE },
+  { value: "OTHER", label: relationshipLabels.OTHER },
+] as const
 
 export const treatmentSituationLabels: Record<TreatmentSituation, string> = {
   EN_CURSO: "En proceso",
@@ -152,4 +168,62 @@ export const medicationRouteLabels: Record<MedicationRoute, string> = {
   SUBCUTANEOUS: "Subcutánea",
   TOPICAL: "Tópica",
   OTHER: "Otra vía",
+}
+
+/** Motivo de interrupción cuando la situación del tratamiento es Suspendido. */
+export const interruptionReasonLabels = {
+  ADVERSE_REACTION:
+    "Por reacción / efectos adversos / toxicidad del tratamiento",
+  THERAPEUTIC_OPTION_EVAL: "Evaluación de opción terapéutica",
+  OTHER: "Otros",
+} as const
+
+/** Barreras de acceso para iniciar o continuar tratamiento. */
+export const accessBarrierLabels = {
+  TRANSFER: "Traslado",
+  LODGING: "Alojamiento",
+  ALTERNATIVE_MEDICINE: "Medicina alternativa",
+  EXCESSIVE_COST: "Gasto excesivo",
+  DOES_NOT_WANT_TO_START: "No desea iniciar el tratamiento",
+  STOCKOUT: "Desabastecimiento",
+  INFUSION_ROOM_INOPERATIVE: "Inoperatividad de salas de infusiones",
+  PATIENT_OVERLOAD: "Sobrecarga de pacientes",
+  OTHER: "Otros motivos",
+} as const
+
+export const transportationSepaProviderLabels = {
+  CRUZ_DEL_SUR: "Cruz del Sur",
+  LATAM_AVION_SOLIDARIO: "LATAM – Avión Solidario",
+  OTHER: "Otro",
+} as const
+
+export const shelterSepaProviderLabels = {
+  FRIEDA_HELLER: "Albergue Frieda Heller – FPC",
+  CASA_MAGIA: "Casa Magia",
+  CASA_RONALD_MCDONALD: "Casa Ronald McDonald",
+  INSPIRA: "Albergue Inspira",
+  ALINEN: "ALINEN",
+  OTHER: "Otro",
+} as const
+
+export const programDropoutReasonCodeLabels = {
+  VOLUNTARY: "Solicita baja del programa de manera voluntaria",
+  UNLOCATABLE: "Persona no ubicable",
+  DECEASED: "Fallecimiento",
+  OTHER: "Otros motivos",
+} as const
+
+export const diagnosticStatusLabels = {
+  SEARCHING: "En búsqueda",
+  CONFIRMED: "Confirmado",
+  RULED_OUT: "Descartado",
+} as const
+
+export function labelMapToSelectItems<T extends Record<string, string>>(
+  labels: T,
+): Array<{ value: keyof T & string; label: string }> {
+  return (Object.keys(labels) as Array<keyof T & string>).map((value) => ({
+    value,
+    label: labels[value],
+  }))
 }

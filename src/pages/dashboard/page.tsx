@@ -29,8 +29,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type {
+  DashboardAbandonment,
+  DashboardAdherence,
   DashboardDemographics,
   DashboardEpidemiology,
+  DashboardManagement,
+  DashboardProductivity,
 } from "@/api/dashboard"
 import { RegionalIndicatorsMap } from "./_components/regional-indicators-map"
 import { createDepartmentIndicatorMap } from "./_components/regional-indicators"
@@ -63,14 +67,25 @@ const DISPLAY_LABELS: Record<string, string> = {
   NOT_OBTAINED: "No obtuvo consulta",
   SCHEDULED: "Consulta programada",
   ATTENDED: "Consulta atendida",
-  EN_CURSO: "En curso",
-  PENDIENTE_DE_INICIO: "Pendiente de inicio",
-  INTERRUMPIDO: "Interrumpido",
-  FINALIZADO: "Finalizado",
-  REMISSION: "Remisión",
+  EN_CURSO: "En proceso",
+  PENDIENTE_DE_INICIO: "En espera",
+  INTERRUMPIDO: "Suspendido",
+  FINALIZADO: "Culminado",
+  SEARCHING: "En búsqueda",
+  REMISSION: "En remisión",
   ABANDONED: "Abandonado",
   DECEASED_DURING_TREATMENT: "Fallecido durante tratamiento",
   NOT_APPLICABLE: "No aplica",
+  CRUZ_DEL_SUR: "Cruz del Sur",
+  LATAM_AVION_SOLIDARIO: "LATAM – Avión Solidario",
+  FRIEDA_HELLER: "Albergue Frieda Heller – FPC",
+  CASA_MAGIA: "Casa Magia",
+  CASA_RONALD_MCDONALD: "Casa Ronald McDonald",
+  INSPIRA: "Albergue Inspira",
+  ALINEN: "ALINEN",
+  VOLUNTARY: "Baja voluntaria",
+  UNLOCATABLE: "No localizable",
+  DECEASED: "Fallecido",
 }
 
 type DistributionItem = { label: string; count: number }
@@ -205,6 +220,30 @@ export function DashboardPage() {
       )}
       {indicators.epidemiology.data && (
         <EpidemiologySection data={indicators.epidemiology.data} />
+      )}
+      {indicators.management.isError && (
+        <IndicatorError message="No se pudieron cargar los indicadores de gestión." />
+      )}
+      {indicators.management.data && (
+        <ManagementSection data={indicators.management.data} />
+      )}
+      {indicators.productivity.isError && (
+        <IndicatorError message="No se pudieron cargar los indicadores de productividad." />
+      )}
+      {indicators.productivity.data && (
+        <ProductivitySection data={indicators.productivity.data} />
+      )}
+      {indicators.adherence.isError && (
+        <IndicatorError message="No se pudieron cargar los indicadores de adherencia." />
+      )}
+      {indicators.adherence.data && (
+        <AdherenceSection data={indicators.adherence.data} />
+      )}
+      {indicators.abandonment.isError && (
+        <IndicatorError message="No se pudieron cargar los indicadores de abandono." />
+      )}
+      {indicators.abandonment.data && (
+        <AbandonmentSection data={indicators.abandonment.data} />
       )}
     </div>
   )
@@ -383,6 +422,192 @@ function EpidemiologySection({ data }: { data: DashboardEpidemiology }) {
       </div>
     </section>
   )
+}
+
+function ManagementSection({ data }: { data: DashboardManagement }) {
+  return (
+    <section className="space-y-4">
+      <IndicatorHeader title="Gestión / proceso" meta={data.meta} />
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Afiliación SIS desde SEPA"
+          value={data.sisAffiliatedViaSepa}
+        />
+        <MetricCard
+          label="Afiliación EsSalud desde SEPA"
+          value={data.essaludAffiliatedViaSepa}
+        />
+        <MetricCard
+          label="Consulta primaria desde SEPA"
+          value={data.primaryCareViaSepa}
+        />
+        <MetricCard
+          label="Referencia desde SEPA"
+          value={data.referredViaSepa}
+        />
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Descarte oncológico desde SEPA"
+          value={data.diagnosticRuledOutViaSepa}
+        />
+        <MetricCard
+          label="Diagnóstico confirmado desde SEPA"
+          value={data.diagnosticConfirmedViaSepa}
+        />
+        <MetricCard
+          label="Tratamiento desde SEPA"
+          value={data.treatmentViaSepa}
+        />
+        <MetricCard label="Traslado" value={data.transportationViaSepa} />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <IndicatorCard
+          title="Especialidad para diagnóstico"
+          distribution={data.specialtyForDiagnosis}
+        />
+        <IndicatorCard
+          title="Proveedores de traslado"
+          distribution={data.transportationSepaProviders}
+        />
+        <div className="space-y-6">
+          <MetricCard label="Albergue" value={data.shelterViaSepa} />
+          <IndicatorCard
+            title="Proveedores de albergue"
+            distribution={data.shelterSepaProviders}
+          />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ProductivitySection({ data }: { data: DashboardProductivity }) {
+  return (
+    <section className="space-y-4">
+      <IndicatorHeader title="Productividad" meta={data.meta} />
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Tiempo promedio enrolamiento → SIS"
+          value={formatAvgDays(data.avgDaysEnrollmentToSis)}
+        />
+        <MetricCard
+          label="Tiempo promedio consulta primaria → diagnóstico"
+          value={formatAvgDays(data.avgDaysPrimaryCareToDiagnosis)}
+        />
+        <MetricCard
+          label="Tiempo promedio diagnóstico → tratamiento"
+          value={formatAvgDays(data.avgDaysDiagnosisToTreatment)}
+        />
+        <MetricCard label="Pacientes activos" value={data.activePatients} />
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Beneficios del programa</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric
+            label="Soporte y acompañamiento"
+            value={data.benefitSupport}
+          />
+          <Metric
+            label="Consultas de psicooncología"
+            value={data.benefitPsychooncology}
+          />
+          <Metric
+            label="Charlas educativas"
+            value={data.benefitEducationalTalks}
+          />
+          <Metric label="Beneficios completos" value={data.allThreeBenefits} />
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
+
+function AdherenceSection({ data }: { data: DashboardAdherence }) {
+  return (
+    <section className="space-y-4">
+      <IndicatorHeader title="Adherencia al tratamiento" meta={data.meta} />
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Cumplimiento quimio/radio"
+          value={`${data.chemoRadioCompliancePct}%`}
+        />
+        <MetricCard
+          label="Hormonal completado"
+          value={data.hormonalCompleted}
+        />
+        <MetricCard
+          label="Pacientes con hormonal"
+          value={data.hormonalPatients}
+        />
+        <MetricCard
+          label="Con barreras de acceso"
+          value={data.withAccessBarriers}
+        />
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Orientados respecto a barreras"
+          value={data.orientedRegardingBarriers}
+        />
+        <MetricCard
+          label="Abandono por barreras"
+          value={data.abandonedWithBarriers}
+        />
+        <MetricCard
+          label="Suspendido por reacción adversa"
+          value={data.interruptedAdverseReaction}
+        />
+        <MetricCard
+          label="Paliativo sin tratamiento activo"
+          value={data.palliativeNoActiveTreatment}
+        />
+      </div>
+    </section>
+  )
+}
+
+function AbandonmentSection({ data }: { data: DashboardAbandonment }) {
+  return (
+    <section className="space-y-4">
+      <IndicatorHeader title="Abandono del programa" meta={data.meta} />
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Baja voluntaria" value={data.voluntary} />
+        <MetricCard label="No localizable" value={data.unlocatable} />
+        <MetricCard label="Fallecidos" value={data.deceased} />
+        <MetricCard label="Otros" value={data.other} />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <IndicatorCard
+          title="Motivos de abandono"
+          distribution={data.dropoutReasons}
+        />
+      </div>
+    </section>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number | string
+}) {
+  return (
+    <Card>
+      <CardContent className="flex h-full flex-col items-center justify-center gap-1 py-6">
+        <Metric label={label} value={value} />
+      </CardContent>
+    </Card>
+  )
+}
+
+function formatAvgDays(value: number | null) {
+  if (value == null) return "—"
+  return `${number.format(value)} días`
 }
 
 function IndicatorHeader({

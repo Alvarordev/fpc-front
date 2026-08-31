@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { genderLabels, relationshipLabels } from "../../_lib/clinical-labels"
+import {
+  genderLabels,
+  relationshipLabels,
+  relationshipSelectOptions,
+} from "../../_lib/clinical-labels"
 
 const PATIENT_CONTACT_VALUE = "__PATIENT__"
 
@@ -224,12 +228,7 @@ export function FollowUpContactForm({
             <div className="space-y-2">
               <Label>Parentesco</Label>
               <Select
-                items={Object.entries(relationshipLabels).map(
-                  ([value, label]) => ({
-                    value,
-                    label,
-                  }),
-                )}
+                items={[...relationshipSelectOptions]}
                 value={relationship}
                 onValueChange={(value) => setRelationship(value ?? "")}
               >
@@ -237,9 +236,9 @@ export function FollowUpContactForm({
                   <SelectValue placeholder="Seleccionar parentesco" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(relationshipLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
+                  {relationshipSelectOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -346,12 +345,7 @@ export function FollowUpContactForm({
               <div className="space-y-2">
                 <Label>Parentesco</Label>
                 <Select
-                  items={Object.entries(relationshipLabels).map(
-                    ([value, label]) => ({
-                      value,
-                      label,
-                    }),
-                  )}
+                  items={[...relationshipSelectOptions]}
                   value={newCaregiverRelationship}
                   onValueChange={(value) =>
                     setNewCaregiverRelationship(value ?? "")
@@ -361,13 +355,11 @@ export function FollowUpContactForm({
                     <SelectValue placeholder="Seleccionar parentesco" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(relationshipLabels).map(
-                      ([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ),
-                    )}
+                    {relationshipSelectOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

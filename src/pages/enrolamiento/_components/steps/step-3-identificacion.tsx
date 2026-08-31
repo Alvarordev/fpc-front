@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { genderLabels, relationshipLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
+import { genderLabels, relationshipSelectOptions } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { UserCheck } from "lucide-react"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { SectionHeader, StepHeader, StepNav } from "../shared"
@@ -157,32 +157,66 @@ export function Step3Identificacion() {
                 <Label className={fl}>
                   Parentesco con el paciente <span className="text-destructive">*</span>
                 </Label>
-                <Select
-                  items={Object.entries(relationshipLabels).map(([value, label]) => ({
-                    value,
-                    label,
-                  }))}
-                  value={companion.relationship ?? ""}
-                  onValueChange={(value) =>
-                    updateDraft({
-                      companion: {
-                        ...companion,
-                        relationship: value ?? undefined,
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(relationshipLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const known = relationshipSelectOptions.some(
+                    (option) => option.value === companion.relationship,
+                  )
+                  const selectValue = !companion.relationship
+                    ? ""
+                    : known
+                      ? companion.relationship
+                      : "OTHER"
+                  const otherText =
+                    selectValue === "OTHER" && companion.relationship !== "OTHER"
+                      ? (companion.relationship ?? "")
+                      : ""
+                  return (
+                    <>
+                      <Select
+                        items={[...relationshipSelectOptions]}
+                        value={selectValue}
+                        onValueChange={(value) =>
+                          updateDraft({
+                            companion: {
+                              ...companion,
+                              relationship:
+                                value === "OTHER"
+                                  ? otherText || "OTHER"
+                                  : (value ?? undefined),
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger className={sc}>
+                          <SelectValue placeholder="Seleccionar..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {relationshipSelectOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectValue === "OTHER" && (
+                        <Input
+                          value={otherText}
+                          onChange={(event) =>
+                            updateDraft({
+                              companion: {
+                                ...companion,
+                                relationship:
+                                  event.target.value.trim() || "OTHER",
+                              },
+                            })
+                          }
+                          placeholder="Especifique el parentesco"
+                          className={ic}
+                        />
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -12,6 +12,14 @@ export type DashboardDemographics =
   components["schemas"]["DashboardDemographicsResponseDto"]
 export type DashboardEpidemiology =
   components["schemas"]["DashboardEpidemiologyResponseDto"]
+export type DashboardManagement =
+  components["schemas"]["DashboardManagementResponseDto"]
+export type DashboardProductivity =
+  components["schemas"]["DashboardProductivityResponseDto"]
+export type DashboardAdherence =
+  components["schemas"]["DashboardAdherenceResponseDto"]
+export type DashboardAbandonment =
+  components["schemas"]["DashboardAbandonmentResponseDto"]
 
 export const dashboardApi = {
   async get(query: DashboardQuery): Promise<Dashboard> {
@@ -49,6 +57,62 @@ export const dashboardIndicatorsApi = {
     if (!data)
       throw new Error(
         `No se pudo obtener los indicadores epidemiológicos (${response.status})`,
+      )
+    return data
+  },
+
+  async getManagement(
+    query: DashboardIndicatorQuery,
+  ): Promise<DashboardManagement> {
+    const { data, response } = await api.GET(
+      "/dashboard/indicators/management",
+      { params: { query } },
+    )
+    if (!data)
+      throw new Error(
+        `No se pudo obtener los indicadores de gestión (${response.status})`,
+      )
+    return data
+  },
+
+  async getProductivity(
+    query: DashboardIndicatorQuery,
+  ): Promise<DashboardProductivity> {
+    const { data, response } = await api.GET(
+      "/dashboard/indicators/productivity",
+      { params: { query } },
+    )
+    if (!data)
+      throw new Error(
+        `No se pudo obtener los indicadores de productividad (${response.status})`,
+      )
+    return data
+  },
+
+  async getAdherence(
+    query: DashboardIndicatorQuery,
+  ): Promise<DashboardAdherence> {
+    const { data, response } = await api.GET(
+      "/dashboard/indicators/adherence",
+      { params: { query } },
+    )
+    if (!data)
+      throw new Error(
+        `No se pudo obtener los indicadores de adherencia (${response.status})`,
+      )
+    return data
+  },
+
+  async getAbandonment(
+    query: DashboardIndicatorQuery,
+  ): Promise<DashboardAbandonment> {
+    const { data, response } = await api.GET(
+      "/dashboard/indicators/abandonment",
+      { params: { query } },
+    )
+    if (!data)
+      throw new Error(
+        `No se pudo obtener los indicadores de abandono (${response.status})`,
       )
     return data
   },

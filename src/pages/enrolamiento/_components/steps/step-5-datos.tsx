@@ -28,7 +28,7 @@ import type {
 import {
   genderLabels,
   normalizeZoneType,
-  relationshipLabels,
+  relationshipSelectOptions,
 } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
 import { SectionHeader, StepHeader, StepNav } from "../shared"
@@ -124,6 +124,22 @@ function isValidLocationUrl(value: string | undefined) {
   }
 }
 
+function relationshipSelectValue(relationship?: string) {
+  if (!relationship) return ""
+  if (relationshipSelectOptions.some((option) => option.value === relationship)) {
+    return relationship
+  }
+  return "OTHER"
+}
+
+function relationshipOtherText(relationship?: string) {
+  if (!relationship) return ""
+  if (relationshipSelectOptions.some((option) => option.value === relationship)) {
+    return ""
+  }
+  return relationship
+}
+
 interface ContactPersonFieldsProps {
   person: CompanionDraft
   onChange: (partial: Partial<CompanionDraft>) => void
@@ -135,6 +151,9 @@ function ContactPersonFields({
   onChange,
   title,
 }: ContactPersonFieldsProps) {
+  const relationshipValue = relationshipSelectValue(person.relationship)
+  const otherText = relationshipOtherText(person.relationship)
+
   return (
     <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
       <p className="mb-4 text-sm font-semibold">{title}</p>
@@ -157,28 +176,40 @@ function ContactPersonFields({
               <span className="text-destructive">*</span>
             </Label>
             <Select
-              items={Object.entries(relationshipLabels).map(
-                ([value, label]) => ({
-                  value,
-                  label,
-                }),
-              )}
-              value={person.relationship ?? ""}
+              items={[...relationshipSelectOptions]}
+              value={relationshipValue}
               onValueChange={(value) =>
-                onChange({ relationship: value ?? undefined })
+                onChange({
+                  relationship:
+                    value === "OTHER"
+                      ? otherText || "OTHER"
+                      : (value ?? undefined),
+                })
               }
             >
               <SelectTrigger className={sc}>
                 <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(relationshipLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
+                {relationshipSelectOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {relationshipValue === "OTHER" && (
+              <Input
+                value={otherText === "OTHER" ? "" : otherText}
+                onChange={(event) =>
+                  onChange({
+                    relationship: event.target.value.trim() || "OTHER",
+                  })
+                }
+                placeholder="Especifique el parentesco"
+                className={ic}
+              />
+            )}
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

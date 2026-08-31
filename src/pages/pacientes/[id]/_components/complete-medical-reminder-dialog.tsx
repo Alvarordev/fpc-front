@@ -10,6 +10,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type {
   CompleteReminderInput,
   Reminder,
@@ -48,6 +55,46 @@ const STATUS_OPTIONS: {
   },
 ]
 
+const TRI_UNSET = "SIN_DATO"
+const TRI_OPTIONS = [
+  { value: TRI_UNSET, label: "Sin dato" },
+  { value: "SI", label: "Sí" },
+  { value: "NO", label: "No" },
+] as const
+
+function TriSelect({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean | undefined
+  onChange: (value: boolean | undefined) => void
+  label: string
+}) {
+  const raw = value === undefined ? TRI_UNSET : value ? "SI" : "NO"
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Select
+        items={TRI_OPTIONS}
+        value={raw}
+        onValueChange={(v) =>
+          onChange(v === TRI_UNSET ? undefined : v === "SI")
+        }
+      >
+        <SelectTrigger className="h-9">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={TRI_UNSET}>—</SelectItem>
+          <SelectItem value="SI">Sí</SelectItem>
+          <SelectItem value="NO">No</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
 export function CompleteMedicalReminderDialog({
   open,
   onOpenChange,
@@ -63,6 +110,8 @@ export function CompleteMedicalReminderDialog({
   const [nextAppointmentDate, setNextAppointmentDate] = useState("")
   const [nextAppointmentSpecialty, setNextAppointmentSpecialty] = useState("")
   const [changeReason, setChangeReason] = useState("")
+  const [attendedViaSepa, setAttendedViaSepa] = useState<boolean | undefined>()
+  const [referredViaSepa, setReferredViaSepa] = useState<boolean | undefined>()
 
   useEffect(() => {
     if (!open) return
@@ -74,6 +123,8 @@ export function CompleteMedicalReminderDialog({
     setNextAppointmentDate("")
     setNextAppointmentSpecialty("")
     setChangeReason("")
+    setAttendedViaSepa(undefined)
+    setReferredViaSepa(undefined)
   }, [open, reminder?.id])
 
   if (!reminder) return null
@@ -104,6 +155,8 @@ export function CompleteMedicalReminderDialog({
               nextAppointmentDate: nextAppointmentDate || undefined,
               nextAppointmentSpecialty:
                 nextAppointmentSpecialty.trim() || undefined,
+              ...(attendedViaSepa !== undefined ? { attendedViaSepa } : {}),
+              ...(referredViaSepa !== undefined ? { referredViaSepa } : {}),
             }
           : {}),
       },
@@ -207,6 +260,16 @@ export function CompleteMedicalReminderDialog({
                   />
                 </div>
               </div>
+              <TriSelect
+                label="¿Asistió a la consulta de atención primaria a partir del soporte de SEPA?"
+                value={attendedViaSepa}
+                onChange={setAttendedViaSepa}
+              />
+              <TriSelect
+                label="¿Logró ser referido a mayor complejidad a partir del soporte de SEPA?"
+                value={referredViaSepa}
+                onChange={setReferredViaSepa}
+              />
             </div>
           )}
 

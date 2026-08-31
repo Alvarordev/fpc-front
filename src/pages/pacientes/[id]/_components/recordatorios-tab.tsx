@@ -312,7 +312,10 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         isPending={completeMutation.isPending}
         onConfirm={(input) => {
           if (!completingReminder) return
-          completeMutation.mutate({ id: completingReminder.id, input })
+          completeMutation.mutate({
+            id: completingReminder.id,
+            input,
+          })
         }}
       />
     </div>

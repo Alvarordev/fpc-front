@@ -41,6 +41,12 @@ export function EditAppointmentDialog({
   const [referredTo, setReferredTo] = useState(() => appointment?.referredTo || "");
   const [difficulties, setDifficulties] = useState(() => appointment?.difficulties || "");
   const [isFirstConsultation, setIsFirstConsultation] = useState(() => appointment?.isFirstConsultation || false);
+  const [attendedViaSepa, setAttendedViaSepa] = useState<boolean | undefined>(
+    () => appointment?.attendedViaSepa ?? undefined,
+  );
+  const [referredViaSepa, setReferredViaSepa] = useState<boolean | undefined>(
+    () => appointment?.referredViaSepa ?? undefined,
+  );
   const [changeReason, setChangeReason] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -68,6 +74,8 @@ export function EditAppointmentDialog({
       referredTo: referredTo || undefined,
       difficulties: difficulties || undefined,
       isFirstConsultation,
+      attendedViaSepa,
+      referredViaSepa,
       changeReason: changeReason.trim(),
     };
 
@@ -224,6 +232,43 @@ export function EditAppointmentDialog({
             <label htmlFor="editIsFirstConsultation" className="font-medium text-foreground cursor-pointer">
               Es Primera Consulta
             </label>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="font-semibold text-foreground">
+                ¿Asistió a la consulta de atención primaria a partir del soporte de SEPA?
+              </label>
+              <select
+                value={attendedViaSepa === undefined ? "" : attendedViaSepa ? "SI" : "NO"}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setAttendedViaSepa(value === "" ? undefined : value === "SI")
+                }}
+                className="w-full bg-background border rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Sin dato</option>
+                <option value="SI">Sí</option>
+                <option value="NO">No</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-foreground">
+                ¿Logró ser referido a mayor complejidad a partir del soporte de SEPA?
+              </label>
+              <select
+                value={referredViaSepa === undefined ? "" : referredViaSepa ? "SI" : "NO"}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setReferredViaSepa(value === "" ? undefined : value === "SI")
+                }}
+                className="w-full bg-background border rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Sin dato</option>
+                <option value="SI">Sí</option>
+                <option value="NO">No</option>
+              </select>
+            </div>
           </div>
 
           {/* Difficulties / Notes */}
