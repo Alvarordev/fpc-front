@@ -239,21 +239,29 @@ function DraftBadge({ saved }: { saved: boolean }) {
 
 interface ClinicalDataTabsProps {
   patientId: string
-  followUpId: string
+  /** Required in operational mode; optional placeholder in historical create before save. */
+  followUpId?: string
   drafts: ClinicalDrafts
   onDraftsChange: (updater: (prev: ClinicalDrafts) => ClinicalDrafts) => void
   onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
   onViewTreatment?: (treatment: PatientTreatment) => void
+  /**
+   * Historical mode keeps contact as a draft (interlocutorId) instead of
+   * PATCHing the follow-up immediately.
+   */
+  variant?: "operational" | "historical"
 }
 
 export function ClinicalDataTabs({
   patientId,
-  followUpId,
+  followUpId = "",
   drafts,
   onDraftsChange,
   onViewDiagnosis,
   onViewTreatment,
+  variant = "operational",
 }: ClinicalDataTabsProps) {
+  const isHistorical = variant === "historical"
   const [activeTab, setActiveTab] = useState("datos")
   const [newHospitalOpen, setNewHospitalOpen] = useState(false)
   const { data: patient } = usePatient(patientId)
@@ -273,6 +281,58 @@ export function ClinicalDataTabs({
   const queryClient = useQueryClient()
   const contactMutation = useMutation({
     mutationFn: async (values: FollowUpContactValues) => {
+      if (isHistorical) {
+        if (values.kind === "NEW_CAREGIVER") {
+          const created = await patientsApi.createCompanion(patientId, {
+            fullName: values.fullName.trim(),
+            primaryPhone: values.primaryPhone.trim(),
+            secondaryPhone: values.secondaryPhone.trim() || undefined,
+            gender: values.gender || undefined,
+            relationship: values.relationship || undefined,
+            isCaregiver: true,
+          })
+          onDraftsChange((prev) => ({
+            ...prev,
+            contact: {
+              interlocutorId: created.id,
+              kind: "COMPANION",
+              note: "Nuevo cuidador creado en carga histórica",
+            },
+          }))
+          return
+        }
+        if (values.kind === "PATIENT") {
+          await patientsApi.update(patientId, {
+            primaryPhone: values.primaryPhone.trim(),
+            secondaryPhone: values.secondaryPhone.trim() || undefined,
+          })
+          onDraftsChange((prev) => ({
+            ...prev,
+            contact: { interlocutorId: patientId, kind: "PATIENT" },
+          }))
+          return
+        }
+        await patientsApi.update(values.companionId, {
+          fullName: values.fullName.trim(),
+          primaryPhone: values.primaryPhone.trim(),
+          secondaryPhone: values.secondaryPhone.trim() || undefined,
+          gender: values.gender || undefined,
+        })
+        await patientsApi.updateCompanionLink(patientId, values.linkId, {
+          relationship: values.relationship || undefined,
+          isPrimaryContact: values.isPrimaryContact,
+          isCaregiver: values.isCaregiver,
+        })
+        onDraftsChange((prev) => ({
+          ...prev,
+          contact: {
+            interlocutorId: values.companionId,
+            kind: "COMPANION",
+          },
+        }))
+        return
+      }
+
       if (values.kind === "NEW_CAREGIVER") {
         await patientsApi.createCompanion(patientId, {
           fullName: values.fullName.trim(),
@@ -330,7 +390,11 @@ export function ClinicalDataTabs({
           queryKey: ["patient-follow-ups", patientId],
         }),
       ])
-      toast.success("Información de contacto actualizada")
+      toast.success(
+        isHistorical
+          ? "Contacto guardado en el borrador del seguimiento"
+          : "Información de contacto actualizada",
+      )
     },
     onError: (error: Error) =>
       toast.error("No se pudo actualizar la información de contacto", {
@@ -345,7 +409,7 @@ export function ClinicalDataTabs({
 
   return (
     <>
-    {isSignsAndSymptoms ? (
+    {isSignsAndSymptoms && !isHistorical ? (
       <DiagnosticStatusCard patientId={patientId} followUpId={followUpId} />
     ) : null}
     <Tabs
@@ -479,13 +543,25 @@ export function ClinicalDataTabs({
       </TabsContent>
       <TabsContent value="contacto" keepMounted className="min-w-0 flex-1 pr-1">
         {patient ? (
-          <FollowUpContactForm
-            key={companions.map((link) => link.id).join(",")}
-            patient={patient}
-            companions={companions}
-            isPending={contactMutation.isPending}
-            onSubmit={async (values) => contactMutation.mutateAsync(values)}
-          />
+          <div className="space-y-3">
+            {isHistorical && drafts.contact ? (
+              <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+                Interlocutor en borrador:{" "}
+                <span className="text-foreground font-medium">
+                  {drafts.contact.kind === "PATIENT"
+                    ? "Paciente"
+                    : "Acompañante"}
+                </span>
+              </p>
+            ) : null}
+            <FollowUpContactForm
+              key={companions.map((link) => link.id).join(",")}
+              patient={patient}
+              companions={companions}
+              isPending={contactMutation.isPending}
+              onSubmit={async (values) => contactMutation.mutateAsync(values)}
+            />
+          </div>
         ) : (
           <p className="text-muted-foreground text-sm">Cargando contacto...</p>
         )}

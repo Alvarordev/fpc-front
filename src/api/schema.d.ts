@@ -1530,12 +1530,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a historical follow-up */
+        /** Create a historical follow-up with clinical data */
         post: operations["HistoricalRecordsController_createFollowUp"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/historical-records/follow-ups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a historical follow-up and its clinical data */
+        patch: operations["HistoricalRecordsController_updateFollowUp"];
         trace?: never;
     };
     "/historical-records/reminders": {
@@ -1553,6 +1570,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/historical-records/reminders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a historical reminder (including closed ones) */
+        patch: operations["HistoricalRecordsController_updateReminder"];
         trace?: never;
     };
     "/historical-records/medical-appointments": {
@@ -1587,6 +1621,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/historical-records/psychooncology-appointments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a historical psycho-oncology appointment */
+        patch: operations["HistoricalRecordsController_updatePsychooncologyAppointment"];
         trace?: never;
     };
 }
@@ -3953,6 +4004,56 @@ export interface components {
             enrolledOn: string;
             followUp: components["schemas"]["HistoricalEnrollmentFollowUpDto"];
         };
+        HistoricalFollowUpTreatmentDto: {
+            /** Format: uuid */
+            seriesId?: string;
+            treatmentType: string;
+            treatmentFrequency?: components["schemas"]["DurationDto"];
+            isReferred?: boolean;
+            /** Format: uuid */
+            sourceHealthCenterId?: string;
+            /** Format: uuid */
+            receivingHealthCenterId?: string;
+            startDate?: string;
+            endDate?: string;
+            changeReason?: string;
+            notReceivingReason?: string;
+            operationName?: string;
+            /** @enum {string} */
+            careProgram?: "COPHOES" | "PADOMI";
+            receivesTeleconsultation?: boolean;
+            teleconsultationNote?: string;
+            teleconsultationSpecialties?: string[];
+            /** @enum {string} */
+            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentAbandonmentReason?: string;
+            /** @enum {string} */
+            interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
+            interruptionReasonOther?: string;
+            treatmentViaSepa?: boolean;
+            scheduledSessions?: number;
+            completedSessions?: number;
+            hormonalTreatmentCompleted?: boolean;
+            /** @enum {string} */
+            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierOther?: string;
+            orientedRegardingBarriers?: boolean;
+            hasLatestPrescription?: boolean;
+            latestPrescriptionDate?: string;
+            medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
+            /** @description Temporary clientRef of the diagnosis for this treatment; required when diagnoses[] is used and omitted only for the legacy diagnosis field */
+            diagnosisRef?: string;
+            /**
+             * Format: uuid
+             * @description Existing diagnosis id; use this or diagnosisRef, not both when diagnoses[] also creates new ones
+             */
+            diagnosisId?: string;
+        };
+        HistoricalFollowUpSocialNoteDto: {
+            /** @enum {string} */
+            type: "SOCIAL_WORKER" | "CONADIS" | "FISSAL";
+            note: string;
+        };
         CreateHistoricalFollowUpDto: {
             /** Format: uuid */
             subjectPatientId: string;
@@ -3975,6 +4076,229 @@ export interface components {
             scheduledAt?: string;
             /** Format: date-time */
             completedAt?: string;
+            details?: components["schemas"]["UpsertPatientDetailsDto"];
+            diagnoses?: components["schemas"]["EnrollmentDiagnosisDto"][];
+            treatments?: components["schemas"]["HistoricalFollowUpTreatmentDto"][];
+            symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
+            healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
+            insurance?: components["schemas"]["EnrollmentInsuranceDto"];
+            sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
+            addresses?: components["schemas"]["EnrollmentAddressDto"][];
+            socialNotes?: components["schemas"]["HistoricalFollowUpSocialNoteDto"][];
+        };
+        UpdateHistoricalDiagnosisDto: {
+            /**
+             * @example PARALLEL
+             * @enum {string}
+             */
+            mode: "PARALLEL" | "REPLACE";
+            /**
+             * Format: uuid
+             * @description Required when mode is REPLACE; the active diagnosis to retire
+             */
+            replacementDiagnosisId?: string;
+            diagnosis: string;
+            /** @enum {string} */
+            cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
+            diagnosisDate?: string;
+            firstSymptomsDate?: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+            diagnosisSpecialty?: string;
+            symptomLeadingToCheckup?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
+            hasMedicalReport?: boolean;
+            isSepaActiveReferral?: boolean;
+            changeReason?: string;
+            /** @description Temporary client reference used to associate enrollment treatments; required for diagnoses[] and omitted only by the legacy diagnosis field */
+            clientRef?: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalTreatmentDto: {
+            /** Format: uuid */
+            seriesId?: string;
+            treatmentType: string;
+            treatmentFrequency?: components["schemas"]["DurationDto"];
+            isReferred?: boolean;
+            /** Format: uuid */
+            sourceHealthCenterId?: string;
+            /** Format: uuid */
+            receivingHealthCenterId?: string;
+            startDate?: string;
+            endDate?: string;
+            changeReason?: string;
+            notReceivingReason?: string;
+            operationName?: string;
+            /** @enum {string} */
+            careProgram?: "COPHOES" | "PADOMI";
+            receivesTeleconsultation?: boolean;
+            teleconsultationNote?: string;
+            teleconsultationSpecialties?: string[];
+            /** @enum {string} */
+            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentAbandonmentReason?: string;
+            /** @enum {string} */
+            interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
+            interruptionReasonOther?: string;
+            treatmentViaSepa?: boolean;
+            scheduledSessions?: number;
+            completedSessions?: number;
+            hormonalTreatmentCompleted?: boolean;
+            /** @enum {string} */
+            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierOther?: string;
+            orientedRegardingBarriers?: boolean;
+            hasLatestPrescription?: boolean;
+            latestPrescriptionDate?: string;
+            medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
+            /** @description Temporary clientRef of the diagnosis for this treatment; required when diagnoses[] is used and omitted only for the legacy diagnosis field */
+            diagnosisRef?: string;
+            /**
+             * Format: uuid
+             * @description Existing diagnosis id; use this or diagnosisRef, not both when diagnoses[] also creates new ones
+             */
+            diagnosisId?: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalSymptomReportDto: {
+            discomfortSeverity?: string;
+            discomfortDescription?: string;
+            hasDiscomfort?: boolean;
+            checkupMotivation?: string;
+            signsAndSymptoms?: string;
+            indicationsReceived?: string;
+            symptomDuration?: components["schemas"]["DurationDto"];
+            symptomFrequency?: components["schemas"]["DurationDto"];
+            isPainPresent?: boolean;
+            painIntensity?: number;
+            painLocation?: string;
+            painDescription?: string;
+            hasSoughtMedicalConsultation?: boolean;
+            hasRequestedMedicalConsultation?: boolean;
+            /** @enum {string} */
+            consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
+            consultationNotObtainedReason?: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+            specialty?: string;
+            diagnosisSearchDuration?: components["schemas"]["DurationDto"];
+            hasReceivedDiagnosis?: boolean;
+            reportedDiagnosis?: string;
+            isReceivingReportedTreatment?: boolean;
+            reportedTreatment?: string;
+            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
+            notReceivingTreatmentReason?: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalHealthBackgroundDto: {
+            hasPsychiatry?: boolean;
+            activeComorbidities?: components["schemas"]["CreatePatientActiveComorbidityDto"][];
+            limitations?: components["schemas"]["CreatePatientLimitationDto"][];
+            familyCancerHistory?: components["schemas"]["CreatePatientFamilyCancerHistoryDto"][];
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalInsuranceDto: {
+            /** @enum {string} */
+            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
+            /** @enum {string} */
+            epsProvider?: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER";
+            changeReason?: string;
+            startDate?: string;
+            endDate?: string;
+            affiliatedViaSepa?: boolean;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalSisAffiliationDto: {
+            canAffiliate: boolean;
+            affiliatedViaSepa?: boolean;
+            expectedDate?: string;
+            cantAffiliateReason?: string;
+            affiliatedAt?: string;
+            comments?: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalAddressDto: {
+            /** @enum {string} */
+            department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            /** @enum {string} */
+            type: "PERMANENT" | "TEMPORARY";
+            isPrimary?: boolean;
+            address?: string;
+            district?: string;
+            province?: string;
+            reference?: string;
+            /** Format: uri */
+            locationUrl?: string;
+            dniMatchesAddress?: boolean;
+            validFrom?: string;
+            validTo?: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalSocialNoteDto: {
+            /** @enum {string} */
+            type: "SOCIAL_WORKER" | "CONADIS" | "FISSAL";
+            note: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        UpdateHistoricalFollowUpDto: {
+            /** Format: uuid */
+            interlocutorId?: string;
+            /** Format: uuid */
+            agentId?: string;
+            /** @enum {string} */
+            type?: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            purpose?: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            /** @enum {string} */
+            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            notes?: string;
+            /** Format: date */
+            scheduledOn?: string | null;
+            /** Format: date */
+            completedOn?: string | null;
+            /** Format: date-time */
+            scheduledAt?: string | null;
+            /** Format: date-time */
+            completedAt?: string | null;
+            details?: components["schemas"]["UpsertPatientDetailsDto"];
+            diagnoses?: components["schemas"]["UpdateHistoricalDiagnosisDto"][];
+            treatments?: components["schemas"]["UpdateHistoricalTreatmentDto"][];
+            symptomReport?: components["schemas"]["UpdateHistoricalSymptomReportDto"];
+            healthBackgroundAssessment?: components["schemas"]["UpdateHistoricalHealthBackgroundDto"];
+            insurance?: components["schemas"]["UpdateHistoricalInsuranceDto"];
+            sisAffiliation?: components["schemas"]["UpdateHistoricalSisAffiliationDto"];
+            addresses?: components["schemas"]["UpdateHistoricalAddressDto"][];
+            socialNotes?: components["schemas"]["UpdateHistoricalSocialNoteDto"][];
+        };
+        HistoricalReminderMedicalAppointmentDto: {
+            /** Format: uuid */
+            healthCenterId?: string;
+            specialty: string;
+            /** Format: date */
+            appointmentDate?: string;
+            /** @description HH:mm or HH:mm:ss */
+            appointmentTime?: string;
+            /** Format: date */
+            nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
+            hasReferralSheet?: boolean;
+            referredTo?: string;
+            referralNotProvidedReason?: string;
+            difficulties?: string;
+            isFirstConsultation?: boolean;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            changeReason?: string;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
         };
         CreateHistoricalReminderDto: {
             /** Format: uuid */
@@ -3996,6 +4320,23 @@ export interface components {
             status: "PENDING" | "DONE" | "DISMISSED";
             /** Format: uuid */
             medicalAppointmentId?: string;
+            medicalAppointment?: components["schemas"]["HistoricalReminderMedicalAppointmentDto"];
+        };
+        UpdateHistoricalReminderDto: {
+            /** Format: uuid */
+            assignedAgentId?: string;
+            /** Format: date */
+            dueOn?: string | null;
+            /** Format: date */
+            completedOn?: string | null;
+            description?: string;
+            /** @enum {string} */
+            status?: "PENDING" | "DONE" | "DISMISSED";
+            /** Format: uuid */
+            createdFromFollowUpId?: string | null;
+            /** Format: uuid */
+            resultingFollowUpId?: string | null;
+            medicalAppointment?: components["schemas"]["HistoricalReminderMedicalAppointmentDto"];
         };
         CreateHistoricalMedicalAppointmentDto: {
             /** Format: uuid */
@@ -4048,6 +4389,45 @@ export interface components {
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: date */
             scheduledOn: string;
+            /** Format: date */
+            completedOn?: string;
+            /** Format: date-time */
+            scheduledAt?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            schedulingNotes?: string | null;
+            noAnswerNote?: string | null;
+            satisfactionRating?: number | null;
+            satisfactionComment?: string | null;
+            topicAddressed?: string | null;
+            sessionDetails?: string | null;
+            additionalObservations?: string | null;
+            recommendations?: string | null;
+            referral?: string | null;
+        };
+        UpdateHistoricalPsychooncologyAppointmentDto: {
+            /** Format: uuid */
+            volunteerId?: string;
+            /** @description Use the system profile when the original volunteer is unknown */
+            useAnonymousVolunteer?: boolean;
+            /** @enum {string} */
+            beneficiaryType?: "PATIENT" | "COMPANION";
+            /** Format: uuid */
+            companionId?: string | null;
+            /** Format: uuid */
+            followUpId?: string;
+            /** Format: email */
+            patientEmail?: string | null;
+            /** Format: uri */
+            zoomLink?: string | null;
+            sessionNumber?: number;
+            isAdditionalSession?: boolean;
+            /** @enum {string} */
+            modality?: "CALL" | "VIDEO_CALL";
+            /** @enum {string} */
+            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: date */
+            scheduledOn?: string;
             /** Format: date */
             completedOn?: string;
             /** Format: date-time */
@@ -9434,6 +9814,59 @@ export interface operations {
             };
         };
     };
+    HistoricalRecordsController_updateFollowUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHistoricalFollowUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpResponseDto"];
+                };
+            };
+            /** @description Historical follow-up update is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     HistoricalRecordsController_createReminder: {
         parameters: {
             query?: never;
@@ -9477,6 +9910,59 @@ export interface operations {
                 content?: never;
             };
             /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_updateReminder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHistoricalReminderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponseDto"];
+                };
+            };
+            /** @description Historical reminder update is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Reminder not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9579,6 +10065,59 @@ export interface operations {
                 content?: never;
             };
             /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_updatePsychooncologyAppointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHistoricalPsychooncologyAppointmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
+                };
+            };
+            /** @description Historical appointment update is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Appointment not found */
             404: {
                 headers: {
                     [name: string]: unknown;

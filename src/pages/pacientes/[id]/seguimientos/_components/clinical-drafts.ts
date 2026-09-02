@@ -67,6 +67,13 @@ export type SymptomReportDraft = Omit<
   symptomFrequency?: DurationDraft
 }
 
+/** Contact choice kept as draft in historical mode (no immediate PATCH). */
+export type ContactDraft = {
+  interlocutorId: string
+  kind: "PATIENT" | "COMPANION" | "NEW_CAREGIVER"
+  note?: string
+}
+
 export interface ClinicalDrafts {
   details?: PatientDetailsInput
   social?: PatientDetailsInput
@@ -78,6 +85,7 @@ export interface ClinicalDrafts {
   sisAffiliation?: SisAffiliationDraft
   healthBackground?: HealthBackgroundAssessmentDraft
   address?: Omit<CreatePatientAddressInput, "followUpId">
+  contact?: ContactDraft
 }
 
 export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
@@ -91,6 +99,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.insurance ||
     drafts.sisAffiliation ||
     drafts.healthBackground ||
-    drafts.address,
+    drafts.address ||
+    drafts.contact,
   )
 }

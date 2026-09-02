@@ -5,12 +5,18 @@ export type CreateHistoricalEnrollmentInput =
   components["schemas"]["CreateHistoricalEnrollmentDto"]
 export type CreateHistoricalFollowUpInput =
   components["schemas"]["CreateHistoricalFollowUpDto"]
+export type UpdateHistoricalFollowUpInput =
+  components["schemas"]["UpdateHistoricalFollowUpDto"]
 export type CreateHistoricalReminderInput =
   components["schemas"]["CreateHistoricalReminderDto"]
+export type UpdateHistoricalReminderInput =
+  components["schemas"]["UpdateHistoricalReminderDto"]
 export type CreateHistoricalMedicalAppointmentInput =
   components["schemas"]["CreateHistoricalMedicalAppointmentDto"]
 export type CreateHistoricalPsychooncologyAppointmentInput =
   components["schemas"]["CreateHistoricalPsychooncologyAppointmentDto"]
+export type UpdateHistoricalPsychooncologyAppointmentInput =
+  components["schemas"]["UpdateHistoricalPsychooncologyAppointmentDto"]
 
 export type HistoricalEnrollment =
   components["schemas"]["EnrollmentResponseDto"]
@@ -61,12 +67,40 @@ export const historicalRecordsApi = {
     return requireData(data, response.status)
   },
 
+  async updateFollowUp(
+    id: string,
+    input: UpdateHistoricalFollowUpInput,
+  ): Promise<HistoricalFollowUp> {
+    const { data, response } = await api.PATCH(
+      "/historical-records/follow-ups/{id}",
+      {
+        params: { path: { id } },
+        body: input,
+      },
+    )
+    return requireData(data, response.status)
+  },
+
   async createReminder(
     input: CreateHistoricalReminderInput,
   ): Promise<HistoricalReminder> {
     const { data, response } = await api.POST("/historical-records/reminders", {
       body: input,
     })
+    return requireData(data, response.status)
+  },
+
+  async updateReminder(
+    id: string,
+    input: UpdateHistoricalReminderInput,
+  ): Promise<HistoricalReminder> {
+    const { data, response } = await api.PATCH(
+      "/historical-records/reminders/{id}",
+      {
+        params: { path: { id } },
+        body: input,
+      },
+    )
     return requireData(data, response.status)
   },
 
@@ -86,6 +120,20 @@ export const historicalRecordsApi = {
     const { data, response } = await api.POST(
       "/historical-records/psychooncology-appointments",
       { body: input },
+    )
+    return requireData(data, response.status)
+  },
+
+  async updatePsychooncologyAppointment(
+    id: string,
+    input: UpdateHistoricalPsychooncologyAppointmentInput,
+  ): Promise<HistoricalPsychooncologyAppointment> {
+    const { data, response } = await api.PATCH(
+      "/historical-records/psychooncology-appointments/{id}",
+      {
+        params: { path: { id } },
+        body: input,
+      },
     )
     return requireData(data, response.status)
   },
