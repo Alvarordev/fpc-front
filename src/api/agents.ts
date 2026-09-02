@@ -3,6 +3,7 @@ import { api } from "./client"
 
 export type Agent = components["schemas"]["AgentResponseDto"]
 export type CreateAgentInput = components["schemas"]["CreateAgentDto"]
+export type UpdateAgentInput = components["schemas"]["UpdateAgentDto"]
 
 export class AgentsApiError extends Error {
   readonly status: number
@@ -27,6 +28,15 @@ export const agentsApi = {
 
   async create(input: CreateAgentInput): Promise<Agent> {
     const { data, response } = await api.POST("/agents", { body: input })
+    if (!data) throw new AgentsApiError(response.status)
+    return data
+  },
+
+  async update(id: string, input: UpdateAgentInput): Promise<Agent> {
+    const { data, response } = await api.PATCH("/agents/{id}", {
+      params: { path: { id } },
+      body: input,
+    })
     if (!data) throw new AgentsApiError(response.status)
     return data
   },

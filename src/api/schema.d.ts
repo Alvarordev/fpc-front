@@ -1434,6 +1434,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a non-admin user account */
+        patch: operations["UsersController_update"];
+        trace?: never;
+    };
     "/volunteers/{volunteerId}/availability": {
         parameters: {
             query?: never;
@@ -3952,6 +3969,16 @@ export interface components {
         UserListResponseDto: {
             data: components["schemas"]["UserResponseDto"][];
             total: number;
+        };
+        UpdateUserDto: {
+            /**
+             * Format: email
+             * @example agent@example.com
+             */
+            email?: string;
+            /** @example secure-password */
+            password?: string;
+            isActive?: boolean;
         };
         CreateVolunteerAvailabilityDto: {
             date: string;
@@ -9548,6 +9575,58 @@ export interface operations {
                 };
             };
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UsersController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator role required, or target user is an admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Email already exists */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

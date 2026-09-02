@@ -3,6 +3,7 @@ import { api } from "./client"
 
 export type Foundation = components["schemas"]["FoundationResponseDto"]
 export type CreateFoundationInput = components["schemas"]["CreateFoundationDto"]
+export type UpdateFoundationInput = components["schemas"]["UpdateFoundationDto"]
 
 export class FoundationsApiError extends Error {
   readonly status: number
@@ -27,6 +28,15 @@ export const foundationsApi = {
 
   async create(input: CreateFoundationInput): Promise<Foundation> {
     const { data, response } = await api.POST("/foundations", { body: input })
+    if (!data) throw new FoundationsApiError(response.status)
+    return data
+  },
+
+  async update(id: string, input: UpdateFoundationInput): Promise<Foundation> {
+    const { data, response } = await api.PATCH("/foundations/{id}", {
+      params: { path: { id } },
+      body: input,
+    })
     if (!data) throw new FoundationsApiError(response.status)
     return data
   },
