@@ -592,6 +592,75 @@ export interface paths {
         patch: operations["HealthCentersController_update"];
         trace?: never;
     };
+    "/catalogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List catalog items */
+        get: operations["CatalogsController_findAll"];
+        put?: never;
+        /** Create a catalog item */
+        post: operations["CatalogsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalogs/ubigeo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ubigeo tree (departments → provinces; districts when department or province is filtered) */
+        get: operations["CatalogsController_getUbigeo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalogs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a catalog item */
+        patch: operations["CatalogsController_update"];
+        trace?: never;
+    };
+    "/catalogs/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive (soft-deactivate) a non-system catalog item */
+        post: operations["CatalogsController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2593,6 +2662,68 @@ export interface components {
             /** @enum {string} */
             category?: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2";
             isActive?: boolean;
+        };
+        CatalogItemResponseDto: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            code: string;
+            label: string;
+            parentCode: string | null;
+            sortOrder: number;
+            isActive: boolean;
+            isSystem: boolean;
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UbigeoDistrictResponseDto: {
+            ineiCode: string;
+            name: string;
+            sortOrder: number;
+            isActive: boolean;
+        };
+        UbigeoProvinceResponseDto: {
+            ineiCode: string;
+            name: string;
+            sortOrder: number;
+            isActive: boolean;
+            districts?: components["schemas"]["UbigeoDistrictResponseDto"][];
+        };
+        UbigeoDepartmentResponseDto: {
+            code: string;
+            ineiCode: string;
+            name: string;
+            sortOrder: number;
+            isActive: boolean;
+            provinces: components["schemas"]["UbigeoProvinceResponseDto"][];
+        };
+        UbigeoTreeResponseDto: {
+            departments: components["schemas"]["UbigeoDepartmentResponseDto"][];
+        };
+        CreateCatalogItemDto: {
+            /** @enum {string} */
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type";
+            code: string;
+            label: string;
+            parentCode?: string | null;
+            sortOrder?: number;
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        UpdateCatalogItemDto: {
+            label?: string;
+            parentCode?: string | null;
+            sortOrder?: number;
+            isActive?: boolean;
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
         };
         CreateMedicalAppointmentDto: {
             /** Format: uuid */
@@ -6330,6 +6461,189 @@ export interface operations {
                 content?: never;
             };
             /** @description Health center not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CatalogsController_findAll: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogItemResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CatalogsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCatalogItemDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogItemResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CatalogsController_getUbigeo: {
+        parameters: {
+            query?: {
+                province?: unknown;
+                department?: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UbigeoTreeResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CatalogsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCatalogItemDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogItemResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog item not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CatalogsController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogItemResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog item not found */
             404: {
                 headers: {
                     [name: string]: unknown;
