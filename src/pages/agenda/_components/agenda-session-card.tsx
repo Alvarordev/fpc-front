@@ -32,7 +32,8 @@ const STATUS_LABELS: Record<PsychooncologyAppointment["status"], string> = {
   NO_ANSWER: "No contestó",
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null): string {
+  if (!iso) return "Sin fecha"
   const date = new Date(iso)
   return date.toLocaleDateString("es-PE", {
     weekday: "long",
@@ -41,8 +42,8 @@ function formatDate(iso: string): string {
   })
 }
 
-function formatTime(iso: string): string {
-  return iso.slice(11, 16)
+function formatTime(iso: string | null): string {
+  return iso ? iso.slice(11, 16) : "Sin hora"
 }
 
 export function AgendaSessionCard({

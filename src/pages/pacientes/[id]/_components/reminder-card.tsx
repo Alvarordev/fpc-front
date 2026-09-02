@@ -31,7 +31,8 @@ const APPOINTMENT_STATUS_LABELS: Record<
   NO_ANSWER: "No asistió",
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return "Sin fecha"
   return new Date(value).toLocaleDateString("es-PE", {
     weekday: "short",
     day: "numeric",
@@ -96,7 +97,7 @@ export function ReminderCard({
             </p>
             <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
               <Calendar className="size-3" />
-              {formatDate(reminder.dueAt)}
+              {formatDate(reminder.dueOn ?? reminder.dueAt)}
             </span>
             {appointment && (
               <p className="text-muted-foreground mt-1 text-[11px]">

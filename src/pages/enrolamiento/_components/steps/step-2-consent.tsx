@@ -16,6 +16,10 @@ export function Step2Consent() {
         <div className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Acuerdo con la política de datos <span className="text-destructive">*</span></Label>
           <Select
+            items={[
+              { value: "Sí", label: "Sí, está de acuerdo" },
+              { value: "No", label: "No, no está de acuerdo" },
+            ]}
             value={meta.dataPolicyAccepted === true ? "Sí" : meta.dataPolicyAccepted === false ? "No" : ""}
             onValueChange={(v) => {
               if (v === "No") { updateDraft({ enrollmentMetadata: { ...meta, dataPolicyAccepted: false } }); setRejection("q3_no"); return }
@@ -33,6 +37,10 @@ export function Step2Consent() {
         <div className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Afiliación para usted o para un familiar? <span className="text-destructive">*</span></Label>
           <Select
+            items={[
+              { value: "PATIENT", label: "Para mí — soy el paciente" },
+              { value: "FAMILY", label: "Para un tercero — familiar o amigo" },
+            ]}
             value={meta.affiliationType ?? ""}
             onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, affiliationType: v as "PATIENT" | "FAMILY" | undefined }, patientData: { ...draft.patientData, role: v === "PATIENT" ? "PATIENT" : "COMPANION" } })}
           >

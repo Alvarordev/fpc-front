@@ -128,6 +128,16 @@ export const patientsApi = {
     return data
   },
 
+  async listMedicalAppointments(patientId: string) {
+    const { data, response } = await api.GET(
+      "/patients/{patientId}/medical-appointments",
+      { params: { path: { patientId } } },
+    )
+
+    if (!data) throw new PatientsApiError(response.status)
+    return data
+  },
+
   async update(id: string, input: UpdatePatientInput) {
     const { data, response } = await api.PATCH("/patients/{id}", {
       params: { path: { id } },

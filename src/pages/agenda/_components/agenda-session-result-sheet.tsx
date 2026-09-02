@@ -200,7 +200,7 @@ export function AgendaSessionResultSheet({
   }
 
   const isPending = completeMutation.isPending || cancelMutation.isPending
-  const timeDisplay = appointment?.scheduledAt.slice(11, 16) ?? ""
+  const timeDisplay = appointment?.scheduledAt?.slice(11, 16) ?? ""
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>

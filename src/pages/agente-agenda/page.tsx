@@ -176,8 +176,11 @@ export default function AgentAgendaPage() {
       event.kind === "reminder",
   )
   const sessions = (sessionsQuery.data ?? [])
+    .filter((session) => session.scheduledAt !== null)
     .slice()
-    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+    .sort((a, b) =>
+      (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""),
+    )
   const volunteers = new Map(
     (volunteersQuery.data ?? []).map((volunteer) => [volunteer.id, volunteer]),
   )

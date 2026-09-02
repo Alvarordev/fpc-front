@@ -1,4 +1,5 @@
 import type { CreateEnrollmentInput } from "@/api/enrollments"
+import type { CreateHistoricalEnrollmentInput } from "@/api/historical-records"
 import {
   getEnrollmentComments,
   type CompanionDraft,
@@ -12,19 +13,45 @@ import type {
   MedicalConsultationStatus,
 } from "@/types"
 
-interface BuildEnrollmentPayloadOptions {
+interface BaseBuildEnrollmentPayloadOptions {
   draft: EnrollmentDraft
   agentId: string
   categoriaClinica: CategoriaClinica
   today?: string
 }
 
+interface OperationalBuildEnrollmentPayloadOptions extends BaseBuildEnrollmentPayloadOptions {
+  historical?: false
+}
+
+interface HistoricalBuildEnrollmentPayloadOptions extends BaseBuildEnrollmentPayloadOptions {
+  historical: true
+  historicalEnrollmentDate: string
+  historicalFollowUpStatus?: CreateHistoricalEnrollmentInput["followUp"]["status"]
+}
+
+interface BuildEnrollmentPayloadOptions extends BaseBuildEnrollmentPayloadOptions {
+  historical?: boolean
+  historicalEnrollmentDate?: string
+  historicalFollowUpStatus?: CreateHistoricalEnrollmentInput["followUp"]["status"]
+}
+
 function value(value: string | null | undefined) {
   return value?.trim() || undefined
 }
 
-function localDateTime(date: string, time: string | undefined) {
-  return time ? new Date(`${date}T${time}:00`).toISOString() : undefined
+function localDateTime(
+  date: string,
+  time: string | undefined,
+  historical = false,
+) {
+  if (!time) return undefined
+  const normalizedTime = time.length === 5 ? `${time}:00` : time
+  return new Date(
+    historical
+      ? `${date}T${normalizedTime}-05:00`
+      : `${date}T${normalizedTime}`,
+  ).toISOString()
 }
 
 function duration(value: Parameters<typeof toDurationInput>[0], field: string) {
@@ -53,18 +80,36 @@ function contactPerson(person: CompanionDraft) {
   }
 }
 
+export function buildEnrollmentPayload(
+  options: HistoricalBuildEnrollmentPayloadOptions,
+): CreateHistoricalEnrollmentInput
+export function buildEnrollmentPayload(
+  options: OperationalBuildEnrollmentPayloadOptions,
+): CreateEnrollmentInput
 export function buildEnrollmentPayload({
   draft,
   agentId,
   categoriaClinica,
   today = new Date().toISOString().slice(0, 10),
-}: BuildEnrollmentPayloadOptions): CreateEnrollmentInput {
+  historical = false,
+  historicalEnrollmentDate,
+  historicalFollowUpStatus,
+}: BuildEnrollmentPayloadOptions):
+  | CreateEnrollmentInput
+  | CreateHistoricalEnrollmentInput {
   const meta = draft.enrollmentMetadata
   const comments = getEnrollmentComments(meta)
   const healthPhase = categoriaClinica
   if (!healthPhase) {
     throw new Error("Selecciona una categoría clínica")
   }
+  const effectiveHistoricalDate = historical
+    ? historicalEnrollmentDate
+    : undefined
+  if (historical && !effectiveHistoricalDate) {
+    throw new Error("Indica la fecha del enrolamiento histórico")
+  }
+  const effectiveEventDate = effectiveHistoricalDate ?? today
   const isFamily = meta.affiliationType === "FAMILY"
   const patientAge = getAge(
     draft.patientData.birthDate,
@@ -403,7 +448,7 @@ export function buildEnrollmentPayload({
   if (hasCaller && !callerIsComplete)
     throw new Error("Completa los datos de quien llama")
 
-  return {
+  const payload = {
     ...(draft.patientId
       ? { patientId: draft.patientId }
       : {
@@ -421,7 +466,14 @@ export function buildEnrollmentPayload({
       type: "CALL",
       agentId,
       notes: comments,
-      completedAt: localDateTime(today, meta.endTime),
+      completedAt: localDateTime(effectiveEventDate, meta.endTime, historical),
+      ...(historical
+        ? {
+            status: historicalFollowUpStatus ?? "COMPLETED",
+            scheduledOn: effectiveHistoricalDate,
+            completedOn: effectiveHistoricalDate,
+          }
+        : {}),
     },
     affiliationType: isFamily ? "FAMILY_FRIEND" : "SELF",
     healthPhase,
@@ -605,8 +657,12 @@ export function buildEnrollmentPayload({
     isOncologicalPatient: meta.isOncologicalPatient ?? undefined,
     surveyAccepted: meta.surveyAccepted ?? undefined,
     caseComments: comments,
-    callStartedAt: localDateTime(today, meta.startTime),
-    callEndedAt: localDateTime(today, meta.endTime),
+    callStartedAt: localDateTime(
+      effectiveEventDate,
+      meta.startTime,
+      historical,
+    ),
+    callEndedAt: localDateTime(effectiveEventDate, meta.endTime, historical),
     ...(hasPsychooncologySupportResponse
       ? {
           psychooncologySupportAssessment: {
@@ -619,4 +675,13 @@ export function buildEnrollmentPayload({
       : {}),
     ...(talks.length ? { familyPreventionTalkInterests: talks } : {}),
   }
+
+  if (historical) {
+    return {
+      ...payload,
+      enrolledOn: effectiveHistoricalDate!,
+    } as CreateHistoricalEnrollmentInput
+  }
+
+  return payload as CreateEnrollmentInput
 }

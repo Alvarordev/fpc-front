@@ -1504,6 +1504,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/historical-records/enrollments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a historical enrollment */
+        post: operations["HistoricalRecordsController_createEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/historical-records/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a historical follow-up */
+        post: operations["HistoricalRecordsController_createFollowUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/historical-records/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a historical reminder */
+        post: operations["HistoricalRecordsController_createReminder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/historical-records/medical-appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a historical medical appointment */
+        post: operations["HistoricalRecordsController_createMedicalAppointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/historical-records/psychooncology-appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a historical psycho-oncology appointment */
+        post: operations["HistoricalRecordsController_createPsychooncologyAppointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2241,6 +2326,8 @@ export interface components {
             patientId: string;
             /** Format: uuid */
             followUpId: string;
+            /** Format: date */
+            enrolledOn: string;
             /** @enum {string} */
             affiliationType: "SELF" | "FAMILY_FRIEND";
             /** Format: uuid */
@@ -2261,6 +2348,7 @@ export interface components {
             /** Format: date-time */
             callEndedAt: string | null;
             followUpQualityRating: number | null;
+            isHistorical: boolean;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2319,8 +2407,12 @@ export interface components {
             purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
             /** Format: date-time */
             scheduledAt: string | null;
+            /** Format: date */
+            scheduledOn: string | null;
             /** Format: date-time */
             completedAt: string | null;
+            /** Format: date */
+            completedOn: string | null;
             notes: string | null;
             /** Format: uuid */
             nextFollowUpId: string | null;
@@ -2328,6 +2420,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            isHistorical: boolean;
         };
         CreateScheduledFollowUpDto: {
             /** Format: uuid */
@@ -2398,7 +2491,9 @@ export interface components {
             /** Format: uuid */
             assignedAgentId: string;
             /** Format: date-time */
-            dueAt: string;
+            dueAt: string | null;
+            /** Format: date */
+            dueOn: string | null;
             description: string;
             /** @enum {string} */
             kind: "GENERIC" | "MEDICAL_APPOINTMENT";
@@ -2409,10 +2504,13 @@ export interface components {
             status: "PENDING" | "DONE" | "DISMISSED";
             /** Format: date-time */
             completedAt: string | null;
+            /** Format: date */
+            completedOn: string | null;
             /** Format: uuid */
             resultingFollowUpId: string | null;
             /** Format: date-time */
             createdAt: string;
+            isHistorical: boolean;
         };
         CreateHealthCenterDto: {
             name: string;
@@ -2495,6 +2593,7 @@ export interface components {
             /** Format: uuid */
             reminderId: string | null;
             isCurrent: boolean;
+            isHistorical: boolean;
             changeReason: string | null;
             /** Format: date-time */
             createdAt: string;
@@ -2539,6 +2638,14 @@ export interface components {
             kind: "FOLLOW_UP";
             /** Format: date-time */
             occurredAt: string;
+            occurredAtIsApproximate: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            historicalLoadedById: string | null;
+            historicalLoadedByEmail: string | null;
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: uuid */
@@ -2560,6 +2667,14 @@ export interface components {
             kind: "REMINDER";
             /** Format: date-time */
             occurredAt: string;
+            occurredAtIsApproximate: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            historicalLoadedById: string | null;
+            historicalLoadedByEmail: string | null;
             /** @enum {string} */
             status: "PENDING" | "DONE" | "DISMISSED";
             /** Format: uuid */
@@ -2576,6 +2691,14 @@ export interface components {
             kind: "PSYCHOONCOLOGY_APPOINTMENT";
             /** Format: date-time */
             occurredAt: string;
+            occurredAtIsApproximate: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            historicalLoadedById: string | null;
+            historicalLoadedByEmail: string | null;
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: uuid */
@@ -2594,6 +2717,14 @@ export interface components {
             kind: "SOCIAL_NOTE";
             /** Format: date-time */
             occurredAt: string;
+            occurredAtIsApproximate: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            historicalLoadedById: string | null;
+            historicalLoadedByEmail: string | null;
             /** Format: uuid */
             followUpId: string;
             /** @enum {string} */
@@ -2959,6 +3090,7 @@ export interface components {
             /** Format: uuid */
             reminderId: string | null;
             isCurrent: boolean;
+            isHistorical: boolean;
             changeReason: string | null;
             /** Format: date-time */
             createdAt: string;
@@ -3520,6 +3652,7 @@ export interface components {
             companionFullName: string | null;
             /** Format: uuid */
             volunteerId: string;
+            volunteerFullName: string;
             /** Format: uuid */
             followUpId: string | null;
             /** Format: uuid */
@@ -3535,9 +3668,13 @@ export interface components {
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
             /** Format: date-time */
-            scheduledAt: string;
+            scheduledAt: string | null;
+            /** Format: date */
+            scheduledOn: string | null;
             /** Format: date-time */
             completedAt: string | null;
+            /** Format: date */
+            completedOn: string | null;
             topicAddressed: string | null;
             sessionDetails: string | null;
             additionalObservations: string | null;
@@ -3551,6 +3688,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            isHistorical: boolean;
         };
         UpdatePsychooncologyAppointmentDto: {
             /** @enum {string} */
@@ -3646,11 +3784,12 @@ export interface components {
             /** Format: date */
             date: string;
             /** @example 09:00:00 */
-            startTime: string;
+            startTime: string | null;
             /** @example 10:00:00 */
-            endTime: string;
+            endTime: string | null;
             /** @enum {string} */
             status: "AVAILABLE" | "RESERVED";
+            isHistorical: boolean;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3695,6 +3834,7 @@ export interface components {
             completedSustainabilityModule: boolean;
             completedDesignThinkingModule: boolean;
             isActive: boolean;
+            isAnonymous: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3754,6 +3894,175 @@ export interface components {
         };
         VolunteerCalendarResponseDto: {
             volunteers: components["schemas"]["VolunteerCalendarVolunteerDto"][];
+        };
+        HistoricalEnrollmentFollowUpDto: {
+            /** @enum {string} */
+            type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** Format: uuid */
+            agentId: string;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            notes?: string;
+            /** Format: date-time */
+            scheduledAt?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            /** Format: date */
+            scheduledOn?: string;
+            /** Format: date */
+            completedOn?: string;
+        };
+        CreateHistoricalEnrollmentDto: {
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            /** Format: uuid */
+            patientId?: string;
+            patient?: components["schemas"]["CreatePatientDto"];
+            /** @enum {string} */
+            affiliationType: "SELF" | "FAMILY_FRIEND";
+            /** Format: uuid */
+            companionId?: string;
+            companion?: components["schemas"]["CreateCompanionDto"];
+            contacts?: components["schemas"]["EnrollmentContactInputDto"][];
+            details?: components["schemas"]["UpsertPatientDetailsDto"];
+            insurance?: components["schemas"]["EnrollmentInsuranceDto"];
+            sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
+            diagnosis?: components["schemas"]["EnrollmentDiagnosisDto"];
+            diagnoses?: components["schemas"]["EnrollmentDiagnosisDto"][];
+            treatments?: components["schemas"]["EnrollmentTreatmentDto"][];
+            medicalAppointments?: components["schemas"]["EnrollmentMedicalAppointmentDto"][];
+            addresses?: components["schemas"]["EnrollmentAddressDto"][];
+            symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
+            healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
+            psychooncologySupportAssessment?: components["schemas"]["EnrollmentPsychooncologySupportAssessmentDto"];
+            currentlyAttendingConsultations?: boolean;
+            currentlyReceivingTreatment?: boolean;
+            entrySource?: string;
+            entrySubSource?: string;
+            consentToContact?: boolean;
+            consentToShareData?: boolean;
+            requiresTransportation?: boolean;
+            hasMobilityIssues?: boolean;
+            isOncologicalPatient?: boolean;
+            surveyAccepted?: boolean;
+            caseComments?: string;
+            callStartedAt?: string;
+            callEndedAt?: string;
+            familyPreventionTalkInterests?: components["schemas"]["CreateEnrollmentFamilyTalkInterestDto"][];
+            /** Format: date */
+            enrolledOn: string;
+            followUp: components["schemas"]["HistoricalEnrollmentFollowUpDto"];
+        };
+        CreateHistoricalFollowUpDto: {
+            /** Format: uuid */
+            subjectPatientId: string;
+            /** Format: uuid */
+            interlocutorId: string;
+            /** Format: uuid */
+            agentId: string;
+            /** @enum {string} */
+            type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            notes?: string;
+            /** Format: date */
+            scheduledOn?: string;
+            /** Format: date */
+            completedOn?: string;
+            /** Format: date-time */
+            scheduledAt?: string;
+            /** Format: date-time */
+            completedAt?: string;
+        };
+        CreateHistoricalReminderDto: {
+            /** Format: uuid */
+            subjectPatientId: string;
+            /** Format: date */
+            dueOn?: string;
+            /** Format: date */
+            completedOn?: string;
+            /** Format: uuid */
+            assignedAgentId: string;
+            /** Format: uuid */
+            createdFromFollowUpId?: string;
+            /** Format: uuid */
+            resultingFollowUpId?: string;
+            description: string;
+            /** @enum {string} */
+            kind?: "GENERIC" | "MEDICAL_APPOINTMENT";
+            /** @enum {string} */
+            status: "PENDING" | "DONE" | "DISMISSED";
+            /** Format: uuid */
+            medicalAppointmentId?: string;
+        };
+        CreateHistoricalMedicalAppointmentDto: {
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+            specialty: string;
+            /** Format: date */
+            appointmentDate?: string;
+            /** @description HH:mm or HH:mm:ss */
+            appointmentTime?: string;
+            /** Format: date */
+            nextAppointmentDate?: string;
+            nextAppointmentSpecialty?: string;
+            hasReferralSheet?: boolean;
+            referredTo?: string;
+            referralNotProvidedReason?: string;
+            difficulties?: string;
+            isFirstConsultation?: boolean;
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            changeReason?: string;
+            attendedViaSepa?: boolean;
+            referredViaSepa?: boolean;
+        };
+        CreateHistoricalPsychooncologyAppointmentDto: {
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            volunteerId?: string;
+            /** @description Use the system profile when the original volunteer is unknown */
+            useAnonymousVolunteer?: boolean;
+            /** @enum {string} */
+            beneficiaryType?: "PATIENT" | "COMPANION";
+            /** Format: uuid */
+            companionId?: string | null;
+            /** Format: uuid */
+            followUpId?: string;
+            /** Format: email */
+            patientEmail?: string | null;
+            /** Format: uri */
+            zoomLink?: string | null;
+            sessionNumber: number;
+            isAdditionalSession?: boolean;
+            /** @enum {string} */
+            modality: "CALL" | "VIDEO_CALL";
+            /** @enum {string} */
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** Format: date */
+            scheduledOn: string;
+            /** Format: date */
+            completedOn?: string;
+            /** Format: date-time */
+            scheduledAt?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            schedulingNotes?: string | null;
+            noAnswerNote?: string | null;
+            satisfactionRating?: number | null;
+            satisfactionComment?: string | null;
+            topicAddressed?: string | null;
+            sessionDetails?: string | null;
+            additionalObservations?: string | null;
+            recommendations?: string | null;
+            referral?: string | null;
         };
     };
     responses: never;
@@ -9016,6 +9325,261 @@ export interface operations {
             };
             /** @description Administrator, agent, or foundation role required */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_createEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHistoricalEnrollmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentResponseDto"];
+                };
+            };
+            /** @description Historical enrollment is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_createFollowUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHistoricalFollowUpDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpResponseDto"];
+                };
+            };
+            /** @description Historical follow-up is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_createReminder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHistoricalReminderDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponseDto"];
+                };
+            };
+            /** @description Historical reminder is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_createMedicalAppointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHistoricalMedicalAppointmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientMedicalAppointmentResponseDto"];
+                };
+            };
+            /** @description Historical appointment is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_createPsychooncologyAppointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHistoricalPsychooncologyAppointmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
+                };
+            };
+            /** @description Historical appointment is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A referenced record was not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

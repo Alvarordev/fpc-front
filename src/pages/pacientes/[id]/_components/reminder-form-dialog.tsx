@@ -27,7 +27,8 @@ import type { Agent } from "@/api/agents"
 import type { Reminder, ReminderKind } from "@/api/reminders"
 import { cn } from "@/lib/utils"
 
-function toLocalDateTime(date: string) {
+function toLocalDateTime(date: string | null) {
+  if (!date) return ""
   const value = new Date(date)
   const timezoneOffset = value.getTimezoneOffset() * 60_000
   return new Date(value.getTime() - timezoneOffset).toISOString().slice(0, 16)

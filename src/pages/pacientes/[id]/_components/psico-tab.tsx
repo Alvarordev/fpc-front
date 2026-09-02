@@ -60,8 +60,17 @@ const statusStyles: Record<string, string> = {
 
 type SessionBeneficiaryTab = "PATIENT" | "COMPANION"
 
-function formatScheduledParts(date: string) {
-  const value = new Date(date)
+function formatScheduledParts(date: string | null, dateOnly: string | null) {
+  const value = new Date(date ?? (dateOnly ? `${dateOnly}T12:00:00` : ""))
+  if (Number.isNaN(value.getTime())) {
+    return {
+      day: "—",
+      month: "",
+      year: "",
+      date: "Sin fecha",
+      time: "Sin hora",
+    }
+  }
   return {
     day: value.toLocaleDateString("es-PE", { day: "numeric" }),
     month: value
@@ -110,7 +119,10 @@ function PsychoSessionCard({
   onNoAnswer: () => void
   onCancel: () => void
 }) {
-  const date = formatScheduledParts(appointment.scheduledAt)
+  const date = formatScheduledParts(
+    appointment.scheduledAt,
+    appointment.scheduledOn,
+  )
   const companionName = textValue(appointment.companionFullName)
   const schedulingNotes = textValue(appointment.schedulingNotes)
   const noAnswerNote = textValue(appointment.noAnswerNote)
@@ -369,7 +381,9 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   })
 
   const appointments = [...(appointmentsQuery.data ?? [])].sort((a, b) => {
-    const scheduledDifference = b.scheduledAt.localeCompare(a.scheduledAt)
+    const scheduledDifference = (b.scheduledOn ?? b.scheduledAt ?? "").localeCompare(
+      a.scheduledOn ?? a.scheduledAt ?? "",
+    )
     return scheduledDifference || b.id.localeCompare(a.id)
   })
   const patientAppointments = appointments.filter(

@@ -20,23 +20,28 @@ interface CurrentStepProps {
   step: number;
   onOpenNotes: () => void;
   notesCount: number;
+  historical?: boolean;
 }
 
-function CurrentStep({ step, onOpenNotes, notesCount }: CurrentStepProps) {
+function CurrentStep({ step, onOpenNotes, notesCount, historical = false }: CurrentStepProps) {
   switch (step) {
-    case 1: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} />;
+    case 1: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} />;
     case 2: return <Step2Consent />;
     case 3: return <Step3Identificacion />;
     case 4: return <Step4Consentimiento />;
     case 5: return <Step5Datos />;
     case 6: return <Step6Categoria />;
     case 7: return <Step7Atencion />;
-    case 8: return <Step8Cierre />;
-    default: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} />;
+    case 8: return <Step8Cierre historical={historical} />;
+    default: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} />;
   }
 }
 
-export function EnrollmentShell() {
+interface EnrollmentShellProps {
+  historical?: boolean;
+}
+
+export function EnrollmentShell({ historical = false }: EnrollmentShellProps) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesResetKey, setNotesResetKey] = useState(0);
   const { currentStep, rejectionReason, resetEnrollment, prevStep, clearRejection, draft, categoriaClinica } =
@@ -73,6 +78,7 @@ export function EnrollmentShell() {
                 step={currentStep}
                 onOpenNotes={() => setNotesOpen(true)}
                 notesCount={notesCount}
+                historical={historical}
               />
             )}
           </div>

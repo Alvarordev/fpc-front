@@ -1,23 +1,66 @@
+import { useState } from "react"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ChevronRight, Clock, FileText } from "lucide-react"
+import { CalendarDays, ChevronRight, Clock, FileText } from "lucide-react"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 
 interface Props {
   onOpenNotes: () => void
   notesCount: number
+  historical?: boolean
 }
 
-export function Step1Inicio({ onOpenNotes, notesCount }: Props) {
+export function Step1Inicio({ onOpenNotes, notesCount, historical = false }: Props) {
   const { draft, updateDraft, nextStep } = useEnrollmentStore()
+  const [error, setError] = useState<string | null>(null)
   const meta = draft.enrollmentMetadata
   const now = new Date().toTimeString().slice(0, 5)
 
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (historical && !draft.historicalEnrollmentDate) {
+      setError("Indica la fecha real de enrolamiento")
+      return
+    }
+    setError(null)
+    nextStep()
+  }
+
   return (
-    <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
-      <StepHeader step={1} title="Inicio de Afiliación" description="Registre los datos iniciales de la llamada." />
+    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+      <StepHeader
+        step={1}
+        title={historical ? "Inicio de carga histórica" : "Inicio de Afiliación"}
+        description={
+          historical
+            ? "Indique cuándo ocurrió el enrolamiento. La fecha de carga se registra aparte."
+            : "Registre los datos iniciales de la llamada."
+        }
+      />
+      {historical && (
+        <div className="flex flex-col gap-6">
+          <SectionHeader icon={CalendarDays} title="Fecha del hecho" />
+          <div className="flex flex-col gap-2">
+            <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">
+              Fecha real de enrolamiento <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              type="date"
+              value={draft.historicalEnrollmentDate}
+              onChange={(event) => {
+                updateDraft({ historicalEnrollmentDate: event.target.value })
+                setError(null)
+              }}
+              className="max-w-56 bg-card border"
+            />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Se conservará como fecha calendario, sin inventar una hora.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-6">
         <SectionHeader icon={FileText} title="Notas del Caso" />
         <div className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4">
@@ -45,15 +88,20 @@ export function Step1Inicio({ onOpenNotes, notesCount }: Props) {
       <div className="flex flex-col gap-6">
         <SectionHeader icon={Clock} title="Registro de Tiempo" />
         <div className="flex flex-col gap-2">
-          <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Hora de inicio <span className="text-destructive">*</span></Label>
+          <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">
+            {historical ? "Hora de inicio (opcional)" : "Hora de inicio"}
+            {!historical && <span className="text-destructive"> *</span>}
+          </Label>
           <Input
             type="time"
-            value={meta.startTime?.slice(0, 5) ?? now}
+            value={historical ? (meta.startTime?.slice(0, 5) ?? "") : (meta.startTime?.slice(0, 5) ?? now)}
             onChange={(e) => updateDraft({ enrollmentMetadata: { ...meta, startTime: e.target.value } })}
             className="max-w-48 bg-card border"
           />
+          {historical && <p className="text-xs text-muted-foreground">Déjela vacía si solo conoce el día.</p>}
         </div>
       </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <StepNav currentStep={1} isFirst />
     </form>
   )

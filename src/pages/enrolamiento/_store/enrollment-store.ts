@@ -37,6 +37,7 @@ export type CategoriaClinica = Exclude<
 > | null
 
 export type RejectionReason = "q3_no" | "q8_no"
+export type EnrollmentMode = "OPERATIONAL" | "HISTORICAL"
 
 export interface CompanionDraft {
   fullName: string
@@ -72,6 +73,7 @@ export type EnrollmentMetadataDraft = EnrollmentMetadataRequest & {
 
 export interface EnrollmentDraft {
   patientId: string | null
+  historicalEnrollmentDate: string
   patientData: CreatePatientRequest
   details: EnrollPatientDetailsRequest
   insurance: AddInsuranceRequest
@@ -152,6 +154,7 @@ export function createEnrollmentTreatmentDraft(
 
 export const DEFAULT_DRAFT: EnrollmentDraft = {
   patientId: null,
+  historicalEnrollmentDate: "",
   patientData: { fullName: "", primaryPhone: "" },
   details: {},
   insurance: { insuranceType: "SIS", isCurrent: true },
@@ -462,12 +465,15 @@ function normalizeCategoriaClinica(value: unknown): CategoriaClinica {
 }
 
 interface EnrollmentState {
+  enrollmentMode: EnrollmentMode
   currentStep: number
   draft: EnrollmentDraft
   rejectionReason: RejectionReason | null
   categoriaClinica: CategoriaClinica
   isComplete: boolean
   isSubmitting: boolean
+  historicalPatientId: string | null
+  historicalFollowUpId: string | null
 
   goToStep: (step: number) => void
   nextStep: () => void
@@ -479,17 +485,22 @@ interface EnrollmentState {
   completeEnrollment: () => void
   resetEnrollment: () => void
   setSubmitting: (v: boolean) => void
+  setHistoricalResult: (patientId: string, followUpId: string) => void
+  setEnrollmentMode: (mode: EnrollmentMode) => void
 }
 
 export const useEnrollmentStore = create<EnrollmentState>()(
   persist(
     (set) => ({
+      enrollmentMode: "OPERATIONAL",
       currentStep: 1,
       draft: { ...DEFAULT_DRAFT },
       rejectionReason: null,
       categoriaClinica: null,
       isComplete: false,
       isSubmitting: false,
+      historicalPatientId: null,
+      historicalFollowUpId: null,
 
       goToStep: (step) =>
         set({ currentStep: Math.max(1, Math.min(step, TOTAL_STEPS)) }),
@@ -514,17 +525,38 @@ export const useEnrollmentStore = create<EnrollmentState>()(
           categoriaClinica: null,
           isComplete: false,
           isSubmitting: false,
+          historicalPatientId: null,
+          historicalFollowUpId: null,
         }),
       setSubmitting: (v) => set({ isSubmitting: v }),
+      setHistoricalResult: (patientId, followUpId) =>
+        set({ historicalPatientId: patientId, historicalFollowUpId: followUpId }),
+      setEnrollmentMode: (mode) =>
+        set((state) =>
+          state.enrollmentMode === mode
+            ? state
+            : {
+                enrollmentMode: mode,
+                currentStep: 1,
+                draft: normalizeDraft(DEFAULT_DRAFT),
+                rejectionReason: null,
+                categoriaClinica: null,
+                isComplete: false,
+                isSubmitting: false,
+                historicalPatientId: null,
+                historicalFollowUpId: null,
+              },
+        ),
     }),
     {
       name: "fpc-enrollment-draft",
-      version: 4,
-      migrate: (persistedState) => {
-        const persisted = persistedState as Partial<EnrollmentState> | undefined
-        return {
-          ...persisted,
-          draft: normalizeDraft(persisted?.draft),
+       version: 6,
+       migrate: (persistedState) => {
+         const persisted = persistedState as Partial<EnrollmentState> | undefined
+         return {
+           ...persisted,
+           enrollmentMode: persisted?.enrollmentMode ?? "OPERATIONAL",
+           draft: normalizeDraft(persisted?.draft),
           categoriaClinica: normalizeCategoriaClinica(
             persisted?.categoriaClinica,
           ),
@@ -534,8 +566,9 @@ export const useEnrollmentStore = create<EnrollmentState>()(
         const persisted = persistedState as Partial<EnrollmentState> | undefined
         return {
           ...currentState,
-          ...persisted,
-          draft: normalizeDraft(persisted?.draft),
+           ...persisted,
+           enrollmentMode: persisted?.enrollmentMode ?? "OPERATIONAL",
+           draft: normalizeDraft(persisted?.draft),
           categoriaClinica: normalizeCategoriaClinica(
             persisted?.categoriaClinica,
           ),

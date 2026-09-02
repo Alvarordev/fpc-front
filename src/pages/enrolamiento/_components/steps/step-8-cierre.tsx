@@ -13,13 +13,18 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle2, Clock, ClipboardCheck } from "lucide-react"
 import { agentsApi } from "@/api/agents"
 import { enrollmentsApi } from "@/api/enrollments"
+import { historicalRecordsApi } from "@/api/historical-records"
 import { useAuthStore } from "@/store/auth-store"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { StepHeader, SectionHeader, StepNav } from "../shared"
 import { toast } from "sonner"
 import { buildEnrollmentPayload } from "./step-8-payload"
 
-export function Step8Cierre() {
+interface Step8CierreProps {
+  historical?: boolean
+}
+
+export function Step8Cierre({ historical = false }: Step8CierreProps) {
   const {
     draft,
     updateDraft,
@@ -28,6 +33,7 @@ export function Step8Cierre() {
     completeEnrollment,
     resetEnrollment,
     categoriaClinica,
+    setHistoricalResult,
   } = useEnrollmentStore()
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
@@ -60,16 +66,30 @@ export function Step8Cierre() {
             : "Ingrese el nombre, teléfono y parentesco del familiar o acompañante",
         )
       }
-      const payload = buildEnrollmentPayload({
-        draft,
-        agentId,
-        categoriaClinica,
-      })
-      await enrollmentsApi.create(payload)
+      if (historical) {
+        const result = await historicalRecordsApi.createEnrollment(
+          buildEnrollmentPayload({
+            draft,
+            agentId,
+            categoriaClinica,
+            historical: true,
+            historicalEnrollmentDate: draft.historicalEnrollmentDate,
+          }),
+        )
+        setHistoricalResult(result.patientId, result.followUpId)
+        return
+      }
+      await enrollmentsApi.create(
+        buildEnrollmentPayload({ draft, agentId, categoriaClinica }),
+      )
     },
     onSuccess: () => {
       completeEnrollment()
-      toast.success("Paciente enrolado correctamente")
+      toast.success(
+        historical
+          ? "Enrolamiento histórico guardado"
+          : "Paciente enrolado correctamente",
+      )
     },
     onError: (err: Error) => {
       toast.error("Error al enrolar", { description: err.message })
@@ -92,12 +112,12 @@ export function Step8Cierre() {
         <Button
           onClick={() => {
             resetEnrollment()
-            navigate("/pacientes")
+            navigate(historical ? "/carga-historica" : "/pacientes")
           }}
           size="lg"
           className="px-8"
         >
-          Ir a pacientes
+          {historical ? "Nueva carga histórica" : "Ir a pacientes"}
         </Button>
       </div>
     )
@@ -210,11 +230,12 @@ export function Step8Cierre() {
         <SectionHeader icon={Clock} title="Registro de Tiempo" />
         <div className="flex flex-col gap-2">
           <Label className="text-muted-foreground/70 text-[10px] font-bold tracking-[0.1em] uppercase">
-            Hora de fin <span className="text-destructive">*</span>
+            {historical ? "Hora de fin (opcional)" : "Hora de fin"}
+            {!historical && <span className="text-destructive"> *</span>}
           </Label>
           <Input
             type="time"
-            value={meta.endTime?.slice(0, 5) ?? now}
+            value={historical ? (meta.endTime?.slice(0, 5) ?? "") : (meta.endTime?.slice(0, 5) ?? now)}
             onChange={(e) =>
               updateDraft({
                 enrollmentMetadata: { ...meta, endTime: e.target.value },

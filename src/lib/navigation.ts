@@ -11,6 +11,7 @@ import {
   Calendar,
   UserRound,
   GraduationCap,
+  Archive,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -60,6 +61,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
         { title: "Usuarios", url: "/usuarios", icon: ShieldUser },
+        { title: "Carga histórica", url: "/carga-historica", icon: Archive },
       ],
     },
     {
@@ -101,6 +103,7 @@ export const pathTitles: Record<string, string> = {
   "/prospectos": "Prospectos",
   "/inscripcion": "Inscripción",
   "/enrolamiento": "Enrolamiento",
+  "/carga-historica": "Carga histórica",
   "/agenda": "Mi Agenda",
   "/disponibilidad": "Disponibilidad",
   "/equipo-sepa": "Equipo SEPA",

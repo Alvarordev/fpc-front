@@ -126,20 +126,26 @@ export function buildAgendaEvents(
     ]
   })
 
-  const reminderEvents: AgendaEvent[] = reminders.map((reminder) => ({
-    id: reminder.id,
-    kind: "reminder",
-    patientId: reminder.subjectPatientId,
-    patientName:
-      patientInfo.get(reminder.subjectPatientId)?.name ??
-      "Paciente desconocido",
-    healthSubcategory:
-      patientInfo.get(reminder.subjectPatientId)?.healthSubcategory ?? null,
-    startsAt: reminder.dueAt,
-    title: reminder.description,
-    detail: "Recordatorio",
-    reminder,
-  }))
+  const reminderEvents: AgendaEvent[] = reminders.flatMap((reminder) => {
+    if (!reminder.dueAt) return []
+
+    return [
+      {
+        id: reminder.id,
+        kind: "reminder" as const,
+        patientId: reminder.subjectPatientId,
+        patientName:
+          patientInfo.get(reminder.subjectPatientId)?.name ??
+          "Paciente desconocido",
+        healthSubcategory:
+          patientInfo.get(reminder.subjectPatientId)?.healthSubcategory ?? null,
+        startsAt: reminder.dueAt,
+        title: reminder.description,
+        detail: "Recordatorio",
+        reminder,
+      },
+    ]
+  })
 
   return [...followUpEvents, ...reminderEvents].sort(sortByStart)
 }

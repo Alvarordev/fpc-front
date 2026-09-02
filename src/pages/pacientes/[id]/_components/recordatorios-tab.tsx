@@ -119,7 +119,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
   })
 
   const reminders = (remindersQuery.data ?? []).sort((a, b) =>
-    a.dueAt.localeCompare(b.dueAt),
+    (a.dueOn ?? a.dueAt ?? "").localeCompare(b.dueOn ?? b.dueAt ?? ""),
   )
   const pendientes = reminders.filter(
     (reminder) => reminder.status === "PENDING",

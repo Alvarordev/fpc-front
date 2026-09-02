@@ -9,6 +9,9 @@ import { psychooncologyAppointmentsApi, type PsychooncologyAppointment } from "@
 import { patientsApi, type PatientDetailsResponse } from "@/api/patients";
 import { useVolunteerProfile } from "@/hooks/use-volunteer-profile";
 type AppointmentStatus = PsychooncologyAppointment["status"];
+type DatedPsychooncologyAppointment = PsychooncologyAppointment & {
+  scheduledAt: string;
+};
 
 // --- Status styling ---
 
@@ -113,7 +116,8 @@ export function VolunteerPatientsContent() {
   // Upcoming scheduled sessions
   const upcomingSessions = appointments
     .filter(
-      (a) =>
+      (a): a is DatedPsychooncologyAppointment =>
+        a.scheduledAt !== null &&
         a.scheduledAt.slice(0, 10) >= TODAY &&
         a.status === "SCHEDULED",
     )
@@ -237,9 +241,10 @@ export function VolunteerPatientsContent() {
               const completedCount = patientSessions.filter(
                 (a) => a.status === "COMPLETED",
               ).length;
-              const nextSession = patientSessions
+                const nextSession = patientSessions
                 .filter(
-                  (a) =>
+                  (a): a is DatedPsychooncologyAppointment =>
+                    a.scheduledAt !== null &&
                     a.scheduledAt.slice(0, 10) >= TODAY &&
                     a.status === "SCHEDULED",
                 )

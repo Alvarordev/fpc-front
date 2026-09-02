@@ -4,6 +4,13 @@ import { api } from "./client"
 export type Volunteer = components["schemas"]["VolunteerResponseDto"]
 export type VolunteerAvailability =
   components["schemas"]["VolunteerAvailabilityResponseDto"]
+export type OperationalVolunteerAvailability = Omit<
+  VolunteerAvailability,
+  "startTime" | "endTime"
+> & {
+  startTime: string
+  endTime: string
+}
 export type CreateVolunteerInput = components["schemas"]["CreateVolunteerDto"]
 export type UpdateVolunteerInput = components["schemas"]["UpdateVolunteerDto"]
 export type CreateAvailabilityInput =
@@ -29,7 +36,7 @@ export const volunteersApi = {
 
   async listAvailability(
     volunteerId: string,
-  ): Promise<VolunteerAvailability[]> {
+  ): Promise<OperationalVolunteerAvailability[]> {
     const { data, response } = await api.GET(
       "/volunteers/{volunteerId}/availability",
       {
@@ -38,7 +45,10 @@ export const volunteersApi = {
     )
 
     if (!data) throw new VolunteersApiError(response.status)
-    return data
+    return data.filter(
+      (slot): slot is OperationalVolunteerAvailability =>
+        !slot.isHistorical && slot.startTime !== null && slot.endTime !== null,
+    )
   },
 
   async create(input: CreateVolunteerInput): Promise<Volunteer> {

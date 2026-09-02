@@ -37,12 +37,20 @@ export function AgendaContent() {
     isLoading: loadingAgenda,
   } = useAgenda(volunteerId)
 
+  type ScheduledAppointment = PsychooncologyAppointment & {
+    scheduledAt: string
+  }
+  const scheduledAppointments = appointments.filter(
+    (appointment): appointment is ScheduledAppointment =>
+      appointment.scheduledAt !== null,
+  )
+
   const sortedAppointments = useMemo(
     () =>
-      [...appointments].sort((a, b) =>
+      [...scheduledAppointments].sort((a, b) =>
         a.scheduledAt.localeCompare(b.scheduledAt),
       ),
-    [appointments],
+    [scheduledAppointments],
   )
   const events = useMemo<VolunteerAgendaEvent[]>(
     () =>
@@ -62,11 +70,15 @@ export function AgendaContent() {
   ).length
   const todayCount = appointments.filter(
     (appointment) =>
-      appointment.status === "SCHEDULED" && isToday(appointment.scheduledAt),
+      appointment.status === "SCHEDULED" &&
+      appointment.scheduledAt !== null &&
+      isToday(appointment.scheduledAt),
   ).length
   const overdueCount = appointments.filter(
     (appointment) =>
-      appointment.status === "SCHEDULED" && isOverdue(appointment.scheduledAt),
+      appointment.status === "SCHEDULED" &&
+      appointment.scheduledAt !== null &&
+      isOverdue(appointment.scheduledAt),
   ).length
 
   const activePatientName = resultAppointment
