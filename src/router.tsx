@@ -20,6 +20,8 @@ import EnrolamientoPage from "@/pages/enrolamiento/page"
 import CallcenterPage from "@/pages/callcenter/page"
 import CharlasPage from "@/pages/charlas/page"
 import HistoricalRecordsPage from "@/pages/carga-historica/page"
+import HistoricalEnrollmentPage from "@/pages/carga-historica/new/page"
+import HistoricalPatientPage from "@/pages/carga-historica/pacientes/[id]/page"
 
 export const router = createBrowserRouter([
   {
@@ -146,6 +148,22 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard allowedRoles={["ADMIN"]}>
             <HistoricalRecordsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "carga-historica/nuevo",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN"]}>
+            <HistoricalEnrollmentPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "carga-historica/pacientes/:id",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN"]}>
+            <HistoricalPatientPage />
           </RoleGuard>
         ),
       },

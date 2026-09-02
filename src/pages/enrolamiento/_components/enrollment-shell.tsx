@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
-import { getEnrollmentNotes, useEnrollmentStore } from "../_store/enrollment-store";
+import { getEnrollmentNotes, TOTAL_STEPS, useEnrollmentStore } from "../_store/enrollment-store";
 import { EnrollmentStepper } from "./enrollment-stepper";
 import { EnrollmentAside } from "./enrollment-aside";
 import { EnrollmentNotesSheet } from "./enrollment-notes-sheet";
@@ -21,27 +21,29 @@ interface CurrentStepProps {
   onOpenNotes: () => void;
   notesCount: number;
   historical?: boolean;
+  embedded?: boolean;
 }
 
-function CurrentStep({ step, onOpenNotes, notesCount, historical = false }: CurrentStepProps) {
+function CurrentStep({ step, onOpenNotes, notesCount, historical = false, embedded = false }: CurrentStepProps) {
   switch (step) {
-    case 1: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} />;
-    case 2: return <Step2Consent />;
-    case 3: return <Step3Identificacion />;
-    case 4: return <Step4Consentimiento />;
-    case 5: return <Step5Datos />;
-    case 6: return <Step6Categoria />;
-    case 7: return <Step7Atencion />;
-    case 8: return <Step8Cierre historical={historical} />;
-    default: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} />;
+    case 1: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} embedded={embedded} />;
+    case 2: return <Step2Consent embedded={embedded} />;
+    case 3: return <Step3Identificacion embedded={embedded} />;
+    case 4: return <Step4Consentimiento embedded={embedded} />;
+    case 5: return <Step5Datos embedded={embedded} />;
+    case 6: return <Step6Categoria embedded={embedded} />;
+    case 7: return <Step7Atencion embedded={embedded} />;
+    case 8: return <Step8Cierre historical={historical} embedded={embedded} />;
+    default: return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} embedded={embedded} />;
   }
 }
 
 interface EnrollmentShellProps {
   historical?: boolean;
+  continuous?: boolean;
 }
 
-export function EnrollmentShell({ historical = false }: EnrollmentShellProps) {
+export function EnrollmentShell({ historical = false, continuous = false }: EnrollmentShellProps) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesResetKey, setNotesResetKey] = useState(0);
   const { currentStep, rejectionReason, resetEnrollment, prevStep, clearRejection, draft, categoriaClinica } =
@@ -59,40 +61,58 @@ export function EnrollmentShell({ historical = false }: EnrollmentShellProps) {
     [currentStep, draft, categoriaClinica],
   );
 
+  const currentStepContent = rejectionReason ? (
+    <EnrollmentRejection
+      reason={rejectionReason}
+      onReset={handleReset}
+      onBack={() => { clearRejection(); prevStep(); }}
+    />
+  ) : continuous ? (
+    <div className="mx-auto max-w-3xl space-y-12 px-5 py-8 md:px-8 md:py-10">
+      {Array.from({ length: TOTAL_STEPS }, (_, index) => index + 1).map((step) => (
+        <section key={step} className="border-b border-border/50 pb-12 last:border-b-0 last:pb-0">
+          <CurrentStep
+            step={step}
+            onOpenNotes={() => setNotesOpen(true)}
+            notesCount={notesCount}
+            historical={historical}
+            embedded
+          />
+        </section>
+      ))}
+    </div>
+  ) : (
+    <CurrentStep
+      step={currentStep}
+      onOpenNotes={() => setNotesOpen(true)}
+      notesCount={notesCount}
+      historical={historical}
+    />
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-center border-b border-border/50 bg-background px-6 py-4">
-        <EnrollmentStepper currentStep={currentStep} />
-      </div>
+      {!continuous && (
+        <div className="flex shrink-0 items-center justify-center border-b border-border/50 bg-background px-6 py-4">
+          <EnrollmentStepper currentStep={currentStep} />
+        </div>
+      )}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl px-8 py-10">
-            {rejectionReason ? (
-              <EnrollmentRejection
-                reason={rejectionReason}
-                onReset={handleReset}
-                onBack={() => { clearRejection(); prevStep(); }}
-              />
-            ) : (
-              <CurrentStep
-                step={currentStep}
+          {continuous ? currentStepContent : <div className="mx-auto max-w-2xl px-8 py-10">{currentStepContent}</div>}
+        </div>
+        {!continuous && (
+          <div className="hidden w-80 shrink-0 overflow-y-auto border-l border-border/50 bg-muted/30 lg:block xl:w-96">
+            <div className="px-6 py-8">
+              <EnrollmentAside
+                content={asideContent}
                 onOpenNotes={() => setNotesOpen(true)}
                 notesCount={notesCount}
-                historical={historical}
+                onReset={handleReset}
               />
-            )}
+            </div>
           </div>
-        </div>
-        <div className="hidden w-80 shrink-0 overflow-y-auto border-l border-border/50 bg-muted/30 lg:block xl:w-96">
-          <div className="px-6 py-8">
-            <EnrollmentAside
-              content={asideContent}
-              onOpenNotes={() => setNotesOpen(true)}
-              notesCount={notesCount}
-              onReset={handleReset}
-            />
-          </div>
-        </div>
+        )}
       </div>
       <div className="pointer-events-none fixed bottom-5 right-5 z-40 lg:hidden">
         <Button

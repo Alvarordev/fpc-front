@@ -2,14 +2,18 @@ import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldCheck, Users } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
-export function Step2Consent() {
+export function Step2Consent({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep, setRejection } = useEnrollmentStore()
   const meta = draft.enrollmentMetadata
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
+    <StepContainer
+      embedded={embedded}
+      onSubmit={(e) => { e.preventDefault(); nextStep() }}
+      className="flex flex-col gap-8"
+    >
       <StepHeader step={2} title="Consentimiento de Datos" description="Verifique el acuerdo del paciente con la política de datos." />
       <div className="flex flex-col gap-6">
         <SectionHeader icon={ShieldCheck} title="Autorización de Datos" />
@@ -49,7 +53,7 @@ export function Step2Consent() {
           </Select>
         </div>
       </div>
-      <StepNav currentStep={2} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={2} onPrev={prevStep} />}
+    </StepContainer>
   )
 }

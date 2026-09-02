@@ -4,15 +4,21 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CalendarDays, ChevronRight, Clock, FileText } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
 interface Props {
   onOpenNotes: () => void
   notesCount: number
   historical?: boolean
+  embedded?: boolean
 }
 
-export function Step1Inicio({ onOpenNotes, notesCount, historical = false }: Props) {
+export function Step1Inicio({
+  onOpenNotes,
+  notesCount,
+  historical = false,
+  embedded = false,
+}: Props) {
   const { draft, updateDraft, nextStep } = useEnrollmentStore()
   const [error, setError] = useState<string | null>(null)
   const meta = draft.enrollmentMetadata
@@ -29,7 +35,11 @@ export function Step1Inicio({ onOpenNotes, notesCount, historical = false }: Pro
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <StepContainer
+      embedded={embedded}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-8"
+    >
       <StepHeader
         step={1}
         title={historical ? "Inicio de carga histórica" : "Inicio de Afiliación"}
@@ -102,7 +112,7 @@ export function Step1Inicio({ onOpenNotes, notesCount, historical = false }: Pro
         </div>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <StepNav currentStep={1} isFirst />
-    </form>
+      {!embedded && <StepNav currentStep={1} isFirst />}
+    </StepContainer>
   )
 }

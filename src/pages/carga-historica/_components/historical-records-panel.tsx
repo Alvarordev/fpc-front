@@ -1,13 +1,17 @@
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "react-router-dom"
 import {
+  ArrowLeft,
   ClipboardList,
   History,
+  Link2,
   Loader2,
   Pencil,
   Plus,
   Save,
   Trash2,
+  UserRound,
 } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
@@ -18,6 +22,7 @@ import {
   type CreateHistoricalPsychooncologyAppointmentInput,
   type CreateHistoricalReminderInput,
 } from "@/api/historical-records"
+import { enrollmentsApi } from "@/api/enrollments"
 import { patientsApi } from "@/api/patients"
 import {
   patientTimelineApi,
@@ -43,7 +48,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
 
 type RecordType =
   | "FOLLOW_UP"
@@ -208,6 +212,10 @@ function formatDateTime(value: string) {
   })
 }
 
+function optionLabel(options: { value: string; label: string }[], value: string) {
+  return options.find((option) => option.value === value)?.label ?? value
+}
+
 function eventTitle(event: PatientTimelineEvent) {
   if (event.kind === "FOLLOW_UP") return `Seguimiento · ${event.type}`
   if (event.kind === "REMINDER") return "Recordatorio"
@@ -249,17 +257,26 @@ function draftDate(draft: HistoricalRecordDraft | null) {
   return draft.input.scheduledOn
 }
 
+function draftRelationSummary(draft: HistoricalRecordDraft) {
+  if (draft.type === "FOLLOW_UP") return "Nuevo seguimiento"
+  const followUpId =
+    draft.type === "REMINDER"
+      ? draft.input.createdFromFollowUpId
+      : draft.input.followUpId
+  return followUpId ? "Seguimiento relacionado" : "Sin seguimiento relacionado"
+}
+
 function draftSummary(draft: HistoricalRecordDraft) {
   if (draft.type === "FOLLOW_UP") {
-    return `${draft.input.type} · ${draft.input.purpose} · ${draft.input.status}`
+    return `${draft.input.type} · ${draft.input.purpose} · ${draft.input.status} · ${draftRelationSummary(draft)}`
   }
   if (draft.type === "REMINDER") {
-    return `${draft.input.description} · ${draft.input.status}`
+    return `${draft.input.description} · ${draft.input.status} · ${draftRelationSummary(draft)}`
   }
   if (draft.type === "MEDICAL_APPOINTMENT") {
-    return `${draft.input.specialty} · ${draft.input.status}`
+    return `${draft.input.specialty} · ${draft.input.status} · ${draftRelationSummary(draft)}`
   }
-  return `Sesión #${draft.input.sessionNumber} · ${draft.input.modality} · ${draft.input.status}`
+  return `Sesión #${draft.input.sessionNumber} · ${draft.input.modality} · ${draft.input.status} · ${draftRelationSummary(draft)}`
 }
 
 function HistoricalRecordComposer({
@@ -475,6 +492,7 @@ function HistoricalRecordComposer({
           assignedAgentId: agentId,
           description: description.trim(),
           kind: reminderKind,
+          createdFromFollowUpId: enrollmentFollowUpId || undefined,
           status: reminderStatus,
           medicalAppointmentId:
             reminderKind === "MEDICAL_APPOINTMENT"
@@ -800,18 +818,63 @@ export function HistoricalRecordsPanel({
   enrollmentFollowUpId,
 }: {
   patientId: string
-  enrollmentFollowUpId: string | null
+  enrollmentFollowUpId?: string | null
 }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { resetEnrollment } = useEnrollmentStore()
   const [drafts, setDrafts] = useState<HistoricalRecordDraft[]>([])
   const [editingDraft, setEditingDraft] =
     useState<HistoricalRecordDraft | null>(null)
+  const [selectedFollowUpId, setSelectedFollowUpId] = useState(
+    enrollmentFollowUpId ?? "",
+  )
+  const patientQuery = useQuery({
+    queryKey: ["patient-profile", patientId],
+    queryFn: () => patientsApi.getById(patientId),
+    enabled: Boolean(patientId),
+    staleTime: 30_000,
+  })
+  const enrollmentsQuery = useQuery({
+    queryKey: ["patient-enrollments", patientId],
+    queryFn: () => enrollmentsApi.listByPatient(patientId),
+    enabled: Boolean(patientId),
+    staleTime: 30_000,
+  })
   const timelineQuery = useQuery({
     queryKey: ["patient-timeline", patientId],
     queryFn: () => patientTimelineApi.list(patientId),
     enabled: Boolean(patientId),
   })
+
+  const enrollmentFollowUpIds = new Set(
+    (enrollmentsQuery.data ?? []).map((enrollment) => enrollment.followUpId),
+  )
+  const followUpEvents =
+    timelineQuery.data?.data.filter((event) => event.kind === "FOLLOW_UP") ?? []
+  const followUpItems = [
+    ...(enrollmentsQuery.data ?? []).map((enrollment) => ({
+      value: enrollment.followUpId,
+      label: `Enrolamiento · ${formatDate(enrollment.enrolledOn)}`,
+    })),
+    ...followUpEvents
+      .filter((event) => !enrollmentFollowUpIds.has(event.followUpId))
+      .map((event) => ({
+        value: event.followUpId,
+        label: `${optionLabel(PURPOSE_OPTIONS, event.purpose)} · ${formatDate(event.occurredAt)}`,
+      })),
+  ]
+  const defaultFollowUpId = followUpItems[0]?.value
+
+  const effectiveFollowUpId =
+    selectedFollowUpId || enrollmentFollowUpId || defaultFollowUpId || ""
+  const selectableFollowUpItems =
+    effectiveFollowUpId &&
+    !followUpItems.some((item) => item.value === effectiveFollowUpId)
+      ? [
+          ...followUpItems,
+          { value: effectiveFollowUpId, label: "Seguimiento seleccionado" },
+        ]
+      : followUpItems
 
   const saveMutation = useMutation<unknown, Error, HistoricalRecordDraft>({
     mutationFn: async (draft: HistoricalRecordDraft) => {
@@ -824,16 +887,28 @@ export function HistoricalRecordsPanel({
       }
       return historicalRecordsApi.createPsychooncologyAppointment(draft.input)
     },
-    onSuccess: (_result, savedDraft) => {
+    onSuccess: (result, savedDraft) => {
       setDrafts((current) =>
         current.filter((draft) => draft.id !== savedDraft.id),
       )
       if (editingDraft?.id === savedDraft.id) setEditingDraft(null)
+      if (
+        savedDraft.type === "FOLLOW_UP" &&
+        result &&
+        typeof result === "object" &&
+        "id" in result &&
+        typeof result.id === "string"
+      ) {
+        setSelectedFollowUpId(result.id)
+      }
       void queryClient.invalidateQueries({
         queryKey: ["patient-timeline", patientId],
       })
       void queryClient.invalidateQueries({
         queryKey: ["patient-medical-appointments", patientId],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ["patient-enrollments", patientId],
       })
       toast.success("Registro histórico guardado")
     },
@@ -856,27 +931,116 @@ export function HistoricalRecordsPanel({
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6 md:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mb-3 -ml-2 gap-1.5 text-xs"
+            onClick={() => navigate("/carga-historica")}
+          >
+            <ArrowLeft className="size-3.5" />
+            Buscar otro paciente
+          </Button>
           <p className="text-primary mb-1 text-[10px] font-bold tracking-[0.18em] uppercase">
             Carga histórica
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Historial registrado
+            Perfil histórico
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Revise la línea de tiempo y agregue hechos anteriores del paciente.
+            Revise la historia registrada y agregue hechos anteriores sin crear
+            actividad operativa futura.
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={resetEnrollment}>
-          Nueva carga histórica
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => navigate("/carga-historica/nuevo")}
+        >
+          <Plus className="size-4" />
+          Nuevo paciente histórico
         </Button>
       </div>
+
+      {patientQuery.isLoading && (
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <Loader2 className="size-4 animate-spin" /> Cargando perfil...
+        </div>
+      )}
+      {patientQuery.isError && (
+        <Card className="border-destructive/20 bg-destructive/5">
+          <CardContent className="text-destructive p-4 text-sm">
+            No se pudo cargar el paciente. Regrese a la búsqueda e inténtelo de
+            nuevo.
+          </CardContent>
+        </Card>
+      )}
+      {patientQuery.data && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardContent className="flex flex-wrap items-center gap-3 p-4">
+            <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-full">
+              <UserRound className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{patientQuery.data.fullName}</p>
+              <p className="text-muted-foreground text-xs">
+                {patientQuery.data.dni
+                  ? `DNI ${patientQuery.data.dni}`
+                  : "Sin DNI registrado"}
+                {patientQuery.data.primaryPhone
+                  ? ` · ${patientQuery.data.primaryPhone}`
+                  : ""}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-primary/20 bg-primary/[0.02]">
+        <CardHeader className="gap-1">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Link2 className="text-primary size-4" />
+            Seguimiento de contexto
+          </CardTitle>
+          <CardDescription>
+            Seleccione el seguimiento al que pertenecen las citas, sesiones y
+            recordatorios que agregue a continuación.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {selectableFollowUpItems.length > 0 ? (
+            <Select
+              items={selectableFollowUpItems}
+              value={effectiveFollowUpId}
+              onValueChange={(value) => setSelectedFollowUpId(value ?? "")}
+            >
+              <SelectTrigger className="bg-card w-full border">
+                <SelectValue placeholder="Seleccionar seguimiento..." />
+              </SelectTrigger>
+              <SelectContent>
+                {selectableFollowUpItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-muted-foreground rounded-lg border border-dashed p-3 text-sm">
+              Este paciente todavía no tiene seguimientos disponibles. Agregue
+              primero un seguimiento para poder relacionar citas o sesiones.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <HistoricalRecordComposer
         key={editingDraft?.id ?? "new"}
         patientId={patientId}
-        enrollmentFollowUpId={enrollmentFollowUpId}
+        enrollmentFollowUpId={effectiveFollowUpId || null}
         editingDraft={editingDraft}
         onDraft={upsertDraft}
         onCancelEdit={() => setEditingDraft(null)}

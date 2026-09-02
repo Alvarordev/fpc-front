@@ -5,13 +5,14 @@ import { STEP_LABELS, TOTAL_STEPS } from "../_store/enrollment-store";
 interface Props {
   currentStep: number;
   onPrev?: () => void;
+  onClick?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
   nextLabel?: string;
   isLoading?: boolean;
 }
 
-export function StepNav({ currentStep, onPrev, isFirst, isLast, nextLabel, isLoading }: Props) {
+export function StepNav({ currentStep, onPrev, onClick, isFirst, isLast, nextLabel, isLoading }: Props) {
   const prevStepLabel = STEP_LABELS[currentStep - 1];
   const nextStepLabel = nextLabel ?? (currentStep < TOTAL_STEPS ? STEP_LABELS[currentStep + 1] : undefined);
 
@@ -22,7 +23,7 @@ export function StepNav({ currentStep, onPrev, isFirst, isLast, nextLabel, isLoa
           Volver a {prevStepLabel}
         </Button>
       ) : <div />}
-      <Button type="submit" size="lg" className="min-w-40 px-8" disabled={isLoading}>
+      <Button type={onClick ? "button" : "submit"} onClick={onClick} size="lg" className="min-w-40 px-8" disabled={isLoading}>
         {isLoading ? (<><Loader2 className="mr-2 size-4 animate-spin" />Guardando...</>) :
          isLast ? "Finalizar inscripción" : `Continuar a ${nextStepLabel}`}
       </Button>

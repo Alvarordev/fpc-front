@@ -16,15 +16,19 @@ import { enrollmentsApi } from "@/api/enrollments"
 import { historicalRecordsApi } from "@/api/historical-records"
 import { useAuthStore } from "@/store/auth-store"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 import { toast } from "sonner"
 import { buildEnrollmentPayload } from "./step-8-payload"
 
 interface Step8CierreProps {
   historical?: boolean
+  embedded?: boolean
 }
 
-export function Step8Cierre({ historical = false }: Step8CierreProps) {
+export function Step8Cierre({
+  historical = false,
+  embedded = false,
+}: Step8CierreProps) {
   const {
     draft,
     updateDraft,
@@ -34,6 +38,7 @@ export function Step8Cierre({ historical = false }: Step8CierreProps) {
     resetEnrollment,
     categoriaClinica,
     setHistoricalResult,
+    historicalPatientId,
   } = useEnrollmentStore()
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
@@ -77,19 +82,22 @@ export function Step8Cierre({ historical = false }: Step8CierreProps) {
           }),
         )
         setHistoricalResult(result.patientId, result.followUpId)
-        return
+        return result
       }
       await enrollmentsApi.create(
         buildEnrollmentPayload({ draft, agentId, categoriaClinica }),
       )
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       completeEnrollment()
       toast.success(
         historical
           ? "Enrolamiento histórico guardado"
           : "Paciente enrolado correctamente",
       )
+      if (historical && result && "patientId" in result) {
+        navigate(`/carga-historica/pacientes/${result.patientId}`)
+      }
     },
     onError: (err: Error) => {
       toast.error("Error al enrolar", { description: err.message })
@@ -111,8 +119,14 @@ export function Step8Cierre({ historical = false }: Step8CierreProps) {
         </p>
         <Button
           onClick={() => {
+            const destination =
+              historical && historicalPatientId
+                ? `/carga-historica/pacientes/${historicalPatientId}`
+                : historical
+                  ? "/carga-historica"
+                  : "/pacientes"
             resetEnrollment()
-            navigate(historical ? "/carga-historica" : "/pacientes")
+            navigate(destination)
           }}
           size="lg"
           className="px-8"
@@ -123,7 +137,8 @@ export function Step8Cierre({ historical = false }: Step8CierreProps) {
     )
 
   return (
-    <form
+    <StepContainer
+      embedded={embedded}
       onSubmit={(e) => {
         e.preventDefault()
         mutation.mutate()
@@ -254,10 +269,11 @@ export function Step8Cierre({ historical = false }: Step8CierreProps) {
       )}
       <StepNav
         currentStep={8}
-        onPrev={prevStep}
+        onPrev={embedded ? undefined : prevStep}
+        onClick={embedded ? () => mutation.mutate() : undefined}
         isLast
         isLoading={mutation.isPending}
       />
-    </form>
+    </StepContainer>
   )
 }

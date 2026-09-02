@@ -12,21 +12,22 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tag } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
 const CATEGORY_OPTIONS = [
   { value: "SIGNS_AND_SYMPTOMS", label: "Signos y Síntomas" },
   { value: "CANCER_DIAGNOSIS", label: "Diagnóstico de Cáncer" },
 ] as const
 
-export function Step6Categoria() {
+export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
   const { categoriaClinica, setCategoria, nextStep, prevStep, draft } =
     useEnrollmentStore()
   const [showCategoryError, setShowCategoryError] = useState(false)
   const seguro = draft.insurance.insuranceType
 
   return (
-    <form
+    <StepContainer
+      embedded={embedded}
       onSubmit={(e) => {
         e.preventDefault()
         if (!categoriaClinica) {
@@ -85,7 +86,7 @@ export function Step6Categoria() {
           )}
         </div>
       </div>
-      <StepNav currentStep={6} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={6} onPrev={prevStep} />}
+    </StepContainer>
   )
 }

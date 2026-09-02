@@ -31,7 +31,7 @@ import {
   relationshipSelectOptions,
 } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
-import { SectionHeader, StepHeader, StepNav } from "../shared"
+import { SectionHeader, StepContainer, StepHeader, StepNav } from "../shared"
 import {
   type CompanionDraft,
   useEnrollmentStore,
@@ -308,7 +308,7 @@ function ContactPersonFields({
   )
 }
 
-export function Step5Datos() {
+export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
   const [entryPoint, setEntryPoint] = useState<string>(() => {
     const saved = draft.enrollmentMetadata.programEntryPoint
@@ -517,7 +517,11 @@ export function Step5Datos() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-10">
+    <StepContainer
+      embedded={embedded}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-10"
+    >
       <StepHeader
         step={5}
         title="Datos del Paciente"
@@ -1390,7 +1394,7 @@ export function Step5Datos() {
       </section>
 
       {error && <p className="text-destructive text-sm">{error}</p>}
-      <StepNav currentStep={5} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={5} onPrev={prevStep} />}
+    </StepContainer>
   )
 }

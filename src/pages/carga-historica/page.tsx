@@ -1,32 +1,17 @@
 import { useEffect } from "react"
-import { Archive, ShieldCheck } from "lucide-react"
-import { EnrollmentShell } from "@/pages/enrolamiento/_components/enrollment-shell"
+import { useNavigate } from "react-router-dom"
+import { Archive, Plus, ShieldCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
 import { HistoricalPatientPicker } from "./_components/historical-patient-picker"
-import { HistoricalRecordsPanel } from "./_components/historical-records-panel"
 
 export default function HistoricalRecordsPage() {
-  const {
-    historicalPatientId,
-    historicalFollowUpId,
-    isComplete,
-    setEnrollmentMode,
-  } = useEnrollmentStore()
+  const setEnrollmentMode = useEnrollmentStore((state) => state.setEnrollmentMode)
+  const navigate = useNavigate()
 
   useEffect(() => {
     setEnrollmentMode("HISTORICAL")
   }, [setEnrollmentMode])
-
-  if (isComplete && historicalPatientId) {
-    return (
-      <div className="-m-4 min-h-[calc(100vh-3.5rem)] overflow-y-auto md:-m-6">
-        <HistoricalRecordsPanel
-          patientId={historicalPatientId}
-          enrollmentFollowUpId={historicalFollowUpId}
-        />
-      </div>
-    )
-  }
 
   return (
     <div className="-m-4 flex min-h-[calc(100vh-3.5rem)] flex-col overflow-y-auto md:-m-6">
@@ -41,19 +26,28 @@ export default function HistoricalRecordsPage() {
               Carga histórica
             </h1>
             <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-              Registre información anterior a la operación actual sin activar automatizaciones ni tareas futuras.
+              Busque un paciente para reconstruir su historia o cree un perfil
+              histórico desde el enrolamiento.
             </p>
           </div>
-          <div className="text-muted-foreground flex items-center gap-2 text-xs">
-            <ShieldCheck className="size-4 text-emerald-600" />
-            Solo administradores
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-muted-foreground flex items-center gap-2 text-xs">
+              <ShieldCheck className="size-4 text-emerald-600" />
+              Solo administradores
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => navigate("/carga-historica/nuevo")}
+            >
+              <Plus className="size-4" />
+              Nuevo paciente histórico
+            </Button>
           </div>
         </div>
         <HistoricalPatientPicker />
       </header>
-      <div className="min-h-[760px] flex-1">
-        <EnrollmentShell historical />
-      </div>
     </div>
   )
 }

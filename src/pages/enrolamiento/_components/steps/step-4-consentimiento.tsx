@@ -2,14 +2,18 @@ import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ClipboardList } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
-export function Step4Consentimiento() {
+export function Step4Consentimiento({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep, setRejection } = useEnrollmentStore()
   const meta = draft.enrollmentMetadata
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
+    <StepContainer
+      embedded={embedded}
+      onSubmit={(e) => { e.preventDefault(); nextStep() }}
+      className="flex flex-col gap-8"
+    >
       <StepHeader step={4} title="Consentimiento Informado" description="Lea el consentimiento al paciente y registre su respuesta." />
       <div className="rounded-xl border border-primary/15 bg-primary/5 p-5">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-primary/70">Instrucción para el agente</p>
@@ -19,6 +23,13 @@ export function Step4Consentimiento() {
         <div className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Consentimiento informado <span className="text-destructive">*</span></Label>
           <Select
+            items={[
+              { value: "Acepto", label: "Acepto — el paciente acepta" },
+              {
+                value: "No acepto",
+                label: "No acepto — el paciente no acepta",
+              },
+            ]}
             value={meta.informedConsentAccepted === true ? "Acepto" : meta.informedConsentAccepted === false ? "No acepto" : ""}
             onValueChange={(v) => {
               if (v === "No acepto") { updateDraft({ enrollmentMetadata: { ...meta, informedConsentAccepted: false } }); setRejection("q8_no"); return }
@@ -31,7 +42,7 @@ export function Step4Consentimiento() {
           <p className="text-xs text-muted-foreground/60">Si el paciente no acepta, la inscripción finalizará en este paso.</p>
         </div>
       </div>
-      <StepNav currentStep={4} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={4} onPrev={prevStep} />}
+    </StepContainer>
   )
 }

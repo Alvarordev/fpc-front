@@ -11,7 +11,7 @@ import {
 import { genderLabels, relationshipSelectOptions } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { UserCheck } from "lucide-react"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
-import { SectionHeader, StepHeader, StepNav } from "../shared"
+import { SectionHeader, StepContainer, StepHeader, StepNav } from "../shared"
 
 const fl = "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
 const ic = "bg-card border"
@@ -32,7 +32,7 @@ const YES_NO_OPTIONS = [
   { value: "No", label: "No" },
 ] as const
 
-export function Step3Identificacion() {
+export function Step3Identificacion({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
   const [error, setError] = useState<string | null>(null)
   const meta = draft.enrollmentMetadata
@@ -56,7 +56,11 @@ export function Step3Identificacion() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <StepContainer
+      embedded={embedded}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-8"
+    >
       <StepHeader
         step={3}
         title="Identificación de quien llama"
@@ -347,7 +351,7 @@ export function Step3Identificacion() {
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
-      <StepNav currentStep={3} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={3} onPrev={prevStep} />}
+    </StepContainer>
   )
 }

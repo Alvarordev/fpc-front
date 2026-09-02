@@ -29,7 +29,7 @@ import {
   Users,
   Minus,
 } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 import { healthCentersApi } from "@/api/health-centers"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
 import { DurationInput } from "@/components/duration-input"
@@ -169,7 +169,7 @@ const EMPTY_TREATMENT: EnrollmentTreatmentDraft = {
   isReferred: false,
 }
 
-export function Step7Atencion() {
+export function Step7Atencion({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep, categoriaClinica } =
     useEnrollmentStore()
   const sr = draft.symptomReport
@@ -455,7 +455,8 @@ export function Step7Atencion() {
 
   return (
     <>
-    <form
+    <StepContainer
+      embedded={embedded}
       onSubmit={(e) => {
         e.preventDefault()
         nextStep()
@@ -2489,8 +2490,8 @@ export function Step7Atencion() {
         </section>
       )}
 
-      <StepNav currentStep={7} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={7} onPrev={prevStep} />}
+    </StepContainer>
 
       <CreateHealthCenterDialog
         open={newHospitalOpen}
