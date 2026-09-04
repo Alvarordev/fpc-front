@@ -709,6 +709,37 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.enrolledOn).toBe("2024-04-12")
   })
 
+  it("keeps psycho-oncology support answers in historical enrollments", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      historical: true,
+      historicalEnrollmentDate: "2024-04-12",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "Cáncer de mama",
+            isCurrent: true,
+          },
+        ],
+        psychooncologySupportAssessment: {
+          excessiveWorry: false,
+          emotionalDistressScore: 6,
+          preferredModality: "CALL",
+        },
+        enrollmentMetadata: { affiliationType: "PATIENT" },
+      }),
+    })
+
+    expect(payload.enrolledOn).toBe("2024-04-12")
+    expect(payload.psychooncologySupportAssessment).toEqual({
+      excessiveWorry: false,
+      emotionalDistressScore: 6,
+      preferredModality: "CALL",
+    })
+  })
+
   it("requires answers and conditional notes for the cancer diagnosis branch", () => {
     expect(() =>
       buildEnrollmentPayload({
