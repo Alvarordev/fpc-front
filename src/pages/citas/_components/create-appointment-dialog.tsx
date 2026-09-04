@@ -2,8 +2,6 @@ import { useState } from "react"
 import {
   Calendar as CalendarIcon,
   User,
-  Building2,
-  Stethoscope,
   FileText,
   Loader2,
   Plus,
@@ -22,7 +20,11 @@ import {
   SearchableSelect,
   type SearchableOption,
 } from "@/components/ui/searchable-select"
-import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers"
+import {
+  MedicalAppointmentFields,
+  resolveSpecialty,
+  type MedicalAppointmentFieldsValue,
+} from "@/components/medical-appointment-fields"
 import { usePatients } from "@/pages/pacientes/_hooks/use-patients"
 import { useCreateMedicalAppointment } from "../_hooks/use-medical-appointments"
 
@@ -55,33 +57,26 @@ const TIME_SLOTS = [
   "18:00",
 ]
 
-const COMMON_SPECIALTIES = [
-  "Oncología Médica",
-  "Radioterapia",
-  "Mastología / Cirugía Oncológica",
-  "Ginecología Oncológica",
-  "Ecografía / Diagnóstico por Imágenes",
-  "Quimioterapia",
-  "Psicooncología",
-  "Cuidados Paliativos",
-  "Medicina General / Chequeo",
-]
+const EMPTY_APPOINTMENT: MedicalAppointmentFieldsValue = {
+  specialty: "",
+  customSpecialty: "",
+  healthCenterId: "",
+  isFirstConsultation: false,
+}
 
 export function CreateAppointmentDialog({
   open,
   onOpenChange,
 }: CreateAppointmentDialogProps) {
   const [patientId, setPatientId] = useState("")
-  const [healthCenterId, setHealthCenterId] = useState("")
-  const [specialty, setSpecialty] = useState("")
-  const [customSpecialty, setCustomSpecialty] = useState("")
+  const [appointmentFields, setAppointmentFields] =
+    useState<MedicalAppointmentFieldsValue>(EMPTY_APPOINTMENT)
   const [appointmentDate, setAppointmentDate] = useState("")
   const [appointmentTime, setAppointmentTime] = useState("")
   const [nextAppointmentDate, setNextAppointmentDate] = useState("")
   const [hasReferralSheet, setHasReferralSheet] = useState(false)
   const [referredTo, setReferredTo] = useState("")
   const [difficulties, setDifficulties] = useState("")
-  const [isFirstConsultation, setIsFirstConsultation] = useState(false)
   const [attendedViaSepa, setAttendedViaSepa] = useState<boolean | undefined>()
   const [referredViaSepa, setReferredViaSepa] = useState<boolean | undefined>()
   const [errorMsg, setErrorMsg] = useState("")
@@ -90,7 +85,6 @@ export function CreateAppointmentDialog({
     filters: { segment: "CARE" },
   })
   const patients = patientPage?.data ?? []
-  const { data: healthCenters = [] } = useHealthCenters()
   const createAppointment = useCreateMedicalAppointment()
 
   const patientOptions: SearchableOption[] = patients.map((p) => ({
@@ -99,24 +93,15 @@ export function CreateAppointmentDialog({
     sublabel: `${p.dni ? `DNI: ${p.dni}` : "Sin DNI"} | Tel: ${p.primaryPhone ?? "Sin teléfono registrado"}`,
   }))
 
-  const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({
-    value: hc.id,
-    label: hc.name,
-    sublabel: hc.department,
-  }))
-
   function resetForm() {
     setPatientId("")
-    setHealthCenterId("")
-    setSpecialty("")
-    setCustomSpecialty("")
+    setAppointmentFields(EMPTY_APPOINTMENT)
     setAppointmentDate("")
     setAppointmentTime("")
     setNextAppointmentDate("")
     setHasReferralSheet(false)
     setReferredTo("")
     setDifficulties("")
-    setIsFirstConsultation(false)
     setAttendedViaSepa(undefined)
     setReferredViaSepa(undefined)
     setErrorMsg("")
@@ -129,8 +114,7 @@ export function CreateAppointmentDialog({
       return
     }
 
-    const finalSpecialty =
-      specialty === "OTRO" ? customSpecialty.trim() : specialty
+    const finalSpecialty = resolveSpecialty(appointmentFields)
     if (!finalSpecialty) {
       setErrorMsg("Selecciona o especifica una especialidad médica.")
       return
@@ -140,7 +124,7 @@ export function CreateAppointmentDialog({
       setErrorMsg("")
       await createAppointment.mutateAsync({
         patientId,
-        healthCenterId: healthCenterId || undefined,
+        healthCenterId: appointmentFields.healthCenterId || undefined,
         specialty: finalSpecialty,
         appointmentDate: appointmentDate || undefined,
         appointmentTime: appointmentTime || undefined,
@@ -148,7 +132,7 @@ export function CreateAppointmentDialog({
         hasReferralSheet,
         referredTo: referredTo.trim() || undefined,
         difficulties: difficulties.trim() || undefined,
-        isFirstConsultation,
+        isFirstConsultation: appointmentFields.isFirstConsultation,
         attendedViaSepa,
         referredViaSepa,
       })
@@ -183,7 +167,6 @@ export function CreateAppointmentDialog({
             </div>
           )}
 
-          {/* Patient Searchable Combobox */}
           <div className="space-y-1.5">
             <label className="text-foreground flex items-center gap-1 text-xs font-semibold">
               <User className="text-muted-foreground size-3.5" />
@@ -198,52 +181,11 @@ export function CreateAppointmentDialog({
             />
           </div>
 
-          {/* Health Center Searchable Combobox */}
-          <div className="space-y-1.5">
-            <label className="text-foreground flex items-center gap-1 text-xs font-semibold">
-              <Building2 className="text-muted-foreground size-3.5" />
-              Establecimiento de Salud
-            </label>
-            <SearchableSelect
-              options={healthCenterOptions}
-              value={healthCenterId}
-              onChange={setHealthCenterId}
-              placeholder="Buscar hospital o clínica..."
-              searchPlaceholder="Escribe el nombre del hospital..."
-            />
-          </div>
+          <MedicalAppointmentFields
+            value={appointmentFields}
+            onChange={setAppointmentFields}
+          />
 
-          {/* Specialty */}
-          <div className="space-y-1.5">
-            <label className="text-foreground flex items-center gap-1 text-xs font-semibold">
-              <Stethoscope className="text-muted-foreground size-3.5" />
-              Especialidad Médica *
-            </label>
-            <select
-              value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
-              className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
-            >
-              <option value="">-- Selecciona Especialidad --</option>
-              {COMMON_SPECIALTIES.map((sp) => (
-                <option key={sp} value={sp}>
-                  {sp}
-                </option>
-              ))}
-              <option value="OTRO">Otra especialidad...</option>
-            </select>
-            {specialty === "OTRO" && (
-              <input
-                type="text"
-                placeholder="Especifica la especialidad médica"
-                value={customSpecialty}
-                onChange={(e) => setCustomSpecialty(e.target.value)}
-                className="bg-background focus:ring-ring mt-1.5 w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
-              />
-            )}
-          </div>
-
-          {/* Date & Time Slot (30-min) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-foreground flex items-center gap-1 text-xs font-semibold">
@@ -278,7 +220,6 @@ export function CreateAppointmentDialog({
             </div>
           </div>
 
-          {/* Next Appointment Date */}
           <div className="space-y-1.5">
             <label className="text-foreground text-xs font-semibold">
               Próxima Cita de Control (Opcional)
@@ -291,7 +232,6 @@ export function CreateAppointmentDialog({
             />
           </div>
 
-          {/* Referral Sheet Checkbox */}
           <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"
@@ -305,22 +245,6 @@ export function CreateAppointmentDialog({
               className="text-foreground cursor-pointer text-xs font-medium"
             >
               Cuenta con Hoja de Referencia médica
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="firstConsult"
-              checked={isFirstConsultation}
-              onChange={(e) => setIsFirstConsultation(e.target.checked)}
-              className="size-4 cursor-pointer rounded border-gray-300 text-red-600 focus:ring-red-500"
-            />
-            <label
-              htmlFor="firstConsult"
-              className="text-foreground cursor-pointer text-xs font-medium"
-            >
-              Es Primera Consulta Oncológica
             </label>
           </div>
 
@@ -375,7 +299,6 @@ export function CreateAppointmentDialog({
             </div>
           </div>
 
-          {/* Referred To */}
           {hasReferralSheet && (
             <div className="space-y-1.5">
               <label className="text-foreground flex items-center gap-1 text-xs font-semibold">
@@ -392,7 +315,6 @@ export function CreateAppointmentDialog({
             </div>
           )}
 
-          {/* Difficulties / Notes */}
           <div className="space-y-1.5">
             <label className="text-foreground text-xs font-semibold">
               Dificultades u Observaciones

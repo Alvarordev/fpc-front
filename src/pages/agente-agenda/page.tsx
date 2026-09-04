@@ -20,7 +20,11 @@ import { agentsApi } from "@/api/agents"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
 import { patientsApi } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
-import { remindersApi, type Reminder } from "@/api/reminders"
+import {
+  remindersApi,
+  type CompleteReminderInput,
+  type Reminder,
+} from "@/api/reminders"
 import { volunteersApi } from "@/api/volunteers"
 import { PatientHealthSubcategoryDot } from "@/components/patient-health-subcategory-badge"
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +37,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAuthStore } from "@/store/auth-store"
+import { CompleteMedicalReminderDialog } from "@/pages/pacientes/[id]/_components/complete-medical-reminder-dialog"
 import {
   ReminderFormDialog,
   type ReminderFormValues,
@@ -68,6 +73,9 @@ export default function AgentAgendaPage() {
     null,
   )
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [completingReminder, setCompletingReminder] = useState<Reminder | null>(
+    null,
+  )
 
   const agentsQuery = useQuery({
     queryKey: ["agents"],
@@ -127,6 +135,18 @@ export default function AgentAgendaPage() {
       }),
   })
 
+  async function invalidateReminderQueries() {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["agent-reminders", agentId],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["reminders"] }),
+      queryClient.invalidateQueries({ queryKey: ["medical-appointments"] }),
+      queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
+      queryClient.invalidateQueries({ queryKey: ["patient"] }),
+    ])
+  }
+
   const reminderUpdateMutation = useMutation({
     mutationFn: ({
       id,
@@ -136,18 +156,32 @@ export default function AgentAgendaPage() {
       input: Parameters<typeof remindersApi.update>[1]
     }) => remindersApi.update(id, input),
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["agent-reminders", agentId],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["reminders"] }),
-        queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
-      ])
+      await invalidateReminderQueries()
       setEditingReminder(null)
       toast.success("Recordatorio actualizado")
     },
     onError: (error: Error) =>
       toast.error("No se pudo actualizar el recordatorio", {
+        description: error.message,
+      }),
+  })
+
+  const reminderCompleteMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input?: CompleteReminderInput
+    }) => remindersApi.complete(id, input),
+    onSuccess: async () => {
+      await invalidateReminderQueries()
+      setCompletingReminder(null)
+      setSelectedReminder(null)
+      toast.success("Recordatorio completado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo completar el recordatorio", {
         description: error.message,
       }),
   })
@@ -178,9 +212,7 @@ export default function AgentAgendaPage() {
   const sessions = (sessionsQuery.data ?? [])
     .filter((session) => session.scheduledAt !== null)
     .slice()
-    .sort((a, b) =>
-      (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""),
-    )
+    .sort((a, b) => (a.scheduledAt ?? "").localeCompare(b.scheduledAt ?? ""))
   const volunteers = new Map(
     (volunteersQuery.data ?? []).map((volunteer) => [volunteer.id, volunteer]),
   )
@@ -256,6 +288,15 @@ export default function AgentAgendaPage() {
   function openReminderEditor(reminder: Reminder) {
     setSelectedReminder(null)
     setEditingReminder(reminder)
+  }
+
+  function handleReminderComplete(reminder: Reminder) {
+    setSelectedReminder(null)
+    if (reminder.kind === "MEDICAL_APPOINTMENT") {
+      setCompletingReminder(reminder)
+      return
+    }
+    reminderCompleteMutation.mutate({ id: reminder.id })
   }
 
   function handleReminderSave(values: ReminderFormValues) {
@@ -377,6 +418,7 @@ export default function AgentAgendaPage() {
           navigate(patientTabUrl(reminder.subjectPatientId, "recordatorios"))
         }}
         onEdit={openReminderEditor}
+        onComplete={handleReminderComplete}
       />
       <ReminderFormDialog
         open={Boolean(editingReminder)}
@@ -386,6 +428,19 @@ export default function AgentAgendaPage() {
         requiresAgentSelection={false}
         isPending={reminderUpdateMutation.isPending}
         onSave={handleReminderSave}
+      />
+      <CompleteMedicalReminderDialog
+        open={Boolean(completingReminder)}
+        onOpenChange={(open) => !open && setCompletingReminder(null)}
+        reminder={completingReminder}
+        isPending={reminderCompleteMutation.isPending}
+        onConfirm={(input) => {
+          if (!completingReminder) return
+          reminderCompleteMutation.mutate({
+            id: completingReminder.id,
+            input,
+          })
+        }}
       />
     </div>
   )
@@ -589,9 +644,7 @@ function BentoTaskRow({
       <span className={`h-10 w-1 shrink-0 rounded-full ${accent}`} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-          <PatientHealthSubcategoryDot
-            subcategory={event.healthSubcategory}
-          />
+          <PatientHealthSubcategoryDot subcategory={event.healthSubcategory} />
           <span className="truncate">{event.patientName}</span>
         </p>
         <p className="text-muted-foreground mt-0.5 truncate text-xs">
