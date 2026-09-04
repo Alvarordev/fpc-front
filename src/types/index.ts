@@ -70,6 +70,9 @@ export type CompanionContactRole = "PRIMARY" | "SECONDARY"
 
 export type EnrollmentContactSource = "PATIENT" | "CALLER" | "NEW"
 
+/** UI-only value used to keep the `No menciona` selection visible. */
+export const UNKNOWN_BIRTH_DEPARTMENT = "__NO_MENCIONA__"
+
 export type MedicalConsultationStatus =
   | "NOT_OBTAINED"
   | "SCHEDULED"
@@ -185,6 +188,8 @@ export interface AddDiagnosisRequest {
   diagnosisDate?: string | null
   firstSymptomsDate?: string | null
   healthCenterId?: string | null
+  referredHealthCenterId?: string | null
+  hasReferral?: boolean | null
   diagnosisSpecialty?: string | null
   symptomLeadingToCheckup?: string | null
   waitTimeForDiagnosis?: DurationDraft
@@ -322,6 +327,8 @@ export interface EnrollmentMetadataRequest {
   programEntryPoint?: string | null
   currentlyAttendingConsultations?: boolean | null
   currentlyReceivingTreatment?: boolean | null
+  notAttendingConsultationsNote?: string | null
+  notReceivingTreatmentReason?: string | null
   surveyAccepted?: boolean
   agentId?: string | null
 }

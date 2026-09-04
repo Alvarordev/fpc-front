@@ -42,7 +42,7 @@ export function CreateAlertDialog({
   const patientOptions: SearchableOption[] = patients.map((p) => ({
     value: p.id,
     label: p.fullName,
-    sublabel: `${p.dni ? `DNI: ${p.dni}` : "Sin DNI"} | Tel: ${p.primaryPhone}`,
+    sublabel: `${p.dni ? `DNI: ${p.dni}` : "Sin DNI"} | Tel: ${p.primaryPhone ?? "Sin teléfono registrado"}`,
   }))
 
   const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({

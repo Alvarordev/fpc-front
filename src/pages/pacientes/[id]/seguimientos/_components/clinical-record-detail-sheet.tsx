@@ -116,6 +116,13 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
             value={diagnosis.healthCenterName ?? diagnosis.healthCenterId}
           />
           <Detail
+            label="Centro de salud derivado"
+            value={
+              diagnosis.referredHealthCenterName ??
+              diagnosis.referredHealthCenterId
+            }
+          />
+          <Detail
             label="Fecha de diagnóstico"
             value={formatDate(diagnosis.diagnosisDate)}
             icon={Calendar}
@@ -155,6 +162,10 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
           <Detail
             label="Derivación activa de SEPA"
             value={booleanLabel(diagnosis.isSepaActiveReferral)}
+          />
+          <Detail
+            label="Cuenta con referencia"
+            value={booleanLabel(diagnosis.hasReferral)}
           />
           <Detail label="ID del seguimiento" value={diagnosis.followUpId} />
           <Detail label="ID del registro" value={diagnosis.id} />

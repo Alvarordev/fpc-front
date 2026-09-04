@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { enrollmentsApi } from "@/api/enrollments"
 import { patientsApi } from "@/api/patients"
+import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
 import {
   patientTimelineApi,
   type PatientTimelineEvent,
@@ -82,6 +83,7 @@ export function HistoricalRecordsPanel({
   enrollmentFollowUpId?: string | null
 }) {
   const navigate = useNavigate()
+  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
   /*
    * The target is kept while the dialog animates out, and `token` changes on
    * every open so the next one remounts with fresh state.
@@ -178,7 +180,10 @@ export function HistoricalRecordsPanel({
           type="button"
           variant="outline"
           className="gap-1.5"
-          onClick={() => navigate("/carga-historica/nuevo")}
+          onClick={() => {
+            resetEnrollment()
+            navigate("/carga-historica/nuevo")
+          }}
         >
           <Plus className="size-4" />
           Nuevo paciente histórico

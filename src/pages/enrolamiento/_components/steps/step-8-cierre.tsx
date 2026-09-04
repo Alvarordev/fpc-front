@@ -171,6 +171,48 @@ export function Step8Cierre({
           <span className="font-medium">
             {draft.patientData.primaryPhone || "—"}
           </span>
+          {categoriaClinica === "CANCER_DIAGNOSIS" &&
+            typeof meta.currentlyAttendingConsultations === "boolean" && (
+              <>
+                <span className="text-muted-foreground/60 text-[10px] font-bold tracking-wide uppercase">
+                  Consultas médicas
+                </span>
+                <span className="font-medium">
+                  {meta.currentlyAttendingConsultations ? "Sí" : "No"}
+                </span>
+                {!meta.currentlyAttendingConsultations && (
+                  <>
+                    <span className="text-muted-foreground/60 text-[10px] font-bold tracking-wide uppercase">
+                      Nota de no asistencia
+                    </span>
+                    <span className="font-medium">
+                      {meta.notAttendingConsultationsNote || "—"}
+                    </span>
+                  </>
+                )}
+              </>
+            )}
+          {categoriaClinica === "CANCER_DIAGNOSIS" &&
+            typeof meta.currentlyReceivingTreatment === "boolean" && (
+              <>
+                <span className="text-muted-foreground/60 text-[10px] font-bold tracking-wide uppercase">
+                  Tratamiento actual
+                </span>
+                <span className="font-medium">
+                  {meta.currentlyReceivingTreatment ? "Sí" : "No"}
+                </span>
+                {!meta.currentlyReceivingTreatment && (
+                  <>
+                    <span className="text-muted-foreground/60 text-[10px] font-bold tracking-wide uppercase">
+                      Motivo sin tratamiento
+                    </span>
+                    <span className="font-medium">
+                      {meta.notReceivingTreatmentReason || "—"}
+                    </span>
+                  </>
+                )}
+              </>
+            )}
           <span className="text-muted-foreground/60 text-[10px] font-bold tracking-wide uppercase">
             Seguro
           </span>
@@ -250,7 +292,11 @@ export function Step8Cierre({
           </Label>
           <Input
             type="time"
-            value={historical ? (meta.endTime?.slice(0, 5) ?? "") : (meta.endTime?.slice(0, 5) ?? now)}
+            value={
+              historical
+                ? (meta.endTime?.slice(0, 5) ?? "")
+                : (meta.endTime?.slice(0, 5) ?? now)
+            }
             onChange={(e) =>
               updateDraft({
                 enrollmentMetadata: { ...meta, endTime: e.target.value },

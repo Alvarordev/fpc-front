@@ -1,8 +1,8 @@
-import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { toast } from "sonner";
+import { useForm } from "react-hook-form"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -10,48 +10,53 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { MapPin } from "lucide-react";
-import { healthCentersApi } from "@/api/health-centers";
-import type { CreateHealthCenterInput } from "@/api/health-centers";
-import { DEPARTMENTS } from "../_utils/departments";
-import { HEALTH_CENTER_CATEGORIES } from "../_utils/categories";
+} from "@/components/ui/select"
+import { MapPin } from "lucide-react"
+import { healthCentersApi } from "@/api/health-centers"
+import type {
+  CreateHealthCenterInput,
+  HealthCenter,
+} from "@/api/health-centers"
+import { DEPARTMENTS } from "../_utils/departments"
+import { HEALTH_CENTER_CATEGORIES } from "../_utils/categories"
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
   department: z.string().min(1, "Requerido"),
   category: z.string().min(1, "Requerido"),
-});
+})
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>
 
 interface CreateHealthCenterDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCreated?: (healthCenter: HealthCenter) => void
 }
 
 export function CreateHealthCenterDialog({
   open,
   onOpenChange,
+  onCreated,
 }: CreateHealthCenterDialogProps) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
   const createMutation = useMutation({
     mutationFn: healthCentersApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] })
       queryClient.invalidateQueries({ queryKey: ["health-centers"] })
     },
-  });
+  })
 
   const {
     register,
@@ -63,30 +68,31 @@ export function CreateHealthCenterDialog({
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", department: "", category: "" },
-  });
+  })
 
-  const department = watch("department");
-  const category = watch("category");
+  const department = watch("department")
+  const category = watch("category")
 
   function handleClose() {
-    onOpenChange(false);
-    reset();
+    onOpenChange(false)
+    reset()
   }
 
   async function onSubmit(values: FormValues) {
-    const name = values.name.toUpperCase();
+    const name = values.name.toUpperCase()
     try {
-      await createMutation.mutateAsync({
+      const created = await createMutation.mutateAsync({
         name,
         department: values.department as CreateHealthCenterInput["department"],
         category: values.category as CreateHealthCenterInput["category"],
-      });
-      toast.success(`"${name}" creado`);
-      handleClose();
+      })
+      onCreated?.(created)
+      toast.success(`"${name}" creado`)
+      handleClose()
     } catch (err) {
       toast.error("Error al crear el centro de salud", {
         description: err instanceof Error ? err.message : "Error inesperado",
-      });
+      })
     }
   }
 
@@ -102,8 +108,8 @@ export function CreateHealthCenterDialog({
 
         <form
           onSubmit={(e) => {
-            e.stopPropagation();
-            void handleSubmit(onSubmit)(e);
+            e.stopPropagation()
+            void handleSubmit(onSubmit)(e)
           }}
           className="space-y-4 py-2"
         >
@@ -115,7 +121,7 @@ export function CreateHealthCenterDialog({
               {...register("name")}
             />
             {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
+              <p className="text-destructive text-xs">{errors.name.message}</p>
             )}
           </div>
 
@@ -136,7 +142,7 @@ export function CreateHealthCenterDialog({
                 {DEPARTMENTS.map((dep) => (
                   <SelectItem key={dep.value} value={dep.value}>
                     <span className="inline-flex items-center gap-2">
-                      <MapPin className="size-3 text-muted-foreground" />
+                      <MapPin className="text-muted-foreground size-3" />
                       {dep.label}
                     </span>
                   </SelectItem>
@@ -144,7 +150,7 @@ export function CreateHealthCenterDialog({
               </SelectContent>
             </Select>
             {errors.department && (
-              <p className="text-xs text-destructive">
+              <p className="text-destructive text-xs">
                 {errors.department.message}
               </p>
             )}
@@ -172,7 +178,7 @@ export function CreateHealthCenterDialog({
               </SelectContent>
             </Select>
             {errors.category && (
-              <p className="text-xs text-destructive">
+              <p className="text-destructive text-xs">
                 {errors.category.message}
               </p>
             )}
@@ -192,5 +198,5 @@ export function CreateHealthCenterDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

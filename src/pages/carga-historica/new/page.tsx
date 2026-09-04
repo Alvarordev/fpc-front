@@ -1,5 +1,11 @@
 import { startTransition, useEffect, useState } from "react"
-import { ArrowLeft, Archive, Loader2, ShieldCheck } from "lucide-react"
+import {
+  ArrowLeft,
+  Archive,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { EnrollmentShell } from "@/pages/enrolamiento/_components/enrollment-shell"
@@ -8,16 +14,26 @@ import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store
 export default function HistoricalEnrollmentPage() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
-  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
   const setEnrollmentMode = useEnrollmentStore(
     (state) => state.setEnrollmentMode,
   )
 
   useEffect(() => {
-    resetEnrollment()
     setEnrollmentMode("HISTORICAL")
     startTransition(() => setReady(true))
-  }, [resetEnrollment, setEnrollmentMode])
+  }, [setEnrollmentMode])
+
+  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
+
+  function handleReset() {
+    if (
+      window.confirm(
+        "¿Reiniciar el formulario histórico? Se perderá el borrador guardado.",
+      )
+    ) {
+      resetEnrollment()
+    }
+  }
 
   return (
     <div className="-m-4 flex min-h-[calc(100vh-3.5rem)] flex-col overflow-y-auto md:-m-6">
@@ -37,7 +53,7 @@ export default function HistoricalEnrollmentPage() {
             Administración · Archivo
           </p>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-            <Archive className="size-5 text-primary" />
+            <Archive className="text-primary size-5" />
             Nuevo paciente histórico
           </h1>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
@@ -45,9 +61,21 @@ export default function HistoricalEnrollmentPage() {
             clínicos aparecen según la situación del paciente.
           </p>
         </div>
-        <div className="text-muted-foreground flex items-center gap-2 pt-9 text-xs">
-          <ShieldCheck className="size-4 text-emerald-600" />
-          Solo administradores
+        <div className="flex flex-wrap items-center gap-3 pt-9">
+          <div className="text-muted-foreground flex items-center gap-2 text-xs">
+            <ShieldCheck className="size-4 text-emerald-600" />
+            Solo administradores
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleReset}
+          >
+            <RotateCcw className="size-3.5" />
+            Reiniciar formulario
+          </Button>
         </div>
       </header>
       <div className="min-h-[760px] flex-1">

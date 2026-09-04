@@ -117,6 +117,8 @@ export function getEnrollmentComments(metadata: EnrollmentMetadataDraft) {
 
 export type EnrollmentDiagnosisDraft = AddDiagnosisRequest & {
   draftId: string
+  /** UI-only answer; the API receives a null firstSymptomsDate instead. */
+  firstSymptomsDateUnknown?: boolean
   waitTimeForDiagnosisManuallyEdited?: boolean
 }
 
@@ -530,7 +532,10 @@ export const useEnrollmentStore = create<EnrollmentState>()(
         }),
       setSubmitting: (v) => set({ isSubmitting: v }),
       setHistoricalResult: (patientId, followUpId) =>
-        set({ historicalPatientId: patientId, historicalFollowUpId: followUpId }),
+        set({
+          historicalPatientId: patientId,
+          historicalFollowUpId: followUpId,
+        }),
       setEnrollmentMode: (mode) =>
         set((state) =>
           state.enrollmentMode === mode
@@ -550,13 +555,13 @@ export const useEnrollmentStore = create<EnrollmentState>()(
     }),
     {
       name: "fpc-enrollment-draft",
-       version: 6,
-       migrate: (persistedState) => {
-         const persisted = persistedState as Partial<EnrollmentState> | undefined
-         return {
-           ...persisted,
-           enrollmentMode: persisted?.enrollmentMode ?? "OPERATIONAL",
-           draft: normalizeDraft(persisted?.draft),
+      version: 6,
+      migrate: (persistedState) => {
+        const persisted = persistedState as Partial<EnrollmentState> | undefined
+        return {
+          ...persisted,
+          enrollmentMode: persisted?.enrollmentMode ?? "OPERATIONAL",
+          draft: normalizeDraft(persisted?.draft),
           categoriaClinica: normalizeCategoriaClinica(
             persisted?.categoriaClinica,
           ),
@@ -566,9 +571,9 @@ export const useEnrollmentStore = create<EnrollmentState>()(
         const persisted = persistedState as Partial<EnrollmentState> | undefined
         return {
           ...currentState,
-           ...persisted,
-           enrollmentMode: persisted?.enrollmentMode ?? "OPERATIONAL",
-           draft: normalizeDraft(persisted?.draft),
+          ...persisted,
+          enrollmentMode: persisted?.enrollmentMode ?? "OPERATIONAL",
+          draft: normalizeDraft(persisted?.draft),
           categoriaClinica: normalizeCategoriaClinica(
             persisted?.categoriaClinica,
           ),

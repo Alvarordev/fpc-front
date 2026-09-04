@@ -25,6 +25,7 @@ import type {
   InsuranceType,
   PeruDepartment,
 } from "@/types"
+import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import {
   genderLabels,
   normalizeZoneType,
@@ -126,7 +127,9 @@ function isValidLocationUrl(value: string | undefined) {
 
 function relationshipSelectValue(relationship?: string) {
   if (!relationship) return ""
-  if (relationshipSelectOptions.some((option) => option.value === relationship)) {
+  if (
+    relationshipSelectOptions.some((option) => option.value === relationship)
+  ) {
     return relationship
   }
   return "OTHER"
@@ -134,7 +137,9 @@ function relationshipSelectValue(relationship?: string) {
 
 function relationshipOtherText(relationship?: string) {
   if (!relationship) return ""
-  if (relationshipSelectOptions.some((option) => option.value === relationship)) {
+  if (
+    relationshipSelectOptions.some((option) => option.value === relationship)
+  ) {
     return ""
   }
   return relationship
@@ -308,7 +313,13 @@ function ContactPersonFields({
   )
 }
 
-export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
+export function Step5Datos({
+  embedded = false,
+  historical = false,
+}: {
+  embedded?: boolean
+  historical?: boolean
+}) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
   const [entryPoint, setEntryPoint] = useState<string>(() => {
     const saved = draft.enrollmentMetadata.programEntryPoint
@@ -432,7 +443,10 @@ export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
     role: string,
   ) {
     if (!source) return `Seleccione el contacto ${role}`
-    if (source === "PATIENT") return null
+    if (source === "PATIENT")
+      return pd.primaryPhone.trim()
+        ? null
+        : "Complete el teléfono principal del paciente"
     if (source === "CALLER") {
       return callerIsComplete
         ? null
@@ -449,8 +463,16 @@ export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!pd.fullName.trim() || !pd.primaryPhone.trim() || !pd.birthDate) {
-      setError("Complete nombre, teléfono y fecha de nacimiento del paciente")
+    if (
+      !pd.fullName.trim() ||
+      (!historical && !pd.primaryPhone.trim()) ||
+      !pd.birthDate
+    ) {
+      setError(
+        historical
+          ? "Complete nombre y fecha de nacimiento del paciente"
+          : "Complete nombre, teléfono y fecha de nacimiento del paciente",
+      )
       return
     }
     if (
@@ -619,7 +641,10 @@ export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
           <div className="flex flex-col gap-2">
             <Label className={fl}>Departamento de nacimiento</Label>
             <Select
-              items={DEPARTMENTS}
+              items={[
+                ...DEPARTMENTS,
+                { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
+              ]}
               value={details.birthDepartment ?? ""}
               onValueChange={(value) =>
                 updateDraft({
@@ -631,7 +656,10 @@ export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
                 <SelectValue placeholder="Seleccionar departamento..." />
               </SelectTrigger>
               <SelectContent>
-                {DEPARTMENTS.map((department) => (
+                {[
+                  ...DEPARTMENTS,
+                  { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
+                ].map((department) => (
                   <SelectItem key={department.value} value={department.value}>
                     {department.label}
                   </SelectItem>
@@ -919,66 +947,6 @@ export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
       </section>
 
       <section className="flex flex-col gap-5">
-        <SectionHeader icon={Phone} title="Contacto del paciente" />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>
-              Teléfono principal <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              placeholder="987654321"
-              className={ic}
-              value={pd.primaryPhone}
-              onChange={(event) =>
-                updateDraft({
-                  patientData: { ...pd, primaryPhone: event.target.value },
-                })
-              }
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>Teléfono adicional o fijo</Label>
-            <Input
-              placeholder="01 555 1234"
-              className={ic}
-              value={pd.secondaryPhone ?? ""}
-              onChange={(event) =>
-                updateDraft({
-                  patientData: {
-                    ...pd,
-                    secondaryPhone: event.target.value || null,
-                  },
-                })
-              }
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label className={fl}>¿Tiene WhatsApp?</Label>
-          <Select
-            items={YES_NO_OPTIONS}
-            value={pd.hasWhatsapp ? "Sí" : "No"}
-            onValueChange={(value) =>
-              updateDraft({
-                patientData: { ...pd, hasWhatsapp: value === "Sí" },
-              })
-            }
-          >
-            <SelectTrigger className={sc}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {YES_NO_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-5">
         <SectionHeader icon={Phone} title="Contacto para seguimiento" />
         <div className="flex flex-col gap-2">
           <Label className={fl}>
@@ -1018,6 +986,67 @@ export function Step5Datos({ embedded = false }: { embedded?: boolean }) {
             </SelectContent>
           </Select>
         </div>
+        {selectedPrimarySource === "PATIENT" && (
+          <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
+            <p className="mb-4 text-sm font-semibold">Datos del paciente</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>
+                  Teléfono principal <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  placeholder="987654321"
+                  className={ic}
+                  value={pd.primaryPhone}
+                  onChange={(event) =>
+                    updateDraft({
+                      patientData: { ...pd, primaryPhone: event.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>Teléfono adicional o fijo</Label>
+                <Input
+                  placeholder="01 555 1234"
+                  className={ic}
+                  value={pd.secondaryPhone ?? ""}
+                  onChange={(event) =>
+                    updateDraft({
+                      patientData: {
+                        ...pd,
+                        secondaryPhone: event.target.value || null,
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <Label className={fl}>¿Tiene WhatsApp?</Label>
+              <Select
+                items={YES_NO_OPTIONS}
+                value={pd.hasWhatsapp ? "Sí" : "No"}
+                onValueChange={(value) =>
+                  updateDraft({
+                    patientData: { ...pd, hasWhatsapp: value === "Sí" },
+                  })
+                }
+              >
+                <SelectTrigger className={sc}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {YES_NO_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
         {selectedPrimarySource === "CALLER" && (
           <div className="border-border/70 bg-muted/20 rounded-xl border p-4 text-sm">
             <p className="font-semibold">

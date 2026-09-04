@@ -6,7 +6,10 @@ import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store
 import { HistoricalPatientPicker } from "./_components/historical-patient-picker"
 
 export default function HistoricalRecordsPage() {
-  const setEnrollmentMode = useEnrollmentStore((state) => state.setEnrollmentMode)
+  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
+  const setEnrollmentMode = useEnrollmentStore(
+    (state) => state.setEnrollmentMode,
+  )
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -22,7 +25,7 @@ export default function HistoricalRecordsPage() {
               Administración · Archivo
             </p>
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-              <Archive className="size-5 text-primary" />
+              <Archive className="text-primary size-5" />
               Carga histórica
             </h1>
             <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
@@ -39,7 +42,10 @@ export default function HistoricalRecordsPage() {
               type="button"
               size="sm"
               className="gap-1.5"
-              onClick={() => navigate("/carga-historica/nuevo")}
+              onClick={() => {
+                resetEnrollment()
+                navigate("/carga-historica/nuevo")
+              }}
             >
               <Plus className="size-4" />
               Nuevo paciente histórico

@@ -9,7 +9,11 @@ function draft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
   return {
     ...structuredClone(DEFAULT_DRAFT),
     ...overrides,
-    patientData: { ...DEFAULT_DRAFT.patientData, ...overrides.patientData },
+    patientData: {
+      ...DEFAULT_DRAFT.patientData,
+      primaryPhone: "999000000",
+      ...overrides.patientData,
+    },
     details: { ...DEFAULT_DRAFT.details, ...overrides.details },
     insurance: { ...DEFAULT_DRAFT.insurance, ...overrides.insurance },
     symptomReport: {
@@ -25,6 +29,9 @@ function draft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
     },
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
+      currentlyAttendingConsultations: false,
+      notAttendingConsultationsNote: "No puede asistir",
+      currentlyReceivingTreatment: true,
       ...overrides.enrollmentMetadata,
     },
     medicalAppointments: overrides.medicalAppointments ?? [],
@@ -114,7 +121,7 @@ describe("step 8 Nest enrollment payload", () => {
         medicalAppointments: [
           {
             specialty: "Oncología",
-            healthCenterId: null,
+            healthCenterId: "center-1",
             appointmentDate: null,
             nextAppointmentDate: "2026-07-15",
             nextAppointmentSpecialty: "Radioterapia",
@@ -138,6 +145,8 @@ describe("step 8 Nest enrollment payload", () => {
         },
         enrollmentMetadata: {
           affiliationType: "PATIENT",
+          currentlyAttendingConsultations: true,
+          currentlyReceivingTreatment: true,
           comments: "Caso diagnóstico",
           startTime: "09:00",
           endTime: "09:45",
@@ -344,7 +353,7 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.psychooncologySupportAssessment).toBeUndefined()
   })
 
-  it("maps the new clinical fields and omits cancer treatment status metadata", () => {
+  it("maps the cancer treatment and consultation status metadata", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
       categoriaClinica: "CANCER_DIAGNOSIS",
@@ -369,7 +378,11 @@ describe("step 8 Nest enrollment payload", () => {
             isCurrent: true,
           },
         ],
-        enrollmentMetadata: { currentlyReceivingTreatment: false },
+        enrollmentMetadata: {
+          currentlyAttendingConsultations: false,
+          notAttendingConsultationsNote: "No puede asistir",
+          currentlyReceivingTreatment: true,
+        },
       }),
     })
 
@@ -391,7 +404,11 @@ describe("step 8 Nest enrollment payload", () => {
       "teleconsultationSpecialties",
     )
     expect(payload.healthBackgroundAssessment).toBeUndefined()
-    expect("currentlyReceivingTreatment" in payload).toBe(false)
+    expect(payload).toMatchObject({
+      currentlyAttendingConsultations: false,
+      notAttendingConsultationsNote: "No puede asistir",
+      currentlyReceivingTreatment: true,
+    })
   })
 
   it("serializes the explicit contacts and signs consultation branch", () => {
@@ -645,6 +662,101 @@ describe("step 8 Nest enrollment payload", () => {
       valueMin: 1.5,
       unit: "MONTH",
     })
+  })
+
+  it("maps referral answers and unknown historical values without sending sentinels", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      historical: true,
+      historicalEnrollmentDate: "2024-04-12",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Histórico",
+          primaryPhone: "",
+          birthDate: "1980-04-10",
+        },
+        details: { birthDepartment: "__NO_MENCIONA__" },
+        primaryContactSource: "CALLER",
+        companion: {
+          fullName: "Informante Histórico",
+          primaryPhone: "999111222",
+          relationship: "HERMANA",
+        },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "Cáncer de mama",
+            firstSymptomsDateUnknown: true,
+            waitTimeForDiagnosis: { valueMin: 2, unit: "MONTH" },
+            waitTimeForDiagnosisManuallyEdited: true,
+            referredHealthCenterId: "center-referred",
+            hasReferral: true,
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.patient).not.toHaveProperty("primaryPhone")
+    expect(payload.details?.birthDepartment).toBeUndefined()
+    expect(payload.diagnoses?.[0]).toMatchObject({
+      firstSymptomsDate: undefined,
+      referredHealthCenterId: "center-referred",
+      hasReferral: true,
+      waitTimeForDiagnosis: { valueMin: 2, unit: "MONTH" },
+    })
+    expect(payload.enrolledOn).toBe("2024-04-12")
+  })
+
+  it("requires answers and conditional notes for the cancer diagnosis branch", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "Cáncer", isCurrent: true },
+          ],
+          enrollmentMetadata: {
+            currentlyAttendingConsultations: undefined,
+            currentlyReceivingTreatment: undefined,
+          },
+        }),
+      }),
+    ).toThrow("Indica si actualmente asiste a sus consultas médicas")
+
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "Cáncer", isCurrent: true },
+          ],
+          enrollmentMetadata: {
+            currentlyAttendingConsultations: false,
+            notAttendingConsultationsNote: "",
+          },
+        }),
+      }),
+    ).toThrow("Indica las notas sobre la no asistencia a consultas médicas")
+
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "Cáncer", isCurrent: true },
+          ],
+          enrollmentMetadata: {
+            currentlyReceivingTreatment: false,
+            notReceivingTreatmentReason: "",
+          },
+        }),
+      }),
+    ).toThrow("Indica el motivo por el que no recibe tratamiento")
   })
 
   it("rejects an inverted treatment date range", () => {

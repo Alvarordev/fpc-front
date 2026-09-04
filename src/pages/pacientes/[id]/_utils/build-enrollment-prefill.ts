@@ -2,11 +2,13 @@ import type { PatientDetailsResponse } from "@/api/patients"
 import type { EnrollmentDraft } from "@/pages/enrolamiento/_store/enrollment-store"
 import type { DurationDraft } from "@/types/duration"
 
-function durationDraft(value: PatientDetailsResponse["details"] extends infer Details
-  ? Details extends { travelTimeToHospital: infer Duration }
-    ? Duration
-    : never
-  : never): DurationDraft | undefined {
+function durationDraft(
+  value: PatientDetailsResponse["details"] extends infer Details
+    ? Details extends { travelTimeToHospital: infer Duration }
+      ? Duration
+      : never
+    : never,
+): DurationDraft | undefined {
   if (!value) return undefined
   return {
     valueMin: value.valueMin,
@@ -20,7 +22,9 @@ function durationDraft(value: PatientDetailsResponse["details"] extends infer De
  * so agents don't have to re-type data we already have when moving them
  * from "prospecto" to "enrolado".
  */
-export function buildEnrollmentPrefill(patient: PatientDetailsResponse): Partial<EnrollmentDraft> {
+export function buildEnrollmentPrefill(
+  patient: PatientDetailsResponse,
+): Partial<EnrollmentDraft> {
   const details = patient.details
   const currentInsurance = patient.insurance.find((item) => item.isCurrent)
 
@@ -31,7 +35,7 @@ export function buildEnrollmentPrefill(patient: PatientDetailsResponse): Partial
       dni: patient.dni,
       birthDate: patient.birthDate,
       gender: patient.gender,
-      primaryPhone: patient.primaryPhone,
+      primaryPhone: patient.primaryPhone ?? "",
       secondaryPhone: patient.secondaryPhone,
       hasWhatsapp: patient.hasWhatsapp,
       email: patient.email,

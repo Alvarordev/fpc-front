@@ -75,6 +75,8 @@ runDescribe("enrollment flow against Nest", () => {
           },
           affiliationType: "SELF",
           healthPhase: "CANCER_DIAGNOSIS",
+          currentlyAttendingConsultations: true,
+          currentlyReceivingTreatment: true,
           details: {
             travelTimeToHospital: { valueMin: 45, unit: "MINUTE" },
           },
@@ -103,6 +105,13 @@ runDescribe("enrollment flow against Nest", () => {
               mode: "PARALLEL",
               diagnosis: "Cáncer de mama",
               healthCenterId: healthCenter?.id,
+            },
+          ],
+          medicalAppointments: [
+            {
+              healthCenterId: healthCenter?.id,
+              specialty: "Oncología",
+              appointmentDate: "2026-06-20",
             },
           ],
           treatments: [

@@ -80,7 +80,7 @@ export function FollowUpContactForm({
     selectedPerson?.fullName ?? patient.fullName,
   )
   const [primaryPhone, setPrimaryPhone] = useState(
-    selectedPerson?.primaryPhone ?? patient.primaryPhone,
+    selectedPerson?.primaryPhone ?? patient.primaryPhone ?? "",
   )
   const [secondaryPhone, setSecondaryPhone] = useState(
     selectedPerson?.secondaryPhone ?? patient.secondaryPhone ?? "",
@@ -109,7 +109,7 @@ export function FollowUpContactForm({
     const person = link?.companion
     setSelectedId(value)
     setFullName(person?.fullName ?? patient.fullName)
-    setPrimaryPhone(person?.primaryPhone ?? patient.primaryPhone)
+    setPrimaryPhone(person?.primaryPhone ?? patient.primaryPhone ?? "")
     setSecondaryPhone(person?.secondaryPhone ?? patient.secondaryPhone ?? "")
     setGender(person?.gender ?? "")
     setRelationship(link?.relationship ?? "")

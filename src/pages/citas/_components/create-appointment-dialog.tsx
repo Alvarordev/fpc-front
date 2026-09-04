@@ -96,7 +96,7 @@ export function CreateAppointmentDialog({
   const patientOptions: SearchableOption[] = patients.map((p) => ({
     value: p.id,
     label: p.fullName,
-    sublabel: `${p.dni ? `DNI: ${p.dni}` : "Sin DNI"} | Tel: ${p.primaryPhone}`,
+    sublabel: `${p.dni ? `DNI: ${p.dni}` : "Sin DNI"} | Tel: ${p.primaryPhone ?? "Sin teléfono registrado"}`,
   }))
 
   const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({
@@ -340,9 +340,7 @@ export function CreateAppointmentDialog({
                 }
                 onChange={(e) => {
                   const value = e.target.value
-                  setAttendedViaSepa(
-                    value === "" ? undefined : value === "SI",
-                  )
+                  setAttendedViaSepa(value === "" ? undefined : value === "SI")
                 }}
                 className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
               >
@@ -366,9 +364,7 @@ export function CreateAppointmentDialog({
                 }
                 onChange={(e) => {
                   const value = e.target.value
-                  setReferredViaSepa(
-                    value === "" ? undefined : value === "SI",
-                  )
+                  setReferredViaSepa(value === "" ? undefined : value === "SI")
                 }}
                 className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
               >

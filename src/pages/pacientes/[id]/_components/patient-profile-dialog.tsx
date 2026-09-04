@@ -138,7 +138,7 @@ function formValuesFromPatient(
     dni: patient.dni ?? "",
     birthDate: patient.birthDate ?? "",
     gender: patient.gender ?? "",
-    primaryPhone: patient.primaryPhone,
+    primaryPhone: patient.primaryPhone ?? "",
     secondaryPhone: patient.secondaryPhone ?? "",
     hasWhatsapp: patient.hasWhatsapp,
     email: patient.email ?? "",
@@ -503,8 +503,7 @@ export function PatientProfileDialog({
                         setValue("healthSubcategory", "UNASSIGNED")
                         return
                       }
-                      const nextSubcategory =
-                        value as PatientHealthSubcategory
+                      const nextSubcategory = value as PatientHealthSubcategory
                       setValue("healthSubcategory", nextSubcategory)
                       setValue(
                         "healthPhase",

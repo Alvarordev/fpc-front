@@ -1766,7 +1766,7 @@ export interface components {
             patientId: string;
             patientFullName: string;
             patientDni: string | null;
-            patientPhone: string;
+            patientPhone: string | null;
             title: string;
             description: string;
             /** @enum {string} */
@@ -2253,6 +2253,9 @@ export interface components {
              * @description Required when mode is REPLACE; the active diagnosis to retire
              */
             replacementDiagnosisId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string | null;
+            hasReferral?: boolean | null;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -2420,6 +2423,8 @@ export interface components {
         CreateEnrollmentDto: {
             /** @enum {string} */
             healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            notAttendingConsultationsNote?: string | null;
+            notReceivingTreatmentReason?: string | null;
             /** Format: uuid */
             patientId?: string;
             patient?: components["schemas"]["CreatePatientDto"];
@@ -2471,6 +2476,8 @@ export interface components {
             companionId: string | null;
             currentlyAttendingConsultations: boolean | null;
             currentlyReceivingTreatment: boolean | null;
+            notAttendingConsultationsNote: string | null;
+            notReceivingTreatmentReason: string | null;
             entrySource: string | null;
             entrySubSource: string | null;
             consentToContact: boolean | null;
@@ -2942,7 +2949,7 @@ export interface components {
             /** Format: date */
             birthDate: string | null;
             gender: string | null;
-            primaryPhone: string;
+            primaryPhone: string | null;
             secondaryPhone: string | null;
             hasWhatsapp: boolean;
             /** @enum {string} */
@@ -3034,7 +3041,7 @@ export interface components {
             /** Format: date */
             birthDate: string | null;
             gender: string | null;
-            primaryPhone: string;
+            primaryPhone: string | null;
             secondaryPhone: string | null;
             hasWhatsapp: boolean;
             /** @enum {string} */
@@ -3163,6 +3170,10 @@ export interface components {
             /** Format: uuid */
             healthCenterId: string | null;
             healthCenterName?: string | null;
+            /** Format: uuid */
+            referredHealthCenterId: string | null;
+            referredHealthCenterName?: string | null;
+            hasReferral: boolean | null;
             diagnosisSpecialty: string | null;
             symptomLeadingToCheckup: string | null;
             /** @enum {string|null} */
@@ -3409,7 +3420,7 @@ export interface components {
             /** Format: date */
             birthDate: string | null;
             gender: string | null;
-            primaryPhone: string;
+            primaryPhone: string | null;
             secondaryPhone: string | null;
             hasWhatsapp: boolean;
             /** @enum {string} */
@@ -3470,6 +3481,9 @@ export interface components {
              * @description Required when mode is REPLACE; the active diagnosis to retire
              */
             replacementDiagnosisId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string | null;
+            hasReferral?: boolean | null;
             /** Format: uuid */
             followUpId: string;
             diagnosis: string;
@@ -3762,6 +3776,9 @@ export interface components {
              * @description Required when mode is REPLACE; the active diagnosis to retire
              */
             replacementDiagnosisId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string | null;
+            hasReferral?: boolean | null;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -4104,6 +4121,17 @@ export interface components {
         VolunteerCalendarResponseDto: {
             volunteers: components["schemas"]["VolunteerCalendarVolunteerDto"][];
         };
+        CreateHistoricalPatientDto: {
+            fullName: string;
+            secondaryPhone?: string;
+            dni?: string;
+            birthDate?: string;
+            gender?: string;
+            hasWhatsapp?: boolean;
+            /** Format: email */
+            email?: string;
+            primaryPhone?: string | null;
+        };
         HistoricalEnrollmentFollowUpDto: {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
@@ -4124,9 +4152,10 @@ export interface components {
         CreateHistoricalEnrollmentDto: {
             /** @enum {string} */
             healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            notAttendingConsultationsNote?: string | null;
+            notReceivingTreatmentReason?: string | null;
             /** Format: uuid */
             patientId?: string;
-            patient?: components["schemas"]["CreatePatientDto"];
             /** @enum {string} */
             affiliationType: "SELF" | "FAMILY_FRIEND";
             /** Format: uuid */
@@ -4158,6 +4187,7 @@ export interface components {
             callStartedAt?: string;
             callEndedAt?: string;
             familyPreventionTalkInterests?: components["schemas"]["CreateEnrollmentFamilyTalkInterestDto"][];
+            patient?: components["schemas"]["CreateHistoricalPatientDto"];
             /** Format: date */
             enrolledOn: string;
             followUp: components["schemas"]["HistoricalEnrollmentFollowUpDto"];
@@ -4255,6 +4285,9 @@ export interface components {
              * @description Required when mode is REPLACE; the active diagnosis to retire
              */
             replacementDiagnosisId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string | null;
+            hasReferral?: boolean | null;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";

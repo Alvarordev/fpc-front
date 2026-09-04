@@ -6,6 +6,7 @@ import {
   type CategoriaClinica,
   type EnrollmentDraft,
 } from "../../_store/enrollment-store"
+import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import { getAge } from "../../_utils/patient-age"
 import { toDurationInput } from "@/types/duration"
 import type {
@@ -133,6 +134,19 @@ export function buildEnrollmentPayload({
   if (!primaryContactSource) {
     throw new Error("Selecciona un contacto principal")
   }
+  if (
+    primaryContactSource === "PATIENT" &&
+    !value(draft.patientData.primaryPhone)
+  ) {
+    throw new Error("Completa el teléfono principal del paciente")
+  }
+  if (
+    !historical &&
+    !draft.patientId &&
+    !value(draft.patientData.primaryPhone)
+  ) {
+    throw new Error("Completa el teléfono principal del paciente")
+  }
   if (isMinorPatient && primaryContactSource === "PATIENT") {
     throw new Error(
       "Un paciente menor debe tener un acompañante como contacto principal",
@@ -154,6 +168,8 @@ export function buildEnrollmentPayload({
       diagnosisDate: value(diagnosis.diagnosisDate),
       firstSymptomsDate: value(diagnosis.firstSymptomsDate),
       healthCenterId: value(diagnosis.healthCenterId),
+      referredHealthCenterId: value(diagnosis.referredHealthCenterId),
+      hasReferral: diagnosis.hasReferral ?? undefined,
       diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
       symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
       waitTimeForDiagnosis: diagnosis.waitTimeForDiagnosisManuallyEdited
@@ -177,7 +193,10 @@ export function buildEnrollmentPayload({
     diagnosisPayloads.map((diagnosis) => diagnosis.clientRef),
   )
   const treatmentDrafts =
-    healthPhase === "CANCER_DIAGNOSIS" ? draft.treatments : []
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyReceivingTreatment !== false
+      ? draft.treatments
+      : []
   const treatmentPayloads = treatmentDrafts.map((treatment, index) => {
     const treatmentType = value(treatment.treatmentType)
     if (!treatmentType)
@@ -282,11 +301,13 @@ export function buildEnrollmentPayload({
   const consultationStatus: MedicalConsultationStatus | undefined =
     draft.symptomReport.consultationStatus ?? undefined
   const symptom = draft.symptomReport
-  const signsUsesAppointment =
-    healthPhase !== "SIGNS_AND_SYMPTOMS" ||
-    (symptom.hasRequestedMedicalConsultation === true &&
-      (consultationStatus === "SCHEDULED" || consultationStatus === "ATTENDED"))
-  const appointment = signsUsesAppointment
+  const usesAppointment =
+    healthPhase === "CANCER_DIAGNOSIS"
+      ? meta.currentlyAttendingConsultations === true
+      : symptom.hasRequestedMedicalConsultation === true &&
+        (consultationStatus === "SCHEDULED" ||
+          consultationStatus === "ATTENDED")
+  const appointment = usesAppointment
     ? draft.medicalAppointments.find(
         (item) =>
           value(item.specialty) ||
@@ -298,6 +319,41 @@ export function buildEnrollmentPayload({
           item.hasReferralSheet !== undefined,
       )
     : undefined
+  if (healthPhase === "CANCER_DIAGNOSIS") {
+    if (typeof meta.currentlyAttendingConsultations !== "boolean")
+      throw new Error("Indica si actualmente asiste a sus consultas médicas")
+    if (typeof meta.currentlyReceivingTreatment !== "boolean")
+      throw new Error("Indica si actualmente recibe tratamiento médico")
+    if (
+      meta.currentlyAttendingConsultations === true &&
+      draft.medicalAppointments.length !== 1
+    ) {
+      throw new Error("Completa los datos de las consultas médicas")
+    }
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === true &&
+    !value(appointment?.healthCenterId)
+  ) {
+    throw new Error("Indica el establecimiento de las consultas médicas")
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === false &&
+    !value(meta.notAttendingConsultationsNote)
+  ) {
+    throw new Error(
+      "Indica las notas sobre la no asistencia a consultas médicas",
+    )
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyReceivingTreatment === false &&
+    !value(meta.notReceivingTreatmentReason)
+  ) {
+    throw new Error("Indica el motivo por el que no recibe tratamiento")
+  }
   const needsSignsAppointment =
     healthPhase === "SIGNS_AND_SYMPTOMS" &&
     (consultationStatus === "SCHEDULED" || consultationStatus === "ATTENDED")
@@ -454,7 +510,9 @@ export function buildEnrollmentPayload({
       : {
           patient: {
             fullName: draft.patientData.fullName.trim(),
-            primaryPhone: draft.patientData.primaryPhone.trim(),
+            ...(value(draft.patientData.primaryPhone)
+              ? { primaryPhone: value(draft.patientData.primaryPhone) }
+              : {}),
             secondaryPhone: value(draft.patientData.secondaryPhone),
             dni: value(draft.patientData.dni),
             birthDate: value(draft.patientData.birthDate),
@@ -496,7 +554,10 @@ export function buildEnrollmentPayload({
       : {}),
     contacts,
     details: {
-      birthDepartment: value(draft.details.birthDepartment),
+      birthDepartment:
+        draft.details.birthDepartment === UNKNOWN_BIRTH_DEPARTMENT
+          ? undefined
+          : value(draft.details.birthDepartment),
       primaryHealthCenterId: value(draft.details.primaryHealthCenterId),
       travelTimeToHospital: duration(
         draft.details.travelTimeToHospital,
@@ -646,9 +707,30 @@ export function buildEnrollmentPayload({
           },
         }
       : {}),
-    ...(typeof meta.currentlyAttendingConsultations === "boolean"
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    typeof meta.currentlyAttendingConsultations === "boolean"
       ? {
           currentlyAttendingConsultations: meta.currentlyAttendingConsultations,
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === false
+      ? {
+          notAttendingConsultationsNote: value(
+            meta.notAttendingConsultationsNote,
+          ),
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    typeof meta.currentlyReceivingTreatment === "boolean"
+      ? {
+          currentlyReceivingTreatment: meta.currentlyReceivingTreatment,
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyReceivingTreatment === false
+      ? {
+          notReceivingTreatmentReason: value(meta.notReceivingTreatmentReason),
         }
       : {}),
     entrySource: value(meta.programEntryPoint),
