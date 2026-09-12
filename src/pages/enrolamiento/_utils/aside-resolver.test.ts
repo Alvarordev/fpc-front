@@ -37,3 +37,17 @@ describe("enrollment step 7 script", () => {
     expect(content.script).not.toContain("PSICOONCOLOGÍA")
   })
 })
+
+describe("enrollment step 4 script", () => {
+  it("includes the research confidentiality clause in the informed consent", () => {
+    const content = resolveAsideContent(4)
+
+    expect(content.script).toContain("resguardando su confidencialidad")
+    expect(content.script).toContain(
+      "fines de investigación y generación de evidencia",
+    )
+    expect(content.script).toContain(
+      "mejorar la atención y el abordaje del cáncer",
+    )
+  })
+})

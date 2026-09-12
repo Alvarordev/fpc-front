@@ -3923,7 +3923,7 @@ export interface components {
             /** Format: uuid */
             patientId: string;
             /** @enum {string} */
-            documentType: "MEDICAL_REPORT" | "PRESCRIPTION" | "OTHER";
+            documentType: "MEDICAL_REPORT" | "CLINICAL_HISTORY" | "PRESCRIPTION" | "APPOINTMENT_SCHEDULE" | "MEDICAL_ORDER" | "EXAM_RESULTS" | "REFERRAL_OR_COUNTERREFERRAL" | "IDENTITY_DOCUMENT" | "CONADIS_DISABILITY_DOCUMENT" | "OTHER";
             /** Format: uuid */
             diagnosisId: string | null;
             /** Format: uuid */
@@ -8962,7 +8962,7 @@ export interface operations {
     PatientDocumentsController_findAll: {
         parameters: {
             query?: {
-                documentType?: "MEDICAL_REPORT" | "PRESCRIPTION" | "OTHER";
+                documentType?: "MEDICAL_REPORT" | "CLINICAL_HISTORY" | "PRESCRIPTION" | "APPOINTMENT_SCHEDULE" | "MEDICAL_ORDER" | "EXAM_RESULTS" | "REFERRAL_OR_COUNTERREFERRAL" | "IDENTITY_DOCUMENT" | "CONADIS_DISABILITY_DOCUMENT" | "OTHER";
                 diagnosisId?: string;
                 treatmentId?: string;
                 includeArchived?: boolean;
@@ -9028,7 +9028,7 @@ export interface operations {
                     /** Format: binary */
                     file: string;
                     /** @enum {unknown} */
-                    documentType: "MEDICAL_REPORT" | "PRESCRIPTION" | "OTHER";
+                    documentType: "MEDICAL_REPORT" | "CLINICAL_HISTORY" | "PRESCRIPTION" | "APPOINTMENT_SCHEDULE" | "MEDICAL_ORDER" | "EXAM_RESULTS" | "REFERRAL_OR_COUNTERREFERRAL" | "IDENTITY_DOCUMENT" | "CONADIS_DISABILITY_DOCUMENT" | "OTHER";
                     /** Format: uuid */
                     diagnosisId?: string;
                     /** Format: uuid */

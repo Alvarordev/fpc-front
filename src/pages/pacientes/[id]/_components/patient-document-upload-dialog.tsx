@@ -28,9 +28,26 @@ import { Textarea } from "@/components/ui/textarea"
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 
 const DOCUMENT_TYPES: Array<{ value: PatientDocumentType; label: string }> = [
-  { value: "OTHER", label: "Otro" },
   { value: "MEDICAL_REPORT", label: "Informe médico" },
-  { value: "PRESCRIPTION", label: "Receta" },
+  { value: "CLINICAL_HISTORY", label: "Historia clínica" },
+  { value: "PRESCRIPTION", label: "Receta médica" },
+  { value: "APPOINTMENT_SCHEDULE", label: "Programación de Cita" },
+  {
+    value: "MEDICAL_ORDER",
+    label:
+      "Orden médica (laboratorio, imágenes, biopsia, anatomía patológica, etc.)",
+  },
+  { value: "EXAM_RESULTS", label: "Resultados de exámenes" },
+  {
+    value: "REFERRAL_OR_COUNTERREFERRAL",
+    label: "Referencia o contrarreferencia",
+  },
+  { value: "IDENTITY_DOCUMENT", label: "Documento de identidad" },
+  {
+    value: "CONADIS_DISABILITY_DOCUMENT",
+    label: "Documento de discapacidad (certificado/carné CONADIS)",
+  },
+  { value: "OTHER", label: "Otros" },
 ]
 
 const ACCEPTED_EXTENSIONS = new Set([

@@ -36,8 +36,17 @@ import { PatientDocumentUploadDialog } from "./patient-document-upload-dialog"
 
 const DOCUMENT_TYPE_LABELS: Record<PatientDocumentType, string> = {
   MEDICAL_REPORT: "Informe médico",
-  PRESCRIPTION: "Receta",
-  OTHER: "Otro",
+  CLINICAL_HISTORY: "Historia clínica",
+  PRESCRIPTION: "Receta médica",
+  APPOINTMENT_SCHEDULE: "Programación de Cita",
+  MEDICAL_ORDER:
+    "Orden médica (laboratorio, imágenes, biopsia, anatomía patológica, etc.)",
+  EXAM_RESULTS: "Resultados de exámenes",
+  REFERRAL_OR_COUNTERREFERRAL: "Referencia o contrarreferencia",
+  IDENTITY_DOCUMENT: "Documento de identidad",
+  CONADIS_DISABILITY_DOCUMENT:
+    "Documento de discapacidad (certificado/carné CONADIS)",
+  OTHER: "Otros",
 }
 
 interface PatientDocumentsTabProps {

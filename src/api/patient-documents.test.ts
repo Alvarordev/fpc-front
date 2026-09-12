@@ -86,4 +86,30 @@ describe("patient documents API", () => {
       },
     )
   })
+
+  it("sends the new patient-level document types", async () => {
+    const response = {
+      id: "document-2",
+      documentType: "CLINICAL_HISTORY",
+      originalFileName: "historia-clinica.pdf",
+    }
+    const file = new File(["clinical history"], "historia-clinica.pdf", {
+      type: "application/pdf",
+    })
+    mocks.apiFetch.mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    const { patientDocumentsApi } = await import("./patient-documents")
+    await patientDocumentsApi.create("patient-1", {
+      file,
+      documentType: "CLINICAL_HISTORY",
+    })
+
+    const [, init] = mocks.apiFetch.mock.calls[0] as [string, RequestInit]
+    expect((init.body as FormData).get("documentType")).toBe("CLINICAL_HISTORY")
+  })
 })
