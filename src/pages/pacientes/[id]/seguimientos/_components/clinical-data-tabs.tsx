@@ -39,6 +39,7 @@ import { patientsApi } from "@/api/patients"
 import { followUpsApi } from "@/api/follow-ups"
 import {
   calculateDurationBetweenDates,
+  DURATION_UNIT_LABELS,
   toDurationInput,
   type DurationDraft,
 } from "@/types/duration"
@@ -1752,8 +1753,13 @@ function NonOncologicalFollowUpForm({
 
 type SymptomFormValues = Omit<
   CreatePatientSymptomReportInput,
-  "followUpId" | "symptomDuration" | "symptomFrequency"
->
+  | "followUpId"
+  | "symptomDuration"
+  | "symptomFrequency"
+  | "diagnosisSearchDuration"
+> & {
+  diagnosisSearchDuration?: DurationDraft
+}
 
 function clinicalAnswer(value: boolean | null | undefined) {
   return value === null || value === undefined
@@ -1761,6 +1767,18 @@ function clinicalAnswer(value: boolean | null | undefined) {
     : value
       ? "Sí"
       : "No"
+}
+
+function clinicalDuration(
+  value: PatientSymptomReport["diagnosisSearchDuration"],
+) {
+  if (!value) return "No registrado"
+  if (value.label) return value.label
+  const range =
+    value.valueMax === null
+      ? String(value.valueMin)
+      : `${value.valueMin} a ${value.valueMax}`
+  return `${range} ${DURATION_UNIT_LABELS[value.unit].toLowerCase()}`
 }
 
 function EnrollmentSymptomSummary({
@@ -1797,7 +1815,9 @@ function EnrollmentSymptomSummary({
           </p>
         )}
         <p>
-          <span className="text-muted-foreground">Consulta médica: </span>
+          <span className="text-muted-foreground">
+            Consulta médica solicitada o atendida:{" "}
+          </span>
           {clinicalAnswer(report.hasMedicalConsultation)}
         </p>
         {report.hasMedicalConsultation === false &&
@@ -1810,15 +1830,21 @@ function EnrollmentSymptomSummary({
         {report.hasMedicalConsultation === true && (
           <>
             <p>
-              <span className="text-muted-foreground">Establecimiento: </span>
+              <span className="text-muted-foreground">
+                ¿En qué establecimiento de salud?: {" "}
+              </span>
               {healthCenter?.name ?? "No registrado"}
             </p>
             <p>
-              <span className="text-muted-foreground">Especialidad: </span>
+              <span className="text-muted-foreground">
+                ¿Con qué especialidad?: {" "}
+              </span>
               {report.specialty ?? "No registrada"}
             </p>
             <p>
-              <span className="text-muted-foreground">Primera consulta: </span>
+              <span className="text-muted-foreground">
+                ¿Cuándo fue la 1ra consulta que tuvo?: {" "}
+              </span>
               {report.firstConsultationDate ?? "No registrada"}
             </p>
             <p>
@@ -1828,12 +1854,22 @@ function EnrollmentSymptomSummary({
               {clinicalAnswer(report.isAwaitingDiagnosis)}
             </p>
             <p>
-              <span className="text-muted-foreground">Ficha de remisión: </span>
+              <span className="text-muted-foreground">
+                Tiempo esperando o buscando diagnóstico:{" "}
+              </span>
+              {clinicalDuration(report.diagnosisSearchDuration)}
+            </p>
+            <p>
+              <span className="text-muted-foreground">
+                Hoja de referencia:{" "}
+              </span>
               {clinicalAnswer(report.hasReferral)}
             </p>
             {report.hasReferral === true && (
               <p>
-                <span className="text-muted-foreground">Referido a: </span>
+                <span className="text-muted-foreground">
+                  ¿A dónde lo han referido?:{" "}
+                </span>
                 {referredHealthCenter?.name ?? "No registrado"}
               </p>
             )}
@@ -1841,27 +1877,27 @@ function EnrollmentSymptomSummary({
               report.referralNotProvidedReason && (
                 <p className="md:col-span-2">
                   <span className="text-muted-foreground">
-                    Motivo sin remisión:{" "}
+                    Motivo de no haber brindado la hoja de referencia:{" "}
                   </span>
                   {report.referralNotProvidedReason}
                 </p>
               )}
             <p>
               <span className="text-muted-foreground">
-                Diagnóstico informado:{" "}
+                ¿Le han brindado algún diagnóstico?:{" "}
               </span>
               {clinicalAnswer(report.hasReceivedDiagnosis)}
             </p>
             {report.reportedDiagnosis && (
               <p>
-                <span className="text-muted-foreground">Detalle: </span>
+                <span className="text-muted-foreground">¿Cuál?: </span>
                 {report.reportedDiagnosis}
               </p>
             )}
             {report.nextConsultationDate && (
               <p>
                 <span className="text-muted-foreground">
-                  Próxima consulta:{" "}
+                  ¿Cuándo es su siguiente consulta médica?:{" "}
                 </span>
                 {report.nextConsultationDate}
               </p>
@@ -1898,6 +1934,7 @@ function SintomasForm({
         noMedicalConsultationReason: draft?.noMedicalConsultationReason ?? "",
         firstConsultationDate: draft?.firstConsultationDate ?? "",
         isAwaitingDiagnosis: draft?.isAwaitingDiagnosis,
+        diagnosisSearchDuration: draft?.diagnosisSearchDuration,
         hasReferral: draft?.hasReferral,
         referredHealthCenterId: draft?.referredHealthCenterId,
         referralNotProvidedReason: draft?.referralNotProvidedReason ?? "",
@@ -1917,6 +1954,7 @@ function SintomasForm({
   const hasDiscomfort = watch("hasDiscomfort")
   const hasMedicalConsultation = watch("hasMedicalConsultation")
   const isAwaitingDiagnosis = watch("isAwaitingDiagnosis")
+  const diagnosisSearchDuration = watch("diagnosisSearchDuration")
   const hasReferral = watch("hasReferral")
   const hasReceivedDiagnosis = watch("hasReceivedDiagnosis")
   const isPainPresent = watch("isPainPresent")
@@ -1931,7 +1969,9 @@ function SintomasForm({
       values.hasMedicalConsultation === false &&
       !values.noMedicalConsultationReason?.trim()
     ) {
-      toast.error("Indica por qué no realizó la consulta médica")
+      toast.error(
+        "Indica por qué no ha solicitado ni asistido a una consulta médica",
+      )
       return
     }
     if (values.hasMedicalConsultation === true) {
@@ -1947,30 +1987,42 @@ function SintomasForm({
         toast.error("Indica si está a la espera de un diagnóstico")
         return
       }
+      if (
+        values.isAwaitingDiagnosis === true &&
+        values.diagnosisSearchDuration?.valueMin !== undefined &&
+        !toDurationInput(values.diagnosisSearchDuration)
+      ) {
+        toast.error(
+          "Completa correctamente el tiempo de espera o búsqueda del diagnóstico",
+        )
+        return
+      }
       if (values.hasReferral === undefined) {
-        toast.error("Indica si cuenta con ficha de remisión")
+        toast.error("Indica si le han brindado una hoja de referencia")
         return
       }
       if (values.hasReferral === true && !values.referredHealthCenterId) {
-        toast.error("Indica el establecimiento al que fue referido")
+        toast.error("Indica a dónde lo han referido")
         return
       }
       if (
         values.hasReferral === false &&
         !values.referralNotProvidedReason?.trim()
       ) {
-        toast.error("Indica por qué no cuenta con ficha de remisión")
+        toast.error(
+          "Indica por qué o el motivo de no haberle brindado la hoja de referencia",
+        )
         return
       }
       if (typeof values.hasReceivedDiagnosis !== "boolean") {
-        toast.error("Indica si le informaron algún diagnóstico")
+        toast.error("Indica si le han brindado algún diagnóstico")
         return
       }
       if (
         values.hasReceivedDiagnosis === true &&
         !values.reportedDiagnosis?.trim()
       ) {
-        toast.error("Indica el diagnóstico que le informaron")
+        toast.error("Indica cuál diagnóstico le han brindado")
         return
       }
     }
@@ -1980,6 +2032,7 @@ function SintomasForm({
       signsAndSymptoms: values.signsAndSymptoms?.trim() || undefined,
       indicationsReceived: values.indicationsReceived?.trim() || undefined,
       specialty: values.specialty?.trim() || undefined,
+      diagnosisSearchDuration: values.diagnosisSearchDuration,
       noMedicalConsultationReason:
         values.noMedicalConsultationReason?.trim() || undefined,
       referralNotProvidedReason:
@@ -2016,11 +2069,11 @@ function SintomasForm({
             onChange={(value) => setValue("hasDiscomfort", value)}
           />
           <ClinicalTriSelect
-            label="¿Realizó una consulta médica?"
+            label="¿Actualmente ha solicitado o asistió a una consulta médica?"
             value={hasMedicalConsultation}
             onChange={(value) => {
               setValue("hasMedicalConsultation", value)
-              if (value === false) {
+              if (value !== true) {
                 setValue("healthCenterId", undefined)
                 setValue("specialty", "")
                 setValue("firstConsultationDate", "")
@@ -2031,7 +2084,10 @@ function SintomasForm({
                 setValue("hasReceivedDiagnosis", undefined)
                 setValue("reportedDiagnosis", "")
                 setValue("nextConsultationDate", "")
-              } else if (value === true) {
+                setValue("diagnosisSearchDuration", undefined)
+                if (value !== false)
+                  setValue("noMedicalConsultationReason", "")
+              } else {
                 setValue("noMedicalConsultationReason", "")
               }
             }}
@@ -2054,7 +2110,10 @@ function SintomasForm({
           </div>
           {hasMedicalConsultation === false && (
             <div className="space-y-2 md:col-span-2">
-              <Label>Motivo por el que no realizó la consulta médica *</Label>
+              <Label>
+                ¿Sabe por qué no ha solicitado ni asistido a una consulta médica?
+                *
+              </Label>
               <Textarea
                 {...register("noMedicalConsultationReason")}
                 placeholder="Explique el motivo"
@@ -2065,7 +2124,7 @@ function SintomasForm({
           {hasMedicalConsultation === true && (
             <>
               <div className="space-y-2 md:col-span-2">
-                <Label>Establecimiento de la consulta *</Label>
+                <Label>¿En qué establecimiento de salud? *</Label>
                 <div className="flex gap-2">
                   <Select
                     items={hospitals.map((hospital) => ({
@@ -2101,20 +2160,36 @@ function SintomasForm({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Especialidad consultada *</Label>
+                <Label>¿Con qué especialidad? *</Label>
                 <Input {...register("specialty")} placeholder="Ej: Oncología" />
               </div>
               <div className="space-y-2">
-                <Label>Fecha de la primera consulta *</Label>
+                <Label>¿Cuándo fue la 1ra consulta que tuvo? *</Label>
                 <Input type="date" {...register("firstConsultationDate")} />
               </div>
               <TriSelect
                 label="¿Está a la espera de un diagnóstico?"
                 value={isAwaitingDiagnosis ?? undefined}
-                onChange={(value) => setValue("isAwaitingDiagnosis", value)}
+                onChange={(value) => {
+                  setValue("isAwaitingDiagnosis", value)
+                  if (value !== true)
+                    setValue("diagnosisSearchDuration", undefined)
+                }}
               />
+              <div className="space-y-2 md:col-span-2">
+                <DurationInput
+                  label="¿Hace cuánto tiempo está esperando o está en búsqueda de un diagnóstico?"
+                  units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                  defaultUnit="MONTH"
+                  singleValue
+                  value={diagnosisSearchDuration}
+                  onChange={(value) =>
+                    setValue("diagnosisSearchDuration", value)
+                  }
+                />
+              </div>
               <ClinicalTriSelect
-                label="¿Cuenta con ficha de remisión?"
+                label="¿Le han brindado una hoja de referencia?"
                 value={hasReferral}
                 onChange={(value) => {
                   setValue("hasReferral", value)
@@ -2125,7 +2200,7 @@ function SintomasForm({
               />
               {hasReferral === true && (
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Establecimiento al que fue referido *</Label>
+                  <Label>¿A dónde lo han referido? *</Label>
                   <Select
                     items={hospitals.map((hospital) => ({
                       value: hospital.id,
@@ -2152,7 +2227,8 @@ function SintomasForm({
               {hasReferral === false && (
                 <div className="space-y-2 md:col-span-2">
                   <Label>
-                    Motivo por el que no cuenta con ficha de remisión *
+                    ¿Sabe por qué o el motivo de no haberle brindado la hoja de
+                    referencia? *
                   </Label>
                   <Textarea
                     {...register("referralNotProvidedReason")}
@@ -2161,7 +2237,7 @@ function SintomasForm({
                 </div>
               )}
               <TriSelect
-                label="¿Le han informado algún diagnóstico?"
+                label="¿Le han brindado algún diagnóstico?"
                 value={hasReceivedDiagnosis ?? undefined}
                 onChange={(value) => {
                   setValue("hasReceivedDiagnosis", value)
@@ -2170,12 +2246,12 @@ function SintomasForm({
               />
               {hasReceivedDiagnosis === true && (
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Diagnóstico informado *</Label>
+                  <Label>¿Cuál? *</Label>
                   <Input {...register("reportedDiagnosis")} />
                 </div>
               )}
               <div className="space-y-2">
-                <Label>Fecha de la próxima consulta</Label>
+                <Label>¿Cuándo es su siguiente consulta médica?</Label>
                 <Input
                   type="date"
                   min={watch("firstConsultationDate") || undefined}

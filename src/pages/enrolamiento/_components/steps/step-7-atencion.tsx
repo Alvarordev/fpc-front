@@ -647,7 +647,7 @@ export function Step7Atencion({
             )}
             <div className="flex flex-col gap-2">
               <Label className={fl}>
-                ¿Realizó una consulta médica?{" "}
+                ¿Actualmente ha solicitado o asistió a una consulta médica?{" "}
                 <span className="text-destructive">*</span>
               </Label>
               <Select
@@ -713,7 +713,8 @@ export function Step7Atencion({
             {sr.hasMedicalConsultation === false && (
               <div className="flex flex-col gap-2">
                 <Label className={fl}>
-                  Motivo por el que no realizó la consulta médica{" "}
+                  ¿Sabe por qué no ha solicitado ni asistido a una consulta
+                  médica?{" "}
                   <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
@@ -732,7 +733,7 @@ export function Step7Atencion({
               <>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
-                    Establecimiento de salud{" "}
+                    ¿En qué establecimiento de salud?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Select
@@ -759,7 +760,7 @@ export function Step7Atencion({
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
-                    Especialidad de la consulta{" "}
+                    ¿Con qué especialidad?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -773,7 +774,7 @@ export function Step7Atencion({
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
-                    Fecha de la primera consulta{" "}
+                    ¿Cuándo fue la 1ra consulta que tuvo?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -804,6 +805,9 @@ export function Step7Atencion({
                     onValueChange={(value) =>
                       updateSymptomReport({
                         isAwaitingDiagnosis: value === "Sí" ? true : false,
+                        ...(!historical && value !== "Sí"
+                          ? { diagnosisSearchDuration: undefined }
+                          : {}),
                       })
                     }
                   >
@@ -819,9 +823,19 @@ export function Step7Atencion({
                     </SelectContent>
                   </Select>
                 </div>
+                <DurationInput
+                  label="¿Hace cuánto tiempo está esperando o está en búsqueda de un diagnóstico?"
+                  units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                  defaultUnit="MONTH"
+                  singleValue
+                  value={sr.diagnosisSearchDuration}
+                  onChange={(diagnosisSearchDuration) =>
+                    updateSymptomReport({ diagnosisSearchDuration })
+                  }
+                />
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
-                    ¿Cuenta con ficha de remisión?{" "}
+                    ¿Le han brindado una hoja de referencia?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Select
@@ -870,7 +884,7 @@ export function Step7Atencion({
                 {sr.hasReferral === true && (
                   <div className="flex flex-col gap-2">
                     <Label className={fl}>
-                      Establecimiento al que fue referido{" "}
+                      ¿A dónde lo han referido?{" "}
                       <span className="text-destructive">*</span>
                     </Label>
                     <div className="flex gap-2">
@@ -913,8 +927,8 @@ export function Step7Atencion({
                 {sr.hasReferral === false && (
                   <div className="flex flex-col gap-2">
                     <Label className={fl}>
-                      Motivo por el que no cuenta con ficha de remisión{" "}
-                      <span className="text-destructive">*</span>
+                      ¿Sabe por qué o el motivo de no haberle brindado la hoja
+                      de referencia? <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
                       value={sr.referralNotProvidedReason ?? ""}
@@ -930,7 +944,7 @@ export function Step7Atencion({
                 )}
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
-                    ¿Le han informado algún diagnóstico?{" "}
+                    ¿Le han brindado algún diagnóstico?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Select
@@ -966,8 +980,7 @@ export function Step7Atencion({
                 {sr.hasReceivedDiagnosis === true && (
                   <div className="flex flex-col gap-2">
                     <Label className={fl}>
-                      Diagnóstico informado{" "}
-                      <span className="text-destructive">*</span>
+                      ¿Cuál? <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       value={sr.reportedDiagnosis ?? ""}
@@ -976,7 +989,7 @@ export function Step7Atencion({
                           reportedDiagnosis: e.target.value || null,
                         })
                       }
-                      placeholder="Escriba el diagnóstico informado"
+                      placeholder="Escriba el diagnóstico brindado"
                       className="bg-card border"
                     />
                     <p className="text-muted-foreground text-xs">
@@ -986,7 +999,9 @@ export function Step7Atencion({
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
-                  <Label className={fl}>Fecha de la próxima consulta</Label>
+                  <Label className={fl}>
+                    ¿Cuándo es su siguiente consulta médica?
+                  </Label>
                   <Input
                     type="date"
                     value={sr.nextConsultationDate ?? ""}
@@ -1001,16 +1016,6 @@ export function Step7Atencion({
                 </div>
               </>
             )}
-            <DurationInput
-              label="¿Cuánto tiempo lleva buscando un diagnóstico?"
-              units={["DAY", "WEEK", "MONTH", "YEAR"]}
-              defaultUnit="MONTH"
-              singleValue
-              value={sr.diagnosisSearchDuration}
-              onChange={(diagnosisSearchDuration) =>
-                updateSymptomReport({ diagnosisSearchDuration })
-              }
-            />
             <div className="flex flex-col gap-2">
               <Label className={fl}>
                 ¿Actualmente recibe el tratamiento que le informaron?{" "}

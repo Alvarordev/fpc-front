@@ -519,6 +519,75 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.treatments).toBeUndefined()
   })
 
+  it("serializes the structured diagnosis search duration", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          isAwaitingDiagnosis: true,
+          diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+          hasReferral: null,
+          hasReceivedDiagnosis: false,
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      isAwaitingDiagnosis: true,
+      diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+    })
+  })
+
+  it("rejects an incomplete structured diagnosis search duration", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "SIGNS_AND_SYMPTOMS",
+        draft: draft({
+          symptomReport: {
+            hasDiscomfort: true,
+            hasMedicalConsultation: true,
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            firstConsultationDate: "2026-06-20",
+            isAwaitingDiagnosis: true,
+            diagnosisSearchDuration: { valueMin: 3 },
+            hasReferral: null,
+            hasReceivedDiagnosis: false,
+          },
+        }),
+      }),
+    ).toThrow("tiempo de espera o búsqueda del diagnóstico")
+  })
+
+  it("does not send a stale diagnosis search duration when not awaiting diagnosis", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          isAwaitingDiagnosis: false,
+          diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+          hasReferral: null,
+          hasReceivedDiagnosis: false,
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).not.toHaveProperty("diagnosisSearchDuration")
+  })
+
   it("clears hidden signs branch fields when the answers change", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
@@ -585,7 +654,9 @@ describe("step 8 Nest enrollment payload", () => {
           },
         }),
       }),
-    ).toThrow("Indica si realizó una consulta médica")
+    ).toThrow(
+      "Indica si actualmente ha solicitado o asistió a una consulta médica",
+    )
   })
 
   it("serializes a false referral answer with only its conditional reason", () => {

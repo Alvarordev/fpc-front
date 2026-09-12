@@ -359,10 +359,14 @@ export function buildEnrollmentPayload({
     if (symptom.hasDiscomfort === false && !value(symptom.checkupMotivation))
       throw new Error("Indica qué motivó el examen médico")
     if (typeof symptom.hasMedicalConsultation !== "boolean")
-      throw new Error("Indica si realizó una consulta médica")
+      throw new Error(
+        "Indica si actualmente ha solicitado o asistió a una consulta médica",
+      )
     if (symptom.hasMedicalConsultation === false) {
       if (!value(symptom.noMedicalConsultationReason))
-        throw new Error("Indica por qué no realizó la consulta médica")
+        throw new Error(
+          "Indica por qué no ha solicitado ni asistido a una consulta médica",
+        )
     } else {
       if (!value(symptom.healthCenterId) || !value(symptom.specialty))
         throw new Error("Indica establecimiento y especialidad de la consulta")
@@ -370,25 +374,38 @@ export function buildEnrollmentPayload({
         throw new Error("Indica la fecha de la primera consulta")
       if (typeof symptom.isAwaitingDiagnosis !== "boolean")
         throw new Error("Indica si está a la espera de un diagnóstico")
+      if (
+        symptom.isAwaitingDiagnosis === true &&
+        symptom.diagnosisSearchDuration?.valueMin !== undefined &&
+        !duration(
+          symptom.diagnosisSearchDuration,
+          "tiempo de espera o búsqueda del diagnóstico",
+        )
+      )
+        throw new Error(
+          "Completa correctamente el tiempo de espera o búsqueda del diagnóstico",
+        )
       if (symptom.hasReferral === undefined)
-        throw new Error("Indica si cuenta con ficha de remisión")
+        throw new Error("Indica si le han brindado una hoja de referencia")
       if (
         symptom.hasReferral === true &&
         !value(symptom.referredHealthCenterId)
       )
-        throw new Error("Indica el establecimiento al que fue referido")
+        throw new Error("Indica a dónde lo han referido")
       if (
         symptom.hasReferral === false &&
         !value(symptom.referralNotProvidedReason)
       )
-        throw new Error("Indica por qué no cuenta con ficha de remisión")
+        throw new Error(
+          "Indica por qué o el motivo de no haberle brindado la hoja de referencia",
+        )
       if (typeof symptom.hasReceivedDiagnosis !== "boolean")
-        throw new Error("Indica si le informaron algún diagnóstico")
+        throw new Error("Indica si le han brindado algún diagnóstico")
       if (
         symptom.hasReceivedDiagnosis === true &&
         !value(symptom.reportedDiagnosis)
       )
-        throw new Error("Indica el diagnóstico que le informaron")
+        throw new Error("Indica cuál diagnóstico le han brindado")
     }
   }
   const appointmentToSend =
@@ -614,6 +631,15 @@ export function buildEnrollmentPayload({
                   specialty: value(symptom.specialty)!,
                   firstConsultationDate: value(symptom.firstConsultationDate)!,
                   isAwaitingDiagnosis: symptom.isAwaitingDiagnosis,
+                  ...(symptom.isAwaitingDiagnosis === true &&
+                  symptom.diagnosisSearchDuration?.valueMin !== undefined
+                    ? {
+                        diagnosisSearchDuration: duration(
+                          symptom.diagnosisSearchDuration,
+                          "tiempo de espera o búsqueda del diagnóstico",
+                        ),
+                      }
+                    : {}),
                   hasReferral: symptom.hasReferral,
                   ...(symptom.hasReferral === true
                     ? {
