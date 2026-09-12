@@ -296,14 +296,18 @@ export function buildHistoricalClinicalPayload({
     )
       throw new Error("Completa correctamente la periodicidad de controles")
     payload.nonOncologicalFollowUp = {
+      diagnosticStatusEventId: record.diagnosticStatusEventId,
       diagnosis: record.diagnosis.trim(),
       occurredOn: record.occurredOn || undefined,
       receivesTreatment: record.receivesTreatment,
-      treatmentName: record.receivesTreatment === false ? undefined : record.treatmentName,
-      medication: record.receivesTreatment === false ? undefined : record.medication,
+      treatmentName:
+        record.receivesTreatment === false ? undefined : record.treatmentName,
+      medication:
+        record.receivesTreatment === false ? undefined : record.medication,
       treatmentFrequency,
       hasControls: record.hasControls,
-      controlSpecialty: record.hasControls === true ? record.controlSpecialty : undefined,
+      controlSpecialty:
+        record.hasControls === true ? record.controlSpecialty : undefined,
       controlPeriodicity,
       status: record.status,
       dischargedOn: record.dischargedOn,
@@ -494,18 +498,17 @@ export function historicalClinicalDraftsFromPatient(
         hasRequestedMedicalConsultation:
           symptomReport.hasRequestedMedicalConsultation,
         consultationStatus: symptomReport.consultationStatus,
-         consultationNotObtainedReason:
-           symptomReport.consultationNotObtainedReason,
-         hasMedicalConsultation: symptomReport.hasMedicalConsultation,
-         noMedicalConsultationReason:
-           symptomReport.noMedicalConsultationReason,
-         firstConsultationDate: symptomReport.firstConsultationDate,
-         isAwaitingDiagnosis: symptomReport.isAwaitingDiagnosis,
-         hasReferral: symptomReport.hasReferral,
-         referredHealthCenterId: symptomReport.referredHealthCenterId,
-         referralNotProvidedReason: symptomReport.referralNotProvidedReason,
-         nextConsultationDate: symptomReport.nextConsultationDate,
-         healthCenterId: symptomReport.healthCenterId,
+        consultationNotObtainedReason:
+          symptomReport.consultationNotObtainedReason,
+        hasMedicalConsultation: symptomReport.hasMedicalConsultation,
+        noMedicalConsultationReason: symptomReport.noMedicalConsultationReason,
+        firstConsultationDate: symptomReport.firstConsultationDate,
+        isAwaitingDiagnosis: symptomReport.isAwaitingDiagnosis,
+        hasReferral: symptomReport.hasReferral,
+        referredHealthCenterId: symptomReport.referredHealthCenterId,
+        referralNotProvidedReason: symptomReport.referralNotProvidedReason,
+        nextConsultationDate: symptomReport.nextConsultationDate,
+        healthCenterId: symptomReport.healthCenterId,
         specialty: symptomReport.specialty,
         hasReceivedDiagnosis: symptomReport.hasReceivedDiagnosis,
         reportedDiagnosis: symptomReport.reportedDiagnosis,
@@ -538,6 +541,7 @@ export function historicalClinicalDraftsFromPatient(
     recordIds.nonOncologicalFollowUpId = nonOncologicalFollowUp.id
     drafts.nonOncologicalFollowUp = {
       id: nonOncologicalFollowUp.id,
+      diagnosticStatusEventId: nonOncologicalFollowUp.diagnosticStatusEventId,
       diagnosis: nonOncologicalFollowUp.diagnosis,
       occurredOn: nonOncologicalFollowUp.occurredOn,
       receivesTreatment: nonOncologicalFollowUp.receivesTreatment,

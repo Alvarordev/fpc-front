@@ -666,6 +666,25 @@ export function buildEnrollmentPayload({
                       }
                     : {}),
                 }),
+            ...(typeof symptom.isReceivingReportedTreatment === "boolean"
+              ? {
+                  isReceivingReportedTreatment:
+                    symptom.isReceivingReportedTreatment,
+                  ...(symptom.isReceivingReportedTreatment === true
+                    ? {
+                        reportedTreatment: value(symptom.reportedTreatment)!,
+                        reportedTreatmentFrequency: duration(
+                          symptom.reportedTreatmentFrequency,
+                          "frecuencia del tratamiento informado",
+                        ),
+                      }
+                    : {
+                        notReceivingTreatmentReason: value(
+                          symptom.notReceivingTreatmentReason,
+                        ),
+                      }),
+                }
+              : {}),
           },
         }
       : {}),

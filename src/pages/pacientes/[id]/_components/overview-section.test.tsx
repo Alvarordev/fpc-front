@@ -125,6 +125,39 @@ const patient = {
   sisAffiliations: [],
   medicalAppointments: [],
   symptomReports: [],
+  nonOncologicalFollowUps: [
+    {
+      id: "non-oncological-1",
+      patientId: "patient-1",
+      followUpId: "follow-up-1",
+      enrollmentId: null,
+      diagnosticStatusEventId: "event-1",
+      diagnosis: "Hipertensión arterial",
+      occurredOn: "2026-02-15",
+      receivesTreatment: true,
+      treatmentName: "Losartán",
+      medication: "50 mg",
+      treatmentFrequency: {
+        valueMin: 1,
+        valueMax: null,
+        unit: "DAY",
+        label: null,
+      },
+      hasControls: true,
+      controlSpecialty: "Medicina interna",
+      controlPeriodicity: {
+        valueMin: 3,
+        valueMax: null,
+        unit: "MONTH",
+        label: null,
+      },
+      status: "ACTIVE",
+      dischargedOn: null,
+      dischargeReason: null,
+      createdAt: "2026-02-15T00:00:00.000Z",
+      updatedAt: "2026-02-15T00:00:00.000Z",
+    },
+  ],
   companions: [],
 } as never
 
@@ -170,5 +203,18 @@ describe("OverviewSection", () => {
     expect(screen.getByText("Jr. Temporal 456")).toBeTruthy()
     expect(screen.queryByText("Teléfono principal")).toBeNull()
     expect(screen.queryByText("Teléfono secundario")).toBeNull()
+  })
+
+  it("shows non-oncological diagnoses in the diagnostic evolution", async () => {
+    renderOverview()
+
+    expect(
+      (await screen.findAllByText("Diagnósticos no oncológicos (1)")).length,
+    ).toBeGreaterThan(0)
+    expect(screen.getAllByText("Hipertensión arterial").length).toBeGreaterThan(
+      0,
+    )
+    expect(screen.getAllByText("Losartán").length).toBeGreaterThan(0)
+    expect(screen.queryByText("Seguimiento no oncológico")).toBeNull()
   })
 })

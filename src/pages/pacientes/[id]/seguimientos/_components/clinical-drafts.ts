@@ -91,6 +91,7 @@ export type SymptomReportDraft = Omit<
 
 export type NonOncologicalFollowUpDraft = {
   id?: string
+  diagnosticStatusEventId?: string | null
   diagnosis: string
   occurredOn?: string | null
   receivesTreatment?: boolean | null

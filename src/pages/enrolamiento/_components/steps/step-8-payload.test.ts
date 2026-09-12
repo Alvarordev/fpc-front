@@ -588,6 +588,62 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.symptomReport).not.toHaveProperty("diagnosisSearchDuration")
   })
 
+  it("serializes the reported treatment branch when it is present", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          isAwaitingDiagnosis: false,
+          hasReferral: null,
+          hasReceivedDiagnosis: false,
+          isReceivingReportedTreatment: true,
+          reportedTreatment: "Quimioterapia",
+          reportedTreatmentFrequency: { valueMin: 3, unit: "WEEK" },
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      isReceivingReportedTreatment: true,
+      reportedTreatment: "Quimioterapia",
+      reportedTreatmentFrequency: { valueMin: 3, unit: "WEEK" },
+    })
+    expect(payload.symptomReport).not.toHaveProperty(
+      "notReceivingTreatmentReason",
+    )
+  })
+
+  it("serializes the reason when the reported treatment is not received", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: false,
+          noMedicalConsultationReason: "No pudo acudir",
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "Aún no inicia el tratamiento",
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      isReceivingReportedTreatment: false,
+      notReceivingTreatmentReason: "Aún no inicia el tratamiento",
+    })
+    expect(payload.symptomReport).not.toHaveProperty("reportedTreatment")
+    expect(payload.symptomReport).not.toHaveProperty(
+      "reportedTreatmentFrequency",
+    )
+  })
+
   it("clears hidden signs branch fields when the answers change", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",

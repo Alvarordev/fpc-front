@@ -178,13 +178,14 @@ export function FollowUpContent() {
       (item) => item.followUpId === followUpId,
     )
     if (!record) return
-    const current = useFollowUpDraftStore.getState().clinical
-      .nonOncologicalFollowUp
+    const current =
+      useFollowUpDraftStore.getState().clinical.nonOncologicalFollowUp
     if (current?.id === record.id) return
     useFollowUpDraftStore.getState().updateClinical((previous) => ({
       ...previous,
       nonOncologicalFollowUp: {
         id: record.id,
+        diagnosticStatusEventId: record.diagnosticStatusEventId,
         diagnosis: record.diagnosis,
         occurredOn: record.occurredOn,
         receivesTreatment: record.receivesTreatment,
@@ -295,6 +296,9 @@ export function FollowUpContent() {
         queryKey: ["patient-profile", patientId],
       }),
       queryClient.invalidateQueries({
+        queryKey: ["patient-summary", patientId],
+      }),
+      queryClient.invalidateQueries({
         queryKey: ["patient-addresses", patientId],
       }),
       queryClient.invalidateQueries({
@@ -345,21 +349,19 @@ export function FollowUpContent() {
     (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
       event.kind === "FOLLOW_UP" && event.followUpId === followUp.id,
   )
-  const patientSubcategory = patientQuery.data?.details?.healthSubcategory ?? null
+  const patientSubcategory =
+    patientQuery.data?.details?.healthSubcategory ?? null
   const hasActiveDiagnosis = Boolean(
     patientQuery.data?.diagnoses.some((diagnosis) => diagnosis.isCurrent),
   )
-  const canEditSubcategory =
-    canManage && patientQuery.data?.role === "PATIENT"
+  const canEditSubcategory = canManage && patientQuery.data?.role === "PATIENT"
   const healthSubcategoryControl = canEditSubcategory ? (
     <PatientHealthSubcategoryControl
       value={patientSubcategory}
       healthPhase={patientQuery.data?.details?.healthPhase ?? null}
       hasActiveDiagnosis={hasActiveDiagnosis}
       isPending={healthSubcategoryMutation.isPending}
-      onChange={(subcategory) =>
-        healthSubcategoryMutation.mutate(subcategory)
-      }
+      onChange={(subcategory) => healthSubcategoryMutation.mutate(subcategory)}
     />
   ) : null
 
@@ -544,6 +546,7 @@ export function FollowUpContent() {
       const input = {
         diagnosis: record.diagnosis.trim(),
         followUpId,
+        diagnosticStatusEventId: record.diagnosticStatusEventId,
         occurredOn: record.occurredOn || undefined,
         receivesTreatment: record.receivesTreatment,
         treatmentName:
@@ -1097,9 +1100,7 @@ function PatientHealthSubcategoryControl({
 
   return (
     <div className="min-w-56 space-y-1.5">
-      <Label htmlFor="patient-follow-up-health-subcategory">
-        Subcategoría
-      </Label>
+      <Label htmlFor="patient-follow-up-health-subcategory">Subcategoría</Label>
       <Select
         items={HEALTH_SUBCATEGORY_SELECT_ITEMS}
         value={selectedValue}
@@ -1120,9 +1121,7 @@ function PatientHealthSubcategoryControl({
           <SelectValue placeholder="Seleccionar subcategoría" />
         </SelectTrigger>
         <SelectContent className="max-h-72">
-          <SelectItem value={NO_SUBCATEGORY_VALUE}>
-            Sin subcategoría
-          </SelectItem>
+          <SelectItem value={NO_SUBCATEGORY_VALUE}>Sin subcategoría</SelectItem>
           {patientHealthSubcategoryOptions.map((option) => (
             <SelectItem
               key={option.value}

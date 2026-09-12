@@ -215,8 +215,8 @@ export const programDropoutReasonCodeLabels = {
 
 export const diagnosticStatusLabels = {
   SEARCHING: "En búsqueda",
-  CONFIRMED: "Confirmado",
-  RULED_OUT: "Descartado",
+  CONFIRMED: "En búsqueda - Encontrado",
+  RULED_OUT: "En búsqueda - Descartado",
 } as const
 
 export function labelMapToSelectItems<T extends Record<string, string>>(

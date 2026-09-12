@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { DurationInput } from "@/components/duration-input"
 import {
   Select,
@@ -39,7 +46,6 @@ import { patientsApi } from "@/api/patients"
 import { followUpsApi } from "@/api/follow-ups"
 import {
   calculateDurationBetweenDates,
-  DURATION_UNIT_LABELS,
   toDurationInput,
   type DurationDraft,
 } from "@/types/duration"
@@ -55,6 +61,7 @@ import {
   ClipboardPlus,
   FileUp,
   HeartPulse,
+  History,
   MapPin,
   Minus,
   Pencil,
@@ -108,6 +115,7 @@ import {
   FollowUpContactForm,
   type FollowUpContactValues,
 } from "./follow-up-contact-form"
+import { enrollmentSymptomDraft } from "./clinical-symptom-draft"
 
 // ── Tri-state Sí/No/sin dato select ──
 
@@ -332,6 +340,12 @@ export function ClinicalDataTabs({
   const [activeTab, setActiveTab] = useState("datos")
   const [newHospitalOpen, setNewHospitalOpen] = useState(false)
   const { data: patient } = usePatient(patientId)
+  const { data: diagnosticStatus, isLoading: isDiagnosticStatusLoading } =
+    useQuery({
+      queryKey: ["patient-diagnostic-status-current", patientId],
+      queryFn: () => patientsApi.getCurrentDiagnosticStatus(patientId),
+    })
+  const [ruledOutEventId, setRuledOutEventId] = useState<string | null>(null)
   const { data: hospitals = [] } = useQuery({
     queryKey: ["healthCenters"],
     queryFn: () => healthCentersApi.list(),
@@ -474,14 +488,25 @@ export function ClinicalDataTabs({
     .filter((report) => report.enrollmentId !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   const currentDiagnoses = diagnoses.filter((diagnosis) => diagnosis.isCurrent)
-  const isSignsAndSymptoms =
-    patient?.details?.healthPhase === "SIGNS_AND_SYMPTOMS"
+  const showDiagnosticStatus = Boolean(
+    enrollmentSymptomReport || diagnosticStatus || ruledOutEventId,
+  )
+  const showInlineNonOncologicalFollowUp =
+    diagnosticStatus?.status === "RULED_OUT" || Boolean(ruledOutEventId)
+  const nonOncologicalDiagnosticStatusEventId =
+    ruledOutEventId ??
+    (diagnosticStatus?.status === "RULED_OUT" ? diagnosticStatus.id : null)
+
+  const visibleActiveTab =
+    showInlineNonOncologicalFollowUp && activeTab === "no-oncologico"
+      ? "sintomas"
+      : activeTab
 
   return (
     <>
-    <Tabs
+      <Tabs
         orientation="vertical"
-        value={activeTab}
+        value={visibleActiveTab}
         onValueChange={(value) => setActiveTab(String(value))}
         className="flex-col items-stretch gap-3 lg:flex-row"
       >
@@ -502,16 +527,18 @@ export function ClinicalDataTabs({
             <span className="min-w-0 break-words">Síntomas</span>
             {drafts.symptomReport && <DraftDot />}
           </TabsTrigger>
-          <TabsTrigger
-            value="no-oncologico"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-          >
-            <ClipboardPlus className="size-4 text-emerald-600" />
-            <span className="min-w-0 break-words">
-              Seguimiento no oncológico
-            </span>
-            {drafts.nonOncologicalFollowUp && <DraftDot />}
-          </TabsTrigger>
+          {!showInlineNonOncologicalFollowUp && (
+            <TabsTrigger
+              value="no-oncologico"
+              className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            >
+              <ClipboardPlus className="size-4 text-emerald-600" />
+              <span className="min-w-0 break-words">
+                Seguimiento no oncológico
+              </span>
+              {drafts.nonOncologicalFollowUp && <DraftDot />}
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="direcciones"
             className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
@@ -591,31 +618,61 @@ export function ClinicalDataTabs({
             hospitals={hospitals}
             historical={isHistorical}
             onOpenNewHospital={() => setNewHospitalOpen(true)}
+            diagnosticStatusSection={
+              showDiagnosticStatus ? (
+                <DiagnosticStatusSection
+                  patientId={patientId}
+                  followUpId={followUpId}
+                  current={diagnosticStatus}
+                  isLoading={isDiagnosticStatusLoading}
+                  readOnly={isHistorical}
+                  onTransition={(event) => {
+                    if (event.status === "RULED_OUT")
+                      setRuledOutEventId(event.id)
+                  }}
+                />
+              ) : null
+            }
+            nonOncologicalFollowUpSection={
+              showInlineNonOncologicalFollowUp ? (
+                <NonOncologicalFollowUpForm
+                  key={drafts.nonOncologicalFollowUp?.id ?? "inline-new"}
+                  draft={drafts.nonOncologicalFollowUp}
+                  diagnosticStatusEventId={
+                    nonOncologicalDiagnosticStatusEventId
+                  }
+                  onSave={(nonOncologicalFollowUp) =>
+                    onDraftsChange((prev) => ({
+                      ...prev,
+                      nonOncologicalFollowUp,
+                    }))
+                  }
+                />
+              ) : null
+            }
             onSave={(symptomReport) =>
               onDraftsChange((prev) => ({ ...prev, symptomReport }))
             }
           />
-          {isSignsAndSymptoms ? (
-            <DiagnosticStatusCard
-              patientId={patientId}
-              followUpId={followUpId}
-              readOnly={isHistorical}
+        </TabsContent>
+        {!showInlineNonOncologicalFollowUp && (
+          <TabsContent
+            value="no-oncologico"
+            keepMounted
+            className="min-w-0 flex-1 pr-1"
+          >
+            <NonOncologicalFollowUpForm
+              key={drafts.nonOncologicalFollowUp?.id ?? "new"}
+              draft={drafts.nonOncologicalFollowUp}
+              onSave={(nonOncologicalFollowUp) =>
+                onDraftsChange((prev) => ({
+                  ...prev,
+                  nonOncologicalFollowUp,
+                }))
+              }
             />
-          ) : null}
-        </TabsContent>
-        <TabsContent
-          value="no-oncologico"
-          keepMounted
-          className="min-w-0 flex-1 pr-1"
-        >
-          <NonOncologicalFollowUpForm
-            key={drafts.nonOncologicalFollowUp?.id ?? "new"}
-            draft={drafts.nonOncologicalFollowUp}
-            onSave={(nonOncologicalFollowUp) =>
-              onDraftsChange((prev) => ({ ...prev, nonOncologicalFollowUp }))
-            }
-          />
-        </TabsContent>
+          </TabsContent>
+        )}
         <TabsContent
           value="antecedentes"
           keepMounted
@@ -623,13 +680,7 @@ export function ClinicalDataTabs({
         >
           <AntecedentesForm
             draft={drafts.healthBackground}
-            latestAssessment={patient?.healthBackgroundAssessments?.reduce(
-              (latest, assessment) =>
-                !latest || assessment.createdAt > latest.createdAt
-                  ? assessment
-                  : latest,
-              undefined as PatientHealthBackgroundAssessment | undefined,
-            )}
+            assessments={patient?.healthBackgroundAssessments ?? []}
             onSave={(healthBackground) =>
               onDraftsChange((prev) => ({ ...prev, healthBackground }))
             }
@@ -781,13 +832,14 @@ type HealthBackgroundFormValues = {
 
 function AntecedentesForm({
   draft,
-  latestAssessment,
+  assessments,
   onSave,
 }: {
   draft: HealthBackgroundAssessmentDraft | undefined
-  latestAssessment: PatientHealthBackgroundAssessment | undefined
+  assessments: PatientHealthBackgroundAssessment[]
   onSave: (healthBackground: HealthBackgroundAssessmentDraft) => void
 }) {
+  const [historyOpen, setHistoryOpen] = useState(false)
   const { control, handleSubmit, register, reset, setValue } =
     useForm<HealthBackgroundFormValues>({
       defaultValues: {
@@ -902,40 +954,48 @@ function AntecedentesForm({
       })}
       className="space-y-5"
     >
-      {latestAssessment && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-          <p className="font-medium">Último registro guardado</p>
+      {assessments.length > 0 ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto w-full justify-between gap-4 rounded-lg p-3 text-left whitespace-normal"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <span className="flex min-w-0 items-start gap-3">
+            <span className="bg-primary/10 text-primary mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full">
+              <History className="size-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-medium">
+                Antecedentes ya registrados
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-xs">
+                {assessments.length === 1
+                  ? "Hay 1 evaluación guardada para consultar."
+                  : `Hay ${assessments.length} evaluaciones guardadas para consultar.`}
+              </span>
+            </span>
+          </span>
+          <span className="text-primary flex shrink-0 items-center gap-1 text-xs font-medium">
+            Ver historial
+            <ChevronRight className="size-4" />
+          </span>
+        </Button>
+      ) : (
+        <div className="rounded-lg border border-dashed p-3">
+          <p className="text-sm font-medium">No hay antecedentes registrados</p>
           <p className="text-muted-foreground mt-1 text-xs">
-            {new Date(latestAssessment.createdAt).toLocaleDateString("es-PE")}
+            La información que guardes aquí aparecerá en el historial del
+            paciente.
           </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <p>
-              <span className="text-muted-foreground">Psiquiatría:</span>{" "}
-              {latestAssessment.hasPsychiatry === null
-                ? "Sin dato"
-                : latestAssessment.hasPsychiatry
-                  ? "Sí"
-                  : "No"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                Comorbilidades activas:
-              </span>{" "}
-              {latestAssessment.activeComorbidities.length || 0}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Limitaciones:</span>{" "}
-              {latestAssessment.limitations.length || 0}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                Antecedentes familiares:
-              </span>{" "}
-              {latestAssessment.familyCancerHistory.length || 0}
-            </p>
-          </div>
         </div>
       )}
+
+      <AntecedentesHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        assessments={assessments}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TriSelect
@@ -1114,6 +1174,192 @@ function AntecedentesForm({
         <DraftBadge saved={Boolean(draft)} />
       </div>
     </form>
+  )
+}
+
+function AntecedentesHistoryDialog({
+  open,
+  onOpenChange,
+  assessments,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  assessments: PatientHealthBackgroundAssessment[]
+}) {
+  const orderedAssessments = [...assessments].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-5 overflow-hidden sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 pr-8">
+            <History className="text-primary size-4" />
+            Historial de antecedentes y comorbilidades
+          </DialogTitle>
+          <DialogDescription>
+            Revisa lo registrado en cada seguimiento antes de agregar nueva
+            información.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+          {orderedAssessments.length > 0 ? (
+            orderedAssessments.map((assessment, index) => (
+              <article
+                key={assessment.id}
+                className="bg-muted/20 rounded-xl border p-4"
+              >
+                <header className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+                  <p className="text-sm font-medium">Registro {index + 1}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formatHealthBackgroundDate(assessment.createdAt)}
+                  </p>
+                </header>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <HistoryCategory title="Antecedente de psiquiatría">
+                    <p className="text-sm font-medium">
+                      {assessment.hasPsychiatry === null
+                        ? "Sin dato"
+                        : assessment.hasPsychiatry
+                          ? "Sí"
+                          : "No"}
+                    </p>
+                  </HistoryCategory>
+
+                  <HistoryCategory title="Antecedentes familiares de cáncer">
+                    {assessment.familyCancerHistory.length > 0 ? (
+                      <div className="space-y-2">
+                        {assessment.familyCancerHistory.map((history) => (
+                          <div
+                            key={history.id}
+                            className="bg-background rounded-lg border p-3 text-sm"
+                          >
+                            <p className="font-medium">
+                              {history.relationship}
+                            </p>
+                            <p className="text-muted-foreground mt-1 text-xs">
+                              {history.cancerType ??
+                                "Tipo de cáncer no especificado"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <HistoryEmpty message="No se registraron antecedentes familiares." />
+                    )}
+                  </HistoryCategory>
+
+                  <HistoryCategory
+                    title="Comorbilidades"
+                    className="sm:col-span-2"
+                  >
+                    {assessment.activeComorbidities.length > 0 ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {assessment.activeComorbidities.map((comorbidity) => (
+                          <div
+                            key={comorbidity.id}
+                            className="bg-background rounded-lg border p-3 text-sm"
+                          >
+                            <p className="font-medium">
+                              {comorbidity.conditionName}
+                            </p>
+                            {comorbidity.treatmentDescription && (
+                              <p className="text-muted-foreground mt-2 text-xs">
+                                <span className="font-medium">
+                                  Tratamiento:
+                                </span>{" "}
+                                {comorbidity.treatmentDescription}
+                              </p>
+                            )}
+                            {comorbidity.followUpSpecialty && (
+                              <p className="text-muted-foreground mt-1 text-xs">
+                                <span className="font-medium">
+                                  Especialidad:
+                                </span>{" "}
+                                {comorbidity.followUpSpecialty}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <HistoryEmpty message="No se registraron comorbilidades." />
+                    )}
+                  </HistoryCategory>
+
+                  <HistoryCategory
+                    title="Limitaciones"
+                    className="sm:col-span-2"
+                  >
+                    {assessment.limitations.length > 0 ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {assessment.limitations.map((limitation) => (
+                          <div
+                            key={limitation.id}
+                            className="bg-background flex items-start justify-between gap-3 rounded-lg border p-3 text-sm"
+                          >
+                            <p>{limitation.description}</p>
+                            <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-xs">
+                              {limitationCauseLabel(limitation.cause)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <HistoryEmpty message="No se registraron limitaciones." />
+                    )}
+                  </HistoryCategory>
+                </div>
+              </article>
+            ))
+          ) : (
+            <HistoryEmpty message="No hay antecedentes guardados todavía." />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function HistoryCategory({
+  title,
+  className,
+  children,
+}: {
+  title: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <section className={`space-y-2 ${className ?? ""}`}>
+      <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        {title}
+      </h3>
+      {children}
+    </section>
+  )
+}
+
+function HistoryEmpty({ message }: { message: string }) {
+  return <p className="text-muted-foreground text-xs">{message}</p>
+}
+
+function formatHealthBackgroundDate(value: string) {
+  return new Date(value).toLocaleString("es-PE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })
+}
+
+function limitationCauseLabel(
+  cause: PatientHealthBackgroundAssessment["limitations"][number]["cause"],
+) {
+  return (
+    HEALTH_BACKGROUND_CAUSES.find((option) => option.value === cause)?.label ??
+    "Causa no especificada"
   )
 }
 
@@ -1558,9 +1804,11 @@ function DatosGeneralesForm({
 
 function NonOncologicalFollowUpForm({
   draft,
+  diagnosticStatusEventId,
   onSave,
 }: {
   draft: NonOncologicalFollowUpDraft | undefined
+  diagnosticStatusEventId?: string | null
   onSave: (draft: NonOncologicalFollowUpDraft) => void
 }) {
   const [diagnosis, setDiagnosis] = useState(draft?.diagnosis ?? "")
@@ -1605,6 +1853,8 @@ function NonOncologicalFollowUpForm({
     }
     onSave({
       id: draft?.id,
+      diagnosticStatusEventId:
+        diagnosticStatusEventId ?? draft?.diagnosticStatusEventId ?? null,
       diagnosis: diagnosis.trim(),
       occurredOn: occurredOn || null,
       receivesTreatment,
@@ -1757,156 +2007,10 @@ type SymptomFormValues = Omit<
   | "symptomDuration"
   | "symptomFrequency"
   | "diagnosisSearchDuration"
+  | "reportedTreatmentFrequency"
 > & {
   diagnosisSearchDuration?: DurationDraft
-}
-
-function clinicalAnswer(value: boolean | null | undefined) {
-  return value === null || value === undefined
-    ? "No menciona"
-    : value
-      ? "Sí"
-      : "No"
-}
-
-function clinicalDuration(
-  value: PatientSymptomReport["diagnosisSearchDuration"],
-) {
-  if (!value) return "No registrado"
-  if (value.label) return value.label
-  const range =
-    value.valueMax === null
-      ? String(value.valueMin)
-      : `${value.valueMin} a ${value.valueMax}`
-  return `${range} ${DURATION_UNIT_LABELS[value.unit].toLowerCase()}`
-}
-
-function EnrollmentSymptomSummary({
-  report,
-  hospitals,
-}: {
-  report: PatientSymptomReport
-  hospitals: Array<{ id: string; name: string }>
-}) {
-  const healthCenter = hospitals.find(
-    (item) => item.id === report.healthCenterId,
-  )
-  const referredHealthCenter = hospitals.find(
-    (item) => item.id === report.referredHealthCenterId,
-  )
-  return (
-    <section className="bg-muted/30 space-y-3 rounded-lg border p-3">
-      <div>
-        <p className="text-sm font-medium">Respuestas del enrolamiento</p>
-        <p className="text-muted-foreground text-xs">
-          Registro de lectura. Los cambios de este seguimiento se guardan por
-          separado.
-        </p>
-      </div>
-      <div className="grid gap-x-4 gap-y-2 text-sm md:grid-cols-2">
-        <p>
-          <span className="text-muted-foreground">Malestar o dolor: </span>
-          {clinicalAnswer(report.hasDiscomfort)}
-        </p>
-        {report.signsAndSymptoms && (
-          <p className="md:col-span-2">
-            <span className="text-muted-foreground">Signos y síntomas: </span>
-            {report.signsAndSymptoms}
-          </p>
-        )}
-        <p>
-          <span className="text-muted-foreground">
-            Consulta médica solicitada o atendida:{" "}
-          </span>
-          {clinicalAnswer(report.hasMedicalConsultation)}
-        </p>
-        {report.hasMedicalConsultation === false &&
-          report.noMedicalConsultationReason && (
-            <p className="md:col-span-2">
-              <span className="text-muted-foreground">Motivo: </span>
-              {report.noMedicalConsultationReason}
-            </p>
-          )}
-        {report.hasMedicalConsultation === true && (
-          <>
-            <p>
-              <span className="text-muted-foreground">
-                ¿En qué establecimiento de salud?: {" "}
-              </span>
-              {healthCenter?.name ?? "No registrado"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                ¿Con qué especialidad?: {" "}
-              </span>
-              {report.specialty ?? "No registrada"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                ¿Cuándo fue la 1ra consulta que tuvo?: {" "}
-              </span>
-              {report.firstConsultationDate ?? "No registrada"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                Espera diagnóstico:{" "}
-              </span>
-              {clinicalAnswer(report.isAwaitingDiagnosis)}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                Tiempo esperando o buscando diagnóstico:{" "}
-              </span>
-              {clinicalDuration(report.diagnosisSearchDuration)}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                Hoja de referencia:{" "}
-              </span>
-              {clinicalAnswer(report.hasReferral)}
-            </p>
-            {report.hasReferral === true && (
-              <p>
-                <span className="text-muted-foreground">
-                  ¿A dónde lo han referido?:{" "}
-                </span>
-                {referredHealthCenter?.name ?? "No registrado"}
-              </p>
-            )}
-            {report.hasReferral === false &&
-              report.referralNotProvidedReason && (
-                <p className="md:col-span-2">
-                  <span className="text-muted-foreground">
-                    Motivo de no haber brindado la hoja de referencia:{" "}
-                  </span>
-                  {report.referralNotProvidedReason}
-                </p>
-              )}
-            <p>
-              <span className="text-muted-foreground">
-                ¿Le han brindado algún diagnóstico?:{" "}
-              </span>
-              {clinicalAnswer(report.hasReceivedDiagnosis)}
-            </p>
-            {report.reportedDiagnosis && (
-              <p>
-                <span className="text-muted-foreground">¿Cuál?: </span>
-                {report.reportedDiagnosis}
-              </p>
-            )}
-            {report.nextConsultationDate && (
-              <p>
-                <span className="text-muted-foreground">
-                  ¿Cuándo es su siguiente consulta médica?:{" "}
-                </span>
-                {report.nextConsultationDate}
-              </p>
-            )}
-          </>
-        )}
-      </div>
-    </section>
-  )
+  reportedTreatmentFrequency?: DurationDraft
 }
 
 function SintomasForm({
@@ -1915,6 +2019,8 @@ function SintomasForm({
   hospitals,
   historical,
   onOpenNewHospital,
+  diagnosticStatusSection,
+  nonOncologicalFollowUpSection,
   onSave,
 }: {
   draft: SymptomReportDraft | undefined
@@ -1922,34 +2028,82 @@ function SintomasForm({
   hospitals: Array<{ id: string; name: string }>
   historical: boolean
   onOpenNewHospital: () => void
+  diagnosticStatusSection?: ReactNode
+  nonOncologicalFollowUpSection?: ReactNode
   onSave: (symptomReport: SymptomReportDraft) => void
 }) {
-  const { register, handleSubmit, watch, setValue } =
+  const initialDraft = {
+    ...(enrollmentSymptomReport
+      ? enrollmentSymptomDraft(enrollmentSymptomReport)
+      : {}),
+    ...draft,
+  }
+  const { register, handleSubmit, watch, setValue, reset, formState } =
     useForm<SymptomFormValues>({
       defaultValues: {
-        hasDiscomfort: draft?.hasDiscomfort,
-        signsAndSymptoms: draft?.signsAndSymptoms ?? "",
-        indicationsReceived: draft?.indicationsReceived ?? "",
-        hasMedicalConsultation: draft?.hasMedicalConsultation,
-        noMedicalConsultationReason: draft?.noMedicalConsultationReason ?? "",
-        firstConsultationDate: draft?.firstConsultationDate ?? "",
-        isAwaitingDiagnosis: draft?.isAwaitingDiagnosis,
-        diagnosisSearchDuration: draft?.diagnosisSearchDuration,
-        hasReferral: draft?.hasReferral,
-        referredHealthCenterId: draft?.referredHealthCenterId,
-        referralNotProvidedReason: draft?.referralNotProvidedReason ?? "",
-        hasReceivedDiagnosis: draft?.hasReceivedDiagnosis,
-        reportedDiagnosis: draft?.reportedDiagnosis ?? "",
-        nextConsultationDate: draft?.nextConsultationDate ?? "",
-        hasSoughtMedicalConsultation: draft?.hasSoughtMedicalConsultation,
-        specialty: draft?.specialty ?? "",
-        healthCenterId: draft?.healthCenterId,
-        isPainPresent: draft?.isPainPresent,
-        painIntensity: draft?.painIntensity,
-        painLocation: draft?.painLocation ?? "",
-        painDescription: draft?.painDescription ?? "",
+        hasDiscomfort: initialDraft.hasDiscomfort,
+        checkupMotivation: initialDraft.checkupMotivation ?? "",
+        signsAndSymptoms: initialDraft.signsAndSymptoms ?? "",
+        indicationsReceived: initialDraft.indicationsReceived ?? "",
+        hasMedicalConsultation: initialDraft.hasMedicalConsultation,
+        noMedicalConsultationReason:
+          initialDraft.noMedicalConsultationReason ?? "",
+        firstConsultationDate: initialDraft.firstConsultationDate ?? "",
+        isAwaitingDiagnosis: initialDraft.isAwaitingDiagnosis,
+        diagnosisSearchDuration: initialDraft.diagnosisSearchDuration,
+        hasReferral: initialDraft.hasReferral,
+        referredHealthCenterId: initialDraft.referredHealthCenterId,
+        referralNotProvidedReason: initialDraft.referralNotProvidedReason ?? "",
+        hasReceivedDiagnosis: initialDraft.hasReceivedDiagnosis,
+        reportedDiagnosis: initialDraft.reportedDiagnosis ?? "",
+        nextConsultationDate: initialDraft.nextConsultationDate ?? "",
+        hasSoughtMedicalConsultation: initialDraft.hasSoughtMedicalConsultation,
+        specialty: initialDraft.specialty ?? "",
+        healthCenterId: initialDraft.healthCenterId,
+        isReceivingReportedTreatment: initialDraft.isReceivingReportedTreatment,
+        reportedTreatment: initialDraft.reportedTreatment ?? "",
+        reportedTreatmentFrequency: initialDraft.reportedTreatmentFrequency,
+        notReceivingTreatmentReason:
+          initialDraft.notReceivingTreatmentReason ?? "",
+        isPainPresent: initialDraft.isPainPresent,
+        painIntensity: initialDraft.painIntensity,
+        painLocation: initialDraft.painLocation ?? "",
+        painDescription: initialDraft.painDescription ?? "",
       },
     })
+
+  useEffect(() => {
+    if (!enrollmentSymptomReport || draft || formState.isDirty) return
+    const nextDraft = enrollmentSymptomDraft(enrollmentSymptomReport)
+    reset({
+      hasDiscomfort: nextDraft.hasDiscomfort,
+      checkupMotivation: nextDraft.checkupMotivation ?? "",
+      signsAndSymptoms: nextDraft.signsAndSymptoms ?? "",
+      indicationsReceived: "",
+      hasMedicalConsultation: nextDraft.hasMedicalConsultation,
+      noMedicalConsultationReason: nextDraft.noMedicalConsultationReason ?? "",
+      firstConsultationDate: nextDraft.firstConsultationDate ?? "",
+      isAwaitingDiagnosis: nextDraft.isAwaitingDiagnosis,
+      diagnosisSearchDuration: nextDraft.diagnosisSearchDuration,
+      hasReferral: nextDraft.hasReferral,
+      referredHealthCenterId: nextDraft.referredHealthCenterId,
+      referralNotProvidedReason: nextDraft.referralNotProvidedReason ?? "",
+      hasReceivedDiagnosis: nextDraft.hasReceivedDiagnosis,
+      reportedDiagnosis: nextDraft.reportedDiagnosis ?? "",
+      nextConsultationDate: nextDraft.nextConsultationDate ?? "",
+      hasSoughtMedicalConsultation: undefined,
+      specialty: nextDraft.specialty ?? "",
+      healthCenterId: nextDraft.healthCenterId,
+      isReceivingReportedTreatment: nextDraft.isReceivingReportedTreatment,
+      reportedTreatment: nextDraft.reportedTreatment ?? "",
+      reportedTreatmentFrequency: nextDraft.reportedTreatmentFrequency,
+      notReceivingTreatmentReason: nextDraft.notReceivingTreatmentReason ?? "",
+      isPainPresent: undefined,
+      painIntensity: undefined,
+      painLocation: "",
+      painDescription: "",
+    })
+  }, [draft, enrollmentSymptomReport, formState.isDirty, reset])
 
   const hasDiscomfort = watch("hasDiscomfort")
   const hasMedicalConsultation = watch("hasMedicalConsultation")
@@ -1957,6 +2111,8 @@ function SintomasForm({
   const diagnosisSearchDuration = watch("diagnosisSearchDuration")
   const hasReferral = watch("hasReferral")
   const hasReceivedDiagnosis = watch("hasReceivedDiagnosis")
+  const isReceivingReportedTreatment = watch("isReceivingReportedTreatment")
+  const reportedTreatmentFrequency = watch("reportedTreatmentFrequency")
   const isPainPresent = watch("isPainPresent")
   const healthCenterId = watch("healthCenterId")
 
@@ -2026,9 +2182,28 @@ function SintomasForm({
         return
       }
     }
+    if (values.isReceivingReportedTreatment === true) {
+      if (
+        !values.reportedTreatment?.trim() ||
+        !toDurationInput(values.reportedTreatmentFrequency)
+      ) {
+        toast.error(
+          "Completa el tratamiento y su frecuencia cuando actualmente lo recibe",
+        )
+        return
+      }
+    }
+    if (
+      values.isReceivingReportedTreatment === false &&
+      !values.notReceivingTreatmentReason?.trim()
+    ) {
+      toast.error("Indica por qué no recibe el tratamiento informado")
+      return
+    }
 
     onSave({
       ...values,
+      checkupMotivation: values.checkupMotivation?.trim() || undefined,
       signsAndSymptoms: values.signsAndSymptoms?.trim() || undefined,
       indicationsReceived: values.indicationsReceived?.trim() || undefined,
       specialty: values.specialty?.trim() || undefined,
@@ -2038,6 +2213,18 @@ function SintomasForm({
       referralNotProvidedReason:
         values.referralNotProvidedReason?.trim() || undefined,
       reportedDiagnosis: values.reportedDiagnosis?.trim() || undefined,
+      reportedTreatment:
+        values.isReceivingReportedTreatment === true
+          ? values.reportedTreatment?.trim() || undefined
+          : undefined,
+      reportedTreatmentFrequency:
+        values.isReceivingReportedTreatment === true
+          ? values.reportedTreatmentFrequency
+          : undefined,
+      notReceivingTreatmentReason:
+        values.isReceivingReportedTreatment === false
+          ? values.notReceivingTreatmentReason?.trim() || undefined
+          : undefined,
       painLocation: values.painLocation?.trim() || undefined,
       painDescription: values.painDescription?.trim() || undefined,
       painIntensity: Number.isFinite(values.painIntensity)
@@ -2055,18 +2242,20 @@ function SintomasForm({
 
   return (
     <div className="space-y-4">
-      {enrollmentSymptomReport && (
-        <EnrollmentSymptomSummary
-          report={enrollmentSymptomReport}
-          hospitals={hospitals}
-        />
-      )}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <ClinicalTriSelect
             label="¿Presenta malestar o dolor?"
             value={hasDiscomfort}
-            onChange={(value) => setValue("hasDiscomfort", value)}
+            onChange={(value) => {
+              setValue("hasDiscomfort", value)
+              if (value === true) setValue("checkupMotivation", "")
+              else if (value === false) setValue("signsAndSymptoms", "")
+              else {
+                setValue("checkupMotivation", "")
+                setValue("signsAndSymptoms", "")
+              }
+            }}
           />
           <ClinicalTriSelect
             label="¿Actualmente ha solicitado o asistió a una consulta médica?"
@@ -2085,21 +2274,32 @@ function SintomasForm({
                 setValue("reportedDiagnosis", "")
                 setValue("nextConsultationDate", "")
                 setValue("diagnosisSearchDuration", undefined)
-                if (value !== false)
-                  setValue("noMedicalConsultationReason", "")
+                if (value !== false) setValue("noMedicalConsultationReason", "")
               } else {
                 setValue("noMedicalConsultationReason", "")
               }
             }}
           />
-          <div className="space-y-2 md:col-span-2">
-            <Label>Signos y síntomas</Label>
-            <Textarea
-              {...register("signsAndSymptoms")}
-              placeholder="Describe los signos o síntomas..."
-              className="min-h-20"
-            />
-          </div>
+          {hasDiscomfort === true && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Signos y síntomas</Label>
+              <Textarea
+                {...register("signsAndSymptoms")}
+                placeholder="Describe los signos o síntomas..."
+                className="min-h-20"
+              />
+            </div>
+          )}
+          {hasDiscomfort === false && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>¿Qué lo motivó a realizarse su examen médico? *</Label>
+              <Textarea
+                {...register("checkupMotivation")}
+                placeholder="Motivo del examen médico"
+                className="min-h-20"
+              />
+            </div>
+          )}
           <div className="space-y-2 md:col-span-2">
             <Label>Indicaciones recibidas</Label>
             <Textarea
@@ -2111,8 +2311,8 @@ function SintomasForm({
           {hasMedicalConsultation === false && (
             <div className="space-y-2 md:col-span-2">
               <Label>
-                ¿Sabe por qué no ha solicitado ni asistido a una consulta médica?
-                *
+                ¿Sabe por qué no ha solicitado ni asistido a una consulta
+                médica? *
               </Label>
               <Textarea
                 {...register("noMedicalConsultationReason")}
@@ -2176,18 +2376,20 @@ function SintomasForm({
                     setValue("diagnosisSearchDuration", undefined)
                 }}
               />
-              <div className="space-y-2 md:col-span-2">
-                <DurationInput
-                  label="¿Hace cuánto tiempo está esperando o está en búsqueda de un diagnóstico?"
-                  units={["DAY", "WEEK", "MONTH", "YEAR"]}
-                  defaultUnit="MONTH"
-                  singleValue
-                  value={diagnosisSearchDuration}
-                  onChange={(value) =>
-                    setValue("diagnosisSearchDuration", value)
-                  }
-                />
-              </div>
+              {isAwaitingDiagnosis === true && (
+                <div className="space-y-2 md:col-span-2">
+                  <DurationInput
+                    label="¿Hace cuánto tiempo está esperando o está en búsqueda de un diagnóstico?"
+                    units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                    defaultUnit="MONTH"
+                    singleValue
+                    value={diagnosisSearchDuration}
+                    onChange={(value) =>
+                      setValue("diagnosisSearchDuration", value)
+                    }
+                  />
+                </div>
+              )}
               <ClinicalTriSelect
                 label="¿Le han brindado una hoja de referencia?"
                 value={hasReferral}
@@ -2260,6 +2462,51 @@ function SintomasForm({
               </div>
             </>
           )}
+          <ClinicalTriSelect
+            label="¿Actualmente recibe el tratamiento que le informaron?"
+            value={isReceivingReportedTreatment}
+            onChange={(value) => {
+              setValue("isReceivingReportedTreatment", value)
+              if (value !== true) {
+                setValue("reportedTreatment", "")
+                setValue("reportedTreatmentFrequency", undefined)
+              }
+              if (value !== false) setValue("notReceivingTreatmentReason", "")
+            }}
+          />
+          {isReceivingReportedTreatment === true && (
+            <>
+              <div className="space-y-2">
+                <Label>Tratamiento informado *</Label>
+                <Input
+                  {...register("reportedTreatment")}
+                  placeholder="Ej: Quimioterapia"
+                />
+              </div>
+              <DurationInput
+                label="Frecuencia del tratamiento informado"
+                units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                defaultUnit="WEEK"
+                singleValue
+                value={reportedTreatmentFrequency}
+                onChange={(value) =>
+                  setValue("reportedTreatmentFrequency", value)
+                }
+              />
+            </>
+          )}
+          {isReceivingReportedTreatment === false && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Motivo por el que no recibe tratamiento *</Label>
+              <Textarea
+                {...register("notReceivingTreatmentReason")}
+                placeholder="Explique el motivo"
+                className="min-h-20"
+              />
+            </div>
+          )}
+          {diagnosticStatusSection}
+          {nonOncologicalFollowUpSection}
           <TriSelect
             label="¿El dolor está presente actualmente?"
             value={isPainPresent}
@@ -4977,51 +5224,25 @@ function SeguimientoSocialForm({
   )
 }
 
-// ── Estado diagnóstico (signos y síntomas) ──
+// ── Situación del diagnóstico oncológico ──
 
-function DiagnosticStatusCard({
-  patientId,
-  followUpId,
-  readOnly = false,
-}: {
-  patientId: string
-  followUpId: string
-  readOnly?: boolean
-}) {
-  const { data: current, isLoading } = useQuery({
-    queryKey: ["patient-diagnostic-status-current", patientId],
-    queryFn: () => patientsApi.getCurrentDiagnosticStatus(patientId),
-  })
-
-  return (
-    <DiagnosticStatusForm
-      key={current?.id ?? "empty"}
-      patientId={patientId}
-      followUpId={followUpId}
-      current={current}
-      isLoading={isLoading}
-      readOnly={readOnly}
-    />
-  )
-}
-
-function DiagnosticStatusForm({
+function DiagnosticStatusSection({
   patientId,
   followUpId,
   current,
   isLoading,
   readOnly,
+  onTransition,
 }: {
   patientId: string
   followUpId: string
   current: PatientDiagnosticStatusEvent | null | undefined
   isLoading: boolean
   readOnly: boolean
+  onTransition?: (event: PatientDiagnosticStatusEvent) => void
 }) {
   const queryClient = useQueryClient()
-  const [status, setStatus] = useState<DiagnosticStatus | "">(
-    "",
-  )
+  const [status, setStatus] = useState<DiagnosticStatus | "">("")
   const [supportedBySepa, setSupportedBySepa] = useState<boolean | undefined>(
     current?.supportedBySepa ?? undefined,
   )
@@ -5035,13 +5256,25 @@ function DiagnosticStatusForm({
   const transitionMutation = useMutation({
     mutationFn: (body: TransitionPatientDiagnosticStatusDto) =>
       patientsApi.transitionDiagnosticStatus(patientId, body),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["patient-diagnostic-status-current", patientId],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: ["patient", patientId],
-      })
+    onSuccess: async (event) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["patient-diagnostic-status-current", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-profile", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-timeline", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-follow-ups", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-summary", patientId],
+        }),
+      ])
+      onTransition?.(event)
       toast.success("Estado diagnóstico actualizado")
     },
     onError: (error: Error) =>
@@ -5050,8 +5283,7 @@ function DiagnosticStatusForm({
       }),
   })
 
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
+  function handleSubmit() {
     if (!status) {
       toast.error("Seleccioná el nuevo estado diagnóstico")
       return
@@ -5081,12 +5313,11 @@ function DiagnosticStatusForm({
     : "Sin registrar"
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border-border/60 mb-3 space-y-3 rounded-xl border p-3"
-    >
+    <div className="border-border/60 space-y-3 border-t pt-4 md:col-span-2">
       <div>
-        <p className="text-sm font-medium">Estado diagnóstico (SEPA)</p>
+        <h3 className="text-base font-semibold">
+          Situación del diagnóstico oncológico
+        </h3>
         <p className="text-muted-foreground text-xs">
           Actual: {isLoading ? "Cargando…" : currentLabel}
           {current?.supportedBySepa != null
@@ -5097,64 +5328,65 @@ function DiagnosticStatusForm({
             : ""}
         </p>
       </div>
-      {!readOnly && <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Nuevo estado</Label>
-          <Select
-            items={transitionItems}
-            value={status}
-            disabled={!canTransition}
-            onValueChange={(value) =>
-              setStatus((value as DiagnosticStatus | null) ?? "")
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar estado" />
-            </SelectTrigger>
-            <SelectContent>
-              {transitionItems.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {status === "CONFIRMED" && (
+      {!readOnly && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Nuevo estado</Label>
+            <Select
+              items={transitionItems}
+              value={status}
+              disabled={!canTransition}
+              onValueChange={(value) =>
+                setStatus((value as DiagnosticStatus | null) ?? "")
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {transitionItems.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {status === "CONFIRMED" && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Diagnóstico formal</Label>
+              <Input
+                value={diagnosis}
+                onChange={(event) => setDiagnosis(event.target.value)}
+                placeholder="Escriba el diagnóstico confirmado"
+              />
+            </div>
+          )}
+          <TriSelect
+            label="¿Soportado por SEPA?"
+            value={supportedBySepa}
+            onChange={setSupportedBySepa}
+          />
           <div className="space-y-2 md:col-span-2">
-            <Label>Diagnóstico formal</Label>
+            <Label>Notas (opcional)</Label>
             <Input
-              value={diagnosis}
-              onChange={(event) => setDiagnosis(event.target.value)}
-              placeholder="Escriba el diagnóstico confirmado"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Detalle del cambio de estado"
             />
           </div>
-        )}
-        <TriSelect
-          label="¿Soportado por SEPA?"
-          value={supportedBySepa}
-          onChange={setSupportedBySepa}
-        />
-        <div className="space-y-2 md:col-span-2">
-          <Label>Notas (opcional)</Label>
-          <Input
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Detalle del cambio de estado"
-          />
         </div>
-      </div>}
+      )}
       {!readOnly && (
         <Button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           size="sm"
           disabled={transitionMutation.isPending || !canTransition || !status}
         >
-          {transitionMutation.isPending
-            ? "Guardando…"
-            : "Registrar transición"}
+          {transitionMutation.isPending ? "Guardando…" : "Registrar transición"}
         </Button>
       )}
-    </form>
+    </div>
   )
 }

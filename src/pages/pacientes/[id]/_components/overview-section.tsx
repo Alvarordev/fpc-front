@@ -728,6 +728,73 @@ export function OverviewSection({
 
           <div>
             <p className="text-muted-foreground mb-3 flex items-center gap-1 text-xs font-medium">
+              <ClipboardPlus className="size-3" />
+              Diagnósticos no oncológicos ({nonOncologicalFollowUps.length})
+            </p>
+            {nonOncologicalFollowUps.length > 0 ? (
+              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+                {nonOncologicalFollowUps.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-card max-w-[380px] min-w-[320px] flex-shrink-0 space-y-3 rounded-lg border p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1.5 size-2.5 shrink-0 rounded-full bg-emerald-600" />
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {item.diagnosis}
+                        </p>
+                        <Badge
+                          variant={
+                            item.status === "ACTIVE" ? "default" : "outline"
+                          }
+                          className="mt-1 text-[10px]"
+                        >
+                          {item.status === "ACTIVE" ? "Activo" : "Dado de alta"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <Field
+                        label="Fecha del hecho"
+                        value={date(item.occurredOn)}
+                        icon={Calendar}
+                      />
+                      <Field
+                        label="Recibe tratamiento"
+                        value={bool(item.receivesTreatment)}
+                      />
+                      {item.treatmentName && (
+                        <Field label="Tratamiento" value={item.treatmentName} />
+                      )}
+                      {item.medication && (
+                        <Field label="Medicación" value={item.medication} />
+                      )}
+                      {item.controlSpecialty && (
+                        <Field
+                          label="Especialidad de control"
+                          value={item.controlSpecialty}
+                        />
+                      )}
+                      {item.controlPeriodicity && (
+                        <Field
+                          label="Periodicidad de controles"
+                          value={durationLabel(item.controlPeriodicity)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="No hay diagnósticos no oncológicos registrados." />
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <p className="text-muted-foreground mb-3 flex items-center gap-1 text-xs font-medium">
               <Pill className="size-3" />
               Tratamientos ({patient.treatments.length})
             </p>
@@ -840,28 +907,6 @@ export function OverviewSection({
                 {item.signsAndSymptoms ??
                   item.discomfortDescription ??
                   "Sin descripción"}
-              </div>
-            ))}
-          </Records>
-          <Records
-            title="Seguimiento no oncológico"
-            count={nonOncologicalFollowUps.length}
-            icon={ClipboardPlus}
-          >
-            {nonOncologicalFollowUps.map((item) => (
-              <div key={item.id} className="rounded-md border p-3 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <b>{item.diagnosis}</b>
-                  <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase">
-                    {item.status === "ACTIVE" ? "Activo" : "Dado de alta"}
-                  </span>
-                </div>
-                <p className="text-muted-foreground mt-1">
-                  {date(item.occurredOn)}
-                  {item.controlSpecialty
-                    ? ` · Control: ${item.controlSpecialty}`
-                    : ""}
-                </p>
               </div>
             ))}
           </Records>
