@@ -1677,8 +1677,6 @@ function AddressForm({
 // ── Datos generales ──
 
 interface DatosGeneralesValues {
-  nativeLanguage: string
-  educationLevel: EducationLevel | undefined
   requiresTranslation: boolean
   travelTimeToHospital: DurationDraft | undefined
 }
@@ -1692,13 +1690,9 @@ function DatosGeneralesForm({
   currentDetails: PatientDetailsResponse["details"] | null
   onSave: (details: PatientDetailsInput) => void
 }) {
-  const { register, handleSubmit, watch, setValue, reset } =
+  const { handleSubmit, watch, setValue, reset } =
     useForm<DatosGeneralesValues>({
       defaultValues: {
-        nativeLanguage:
-          draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
-        educationLevel:
-          draft?.educationLevel ?? currentDetails?.educationLevel ?? undefined,
         requiresTranslation:
           draft?.requiresTranslation ??
           currentDetails?.requiresTranslation ??
@@ -1709,16 +1703,11 @@ function DatosGeneralesForm({
       },
     })
 
-  const educationLevel = watch("educationLevel")
   const travelTimeToHospital = watch("travelTimeToHospital")
 
   useEffect(() => {
     if (!currentDetails && !draft) return
     reset({
-      nativeLanguage:
-        draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
-      educationLevel:
-        draft?.educationLevel ?? currentDetails?.educationLevel ?? undefined,
       requiresTranslation:
         draft?.requiresTranslation ??
         currentDetails?.requiresTranslation ??
@@ -1731,8 +1720,6 @@ function DatosGeneralesForm({
 
   function onSubmit(values: DatosGeneralesValues) {
     onSave({
-      nativeLanguage: values.nativeLanguage || undefined,
-      educationLevel: values.educationLevel,
       requiresTranslation: values.requiresTranslation,
       travelTimeToHospital: toDurationInput(values.travelTimeToHospital),
     })
@@ -1742,37 +1729,6 @@ function DatosGeneralesForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Lengua nativa</Label>
-          <Input
-            {...register("nativeLanguage")}
-            placeholder="Español, Quechua..."
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Nivel educativo</Label>
-          <Select
-            items={Object.entries(educationOptions).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-            value={educationLevel}
-            onValueChange={(v) =>
-              setValue("educationLevel", v as EducationLevel)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(educationOptions).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <div className="flex items-center gap-3 space-y-2 pt-2">
           <Checkbox
             checked={watch("requiresTranslation")}
@@ -4698,6 +4654,9 @@ function SeguroForm({
 
 interface SocialFormValues {
   zoneType: string
+  nativeLanguage: string
+  educationLevel: EducationLevel | undefined
+  childrenCount: number | undefined
   evidenceOfDomesticViolence: boolean | undefined
   usesWoodStove: boolean | undefined
   isWorking: boolean | undefined
@@ -4763,6 +4722,12 @@ function SeguimientoSocialForm({
       defaultValues: {
         zoneType:
           normalizeZoneType(draft?.zoneType ?? currentDetails?.zoneType) ?? "",
+        nativeLanguage:
+          draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
+        educationLevel:
+          draft?.educationLevel ?? currentDetails?.educationLevel ?? undefined,
+        childrenCount:
+          draft?.childrenCount ?? currentDetails?.childrenCount ?? undefined,
         evidenceOfDomesticViolence:
           draft?.evidenceOfDomesticViolence ??
           currentDetails?.evidenceOfDomesticViolence ??
@@ -4838,6 +4803,12 @@ function SeguimientoSocialForm({
     reset({
       zoneType:
         normalizeZoneType(draft?.zoneType ?? currentDetails?.zoneType) ?? "",
+      nativeLanguage:
+        draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
+      educationLevel:
+        draft?.educationLevel ?? currentDetails?.educationLevel ?? undefined,
+      childrenCount:
+        draft?.childrenCount ?? currentDetails?.childrenCount ?? undefined,
       evidenceOfDomesticViolence:
         draft?.evidenceOfDomesticViolence ??
         currentDetails?.evidenceOfDomesticViolence ??
@@ -4910,6 +4881,14 @@ function SeguimientoSocialForm({
     onSave(
       {
         zoneType: values.zoneType || undefined,
+        nativeLanguage: values.nativeLanguage.trim() || undefined,
+        educationLevel: values.educationLevel,
+        childrenCount:
+          values.childrenCount !== undefined &&
+          Number.isInteger(values.childrenCount) &&
+          values.childrenCount >= 0
+            ? values.childrenCount
+            : undefined,
         evidenceOfDomesticViolence: values.evidenceOfDomesticViolence,
         usesWoodStove: values.usesWoodStove,
         isWorking: values.isWorking,
@@ -4973,8 +4952,52 @@ function SeguimientoSocialForm({
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label>Grado de instrucción</Label>
+          <Select
+            items={Object.entries(educationOptions).map(([value, label]) => ({
+              value,
+              label,
+            }))}
+            value={watch("educationLevel") ?? ""}
+            onValueChange={(value) =>
+              setValue(
+                "educationLevel",
+                (value as EducationLevel | null) ?? undefined,
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar grado" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(educationOptions).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Lengua materna/originaria</Label>
+          <Input
+            {...register("nativeLanguage")}
+            placeholder="Español, Quechua..."
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>¿Cuántos hijos tiene?</Label>
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            {...register("childrenCount", { valueAsNumber: true })}
+            placeholder="Indicar cantidad"
+          />
+        </div>
         <TriSelect
-          label="Evidencia de violencia doméstica"
+          label="¿Se evidencia violencia intrafamiliar?"
           value={watch("evidenceOfDomesticViolence")}
           onChange={(v) => setValue("evidenceOfDomesticViolence", v)}
         />
@@ -4984,12 +5007,12 @@ function SeguimientoSocialForm({
           onChange={(v) => setValue("usesWoodStove", v)}
         />
         <TriSelect
-          label="Trabaja actualmente"
+          label="¿Trabaja?"
           value={watch("isWorking")}
           onChange={(v) => setValue("isWorking", v)}
         />
         <TriSelect
-          label="Recibe apoyo económico"
+          label="¿Recibe ayuda económica?"
           value={watch("receivesFinancialSupport")}
           onChange={(v) => setValue("receivesFinancialSupport", v)}
         />

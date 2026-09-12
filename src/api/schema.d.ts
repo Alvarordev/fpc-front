@@ -2234,6 +2234,7 @@ export interface components {
             /** @enum {string} */
             educationLevel?: "INITIAL" | "PRIMARY_INCOMPLETE" | "PRIMARY" | "SECONDARY_INCOMPLETE" | "SECONDARY" | "TECHNICAL" | "TECHNICAL_INCOMPLETE" | "HIGHER" | "HIGHER_INCOMPLETE" | "NONE";
             nativeLanguage?: string;
+            childrenCount?: number;
             requiresTranslation?: boolean;
             referredToSocialWorker?: boolean;
             evidenceOfDomesticViolence?: boolean;
@@ -3184,6 +3185,7 @@ export interface components {
             /** @enum {string|null} */
             educationLevel: "INITIAL" | "PRIMARY_INCOMPLETE" | "PRIMARY" | "SECONDARY_INCOMPLETE" | "SECONDARY" | "TECHNICAL" | "TECHNICAL_INCOMPLETE" | "HIGHER" | "HIGHER_INCOMPLETE" | "NONE" | null;
             nativeLanguage: string | null;
+            childrenCount: number | null;
             requiresTranslation: boolean;
             referredToSocialWorker: boolean | null;
             evidenceOfDomesticViolence: boolean | null;

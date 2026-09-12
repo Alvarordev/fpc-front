@@ -103,16 +103,17 @@ const patient = {
     primaryHealthCenterName: null,
     zoneType: "RURAL",
     travelTimeToHospital: null,
-    educationLevel: null,
-    nativeLanguage: null,
+    educationLevel: "SECONDARY",
+    nativeLanguage: "Quechua",
+    childrenCount: 2,
     requiresTranslation: null,
     emergencyContactName: null,
     emergencyContactPhone: null,
     emergencyContactGender: null,
-    evidenceOfDomesticViolence: null,
-    usesWoodStove: null,
-    isWorking: null,
-    receivesFinancialSupport: null,
+    evidenceOfDomesticViolence: false,
+    usesWoodStove: true,
+    isWorking: true,
+    receivesFinancialSupport: false,
     referredToSocialWorker: null,
     hasConadisCard: null,
     knowsAboutFissal: null,
@@ -194,6 +195,16 @@ describe("OverviewSection", () => {
     const pediatricField = screen.getByText("Cáncer infantil")
     expect(pediatricField.parentElement?.textContent).toContain("Sí")
     expect(screen.getByText("Datos de procedencia y residencia")).toBeTruthy()
+    expect(screen.getByText("Perfil socioeconómico y familiar")).toBeTruthy()
+    expect(screen.getByText("Grado de instrucción")).toBeTruthy()
+    expect(screen.getByText("Secundaria")).toBeTruthy()
+    expect(screen.getByText("Lengua materna/originaria")).toBeTruthy()
+    expect(screen.getByText("Quechua")).toBeTruthy()
+    expect(screen.getByText("¿Tiene hijos?")).toBeTruthy()
+    expect(screen.getByText("¿Cuántos hijos tiene?")).toBeTruthy()
+    expect(screen.getByText("2")).toBeTruthy()
+    expect(screen.queryByText("Datos de seguimiento social")).toBeNull()
+    expect(screen.queryByText("Derivado a trabajo social")).toBeNull()
     expect(screen.getByText("Residencia actual y temporal")).toBeTruthy()
     expect(screen.queryByText("Direcciones de residencia")).toBeNull()
     expect(screen.getByText("Arequipa")).toBeTruthy()

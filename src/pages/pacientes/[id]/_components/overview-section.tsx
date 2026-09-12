@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   AlertTriangle,
-  ArrowRight,
   Briefcase,
   Building2,
   Calendar,
@@ -18,11 +17,8 @@ import {
   GraduationCap,
   Heart,
   HeartPulse,
-  IdCard,
-  Info,
   Languages,
   Loader2,
-  LogOut,
   MapPin,
   Phone,
   Pill,
@@ -58,7 +54,6 @@ import { TreatmentCard } from "./treatment-card"
 import { PatientProfileDialog } from "./patient-profile-dialog"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { useAuthStore } from "@/store/auth-store"
-import { usePatientSocialNotes } from "../_hooks/use-patient-records"
 import { patientTabUrl } from "../_lib/patient-tabs"
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -285,10 +280,6 @@ export function OverviewSection({
     (item) => !item.isCurrent,
   )
   const nonOncologicalFollowUps = patient.nonOncologicalFollowUps ?? []
-  const { data: socialNotes = [] } = usePatientSocialNotes(
-    patient.id,
-    patient.role !== "COMPANION",
-  )
   const enrollmentQuery = useQuery({
     queryKey: ["patient-enrollments", patient.id],
     queryFn: () => enrollmentsApi.listByPatient(patient.id),
@@ -497,20 +488,6 @@ export function OverviewSection({
                   icon={Clock}
                 />
                 <Field
-                  label="Nivel educativo"
-                  value={
-                    details.educationLevel
-                      ? educationLabels[details.educationLevel]
-                      : null
-                  }
-                  icon={GraduationCap}
-                />
-                <Field
-                  label="Lengua nativa"
-                  value={details.nativeLanguage}
-                  icon={Languages}
-                />
-                <Field
                   label="Requiere traducción"
                   value={details.requiresTranslation ? "Sí" : "No"}
                   icon={Languages}
@@ -551,81 +528,59 @@ export function OverviewSection({
               )}
               <Separator />
               <p className="text-muted-foreground text-xs font-medium">
-                Datos de seguimiento social
+                Perfil socioeconómico y familiar
               </p>
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <Field
-                  label="Violencia doméstica"
+                  label="Grado de instrucción"
+                  value={
+                    details.educationLevel
+                      ? educationLabels[details.educationLevel]
+                      : null
+                  }
+                  icon={GraduationCap}
+                />
+                <Field
+                  label="Lengua materna/originaria"
+                  value={details.nativeLanguage}
+                  icon={Languages}
+                />
+                <Field
+                  label="¿Tiene hijos?"
+                  value={
+                    details.childrenCount == null
+                      ? "-"
+                      : details.childrenCount > 0
+                        ? "Sí"
+                        : "No"
+                  }
+                  icon={Users}
+                />
+                <Field
+                  label="¿Cuántos hijos tiene?"
+                  value={details.childrenCount}
+                  icon={Users}
+                />
+                <Field
+                  label="¿Se evidencia violencia intrafamiliar?"
                   value={bool(details.evidenceOfDomesticViolence)}
                   icon={AlertTriangle}
                 />
                 <Field
-                  label="Usa cocina a leña"
+                  label="¿Se usa cocina a leña?"
                   value={bool(details.usesWoodStove)}
                   icon={Flame}
                 />
                 <Field
-                  label="Trabaja actualmente"
+                  label="¿Trabaja?"
                   value={bool(details.isWorking)}
                   icon={Briefcase}
                 />
                 <Field
-                  label="Recibe apoyo económico"
+                  label="¿Recibe ayuda económica?"
                   value={bool(details.receivesFinancialSupport)}
                   icon={Heart}
                 />
-                <Field
-                  label="Derivado a trabajo social"
-                  value={bool(details.referredToSocialWorker)}
-                  icon={ArrowRight}
-                />
-                <Field
-                  label="Tiene carnet CONADIS"
-                  value={bool(details.hasConadisCard)}
-                  icon={IdCard}
-                />
-                <Field
-                  label="Conoce FISSAL"
-                  value={bool(details.knowsAboutFissal)}
-                  icon={Info}
-                />
-                {socialNotes.length > 0 && (
-                  <div className="bg-muted/20 col-span-full rounded-lg border p-3 md:col-span-2">
-                    <p className="text-sm font-medium">
-                      Últimas notas sociales
-                    </p>
-                    <div className="mt-2 space-y-2">
-                      {socialNotes.slice(0, 3).map((note) => (
-                        <div
-                          key={note.id}
-                          className="bg-card rounded-md border p-2 text-xs"
-                        >
-                          <p className="text-muted-foreground mb-1">
-                            {note.type === "SOCIAL_WORKER"
-                              ? "Trabajo social"
-                              : note.type}{" "}
-                            · {date(note.createdAt)}
-                          </p>
-                          <p>{note.note}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {details.programDropoutDate && (
-                  <Field
-                    label="Fecha de abandono"
-                    value={date(details.programDropoutDate)}
-                    icon={Calendar}
-                  />
-                )}
-                {details.programDropoutReason && (
-                  <Field
-                    label="Motivo de abandono"
-                    value={details.programDropoutReason}
-                    icon={LogOut}
-                  />
-                )}
               </div>
             </>
           )}
