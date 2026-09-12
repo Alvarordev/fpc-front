@@ -339,7 +339,16 @@ export interface SymptomReportRequest {
   signsAndSymptoms?: string | null
   symptomDuration?: DurationDraft
   symptomFrequency?: DurationDraft
+  hasMedicalConsultation?: boolean | null
+  noMedicalConsultationReason?: string | null
+  firstConsultationDate?: string | null
+  isAwaitingDiagnosis?: boolean | null
+  hasReferral?: boolean | null
+  referredHealthCenterId?: string | null
+  referralNotProvidedReason?: string | null
+  nextConsultationDate?: string | null
   hasSoughtMedicalConsultation?: boolean
+  /** Legacy fields kept so persisted historical drafts can be read safely. */
   hasRequestedMedicalConsultation?: boolean | null
   consultationStatus?: MedicalConsultationStatus | null
   consultationNotObtainedReason?: string | null

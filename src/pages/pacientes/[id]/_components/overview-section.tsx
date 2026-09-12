@@ -10,6 +10,7 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  ClipboardPlus,
   Clock,
   FileText,
   FileX,
@@ -37,6 +38,7 @@ import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
 import { cn } from "@/lib/utils"
 import {
   cancerStageLabels,
+  diagnosticStatusLabels,
   educationLabels,
   epsLabels,
   healthPhaseLabels,
@@ -282,6 +284,7 @@ export function OverviewSection({
   const historicalTreatments = patient.treatments.filter(
     (item) => !item.isCurrent,
   )
+  const nonOncologicalFollowUps = patient.nonOncologicalFollowUps ?? []
   const { data: socialNotes = [] } = usePatientSocialNotes(
     patient.id,
     patient.role !== "COMPANION",
@@ -293,6 +296,12 @@ export function OverviewSection({
     staleTime: 30_000,
   })
   const enrollment = enrollmentQuery.data?.[0]
+  const diagnosticStatusQuery = useQuery({
+    queryKey: ["patient-diagnostic-status-current", patient.id],
+    queryFn: () => patientsApi.getCurrentDiagnosticStatus(patient.id),
+    enabled: patient.role !== "COMPANION",
+  })
+  const diagnosticStatus = diagnosticStatusQuery.data
   const age = getAge(patient.birthDate)
   return (
     <div className="space-y-4">
@@ -834,6 +843,52 @@ export function OverviewSection({
               </div>
             ))}
           </Records>
+          <Records
+            title="Seguimiento no oncológico"
+            count={nonOncologicalFollowUps.length}
+            icon={ClipboardPlus}
+          >
+            {nonOncologicalFollowUps.map((item) => (
+              <div key={item.id} className="rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <b>{item.diagnosis}</b>
+                  <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase">
+                    {item.status === "ACTIVE" ? "Activo" : "Dado de alta"}
+                  </span>
+                </div>
+                <p className="text-muted-foreground mt-1">
+                  {date(item.occurredOn)}
+                  {item.controlSpecialty
+                    ? ` · Control: ${item.controlSpecialty}`
+                    : ""}
+                </p>
+              </div>
+            ))}
+          </Records>
+          <Records
+            title="Estado diagnóstico"
+            count={diagnosticStatus ? 1 : 0}
+            icon={Stethoscope}
+          >
+            {diagnosticStatus && (
+              <div className="rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <b>{diagnosticStatusLabels[diagnosticStatus.status]}</b>
+                  {diagnosticStatus.supportedBySepa != null && (
+                    <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase">
+                      SEPA: {diagnosticStatus.supportedBySepa ? "Sí" : "No"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-muted-foreground mt-1">
+                  {date(diagnosticStatus.occurredAt)}
+                  {diagnosticStatus.reportedDiagnosis
+                    ? ` · ${diagnosticStatus.reportedDiagnosis}`
+                    : ""}
+                </p>
+              </div>
+            )}
+          </Records>
         </div>
       </Section>
     </div>
@@ -902,6 +957,7 @@ function Records({
   title,
   count,
   children,
+  icon: Icon,
 }: {
   title: string
   count: number
@@ -910,7 +966,8 @@ function Records({
 }) {
   return (
     <div>
-      <p className="mb-2 text-sm font-medium">
+      <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+        {Icon && <Icon className="text-muted-foreground size-3.5" />}
         {title} ({count})
       </p>
       {count ? (

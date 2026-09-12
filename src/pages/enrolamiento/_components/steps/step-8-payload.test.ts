@@ -294,7 +294,7 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.treatments).toBeUndefined()
   })
 
-  it("maps the signs branch, SIS request, and family companion", () => {
+  it("maps the signs branch with an explicit null answer", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
       categoriaClinica: "SIGNS_AND_SYMPTOMS",
@@ -303,15 +303,22 @@ describe("step 8 Nest enrollment payload", () => {
         patientData: { fullName: "Paciente Signos", primaryPhone: "988555666" },
         insurance: { insuranceType: "NONE", isCurrent: true },
         symptomReport: {
-          hasDiscomfort: true,
-          signsAndSymptoms: "Dolor abdominal",
-          hasRequestedMedicalConsultation: false,
-          hasReceivedDiagnosis: false,
-          isReceivingReportedTreatment: false,
-          notReceivingTreatmentReason: "No corresponde",
+          hasDiscomfort: null,
+          signsAndSymptoms: "Dato legacy que no aplica",
+          hasMedicalConsultation: false,
+          noMedicalConsultationReason: "No pudo acudir",
+          hasRequestedMedicalConsultation: true,
+          consultationStatus: "ATTENDED",
           symptomDuration: { valueMin: 2, valueMax: 4, unit: "MONTH" },
           symptomFrequency: { valueMin: 1, unit: "WEEK" },
         },
+        medicalAppointments: [
+          {
+            healthCenterId: "center-legacy",
+            specialty: "Medicina general",
+            appointmentDate: "2026-06-20",
+          },
+        ],
         sisAffiliation: {
           canAffiliate: false,
           cantAffiliateReason: "Documento pendiente",
@@ -344,12 +351,18 @@ describe("step 8 Nest enrollment payload", () => {
       canAffiliate: false,
       cantAffiliateReason: "Documento pendiente",
     })
-    expect(payload.symptomReport).toMatchObject({
-      hasDiscomfort: true,
-      signsAndSymptoms: "Dolor abdominal",
-      symptomDuration: { valueMin: 2, valueMax: 4, unit: "MONTH" },
-      symptomFrequency: { valueMin: 1, unit: "WEEK" },
+    expect(payload.symptomReport).toEqual({
+      hasDiscomfort: null,
+      hasMedicalConsultation: false,
+      noMedicalConsultationReason: "No pudo acudir",
     })
+    expect(payload.symptomReport).not.toHaveProperty("symptomDuration")
+    expect(payload.symptomReport).not.toHaveProperty("symptomFrequency")
+    expect(payload.symptomReport).not.toHaveProperty(
+      "hasRequestedMedicalConsultation",
+    )
+    expect(payload.symptomReport).not.toHaveProperty("consultationStatus")
+    expect(payload.medicalAppointments).toBeUndefined()
     expect(payload.psychooncologySupportAssessment).toBeUndefined()
   })
 
@@ -411,7 +424,7 @@ describe("step 8 Nest enrollment payload", () => {
     })
   })
 
-  it("serializes the explicit contacts and signs consultation branch", () => {
+  it("serializes the canonical signs consultation branch without appointments", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
       categoriaClinica: "SIGNS_AND_SYMPTOMS",
@@ -442,16 +455,18 @@ describe("step 8 Nest enrollment payload", () => {
           signsAndSymptoms: "Cansancio",
           symptomDuration: { valueMin: 3, unit: "MONTH" },
           symptomFrequency: { valueMin: 1, unit: "WEEK" },
+          hasMedicalConsultation: true,
+          firstConsultationDate: "2026-06-20",
+          isAwaitingDiagnosis: false,
+          hasReferral: true,
+          referredHealthCenterId: "center-2",
+          hasReceivedDiagnosis: true,
+          reportedDiagnosis: "Lesión por estudiar",
+          nextConsultationDate: "2026-07-20",
           hasRequestedMedicalConsultation: true,
           consultationStatus: "ATTENDED",
           healthCenterId: "center-1",
           specialty: "Medicina general",
-          indicationsReceived: "Solicitar exámenes",
-          diagnosisSearchDuration: { valueMin: 2, unit: "MONTH" },
-          hasReceivedDiagnosis: true,
-          reportedDiagnosis: "Lesión por estudiar",
-          isReceivingReportedTreatment: false,
-          notReceivingTreatmentReason: "Aún no tiene diagnóstico formal",
         },
         medicalAppointments: [
           {
@@ -483,21 +498,23 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.symptomReport).toMatchObject({
       hasDiscomfort: false,
       checkupMotivation: "Control preventivo",
-      consultationStatus: "ATTENDED",
+      hasMedicalConsultation: true,
       healthCenterId: "center-1",
       specialty: "Medicina general",
+      firstConsultationDate: "2026-06-20",
+      isAwaitingDiagnosis: false,
+      hasReferral: true,
+      referredHealthCenterId: "center-2",
       hasReceivedDiagnosis: true,
       reportedDiagnosis: "Lesión por estudiar",
-      isReceivingReportedTreatment: false,
-      notReceivingTreatmentReason: "Aún no tiene diagnóstico formal",
+      nextConsultationDate: "2026-07-20",
     })
-    expect(payload.medicalAppointments?.[0]).toMatchObject({
-      appointmentDate: "2026-06-20",
-      nextAppointmentSpecialty: "Oncología",
-      isFirstConsultation: true,
-      hasReferralSheet: false,
-      referralNotProvidedReason: "No fue necesario referir",
-    })
+    expect(payload.symptomReport).not.toHaveProperty("signsAndSymptoms")
+    expect(payload.symptomReport).not.toHaveProperty("symptomDuration")
+    expect(payload.symptomReport).not.toHaveProperty("symptomFrequency")
+    expect(payload.symptomReport).not.toHaveProperty("indicationsReceived")
+    expect(payload.symptomReport).not.toHaveProperty("consultationStatus")
+    expect(payload.medicalAppointments).toBeUndefined()
     expect(payload.diagnoses).toBeUndefined()
     expect(payload.treatments).toBeUndefined()
   })
@@ -514,6 +531,8 @@ describe("step 8 Nest enrollment payload", () => {
         symptomReport: {
           hasDiscomfort: true,
           checkupMotivation: "Texto antiguo",
+          hasMedicalConsultation: false,
+          noMedicalConsultationReason: "Motivo nuevo",
           hasRequestedMedicalConsultation: false,
           consultationStatus: "NOT_OBTAINED",
           consultationNotObtainedReason: "Texto antiguo",
@@ -537,18 +556,20 @@ describe("step 8 Nest enrollment payload", () => {
 
     expect(payload.symptomReport).toMatchObject({
       hasDiscomfort: true,
-      hasRequestedMedicalConsultation: false,
-      isReceivingReportedTreatment: false,
-      notReceivingTreatmentReason: "No corresponde",
+      hasMedicalConsultation: false,
+      noMedicalConsultationReason: "Motivo nuevo",
     })
     expect(payload.symptomReport).not.toHaveProperty("checkupMotivation")
+    expect(payload.symptomReport).not.toHaveProperty("signsAndSymptoms")
     expect(payload.symptomReport).not.toHaveProperty("reportedDiagnosis")
-    expect(payload.symptomReport).not.toHaveProperty("indicationsReceived")
     expect(payload.symptomReport).not.toHaveProperty("healthCenterId")
+    expect(payload.symptomReport).not.toHaveProperty("specialty")
+    expect(payload.symptomReport).not.toHaveProperty("firstConsultationDate")
+    expect(payload.symptomReport).not.toHaveProperty("hasReferral")
     expect(payload.medicalAppointments).toBeUndefined()
   })
 
-  it("does not use the legacy consultation answer as the new answer", () => {
+  it("requires the new consultation answer instead of the legacy answer", () => {
     expect(() =>
       buildEnrollmentPayload({
         agentId: "agent-1",
@@ -564,10 +585,10 @@ describe("step 8 Nest enrollment payload", () => {
           },
         }),
       }),
-    ).toThrow("Indica si solicitó una consulta médica")
+    ).toThrow("Indica si realizó una consulta médica")
   })
 
-  it("omits referral fields for a scheduled consultation", () => {
+  it("serializes a false referral answer with only its conditional reason", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
       categoriaClinica: "SIGNS_AND_SYMPTOMS",
@@ -578,13 +599,15 @@ describe("step 8 Nest enrollment payload", () => {
         },
         symptomReport: {
           hasDiscomfort: true,
-          hasRequestedMedicalConsultation: true,
-          consultationStatus: "SCHEDULED",
+          hasMedicalConsultation: true,
           healthCenterId: "center-1",
           specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          isAwaitingDiagnosis: true,
+          hasReferral: false,
+          referralNotProvidedReason: "No fue necesario referir",
           hasReceivedDiagnosis: false,
-          isReceivingReportedTreatment: false,
-          notReceivingTreatmentReason: "Aún no corresponde",
+          nextConsultationDate: null,
         },
         medicalAppointments: [
           {
@@ -599,11 +622,43 @@ describe("step 8 Nest enrollment payload", () => {
       }),
     })
 
-    expect(payload.medicalAppointments?.[0]).not.toHaveProperty(
-      "hasReferralSheet",
-    )
-    expect(payload.medicalAppointments?.[0]).not.toHaveProperty("referredTo")
-    expect(payload.medicalAppointments?.[0]).not.toHaveProperty(
+    expect(payload.symptomReport).toMatchObject({
+      hasMedicalConsultation: true,
+      hasReferral: false,
+      referralNotProvidedReason: "No fue necesario referir",
+      hasReceivedDiagnosis: false,
+    })
+    expect(payload.symptomReport).not.toHaveProperty("referredHealthCenterId")
+    expect(payload.symptomReport).not.toHaveProperty("nextConsultationDate")
+    expect(payload.medicalAppointments).toBeUndefined()
+  })
+
+  it("keeps a null referral answer without sending conditional fields", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          isAwaitingDiagnosis: false,
+          hasReferral: null,
+          referredHealthCenterId: "legacy-center",
+          referralNotProvidedReason: "legacy reason",
+          hasReceivedDiagnosis: false,
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      hasReferral: null,
+      hasReceivedDiagnosis: false,
+    })
+    expect(payload.symptomReport).not.toHaveProperty("referredHealthCenterId")
+    expect(payload.symptomReport).not.toHaveProperty(
       "referralNotProvidedReason",
     )
   })

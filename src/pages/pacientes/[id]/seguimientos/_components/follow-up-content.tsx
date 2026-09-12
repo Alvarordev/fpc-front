@@ -27,6 +27,7 @@ import {
   type PatientTreatment,
 } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
+import { nonOncologicalFollowUpsApi } from "@/api/non-oncological-follow-ups"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -66,7 +67,7 @@ import {
   useFollowUpDraftStore,
 } from "../_store/follow-up-draft-store"
 import { usePatient } from "../../_hooks/use-patient"
-import { toDurationInput } from "@/types/duration"
+import { normalizeDuration, toDurationInput } from "@/types/duration"
 import {
   patientHealthPhaseLabels,
   patientHealthSubcategoryOptions,
@@ -172,6 +173,33 @@ export function FollowUpContent() {
     staleTime: 60_000,
   })
   const patientQuery = usePatient(patientId ?? "")
+  useEffect(() => {
+    const record = patientQuery.data?.nonOncologicalFollowUps?.find(
+      (item) => item.followUpId === followUpId,
+    )
+    if (!record) return
+    const current = useFollowUpDraftStore.getState().clinical
+      .nonOncologicalFollowUp
+    if (current?.id === record.id) return
+    useFollowUpDraftStore.getState().updateClinical((previous) => ({
+      ...previous,
+      nonOncologicalFollowUp: {
+        id: record.id,
+        diagnosis: record.diagnosis,
+        occurredOn: record.occurredOn,
+        receivesTreatment: record.receivesTreatment,
+        treatmentName: record.treatmentName,
+        medication: record.medication,
+        treatmentFrequency: normalizeDuration(record.treatmentFrequency),
+        hasControls: record.hasControls,
+        controlSpecialty: record.controlSpecialty,
+        controlPeriodicity: normalizeDuration(record.controlPeriodicity),
+        status: record.status,
+        dischargedOn: record.dischargedOn,
+        dischargeReason: record.dischargeReason,
+      },
+    }))
+  }, [followUpId, patientQuery.data?.nonOncologicalFollowUps])
   const healthSubcategoryMutation = useMutation({
     mutationFn: (subcategory: PatientHealthSubcategory | null) =>
       patientsApi.updateDetails(patientId!, {
@@ -359,7 +387,7 @@ export function FollowUpContent() {
         mode,
         replacementDiagnosisId,
         waitTimeForDiagnosisManuallyEdited,
-        changeReason: _changeReason,
+        changeReason,
         ...diagnosisDraft
       } = diagnosisDecision
       const waitTimeForDiagnosis = waitTimeForDiagnosisManuallyEdited
@@ -379,6 +407,7 @@ export function FollowUpContent() {
         ...diagnosisDraft,
         mode,
         ...(mode === "REPLACE" ? { replacementDiagnosisId } : {}),
+        changeReason,
         waitTimeForDiagnosis,
         followUpId: followUpId!,
       })
@@ -458,21 +487,81 @@ export function FollowUpContent() {
     }
 
     if (clinicalDrafts.symptomReport) {
-      const { symptomDuration, symptomFrequency, ...symptomReportDraft } =
-        clinicalDrafts.symptomReport
+      const {
+        symptomDuration,
+        symptomFrequency,
+        diagnosisSearchDuration,
+        reportedTreatmentFrequency,
+        ...symptomReportDraft
+      } = clinicalDrafts.symptomReport
       const normalizedDuration = toDurationInput(symptomDuration)
       const normalizedFrequency = toDurationInput(symptomFrequency)
+      const normalizedDiagnosisSearchDuration = toDurationInput(
+        diagnosisSearchDuration,
+      )
+      const normalizedReportedTreatmentFrequency = toDurationInput(
+        reportedTreatmentFrequency,
+      )
       if (symptomDuration?.valueMin !== undefined && !normalizedDuration)
         throw new Error("Completa correctamente la duración de los síntomas")
       if (symptomFrequency?.valueMin !== undefined && !normalizedFrequency)
         throw new Error("Completa correctamente la frecuencia de los síntomas")
+      if (
+        diagnosisSearchDuration?.valueMin !== undefined &&
+        !normalizedDiagnosisSearchDuration
+      )
+        throw new Error("Completa correctamente el tiempo de búsqueda")
+      if (
+        reportedTreatmentFrequency?.valueMin !== undefined &&
+        !normalizedReportedTreatmentFrequency
+      )
+        throw new Error("Completa correctamente la frecuencia del tratamiento")
 
       await patientsApi.createSymptomReport(patientId!, {
         ...symptomReportDraft,
         symptomDuration: normalizedDuration,
         symptomFrequency: normalizedFrequency,
+        diagnosisSearchDuration: normalizedDiagnosisSearchDuration,
+        reportedTreatmentFrequency: normalizedReportedTreatmentFrequency,
         followUpId: followUpId!,
       })
+    }
+
+    if (clinicalDrafts.nonOncologicalFollowUp) {
+      const record = clinicalDrafts.nonOncologicalFollowUp
+      const treatmentFrequency = toDurationInput(record.treatmentFrequency)
+      const controlPeriodicity = toDurationInput(record.controlPeriodicity)
+      if (
+        record.treatmentFrequency?.valueMin !== undefined &&
+        !treatmentFrequency
+      )
+        throw new Error("Completa correctamente la frecuencia del tratamiento")
+      if (
+        record.controlPeriodicity?.valueMin !== undefined &&
+        !controlPeriodicity
+      )
+        throw new Error("Completa correctamente la periodicidad de controles")
+      const input = {
+        diagnosis: record.diagnosis.trim(),
+        followUpId,
+        occurredOn: record.occurredOn || undefined,
+        receivesTreatment: record.receivesTreatment,
+        treatmentName:
+          record.receivesTreatment === false ? undefined : record.treatmentName,
+        medication:
+          record.receivesTreatment === false ? undefined : record.medication,
+        treatmentFrequency,
+        hasControls: record.hasControls,
+        controlSpecialty:
+          record.hasControls === true ? record.controlSpecialty : undefined,
+        controlPeriodicity,
+        status: record.status,
+        dischargedOn: record.dischargedOn,
+        dischargeReason: record.dischargeReason,
+      }
+      if (record.id)
+        await nonOncologicalFollowUpsApi.update(patientId!, record.id, input)
+      else await nonOncologicalFollowUpsApi.create(patientId!, input)
     }
 
     if (clinicalDrafts.insurance) {

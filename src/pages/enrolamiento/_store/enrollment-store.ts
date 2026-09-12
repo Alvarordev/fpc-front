@@ -177,6 +177,36 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   enrollmentMetadata: {},
 }
 
+type RawSymptomReport = Partial<EnrollmentDraft["symptomReport"]> &
+  Record<string, unknown>
+
+const LEGACY_DURATION_FIELDS = [
+  "symptomDuration",
+  "symptomFrequency",
+  "diagnosisSearchDuration",
+  "reportedTreatmentFrequency",
+] as const
+
+function normalizeSymptomReport(
+  raw: RawSymptomReport | undefined,
+): EnrollmentDraft["symptomReport"] {
+  const normalized = {
+    ...DEFAULT_DRAFT.symptomReport,
+    ...(raw ?? {}),
+  } as EnrollmentDraft["symptomReport"] & Record<string, unknown>
+
+  // Keep legacy values when a hidden field is absent or cannot be normalized.
+  // Historical drafts must not lose information just because the new form no
+  // longer renders that field.
+  for (const field of LEGACY_DURATION_FIELDS) {
+    if (!raw || !Object.prototype.hasOwnProperty.call(raw, field)) continue
+    const normalizedValue = normalizeDuration(raw[field])
+    if (normalizedValue) normalized[field] = normalizedValue
+  }
+
+  return normalized
+}
+
 function normalizeDraft(
   draft: Partial<EnrollmentDraft> | undefined,
 ): EnrollmentDraft {
@@ -267,14 +297,7 @@ function normalizeDraft(
       : [])
   const legacyDiagnosis = raw?.diagnosis
   const legacyTreatment = raw?.treatment
-  const legacySymptoms = draft?.symptomReport as
-    | (EnrollmentDraft["symptomReport"] & {
-        symptomDuration?: unknown
-        symptomFrequency?: unknown
-        diagnosisSearchDuration?: unknown
-        reportedTreatmentFrequency?: unknown
-      })
-    | undefined
+  const legacySymptoms = draft?.symptomReport as RawSymptomReport | undefined
   const oldTreatmentSituation: Record<
     string,
     EnrollmentTreatmentDraft["treatmentSituation"]
@@ -386,18 +409,7 @@ function normalizeDraft(
       ),
     },
     insurance: { ...DEFAULT_DRAFT.insurance, ...draft?.insurance },
-    symptomReport: {
-      ...DEFAULT_DRAFT.symptomReport,
-      ...raw?.symptomReport,
-      symptomDuration: normalizeDuration(legacySymptoms?.symptomDuration),
-      symptomFrequency: normalizeDuration(legacySymptoms?.symptomFrequency),
-      diagnosisSearchDuration: normalizeDuration(
-        legacySymptoms?.diagnosisSearchDuration,
-      ),
-      reportedTreatmentFrequency: normalizeDuration(
-        legacySymptoms?.reportedTreatmentFrequency,
-      ),
-    },
+    symptomReport: normalizeSymptomReport(legacySymptoms),
     diagnoses,
     treatments,
     addresses: migratedAddresses,
@@ -512,7 +524,20 @@ export const useEnrollmentStore = create<EnrollmentState>()(
         set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) })),
 
       updateDraft: (partial) =>
-        set((s) => ({ draft: normalizeDraft({ ...s.draft, ...partial }) })),
+        set((s) => ({
+          draft: normalizeDraft({
+            ...s.draft,
+            ...partial,
+            ...(partial.symptomReport
+              ? {
+                  symptomReport: {
+                    ...s.draft.symptomReport,
+                    ...partial.symptomReport,
+                  },
+                }
+              : {}),
+          }),
+        })),
 
       setRejection: (reason) => set({ rejectionReason: reason }),
       clearRejection: () => set({ rejectionReason: null }),

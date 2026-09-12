@@ -31,6 +31,8 @@ const outcomeIcons: Record<
   REMINDER: Bell,
   PSYCHOONCOLOGY_APPOINTMENT: Brain,
   MEDICAL_APPOINTMENT: Calendar,
+  NON_ONCOLOGICAL_FOLLOW_UP: HeartPulse,
+  DIAGNOSTIC_STATUS: Stethoscope,
   ALERT: AlertTriangle,
 }
 

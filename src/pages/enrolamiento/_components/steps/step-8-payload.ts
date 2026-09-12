@@ -9,10 +9,7 @@ import {
 import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import { getAge } from "../../_utils/patient-age"
 import { toDurationInput } from "@/types/duration"
-import type {
-  EnrollmentContactSource,
-  MedicalConsultationStatus,
-} from "@/types"
+import type { EnrollmentContactSource } from "@/types"
 
 interface BaseBuildEnrollmentPayloadOptions {
   draft: EnrollmentDraft
@@ -298,15 +295,11 @@ export function buildEnrollmentPayload({
   })
   const hasDiagnosis = diagnosisPayloads.length > 0
   const hasTreatment = treatmentPayloads.length > 0
-  const consultationStatus: MedicalConsultationStatus | undefined =
-    draft.symptomReport.consultationStatus ?? undefined
+  const consultationStatus = draft.symptomReport.consultationStatus ?? undefined
   const symptom = draft.symptomReport
   const usesAppointment =
-    healthPhase === "CANCER_DIAGNOSIS"
-      ? meta.currentlyAttendingConsultations === true
-      : symptom.hasRequestedMedicalConsultation === true &&
-        (consultationStatus === "SCHEDULED" ||
-          consultationStatus === "ATTENDED")
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === true
   const appointment = usesAppointment
     ? draft.medicalAppointments.find(
         (item) =>
@@ -354,84 +347,52 @@ export function buildEnrollmentPayload({
   ) {
     throw new Error("Indica el motivo por el que no recibe tratamiento")
   }
-  const needsSignsAppointment =
-    healthPhase === "SIGNS_AND_SYMPTOMS" &&
-    (consultationStatus === "SCHEDULED" || consultationStatus === "ATTENDED")
-  if (needsSignsAppointment && !appointment) {
-    throw new Error("Completa los datos de la consulta médica")
-  }
-  if (appointment && !value(appointment.specialty))
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    appointment &&
+    !value(appointment.specialty)
+  )
     throw new Error("Indica la especialidad de la consulta")
   if (healthPhase === "SIGNS_AND_SYMPTOMS") {
-    if (typeof symptom.hasDiscomfort !== "boolean")
+    if (symptom.hasDiscomfort === undefined)
       throw new Error("Indica si presenta algún malestar o dolor")
-    if (typeof symptom.hasRequestedMedicalConsultation !== "boolean")
-      throw new Error("Indica si solicitó una consulta médica")
-    if (typeof symptom.hasReceivedDiagnosis !== "boolean")
-      throw new Error("Indica si le informaron algún diagnóstico")
-    if (typeof symptom.isReceivingReportedTreatment !== "boolean")
-      throw new Error("Indica si recibe el tratamiento informado")
     if (symptom.hasDiscomfort === false && !value(symptom.checkupMotivation))
       throw new Error("Indica qué motivó el examen médico")
-    if (symptom.hasRequestedMedicalConsultation === true) {
-      if (!consultationStatus)
-        throw new Error("Indica el estado de la consulta médica")
-      if (
-        consultationStatus === "NOT_OBTAINED" &&
-        !value(symptom.consultationNotObtainedReason)
-      )
-        throw new Error("Indica por qué no obtuvo la consulta médica")
-      if (
-        (consultationStatus === "SCHEDULED" ||
-          consultationStatus === "ATTENDED") &&
-        (!value(symptom.healthCenterId) || !value(symptom.specialty))
-      )
+    if (typeof symptom.hasMedicalConsultation !== "boolean")
+      throw new Error("Indica si realizó una consulta médica")
+    if (symptom.hasMedicalConsultation === false) {
+      if (!value(symptom.noMedicalConsultationReason))
+        throw new Error("Indica por qué no realizó la consulta médica")
+    } else {
+      if (!value(symptom.healthCenterId) || !value(symptom.specialty))
         throw new Error("Indica establecimiento y especialidad de la consulta")
+      if (!value(symptom.firstConsultationDate))
+        throw new Error("Indica la fecha de la primera consulta")
+      if (typeof symptom.isAwaitingDiagnosis !== "boolean")
+        throw new Error("Indica si está a la espera de un diagnóstico")
+      if (symptom.hasReferral === undefined)
+        throw new Error("Indica si cuenta con ficha de remisión")
       if (
-        (consultationStatus === "SCHEDULED" ||
-          consultationStatus === "ATTENDED") &&
-        !appointment?.appointmentDate
+        symptom.hasReferral === true &&
+        !value(symptom.referredHealthCenterId)
       )
-        throw new Error("Indica la fecha de la consulta médica")
-      if (consultationStatus === "ATTENDED") {
-        if (appointment?.hasReferralSheet === undefined)
-          throw new Error("Indica si recibió una hoja de referencia")
-        if (appointment.hasReferralSheet && !value(appointment.referredTo))
-          throw new Error("Indica a dónde fue referido")
-        if (
-          appointment.hasReferralSheet === false &&
-          !value(appointment.referralNotProvidedReason)
-        )
-          throw new Error("Indica por qué no recibió la hoja de referencia")
-      }
-    }
-    if (
-      symptom.hasReceivedDiagnosis === true &&
-      !value(symptom.reportedDiagnosis)
-    )
-      throw new Error("Indica el diagnóstico que le informaron")
-    if (symptom.isReceivingReportedTreatment === true) {
+        throw new Error("Indica el establecimiento al que fue referido")
       if (
-        !value(symptom.reportedTreatment) ||
-        !duration(
-          symptom.reportedTreatmentFrequency,
-          "frecuencia del tratamiento reportado",
-        )
+        symptom.hasReferral === false &&
+        !value(symptom.referralNotProvidedReason)
       )
-        throw new Error("Completa el tratamiento reportado y su frecuencia")
-    } else if (
-      symptom.isReceivingReportedTreatment === false &&
-      !value(symptom.notReceivingTreatmentReason)
-    ) {
-      throw new Error("Indica por qué no recibe tratamiento")
+        throw new Error("Indica por qué no cuenta con ficha de remisión")
+      if (typeof symptom.hasReceivedDiagnosis !== "boolean")
+        throw new Error("Indica si le informaron algún diagnóstico")
+      if (
+        symptom.hasReceivedDiagnosis === true &&
+        !value(symptom.reportedDiagnosis)
+      )
+        throw new Error("Indica el diagnóstico que le informaron")
     }
   }
   const appointmentToSend =
-    healthPhase === "SIGNS_AND_SYMPTOMS" &&
-    (symptom.hasRequestedMedicalConsultation === false ||
-      consultationStatus === "NOT_OBTAINED")
-      ? undefined
-      : appointment
+    healthPhase === "CANCER_DIAGNOSIS" ? appointment : undefined
   const addresses = draft.addresses
     .filter(
       (address) =>
@@ -626,84 +587,59 @@ export function buildEnrollmentPayload({
         }
       : {}),
     ...(healthPhase === "SIGNS_AND_SYMPTOMS" &&
-    typeof draft.symptomReport.hasDiscomfort === "boolean"
+    draft.symptomReport.hasDiscomfort !== undefined
       ? {
           symptomReport: {
-            hasDiscomfort: draft.symptomReport.hasDiscomfort,
-            ...(draft.symptomReport.hasDiscomfort === false
+            hasDiscomfort: symptom.hasDiscomfort,
+            ...(symptom.hasDiscomfort === false
               ? {
-                  checkupMotivation: value(
-                    draft.symptomReport.checkupMotivation,
-                  ),
+                  checkupMotivation: value(symptom.checkupMotivation)!,
                 }
               : {}),
-            signsAndSymptoms: value(draft.symptomReport.signsAndSymptoms),
-            ...(draft.symptomReport.consultationStatus === "SCHEDULED" ||
-            draft.symptomReport.consultationStatus === "ATTENDED"
+            ...(symptom.hasDiscomfort === true &&
+            value(symptom.signsAndSymptoms)
               ? {
-                  indicationsReceived: value(
-                    draft.symptomReport.indicationsReceived,
-                  ),
+                  signsAndSymptoms: value(symptom.signsAndSymptoms)!,
                 }
               : {}),
-            symptomDuration: duration(
-              draft.symptomReport.symptomDuration,
-              "duración de los síntomas",
-            ),
-            symptomFrequency: duration(
-              draft.symptomReport.symptomFrequency,
-              "frecuencia de los síntomas",
-            ),
-            hasRequestedMedicalConsultation:
-              draft.symptomReport.hasRequestedMedicalConsultation ?? undefined,
-            consultationStatus:
-              draft.symptomReport.consultationStatus ?? undefined,
-            ...(draft.symptomReport.consultationStatus === "NOT_OBTAINED"
+            hasMedicalConsultation: symptom.hasMedicalConsultation,
+            ...(symptom.hasMedicalConsultation === false
               ? {
-                  consultationNotObtainedReason: value(
-                    draft.symptomReport.consultationNotObtainedReason,
-                  ),
+                  noMedicalConsultationReason: value(
+                    symptom.noMedicalConsultationReason,
+                  )!,
                 }
-              : {}),
-            ...(draft.symptomReport.consultationStatus === "SCHEDULED" ||
-            draft.symptomReport.consultationStatus === "ATTENDED"
-              ? {
-                  healthCenterId: value(draft.symptomReport.healthCenterId),
-                  specialty: value(draft.symptomReport.specialty),
-                }
-              : {}),
-            diagnosisSearchDuration: duration(
-              draft.symptomReport.diagnosisSearchDuration,
-              "tiempo buscando diagnóstico",
-            ),
-            hasReceivedDiagnosis:
-              draft.symptomReport.hasReceivedDiagnosis ?? undefined,
-            ...(draft.symptomReport.hasReceivedDiagnosis === true
-              ? {
-                  reportedDiagnosis: value(
-                    draft.symptomReport.reportedDiagnosis,
-                  ),
-                }
-              : {}),
-            isReceivingReportedTreatment:
-              draft.symptomReport.isReceivingReportedTreatment ?? undefined,
-            ...(draft.symptomReport.isReceivingReportedTreatment === true
-              ? {
-                  reportedTreatment: value(
-                    draft.symptomReport.reportedTreatment,
-                  ),
-                  reportedTreatmentFrequency: duration(
-                    draft.symptomReport.reportedTreatmentFrequency,
-                    "frecuencia del tratamiento reportado",
-                  ),
-                }
-              : draft.symptomReport.isReceivingReportedTreatment === false
-                ? {
-                    notReceivingTreatmentReason: value(
-                      draft.symptomReport.notReceivingTreatmentReason,
-                    ),
-                  }
-                : {}),
+              : {
+                  healthCenterId: value(symptom.healthCenterId)!,
+                  specialty: value(symptom.specialty)!,
+                  firstConsultationDate: value(symptom.firstConsultationDate)!,
+                  isAwaitingDiagnosis: symptom.isAwaitingDiagnosis,
+                  hasReferral: symptom.hasReferral,
+                  ...(symptom.hasReferral === true
+                    ? {
+                        referredHealthCenterId: value(
+                          symptom.referredHealthCenterId,
+                        )!,
+                      }
+                    : symptom.hasReferral === false
+                      ? {
+                          referralNotProvidedReason: value(
+                            symptom.referralNotProvidedReason,
+                          )!,
+                        }
+                      : {}),
+                  hasReceivedDiagnosis: symptom.hasReceivedDiagnosis,
+                  ...(symptom.hasReceivedDiagnosis === true
+                    ? { reportedDiagnosis: value(symptom.reportedDiagnosis)! }
+                    : {}),
+                  ...(value(symptom.nextConsultationDate)
+                    ? {
+                        nextConsultationDate: value(
+                          symptom.nextConsultationDate,
+                        )!,
+                      }
+                    : {}),
+                }),
           },
         }
       : {}),

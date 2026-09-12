@@ -61,10 +61,48 @@ export type HealthBackgroundAssessmentDraft = Omit<
 >
 export type SymptomReportDraft = Omit<
   CreatePatientSymptomReportInput,
-  "followUpId" | "symptomDuration" | "symptomFrequency"
+  | "followUpId"
+  | "symptomDuration"
+  | "symptomFrequency"
+  | "diagnosisSearchDuration"
+  | "reportedTreatmentFrequency"
+  | "hasDiscomfort"
+  | "hasMedicalConsultation"
+  | "isAwaitingDiagnosis"
+  | "hasReferral"
+  | "hasReceivedDiagnosis"
 > & {
+  hasDiscomfort?: boolean | null
+  hasMedicalConsultation?: boolean | null
+  noMedicalConsultationReason?: string | null
+  firstConsultationDate?: string | null
+  isAwaitingDiagnosis?: boolean | null
+  hasReferral?: boolean | null
+  referredHealthCenterId?: string | null
+  referralNotProvidedReason?: string | null
+  hasReceivedDiagnosis?: boolean | null
+  reportedDiagnosis?: string | null
+  nextConsultationDate?: string | null
   symptomDuration?: DurationDraft
   symptomFrequency?: DurationDraft
+  diagnosisSearchDuration?: DurationDraft
+  reportedTreatmentFrequency?: DurationDraft
+}
+
+export type NonOncologicalFollowUpDraft = {
+  id?: string
+  diagnosis: string
+  occurredOn?: string | null
+  receivesTreatment?: boolean | null
+  treatmentName?: string | null
+  medication?: string | null
+  treatmentFrequency?: DurationDraft
+  hasControls?: boolean | null
+  controlSpecialty?: string | null
+  controlPeriodicity?: DurationDraft
+  status?: "ACTIVE" | "DISCHARGED"
+  dischargedOn?: string | null
+  dischargeReason?: string | null
 }
 
 /** Contact choice kept as draft in historical mode (no immediate PATCH). */
@@ -81,6 +119,7 @@ export interface ClinicalDrafts {
   treatments?: TreatmentDraft[]
   socialNotes?: SocialNoteDraft[]
   symptomReport?: SymptomReportDraft
+  nonOncologicalFollowUp?: NonOncologicalFollowUpDraft
   insurance?: InsuranceDraft
   sisAffiliation?: SisAffiliationDraft
   healthBackground?: HealthBackgroundAssessmentDraft
@@ -96,6 +135,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.treatments?.length ||
     drafts.socialNotes?.length ||
     drafts.symptomReport ||
+    drafts.nonOncologicalFollowUp ||
     drafts.insurance ||
     drafts.sisAffiliation ||
     drafts.healthBackground ||

@@ -28,9 +28,11 @@ import type {
   PatientDetailsResponse,
   PatientHealthBackgroundAssessment,
   PatientInsurance,
+  PatientSymptomReport,
   PatientSocialNote,
   PatientSisAffiliation,
   PatientTreatment,
+  PatientDiagnosticStatusEvent,
   TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
 import { patientsApi } from "@/api/patients"
@@ -49,6 +51,7 @@ import {
 import {
   Activity,
   Building2,
+  ClipboardPlus,
   FileUp,
   HeartPulse,
   MapPin,
@@ -94,6 +97,7 @@ import {
   type InsuranceDraft,
   type SisAffiliationDraft,
   type SymptomReportDraft,
+  type NonOncologicalFollowUpDraft,
   type TreatmentDraft,
   type TreatmentDecisionMode,
   type SocialNoteDraft,
@@ -112,6 +116,13 @@ const TRI_OPTIONS = [
   { value: TRI_UNSET, label: "Sin dato" },
   { value: "SI", label: "Sí" },
   { value: "NO", label: "No" },
+] as const
+
+const CLINICAL_TRI_OPTIONS = [
+  { value: TRI_UNSET, label: "Sin dato" },
+  { value: "SI", label: "Sí" },
+  { value: "NO", label: "No" },
+  { value: "NO_MENCIONA", label: "No menciona" },
 ] as const
 
 const TREATMENT_SITUATIONS = [
@@ -152,7 +163,9 @@ type DiagnosticStatus = NonNullable<
   TransitionPatientDiagnosticStatusDto["status"]
 >
 
-const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(interruptionReasonLabels)
+const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(
+  interruptionReasonLabels,
+)
 const ACCESS_BARRIER_ITEMS = labelMapToSelectItems(accessBarrierLabels)
 const TRANSPORTATION_SEPA_PROVIDER_ITEMS = labelMapToSelectItems(
   transportationSepaProviderLabels,
@@ -164,6 +177,11 @@ const PROGRAM_DROPOUT_REASON_CODE_ITEMS = labelMapToSelectItems(
   programDropoutReasonCodeLabels,
 )
 const DIAGNOSTIC_STATUS_ITEMS = labelMapToSelectItems(diagnosticStatusLabels)
+
+const NON_ONCOLOGICAL_STATUS_ITEMS = [
+  { value: "ACTIVE", label: "Activo" },
+  { value: "DISCHARGED", label: "Dado de alta" },
+] as const
 
 const CARE_PROGRAMS = [
   { value: "COPHOES", label: "COPHOES" },
@@ -222,6 +240,54 @@ function TriSelect({
           <SelectItem value={TRI_UNSET}>—</SelectItem>
           <SelectItem value="SI">Sí</SelectItem>
           <SelectItem value="NO">No</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+function ClinicalTriSelect({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean | null | undefined
+  onChange: (value: boolean | null | undefined) => void
+  label: string
+}) {
+  const raw =
+    value === undefined
+      ? TRI_UNSET
+      : value === null
+        ? "NO_MENCIONA"
+        : value
+          ? "SI"
+          : "NO"
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Select
+        items={CLINICAL_TRI_OPTIONS}
+        value={raw}
+        onValueChange={(v) =>
+          onChange(
+            v === TRI_UNSET
+              ? undefined
+              : v === "NO_MENCIONA"
+                ? null
+                : v === "SI",
+          )
+        }
+      >
+        <SelectTrigger className="h-9">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {CLINICAL_TRI_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -403,231 +469,281 @@ export function ClinicalDataTabs({
   })
 
   const diagnoses = patient?.diagnoses ?? []
+  const enrollmentSymptomReport = (patient?.symptomReports ?? [])
+    .filter((report) => report.enrollmentId !== null)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   const currentDiagnoses = diagnoses.filter((diagnosis) => diagnosis.isCurrent)
   const isSignsAndSymptoms =
     patient?.details?.healthPhase === "SIGNS_AND_SYMPTOMS"
 
   return (
     <>
-    {isSignsAndSymptoms && !isHistorical ? (
-      <DiagnosticStatusCard patientId={patientId} followUpId={followUpId} />
-    ) : null}
     <Tabs
-      orientation="vertical"
-      value={activeTab}
-      onValueChange={(value) => setActiveTab(String(value))}
-      className="flex-col items-stretch gap-3 lg:flex-row"
-    >
-      <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-56 lg:flex-col lg:overflow-visible">
-        <TabsTrigger
-          value="datos"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <UserRound className="size-4 text-sky-600" />
-          <span className="min-w-0 break-words">Datos clínicos</span>
-          {drafts.details && <DraftDot />}
-        </TabsTrigger>
-        <TabsTrigger
-          value="sintomas"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <Activity className="size-4 text-rose-600" />
-          <span className="min-w-0 break-words">Síntomas</span>
-          {drafts.symptomReport && <DraftDot />}
-        </TabsTrigger>
-        <TabsTrigger
-          value="direcciones"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <MapPin className="size-4 text-emerald-600" />
-          <span className="min-w-0 break-words">Direcciones</span>
-          {drafts.address && <DraftDot />}
-        </TabsTrigger>
-        <TabsTrigger
-          value="contacto"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <Phone className="size-4 text-cyan-600" />
-          <span className="min-w-0 break-words">Contacto</span>
-        </TabsTrigger>
-        <TabsTrigger
-          value="diagnostico"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <Stethoscope className="size-4 text-violet-600" />
-          <span className="min-w-0 break-words">Diagnóstico</span>
-          {drafts.diagnoses?.length ? <DraftDot /> : null}
-        </TabsTrigger>
-        <TabsTrigger
-          value="antecedentes"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <HeartPulse className="size-4 text-pink-600" />
-          <span className="min-w-0 break-words">
-            Antecedentes y comorbilidades
-          </span>
-          {drafts.healthBackground && <DraftDot />}
-        </TabsTrigger>
-        <TabsTrigger
-          value="tratamiento"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <Pill className="size-4 text-amber-600" />
-          <span className="min-w-0 break-words">Tratamientos</span>
-          {drafts.treatments?.length ? <DraftDot /> : null}
-        </TabsTrigger>
-        <TabsTrigger
-          value="seguro"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <ShieldCheck className="size-4 text-teal-600" />
-          <span className="min-w-0 break-words">INFORMACIÓN DE SEGURO</span>
-          {drafts.insurance && <DraftDot />}
-        </TabsTrigger>
-        <TabsTrigger
-          value="social"
-          className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-        >
-          <Users className="size-4 text-orange-600" />
-          <span className="min-w-0 break-words">Seguimiento social</span>
-          {(drafts.social || drafts.socialNotes?.length) && <DraftDot />}
-        </TabsTrigger>
-      </TabsList>
+        orientation="vertical"
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(String(value))}
+        className="flex-col items-stretch gap-3 lg:flex-row"
+      >
+        <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-56 lg:flex-col lg:overflow-visible">
+          <TabsTrigger
+            value="datos"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <UserRound className="size-4 text-sky-600" />
+            <span className="min-w-0 break-words">Datos clínicos</span>
+            {drafts.details && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="sintomas"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <Activity className="size-4 text-rose-600" />
+            <span className="min-w-0 break-words">Síntomas</span>
+            {drafts.symptomReport && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="no-oncologico"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <ClipboardPlus className="size-4 text-emerald-600" />
+            <span className="min-w-0 break-words">
+              Seguimiento no oncológico
+            </span>
+            {drafts.nonOncologicalFollowUp && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="direcciones"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <MapPin className="size-4 text-emerald-600" />
+            <span className="min-w-0 break-words">Direcciones</span>
+            {drafts.address && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="contacto"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <Phone className="size-4 text-cyan-600" />
+            <span className="min-w-0 break-words">Contacto</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="diagnostico"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <Stethoscope className="size-4 text-violet-600" />
+            <span className="min-w-0 break-words">Diagnóstico</span>
+            {drafts.diagnoses?.length ? <DraftDot /> : null}
+          </TabsTrigger>
+          <TabsTrigger
+            value="antecedentes"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <HeartPulse className="size-4 text-pink-600" />
+            <span className="min-w-0 break-words">
+              Antecedentes y comorbilidades
+            </span>
+            {drafts.healthBackground && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="tratamiento"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <Pill className="size-4 text-amber-600" />
+            <span className="min-w-0 break-words">Tratamientos</span>
+            {drafts.treatments?.length ? <DraftDot /> : null}
+          </TabsTrigger>
+          <TabsTrigger
+            value="seguro"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <ShieldCheck className="size-4 text-teal-600" />
+            <span className="min-w-0 break-words">INFORMACIÓN DE SEGURO</span>
+            {drafts.insurance && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="social"
+            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+          >
+            <Users className="size-4 text-orange-600" />
+            <span className="min-w-0 break-words">Seguimiento social</span>
+            {(drafts.social || drafts.socialNotes?.length) && <DraftDot />}
+          </TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="datos" keepMounted className="min-w-0 flex-1 pr-1">
-        <DatosGeneralesForm
-          draft={drafts.details}
-          currentDetails={patient?.details ?? null}
-          onSave={(details) => onDraftsChange((prev) => ({ ...prev, details }))}
-        />
-      </TabsContent>
-      <TabsContent value="sintomas" keepMounted className="min-w-0 flex-1 pr-1">
-        <SintomasForm
-          draft={drafts.symptomReport}
-          hospitals={hospitals}
-          onOpenNewHospital={() => setNewHospitalOpen(true)}
-          onSave={(symptomReport) =>
-            onDraftsChange((prev) => ({ ...prev, symptomReport }))
-          }
-        />
-      </TabsContent>
-      <TabsContent
-        value="antecedentes"
-        keepMounted
-        className="min-w-0 flex-1 pr-1"
-      >
-        <AntecedentesForm
-          draft={drafts.healthBackground}
-          latestAssessment={patient?.healthBackgroundAssessments?.reduce(
-            (latest, assessment) =>
-              !latest || assessment.createdAt > latest.createdAt
-                ? assessment
-                : latest,
-            undefined as PatientHealthBackgroundAssessment | undefined,
-          )}
-          onSave={(healthBackground) =>
-            onDraftsChange((prev) => ({ ...prev, healthBackground }))
-          }
-        />
-      </TabsContent>
-      <TabsContent
-        value="direcciones"
-        keepMounted
-        className="min-w-0 flex-1 pr-1"
-      >
-        <AddressForm
-          draft={drafts.address}
-          addresses={addresses}
-          onSave={(address) => onDraftsChange((prev) => ({ ...prev, address }))}
-        />
-      </TabsContent>
-      <TabsContent value="contacto" keepMounted className="min-w-0 flex-1 pr-1">
-        {patient ? (
-          <div className="space-y-3">
-            {isHistorical && drafts.contact ? (
-              <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
-                Interlocutor en borrador:{" "}
-                <span className="text-foreground font-medium">
-                  {drafts.contact.kind === "PATIENT"
-                    ? "Paciente"
-                    : "Acompañante"}
-                </span>
-              </p>
-            ) : null}
-            <FollowUpContactForm
-              key={companions.map((link) => link.id).join(",")}
-              patient={patient}
-              companions={companions}
-              isPending={contactMutation.isPending}
-              onSubmit={async (values) => contactMutation.mutateAsync(values)}
+        <TabsContent value="datos" keepMounted className="min-w-0 flex-1 pr-1">
+          <DatosGeneralesForm
+            draft={drafts.details}
+            currentDetails={patient?.details ?? null}
+            onSave={(details) =>
+              onDraftsChange((prev) => ({ ...prev, details }))
+            }
+          />
+        </TabsContent>
+        <TabsContent
+          value="sintomas"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <SintomasForm
+            draft={drafts.symptomReport}
+            enrollmentSymptomReport={enrollmentSymptomReport}
+            hospitals={hospitals}
+            historical={isHistorical}
+            onOpenNewHospital={() => setNewHospitalOpen(true)}
+            onSave={(symptomReport) =>
+              onDraftsChange((prev) => ({ ...prev, symptomReport }))
+            }
+          />
+          {isSignsAndSymptoms ? (
+            <DiagnosticStatusCard
+              patientId={patientId}
+              followUpId={followUpId}
+              readOnly={isHistorical}
             />
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">Cargando contacto...</p>
-        )}
-      </TabsContent>
-      <TabsContent
-        value="diagnostico"
-        keepMounted
-        className="min-w-0 flex-1 pr-1"
-      >
-        <DiagnosticoForm
-          draft={drafts.diagnoses}
-          hospitals={hospitals}
-          currentDiagnoses={currentDiagnoses}
-          onOpenNewHospital={() => setNewHospitalOpen(true)}
-          onViewDiagnosis={onViewDiagnosis}
-          onSave={(diagnoses) =>
-            onDraftsChange((prev) => ({ ...prev, diagnoses }))
-          }
-        />
-      </TabsContent>
-      <TabsContent
-        value="tratamiento"
-        keepMounted
-        className="min-w-0 flex-1 pr-1"
-      >
-        <TratamientosForm
-          patientId={patientId}
-          draft={drafts.treatments}
-          hospitals={hospitals}
-          diagnoses={diagnoses}
-          treatments={patient?.treatments ?? []}
-          diagnosisDrafts={drafts.diagnoses}
-          onOpenNewHospital={() => setNewHospitalOpen(true)}
-          onViewTreatment={onViewTreatment}
-          onSave={(treatments) =>
-            onDraftsChange((prev) => ({ ...prev, treatments }))
-          }
-        />
-      </TabsContent>
-      <TabsContent value="seguro" keepMounted className="min-w-0 flex-1 pr-1">
-        <SeguroForm
-          insuranceDraft={drafts.insurance}
-          sisDraft={drafts.sisAffiliation}
-          currentInsurance={patient?.insurance.find((item) => item.isCurrent)}
-          currentSisAffiliation={patient?.sisAffiliations[0]}
-          onSave={(insurance, sisAffiliation) =>
-            onDraftsChange((prev) => ({ ...prev, insurance, sisAffiliation }))
-          }
-        />
-      </TabsContent>
-      <TabsContent value="social" keepMounted className="min-w-0 flex-1 pr-1">
-        <SeguimientoSocialForm
-          draft={drafts.social}
-          currentDetails={patient?.details ?? null}
-          existingNotes={socialNotes}
-          noteDrafts={drafts.socialNotes}
-          onSave={(social, notes) =>
-            onDraftsChange((prev) => ({ ...prev, social, socialNotes: notes }))
-          }
-        />
-      </TabsContent>
-    </Tabs>
-    <CreateHealthCenterDialog
-      open={newHospitalOpen}
-      onOpenChange={setNewHospitalOpen}
-    />
+          ) : null}
+        </TabsContent>
+        <TabsContent
+          value="no-oncologico"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <NonOncologicalFollowUpForm
+            key={drafts.nonOncologicalFollowUp?.id ?? "new"}
+            draft={drafts.nonOncologicalFollowUp}
+            onSave={(nonOncologicalFollowUp) =>
+              onDraftsChange((prev) => ({ ...prev, nonOncologicalFollowUp }))
+            }
+          />
+        </TabsContent>
+        <TabsContent
+          value="antecedentes"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <AntecedentesForm
+            draft={drafts.healthBackground}
+            latestAssessment={patient?.healthBackgroundAssessments?.reduce(
+              (latest, assessment) =>
+                !latest || assessment.createdAt > latest.createdAt
+                  ? assessment
+                  : latest,
+              undefined as PatientHealthBackgroundAssessment | undefined,
+            )}
+            onSave={(healthBackground) =>
+              onDraftsChange((prev) => ({ ...prev, healthBackground }))
+            }
+          />
+        </TabsContent>
+        <TabsContent
+          value="direcciones"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <AddressForm
+            draft={drafts.address}
+            addresses={addresses}
+            onSave={(address) =>
+              onDraftsChange((prev) => ({ ...prev, address }))
+            }
+          />
+        </TabsContent>
+        <TabsContent
+          value="contacto"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          {patient ? (
+            <div className="space-y-3">
+              {isHistorical && drafts.contact ? (
+                <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+                  Interlocutor en borrador:{" "}
+                  <span className="text-foreground font-medium">
+                    {drafts.contact.kind === "PATIENT"
+                      ? "Paciente"
+                      : "Acompañante"}
+                  </span>
+                </p>
+              ) : null}
+              <FollowUpContactForm
+                key={companions.map((link) => link.id).join(",")}
+                patient={patient}
+                companions={companions}
+                isPending={contactMutation.isPending}
+                onSubmit={async (values) => contactMutation.mutateAsync(values)}
+              />
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Cargando contacto...
+            </p>
+          )}
+        </TabsContent>
+        <TabsContent
+          value="diagnostico"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <DiagnosticoForm
+            draft={drafts.diagnoses}
+            hospitals={hospitals}
+            currentDiagnoses={currentDiagnoses}
+            onOpenNewHospital={() => setNewHospitalOpen(true)}
+            onViewDiagnosis={onViewDiagnosis}
+            onSave={(diagnoses) =>
+              onDraftsChange((prev) => ({ ...prev, diagnoses }))
+            }
+          />
+        </TabsContent>
+        <TabsContent
+          value="tratamiento"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <TratamientosForm
+            patientId={patientId}
+            draft={drafts.treatments}
+            hospitals={hospitals}
+            diagnoses={diagnoses}
+            treatments={patient?.treatments ?? []}
+            diagnosisDrafts={drafts.diagnoses}
+            onOpenNewHospital={() => setNewHospitalOpen(true)}
+            onViewTreatment={onViewTreatment}
+            onSave={(treatments) =>
+              onDraftsChange((prev) => ({ ...prev, treatments }))
+            }
+          />
+        </TabsContent>
+        <TabsContent value="seguro" keepMounted className="min-w-0 flex-1 pr-1">
+          <SeguroForm
+            insuranceDraft={drafts.insurance}
+            sisDraft={drafts.sisAffiliation}
+            currentInsurance={patient?.insurance.find((item) => item.isCurrent)}
+            currentSisAffiliation={patient?.sisAffiliations[0]}
+            onSave={(insurance, sisAffiliation) =>
+              onDraftsChange((prev) => ({ ...prev, insurance, sisAffiliation }))
+            }
+          />
+        </TabsContent>
+        <TabsContent value="social" keepMounted className="min-w-0 flex-1 pr-1">
+          <SeguimientoSocialForm
+            draft={drafts.social}
+            currentDetails={patient?.details ?? null}
+            existingNotes={socialNotes}
+            noteDrafts={drafts.socialNotes}
+            onSave={(social, notes) =>
+              onDraftsChange((prev) => ({
+                ...prev,
+                social,
+                socialNotes: notes,
+              }))
+            }
+          />
+        </TabsContent>
+      </Tabs>
+      <CreateHealthCenterDialog
+        open={newHospitalOpen}
+        onOpenChange={setNewHospitalOpen}
+      />
     </>
   )
 }
@@ -1097,21 +1213,21 @@ function AddressForm({
     setValue,
     formState: { errors },
   } = useForm<AddressFormValues>({
-      defaultValues: {
-        type: draft?.type ?? "PERMANENT",
-        isPrimary:
-          draft?.type === "TEMPORARY" ? false : (draft?.isPrimary ?? true),
-        address: draft?.address ?? "",
-        district: draft?.district ?? "",
-        province: draft?.province ?? "",
-        department: draft?.department,
-        reference: draft?.reference ?? "",
-        locationUrl: draft?.locationUrl ?? "",
-        dniMatchesAddress: draft?.dniMatchesAddress,
-        validFrom: draft?.validFrom ?? "",
-        validTo: draft?.validTo ?? "",
-      },
-    })
+    defaultValues: {
+      type: draft?.type ?? "PERMANENT",
+      isPrimary:
+        draft?.type === "TEMPORARY" ? false : (draft?.isPrimary ?? true),
+      address: draft?.address ?? "",
+      district: draft?.district ?? "",
+      province: draft?.province ?? "",
+      department: draft?.department,
+      reference: draft?.reference ?? "",
+      locationUrl: draft?.locationUrl ?? "",
+      dniMatchesAddress: draft?.dniMatchesAddress,
+      validFrom: draft?.validFrom ?? "",
+      validTo: draft?.validTo ?? "",
+    },
+  })
 
   const addressType = watch("type")
   const isPrimary = watch("isPrimary")
@@ -1439,24 +1555,336 @@ function DatosGeneralesForm({
   )
 }
 
+function NonOncologicalFollowUpForm({
+  draft,
+  onSave,
+}: {
+  draft: NonOncologicalFollowUpDraft | undefined
+  onSave: (draft: NonOncologicalFollowUpDraft) => void
+}) {
+  const [diagnosis, setDiagnosis] = useState(draft?.diagnosis ?? "")
+  const [occurredOn, setOccurredOn] = useState(draft?.occurredOn ?? "")
+  const [receivesTreatment, setReceivesTreatment] = useState<
+    boolean | null | undefined
+  >(draft?.receivesTreatment)
+  const [treatmentName, setTreatmentName] = useState(draft?.treatmentName ?? "")
+  const [medication, setMedication] = useState(draft?.medication ?? "")
+  const [treatmentFrequency, setTreatmentFrequency] = useState(
+    draft?.treatmentFrequency,
+  )
+  const [hasControls, setHasControls] = useState<boolean | null | undefined>(
+    draft?.hasControls,
+  )
+  const [controlSpecialty, setControlSpecialty] = useState(
+    draft?.controlSpecialty ?? "",
+  )
+  const [controlPeriodicity, setControlPeriodicity] = useState(
+    draft?.controlPeriodicity,
+  )
+  const [status, setStatus] = useState<"ACTIVE" | "DISCHARGED">(
+    draft?.status ?? "ACTIVE",
+  )
+  const [dischargedOn, setDischargedOn] = useState(draft?.dischargedOn ?? "")
+  const [dischargeReason, setDischargeReason] = useState(
+    draft?.dischargeReason ?? "",
+  )
+
+  function save() {
+    if (!diagnosis.trim()) {
+      toast.error("Indica el diagnóstico no oncológico")
+      return
+    }
+    if (hasControls === true && !controlSpecialty.trim()) {
+      toast.error("Indica la especialidad de los controles")
+      return
+    }
+    if (status === "DISCHARGED" && !dischargeReason.trim()) {
+      toast.error("Indica el motivo del alta")
+      return
+    }
+    onSave({
+      id: draft?.id,
+      diagnosis: diagnosis.trim(),
+      occurredOn: occurredOn || null,
+      receivesTreatment,
+      treatmentName:
+        receivesTreatment === false ? null : treatmentName.trim() || null,
+      medication:
+        receivesTreatment === false ? null : medication.trim() || null,
+      treatmentFrequency,
+      hasControls,
+      controlSpecialty: hasControls === true ? controlSpecialty.trim() : null,
+      controlPeriodicity,
+      status,
+      dischargedOn: status === "DISCHARGED" ? dischargedOn || null : null,
+      dischargeReason: status === "DISCHARGED" ? dischargeReason.trim() : null,
+    })
+    toast.success("Seguimiento no oncológico guardado en el borrador")
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2 md:col-span-2">
+          <Label>Diagnóstico no oncológico *</Label>
+          <Input
+            value={diagnosis}
+            onChange={(event) => setDiagnosis(event.target.value)}
+            placeholder="Ej. gastritis, anemia, hipertensión"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Fecha del hecho</Label>
+          <Input
+            type="date"
+            value={occurredOn}
+            onChange={(event) => setOccurredOn(event.target.value)}
+          />
+        </div>
+        <ClinicalTriSelect
+          label="¿Recibe tratamiento?"
+          value={receivesTreatment}
+          onChange={setReceivesTreatment}
+        />
+        {receivesTreatment === true && (
+          <>
+            <div className="space-y-2">
+              <Label>Nombre del tratamiento</Label>
+              <Input
+                value={treatmentName}
+                onChange={(event) => setTreatmentName(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Medicación</Label>
+              <Input
+                value={medication}
+                onChange={(event) => setMedication(event.target.value)}
+              />
+            </div>
+            <DurationInput
+              label="Frecuencia del tratamiento"
+              units={["DAY", "WEEK", "MONTH", "YEAR"]}
+              defaultUnit="WEEK"
+              singleValue
+              value={treatmentFrequency}
+              onChange={setTreatmentFrequency}
+            />
+          </>
+        )}
+        <ClinicalTriSelect
+          label="¿Mantiene controles?"
+          value={hasControls}
+          onChange={setHasControls}
+        />
+        {hasControls === true && (
+          <>
+            <div className="space-y-2">
+              <Label>Especialidad de control *</Label>
+              <Input
+                value={controlSpecialty}
+                onChange={(event) => setControlSpecialty(event.target.value)}
+              />
+            </div>
+            <DurationInput
+              label="Periodicidad de controles"
+              units={["WEEK", "MONTH", "YEAR"]}
+              defaultUnit="MONTH"
+              singleValue
+              value={controlPeriodicity}
+              onChange={setControlPeriodicity}
+            />
+          </>
+        )}
+        <div className="space-y-2">
+          <Label>Estado</Label>
+          <Select
+            items={NON_ONCOLOGICAL_STATUS_ITEMS}
+            value={status}
+            onValueChange={(value) =>
+              setStatus(value as "ACTIVE" | "DISCHARGED")
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {NON_ONCOLOGICAL_STATUS_ITEMS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {status === "DISCHARGED" && (
+          <>
+            <div className="space-y-2">
+              <Label>Fecha del alta</Label>
+              <Input
+                type="date"
+                value={dischargedOn}
+                onChange={(event) => setDischargedOn(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Motivo del alta *</Label>
+              <Textarea
+                value={dischargeReason}
+                onChange={(event) => setDischargeReason(event.target.value)}
+                className="min-h-20"
+              />
+            </div>
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <Button type="button" size="sm" onClick={save}>
+          Guardar seguimiento no oncológico
+        </Button>
+        <DraftBadge saved={Boolean(draft)} />
+      </div>
+    </div>
+  )
+}
+
 // ── Síntomas ──
 
 type SymptomFormValues = Omit<
   CreatePatientSymptomReportInput,
   "followUpId" | "symptomDuration" | "symptomFrequency"
-> & {
-  symptomDuration: DurationDraft | undefined
-  symptomFrequency: DurationDraft | undefined
+>
+
+function clinicalAnswer(value: boolean | null | undefined) {
+  return value === null || value === undefined
+    ? "No menciona"
+    : value
+      ? "Sí"
+      : "No"
+}
+
+function EnrollmentSymptomSummary({
+  report,
+  hospitals,
+}: {
+  report: PatientSymptomReport
+  hospitals: Array<{ id: string; name: string }>
+}) {
+  const healthCenter = hospitals.find(
+    (item) => item.id === report.healthCenterId,
+  )
+  const referredHealthCenter = hospitals.find(
+    (item) => item.id === report.referredHealthCenterId,
+  )
+  return (
+    <section className="bg-muted/30 space-y-3 rounded-lg border p-3">
+      <div>
+        <p className="text-sm font-medium">Respuestas del enrolamiento</p>
+        <p className="text-muted-foreground text-xs">
+          Registro de lectura. Los cambios de este seguimiento se guardan por
+          separado.
+        </p>
+      </div>
+      <div className="grid gap-x-4 gap-y-2 text-sm md:grid-cols-2">
+        <p>
+          <span className="text-muted-foreground">Malestar o dolor: </span>
+          {clinicalAnswer(report.hasDiscomfort)}
+        </p>
+        {report.signsAndSymptoms && (
+          <p className="md:col-span-2">
+            <span className="text-muted-foreground">Signos y síntomas: </span>
+            {report.signsAndSymptoms}
+          </p>
+        )}
+        <p>
+          <span className="text-muted-foreground">Consulta médica: </span>
+          {clinicalAnswer(report.hasMedicalConsultation)}
+        </p>
+        {report.hasMedicalConsultation === false &&
+          report.noMedicalConsultationReason && (
+            <p className="md:col-span-2">
+              <span className="text-muted-foreground">Motivo: </span>
+              {report.noMedicalConsultationReason}
+            </p>
+          )}
+        {report.hasMedicalConsultation === true && (
+          <>
+            <p>
+              <span className="text-muted-foreground">Establecimiento: </span>
+              {healthCenter?.name ?? "No registrado"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Especialidad: </span>
+              {report.specialty ?? "No registrada"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Primera consulta: </span>
+              {report.firstConsultationDate ?? "No registrada"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">
+                Espera diagnóstico:{" "}
+              </span>
+              {clinicalAnswer(report.isAwaitingDiagnosis)}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Ficha de remisión: </span>
+              {clinicalAnswer(report.hasReferral)}
+            </p>
+            {report.hasReferral === true && (
+              <p>
+                <span className="text-muted-foreground">Referido a: </span>
+                {referredHealthCenter?.name ?? "No registrado"}
+              </p>
+            )}
+            {report.hasReferral === false &&
+              report.referralNotProvidedReason && (
+                <p className="md:col-span-2">
+                  <span className="text-muted-foreground">
+                    Motivo sin remisión:{" "}
+                  </span>
+                  {report.referralNotProvidedReason}
+                </p>
+              )}
+            <p>
+              <span className="text-muted-foreground">
+                Diagnóstico informado:{" "}
+              </span>
+              {clinicalAnswer(report.hasReceivedDiagnosis)}
+            </p>
+            {report.reportedDiagnosis && (
+              <p>
+                <span className="text-muted-foreground">Detalle: </span>
+                {report.reportedDiagnosis}
+              </p>
+            )}
+            {report.nextConsultationDate && (
+              <p>
+                <span className="text-muted-foreground">
+                  Próxima consulta:{" "}
+                </span>
+                {report.nextConsultationDate}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </section>
+  )
 }
 
 function SintomasForm({
   draft,
+  enrollmentSymptomReport,
   hospitals,
+  historical,
   onOpenNewHospital,
   onSave,
 }: {
   draft: SymptomReportDraft | undefined
+  enrollmentSymptomReport: PatientSymptomReport | undefined
   hospitals: Array<{ id: string; name: string }>
+  historical: boolean
   onOpenNewHospital: () => void
   onSave: (symptomReport: SymptomReportDraft) => void
 }) {
@@ -1466,8 +1894,16 @@ function SintomasForm({
         hasDiscomfort: draft?.hasDiscomfort,
         signsAndSymptoms: draft?.signsAndSymptoms ?? "",
         indicationsReceived: draft?.indicationsReceived ?? "",
-        symptomDuration: draft?.symptomDuration,
-        symptomFrequency: draft?.symptomFrequency,
+        hasMedicalConsultation: draft?.hasMedicalConsultation,
+        noMedicalConsultationReason: draft?.noMedicalConsultationReason ?? "",
+        firstConsultationDate: draft?.firstConsultationDate ?? "",
+        isAwaitingDiagnosis: draft?.isAwaitingDiagnosis,
+        hasReferral: draft?.hasReferral,
+        referredHealthCenterId: draft?.referredHealthCenterId,
+        referralNotProvidedReason: draft?.referralNotProvidedReason ?? "",
+        hasReceivedDiagnosis: draft?.hasReceivedDiagnosis,
+        reportedDiagnosis: draft?.reportedDiagnosis ?? "",
+        nextConsultationDate: draft?.nextConsultationDate ?? "",
         hasSoughtMedicalConsultation: draft?.hasSoughtMedicalConsultation,
         specialty: draft?.specialty ?? "",
         healthCenterId: draft?.healthCenterId,
@@ -1479,25 +1915,64 @@ function SintomasForm({
     })
 
   const hasDiscomfort = watch("hasDiscomfort")
-  const hasSoughtMedicalConsultation = watch("hasSoughtMedicalConsultation")
+  const hasMedicalConsultation = watch("hasMedicalConsultation")
+  const isAwaitingDiagnosis = watch("isAwaitingDiagnosis")
+  const hasReferral = watch("hasReferral")
+  const hasReceivedDiagnosis = watch("hasReceivedDiagnosis")
   const isPainPresent = watch("isPainPresent")
-  const symptomDuration = watch("symptomDuration")
-  const symptomFrequency = watch("symptomFrequency")
   const healthCenterId = watch("healthCenterId")
 
   function onSubmit(values: SymptomFormValues) {
-    const normalizedDuration = toDurationInput(values.symptomDuration)
-    const normalizedFrequency = toDurationInput(values.symptomFrequency)
-    if (values.symptomDuration?.valueMin !== undefined && !normalizedDuration) {
-      toast.error("Completa correctamente la duración de los síntomas")
+    if (values.hasDiscomfort === false && !values.checkupMotivation?.trim()) {
+      toast.error("Indica qué motivó el examen médico")
       return
     }
     if (
-      values.symptomFrequency?.valueMin !== undefined &&
-      !normalizedFrequency
+      values.hasMedicalConsultation === false &&
+      !values.noMedicalConsultationReason?.trim()
     ) {
-      toast.error("Completa correctamente la frecuencia de los síntomas")
+      toast.error("Indica por qué no realizó la consulta médica")
       return
+    }
+    if (values.hasMedicalConsultation === true) {
+      if (
+        !values.healthCenterId ||
+        !values.specialty?.trim() ||
+        !values.firstConsultationDate
+      ) {
+        toast.error("Completa los datos de la primera consulta")
+        return
+      }
+      if (typeof values.isAwaitingDiagnosis !== "boolean") {
+        toast.error("Indica si está a la espera de un diagnóstico")
+        return
+      }
+      if (values.hasReferral === undefined) {
+        toast.error("Indica si cuenta con ficha de remisión")
+        return
+      }
+      if (values.hasReferral === true && !values.referredHealthCenterId) {
+        toast.error("Indica el establecimiento al que fue referido")
+        return
+      }
+      if (
+        values.hasReferral === false &&
+        !values.referralNotProvidedReason?.trim()
+      ) {
+        toast.error("Indica por qué no cuenta con ficha de remisión")
+        return
+      }
+      if (typeof values.hasReceivedDiagnosis !== "boolean") {
+        toast.error("Indica si le informaron algún diagnóstico")
+        return
+      }
+      if (
+        values.hasReceivedDiagnosis === true &&
+        !values.reportedDiagnosis?.trim()
+      ) {
+        toast.error("Indica el diagnóstico que le informaron")
+        return
+      }
     }
 
     onSave({
@@ -1505,140 +1980,252 @@ function SintomasForm({
       signsAndSymptoms: values.signsAndSymptoms?.trim() || undefined,
       indicationsReceived: values.indicationsReceived?.trim() || undefined,
       specialty: values.specialty?.trim() || undefined,
+      noMedicalConsultationReason:
+        values.noMedicalConsultationReason?.trim() || undefined,
+      referralNotProvidedReason:
+        values.referralNotProvidedReason?.trim() || undefined,
+      reportedDiagnosis: values.reportedDiagnosis?.trim() || undefined,
       painLocation: values.painLocation?.trim() || undefined,
       painDescription: values.painDescription?.trim() || undefined,
       painIntensity: Number.isFinite(values.painIntensity)
         ? values.painIntensity
         : undefined,
-      symptomDuration: normalizedDuration,
-      symptomFrequency: normalizedFrequency,
+      symptomDuration: draft?.symptomDuration,
+      symptomFrequency: draft?.symptomFrequency,
     })
-    toast.success("Síntomas guardados en el borrador")
+    toast.success(
+      historical
+        ? "Síntomas guardados en el borrador histórico"
+        : "Síntomas guardados en el borrador",
+    )
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TriSelect
-          label="¿Presenta malestar o dolor?"
-          value={hasDiscomfort}
-          onChange={(value) => setValue("hasDiscomfort", value)}
+    <div className="space-y-4">
+      {enrollmentSymptomReport && (
+        <EnrollmentSymptomSummary
+          report={enrollmentSymptomReport}
+          hospitals={hospitals}
         />
-        <TriSelect
-          label="¿Ha buscado atención médica?"
-          value={hasSoughtMedicalConsultation}
-          onChange={(value) => setValue("hasSoughtMedicalConsultation", value)}
-        />
-        <div className="space-y-2 md:col-span-2">
-          <Label>Signos y síntomas</Label>
-          <Textarea
-            {...register("signsAndSymptoms")}
-            placeholder="Describe los signos o síntomas..."
-            className="min-h-20"
+      )}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ClinicalTriSelect
+            label="¿Presenta malestar o dolor?"
+            value={hasDiscomfort}
+            onChange={(value) => setValue("hasDiscomfort", value)}
           />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Indicaciones recibidas</Label>
-          <Textarea
-            {...register("indicationsReceived")}
-            placeholder="Indicaciones de la consulta..."
-            className="min-h-16"
-          />
-        </div>
-        <DurationInput
-          label="¿Desde hace cuánto presenta los síntomas?"
-          units={["DAY", "WEEK", "MONTH", "YEAR"]}
-          defaultUnit="DAY"
-          singleValue
-          value={symptomDuration}
-          onChange={(value) => setValue("symptomDuration", value)}
-        />
-        <DurationInput
-          label="¿Cada cuánto se presentan?"
-          units={["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]}
-          defaultUnit="WEEK"
-          singleValue
-          value={symptomFrequency}
-          onChange={(value) => setValue("symptomFrequency", value)}
-        />
-        <div className="space-y-2">
-          <Label>Especialidad consultada</Label>
-          <Input {...register("specialty")} placeholder="Ej: Oncología" />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Establecimiento de la consulta</Label>
-          <div className="flex gap-2">
-            <Select
-              items={hospitals.map((hospital) => ({
-                value: hospital.id,
-                label: hospital.name,
-              }))}
-              value={healthCenterId ?? ""}
-              onValueChange={(value) =>
-                setValue("healthCenterId", value || undefined)
+          <ClinicalTriSelect
+            label="¿Realizó una consulta médica?"
+            value={hasMedicalConsultation}
+            onChange={(value) => {
+              setValue("hasMedicalConsultation", value)
+              if (value === false) {
+                setValue("healthCenterId", undefined)
+                setValue("specialty", "")
+                setValue("firstConsultationDate", "")
+                setValue("isAwaitingDiagnosis", undefined)
+                setValue("hasReferral", undefined)
+                setValue("referredHealthCenterId", undefined)
+                setValue("referralNotProvidedReason", "")
+                setValue("hasReceivedDiagnosis", undefined)
+                setValue("reportedDiagnosis", "")
+                setValue("nextConsultationDate", "")
+              } else if (value === true) {
+                setValue("noMedicalConsultationReason", "")
               }
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Seleccionar establecimiento" />
-              </SelectTrigger>
-              <SelectContent>
-                {hospitals.map((hospital) => (
-                  <SelectItem key={hospital.id} value={hospital.id}>
-                    {hospital.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1"
-              onClick={onOpenNewHospital}
-            >
-              <Building2 className="size-3.5" />
-              <Plus className="size-3" />
-            </Button>
+            }}
+          />
+          <div className="space-y-2 md:col-span-2">
+            <Label>Signos y síntomas</Label>
+            <Textarea
+              {...register("signsAndSymptoms")}
+              placeholder="Describe los signos o síntomas..."
+              className="min-h-20"
+            />
           </div>
-        </div>
-        <TriSelect
-          label="¿El dolor está presente actualmente?"
-          value={isPainPresent}
-          onChange={(value) => setValue("isPainPresent", value)}
-        />
-        {isPainPresent && (
-          <>
-            <div className="space-y-2">
-              <Label>Intensidad del dolor (0 a 10)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={10}
-                step={1}
-                {...register("painIntensity", { valueAsNumber: true })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Ubicación del dolor</Label>
-              <Input {...register("painLocation")} placeholder="Ej: Abdomen" />
-            </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Indicaciones recibidas</Label>
+            <Textarea
+              {...register("indicationsReceived")}
+              placeholder="Indicaciones de la consulta..."
+              className="min-h-16"
+            />
+          </div>
+          {hasMedicalConsultation === false && (
             <div className="space-y-2 md:col-span-2">
-              <Label>Descripción del dolor</Label>
+              <Label>Motivo por el que no realizó la consulta médica *</Label>
               <Textarea
-                {...register("painDescription")}
-                placeholder="Describe el dolor..."
+                {...register("noMedicalConsultationReason")}
+                placeholder="Explique el motivo"
+                className="min-h-20"
               />
             </div>
-          </>
-        )}
-      </div>
-      <div className="flex items-center gap-3">
-        <Button type="submit" size="sm">
-          Guardar síntomas
-        </Button>
-        <DraftBadge saved={Boolean(draft)} />
-      </div>
-    </form>
+          )}
+          {hasMedicalConsultation === true && (
+            <>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Establecimiento de la consulta *</Label>
+                <div className="flex gap-2">
+                  <Select
+                    items={hospitals.map((hospital) => ({
+                      value: hospital.id,
+                      label: hospital.name,
+                    }))}
+                    value={healthCenterId ?? ""}
+                    onValueChange={(value) =>
+                      setValue("healthCenterId", value || undefined)
+                    }
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Seleccionar establecimiento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hospitals.map((hospital) => (
+                        <SelectItem key={hospital.id} value={hospital.id}>
+                          {hospital.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1"
+                    onClick={onOpenNewHospital}
+                  >
+                    <Building2 className="size-3.5" />
+                    <Plus className="size-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Especialidad consultada *</Label>
+                <Input {...register("specialty")} placeholder="Ej: Oncología" />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha de la primera consulta *</Label>
+                <Input type="date" {...register("firstConsultationDate")} />
+              </div>
+              <TriSelect
+                label="¿Está a la espera de un diagnóstico?"
+                value={isAwaitingDiagnosis ?? undefined}
+                onChange={(value) => setValue("isAwaitingDiagnosis", value)}
+              />
+              <ClinicalTriSelect
+                label="¿Cuenta con ficha de remisión?"
+                value={hasReferral}
+                onChange={(value) => {
+                  setValue("hasReferral", value)
+                  if (value !== true)
+                    setValue("referredHealthCenterId", undefined)
+                  if (value !== false) setValue("referralNotProvidedReason", "")
+                }}
+              />
+              {hasReferral === true && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Establecimiento al que fue referido *</Label>
+                  <Select
+                    items={hospitals.map((hospital) => ({
+                      value: hospital.id,
+                      label: hospital.name,
+                    }))}
+                    value={watch("referredHealthCenterId") ?? ""}
+                    onValueChange={(value) =>
+                      setValue("referredHealthCenterId", value || undefined)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar establecimiento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hospitals.map((hospital) => (
+                        <SelectItem key={hospital.id} value={hospital.id}>
+                          {hospital.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {hasReferral === false && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>
+                    Motivo por el que no cuenta con ficha de remisión *
+                  </Label>
+                  <Textarea
+                    {...register("referralNotProvidedReason")}
+                    className="min-h-20"
+                  />
+                </div>
+              )}
+              <TriSelect
+                label="¿Le han informado algún diagnóstico?"
+                value={hasReceivedDiagnosis ?? undefined}
+                onChange={(value) => {
+                  setValue("hasReceivedDiagnosis", value)
+                  if (value !== true) setValue("reportedDiagnosis", "")
+                }}
+              />
+              {hasReceivedDiagnosis === true && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Diagnóstico informado *</Label>
+                  <Input {...register("reportedDiagnosis")} />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Fecha de la próxima consulta</Label>
+                <Input
+                  type="date"
+                  min={watch("firstConsultationDate") || undefined}
+                  {...register("nextConsultationDate")}
+                />
+              </div>
+            </>
+          )}
+          <TriSelect
+            label="¿El dolor está presente actualmente?"
+            value={isPainPresent}
+            onChange={(value) => setValue("isPainPresent", value)}
+          />
+          {isPainPresent && (
+            <>
+              <div className="space-y-2">
+                <Label>Intensidad del dolor (0 a 10)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={1}
+                  {...register("painIntensity", { valueAsNumber: true })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ubicación del dolor</Label>
+                <Input
+                  {...register("painLocation")}
+                  placeholder="Ej: Abdomen"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Descripción del dolor</Label>
+                <Textarea
+                  {...register("painDescription")}
+                  placeholder="Describe el dolor..."
+                />
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <Button type="submit" size="sm">
+            Guardar síntomas
+          </Button>
+          <DraftBadge saved={Boolean(draft)} />
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -2521,7 +3108,10 @@ function TratamientosForm({
       toast.error("Indica el motivo de abandono del tratamiento")
       return
     }
-    if (values.treatmentSituation === "INTERRUMPIDO" && !values.interruptionReason) {
+    if (
+      values.treatmentSituation === "INTERRUMPIDO" &&
+      !values.interruptionReason
+    ) {
       toast.error("Indica el motivo de interrupción del tratamiento")
       return
     }
@@ -2755,463 +3345,500 @@ function TratamientosForm({
 
   return (
     <>
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {currentTreatments.length > 0 && (
-        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-amber-950">
-          <div>
-            <p className="font-semibold">
-              Tratamientos activos ({currentTreatments.length})
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-800">
-              Consultá el detalle de cada línea activa antes de registrar una
-              actualización o agregar otra en paralelo.
-            </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {currentTreatments.map((treatment) => (
-              <button
-                key={treatment.id}
-                type="button"
-                className="bg-background/80 hover:bg-background flex items-center gap-2 rounded-md border border-amber-200 p-2.5 text-left transition-colors"
-                onClick={() => onViewTreatment?.(treatment)}
-                disabled={!onViewTreatment}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-semibold">
-                    {treatment.treatmentType}
-                  </span>
-                  <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
-                    {treatment.diagnosisSummary?.diagnosis ??
-                      "Sin diagnóstico asociado"}
-                  </span>
-                </span>
-                <ChevronRight className="size-3.5 shrink-0 text-amber-700" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      {decisions.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Cambios pendientes</p>
-            <span className="text-muted-foreground text-xs">
-              {decisions.length}
-            </span>
-          </div>
-          {decisions.map((decision, index) => (
-            <div
-              key={`${decision.seriesId ?? "parallel"}-${index}`}
-              className="bg-card flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
-            >
-              <span>
-                <b>{decision.treatmentType}</b>
-                <span className="text-muted-foreground ml-2 text-xs">
-                  {decision.mode === "REPLACE" ? "Actualización" : "Paralelo"}
-                </span>
-              </span>
-              <span className="flex gap-1">
-                <Button
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {currentTreatments.length > 0 && (
+          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-amber-950">
+            <div>
+              <p className="font-semibold">
+                Tratamientos activos ({currentTreatments.length})
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                Consultá el detalle de cada línea activa antes de registrar una
+                actualización o agregar otra en paralelo.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {currentTreatments.map((treatment) => (
+                <button
+                  key={treatment.id}
                   type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => editDecision(index)}
-                  aria-label="Editar cambio"
+                  className="bg-background/80 hover:bg-background flex items-center gap-2 rounded-md border border-amber-200 p-2.5 text-left transition-colors"
+                  onClick={() => onViewTreatment?.(treatment)}
+                  disabled={!onViewTreatment}
                 >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => {
-                    const next = decisions.filter(
-                      (_, itemIndex) => itemIndex !== index,
-                    )
-                    setDecisions(next)
-                    onSave(next)
-                  }}
-                  aria-label="Quitar cambio"
-                >
-                  <Minus className="size-3.5" />
-                </Button>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold">
+                      {treatment.treatmentType}
+                    </span>
+                    <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
+                      {treatment.diagnosisSummary?.diagnosis ??
+                        "Sin diagnóstico asociado"}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-3.5 shrink-0 text-amber-700" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {decisions.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">Cambios pendientes</p>
+              <span className="text-muted-foreground text-xs">
+                {decisions.length}
               </span>
             </div>
-          ))}
-        </div>
-      )}
-      <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">
-            {editingDecisionIndex === null
-              ? "Nueva decisión de tratamiento"
-              : "Editar decisión de tratamiento"}
-          </p>
-          <p className="text-muted-foreground text-xs">
-            Actualiza una línea existente o registra una línea simultánea.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Tipo de decisión</Label>
-            <Select
-              items={decisionModeItems}
-              value={mode}
-              onValueChange={(value) => {
-                const nextMode = (value || "PARALLEL") as TreatmentDecisionMode
-                setMode(nextMode)
-                if (nextMode === "PARALLEL") setSelectedSeriesId("")
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {decisionModeItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {decisions.map((decision, index) => (
+              <div
+                key={`${decision.seriesId ?? "parallel"}-${index}`}
+                className="bg-card flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+              >
+                <span>
+                  <b>{decision.treatmentType}</b>
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    {decision.mode === "REPLACE" ? "Actualización" : "Paralelo"}
+                  </span>
+                </span>
+                <span className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => editDecision(index)}
+                    aria-label="Editar cambio"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      const next = decisions.filter(
+                        (_, itemIndex) => itemIndex !== index,
+                      )
+                      setDecisions(next)
+                      onSave(next)
+                    }}
+                    aria-label="Quitar cambio"
+                  >
+                    <Minus className="size-3.5" />
+                  </Button>
+                </span>
+              </div>
+            ))}
           </div>
-          {mode === "REPLACE" && (
+        )}
+        <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">
+              {editingDecisionIndex === null
+                ? "Nueva decisión de tratamiento"
+                : "Editar decisión de tratamiento"}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              Actualiza una línea existente o registra una línea simultánea.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label>Línea de tratamiento a actualizar</Label>
+              <Label>Tipo de decisión</Label>
               <Select
-                items={currentTreatments.map((item) => ({
-                  value: item.seriesId,
-                  label: `${item.treatmentType} · ${item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}`,
-                }))}
-                value={selectedSeriesId}
-                onValueChange={(value) => selectTreatment(value ?? "")}
+                items={decisionModeItems}
+                value={mode}
+                onValueChange={(value) => {
+                  const nextMode = (value ||
+                    "PARALLEL") as TreatmentDecisionMode
+                  setMode(nextMode)
+                  if (nextMode === "PARALLEL") setSelectedSeriesId("")
+                }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tratamiento actual" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {currentTreatments.map((item) => (
-                    <SelectItem key={item.seriesId} value={item.seriesId}>
-                      {item.treatmentType} ·{" "}
-                      {item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}
+                  {decisionModeItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Diagnóstico asociado</Label>
-            <Select
-              items={diagnosisItems}
-              value={diagnosisId}
-              onValueChange={(v) => setValue("diagnosisId", v ?? undefined)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar diagnóstico" />
-              </SelectTrigger>
-              <SelectContent>
-                {diagnosisItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!canPickDiagnosis && (
-              <p className="text-muted-foreground text-xs">
-                Primero registrá un diagnóstico.
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>Tipo de tratamiento</Label>
-            <Input
-              {...register("treatmentType")}
-              placeholder="Ej: Quimioterapia"
-            />
-          </div>
-          <TriSelect
-            label="¿Es una operación?"
-            value={isOperation}
-            onChange={(value) => {
-              setValue("isOperation", value)
-              if (!value) setValue("operationName", "")
-            }}
-          />
-          {isOperation && (
-            <div className="space-y-2">
-              <Label>Nombre de la operación</Label>
-              <Input
-                {...register("operationName")}
-                placeholder="Ej: Mastectomía"
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label>Programa de atención</Label>
-            <Select
-              items={CARE_PROGRAMS}
-              value={watched.careProgram ?? ""}
-              onValueChange={(value) =>
-                setValue("careProgram", value as CareProgram)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar programa" />
-              </SelectTrigger>
-              <SelectContent>
-                {CARE_PROGRAMS.map((program) => (
-                  <SelectItem key={program.value} value={program.value}>
-                    {program.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DurationInput
-            label="Frecuencia del tratamiento"
-            units={["DAY", "WEEK", "MONTH", "YEAR"]}
-            defaultUnit="WEEK"
-            singleValue
-            value={treatmentFrequency}
-            onChange={(value) => setValue("treatmentFrequency", value)}
-          />
-          <div className="space-y-2">
-            <Label>Situación del tratamiento</Label>
-            <Select
-              items={TREATMENT_SITUATIONS}
-              value={treatmentSituation ?? ""}
-              onValueChange={(value) =>
-                setValue(
-                  "treatmentSituation",
-                  value as TreatmentFormValues["treatmentSituation"],
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar situación" />
-              </SelectTrigger>
-              <SelectContent>
-                {TREATMENT_SITUATIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Fecha de inicio</Label>
-            <Input type="date" {...register("startDate")} />
-          </div>
-          <div className="space-y-2">
-            <Label>Fecha de fin (opcional)</Label>
-            <Input
-              type="date"
-              min={startDate || undefined}
-              {...register("endDate")}
-            />
-          </div>
-          <TriSelect
-            label="¿Recibe teleconsulta?"
-            value={receivesTeleconsultation}
-            onChange={(value) => setValue("receivesTeleconsultation", value)}
-          />
-          {receivesTeleconsultation === true && (
-            <>
-              <div className="space-y-2">
-                <Label>Nota de teleconsulta</Label>
-                <Textarea
-                  {...register("teleconsultationNote")}
-                  placeholder="Detalle de la teleconsulta"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Especialidades de teleconsulta</Label>
-                <Input
-                  {...register("teleconsultationSpecialties")}
-                  placeholder="Ej: Oncología, Psicología"
-                />
-              </div>
-            </>
-          )}
-          <TriSelect
-            label="¿Tratamiento desde SEPA?"
-            value={treatmentViaSepa}
-            onChange={(value) => setValue("treatmentViaSepa", value)}
-          />
-          <div className="space-y-2">
-            <Label>Sesiones programadas</Label>
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              {...register("scheduledSessions")}
-              placeholder="Ej: 4"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Sesiones realizadas</Label>
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              {...register("completedSessions")}
-              placeholder="Ej: 2"
-            />
-          </div>
-          <TriSelect
-            label="¿Cumplió el tratamiento hormonal?"
-            value={hormonalTreatmentCompleted}
-            onChange={(value) =>
-              setValue("hormonalTreatmentCompleted", value)
-            }
-          />
-          <div className="space-y-2">
-            <Label>Barrera de acceso</Label>
-            <Select
-              items={ACCESS_BARRIER_ITEMS}
-              value={accessBarrierCode ?? ""}
-              onValueChange={(value) =>
-                setValue(
-                  "accessBarrierCode",
-                  (value as AccessBarrierCode | null) ?? undefined,
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar barrera" />
-              </SelectTrigger>
-              <SelectContent>
-                {ACCESS_BARRIER_ITEMS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {accessBarrierCode === "OTHER" && (
-            <div className="space-y-2">
-              <Label>Otra barrera de acceso</Label>
-              <Input
-                {...register("accessBarrierOther")}
-                placeholder="Especificá la barrera"
-              />
-            </div>
-          )}
-          <TriSelect
-            label="¿Orientado ante barreras de acceso?"
-            value={orientedRegardingBarriers}
-            onChange={(value) =>
-              setValue("orientedRegardingBarriers", value)
-            }
-          />
-          {treatmentSituation === "INTERRUMPIDO" && (
-            <>
-              <div className="space-y-2">
-                <Label>Motivo de interrupción</Label>
+            {mode === "REPLACE" && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Línea de tratamiento a actualizar</Label>
                 <Select
-                  items={INTERRUPTION_REASON_ITEMS}
-                  value={interruptionReason ?? ""}
-                  onValueChange={(value) =>
-                    setValue(
-                      "interruptionReason",
-                      (value as InterruptionReason | null) ?? undefined,
-                    )
-                  }
+                  items={currentTreatments.map((item) => ({
+                    value: item.seriesId,
+                    label: `${item.treatmentType} · ${item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}`,
+                  }))}
+                  value={selectedSeriesId}
+                  onValueChange={(value) => selectTreatment(value ?? "")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar motivo" />
+                    <SelectValue placeholder="Seleccionar tratamiento actual" />
                   </SelectTrigger>
                   <SelectContent>
-                    {INTERRUPTION_REASON_ITEMS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {currentTreatments.map((item) => (
+                      <SelectItem key={item.seriesId} value={item.seriesId}>
+                        {item.treatmentType} ·{" "}
+                        {item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              {interruptionReason === "OTHER" && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Otro motivo de interrupción</Label>
-                  <Textarea
-                    {...register("interruptionReasonOther")}
-                    placeholder="Describe el motivo"
-                  />
-                </div>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Diagnóstico asociado</Label>
+              <Select
+                items={diagnosisItems}
+                value={diagnosisId}
+                onValueChange={(v) => setValue("diagnosisId", v ?? undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar diagnóstico" />
+                </SelectTrigger>
+                <SelectContent>
+                  {diagnosisItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!canPickDiagnosis && (
+                <p className="text-muted-foreground text-xs">
+                  Primero registrá un diagnóstico.
+                </p>
               )}
-            </>
-          )}
-          {treatmentSituation === "ABANDONED" && (
-            <div className="space-y-2 md:col-span-2">
-              <Label>Motivo de abandono</Label>
-              <Textarea
-                {...register("treatmentAbandonmentReason")}
-                placeholder="Describe el motivo del abandono"
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de tratamiento</Label>
+              <Input
+                {...register("treatmentType")}
+                placeholder="Ej: Quimioterapia"
               />
             </div>
-          )}
-          <div className="space-y-2">
-            <Label>¿Recibe este tratamiento por derivación?</Label>
-            <Select
-              items={yesNoItems}
-              value={isReferred ? "SI" : "NO"}
-              onValueChange={(v) => setValue("isReferred", v === "SI")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SI">Sí</SelectItem>
-                <SelectItem value="NO">No</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {isReferred ? (
-            <>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Hospital de origen</Label>
-                <div className="flex gap-2">
+            <TriSelect
+              label="¿Es una operación?"
+              value={isOperation}
+              onChange={(value) => {
+                setValue("isOperation", value)
+                if (!value) setValue("operationName", "")
+              }}
+            />
+            {isOperation && (
+              <div className="space-y-2">
+                <Label>Nombre de la operación</Label>
+                <Input
+                  {...register("operationName")}
+                  placeholder="Ej: Mastectomía"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Programa de atención</Label>
+              <Select
+                items={CARE_PROGRAMS}
+                value={watched.careProgram ?? ""}
+                onValueChange={(value) =>
+                  setValue("careProgram", value as CareProgram)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar programa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CARE_PROGRAMS.map((program) => (
+                    <SelectItem key={program.value} value={program.value}>
+                      {program.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DurationInput
+              label="Frecuencia del tratamiento"
+              units={["DAY", "WEEK", "MONTH", "YEAR"]}
+              defaultUnit="WEEK"
+              singleValue
+              value={treatmentFrequency}
+              onChange={(value) => setValue("treatmentFrequency", value)}
+            />
+            <div className="space-y-2">
+              <Label>Situación del tratamiento</Label>
+              <Select
+                items={TREATMENT_SITUATIONS}
+                value={treatmentSituation ?? ""}
+                onValueChange={(value) =>
+                  setValue(
+                    "treatmentSituation",
+                    value as TreatmentFormValues["treatmentSituation"],
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar situación" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TREATMENT_SITUATIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha de inicio</Label>
+              <Input type="date" {...register("startDate")} />
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha de fin (opcional)</Label>
+              <Input
+                type="date"
+                min={startDate || undefined}
+                {...register("endDate")}
+              />
+            </div>
+            <TriSelect
+              label="¿Recibe teleconsulta?"
+              value={receivesTeleconsultation}
+              onChange={(value) => setValue("receivesTeleconsultation", value)}
+            />
+            {receivesTeleconsultation === true && (
+              <>
+                <div className="space-y-2">
+                  <Label>Nota de teleconsulta</Label>
+                  <Textarea
+                    {...register("teleconsultationNote")}
+                    placeholder="Detalle de la teleconsulta"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Especialidades de teleconsulta</Label>
+                  <Input
+                    {...register("teleconsultationSpecialties")}
+                    placeholder="Ej: Oncología, Psicología"
+                  />
+                </div>
+              </>
+            )}
+            <TriSelect
+              label="¿Tratamiento desde SEPA?"
+              value={treatmentViaSepa}
+              onChange={(value) => setValue("treatmentViaSepa", value)}
+            />
+            <div className="space-y-2">
+              <Label>Sesiones programadas</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                {...register("scheduledSessions")}
+                placeholder="Ej: 4"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Sesiones realizadas</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                {...register("completedSessions")}
+                placeholder="Ej: 2"
+              />
+            </div>
+            <TriSelect
+              label="¿Cumplió el tratamiento hormonal?"
+              value={hormonalTreatmentCompleted}
+              onChange={(value) =>
+                setValue("hormonalTreatmentCompleted", value)
+              }
+            />
+            <div className="space-y-2">
+              <Label>Barrera de acceso</Label>
+              <Select
+                items={ACCESS_BARRIER_ITEMS}
+                value={accessBarrierCode ?? ""}
+                onValueChange={(value) =>
+                  setValue(
+                    "accessBarrierCode",
+                    (value as AccessBarrierCode | null) ?? undefined,
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar barrera" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCESS_BARRIER_ITEMS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {accessBarrierCode === "OTHER" && (
+              <div className="space-y-2">
+                <Label>Otra barrera de acceso</Label>
+                <Input
+                  {...register("accessBarrierOther")}
+                  placeholder="Especificá la barrera"
+                />
+              </div>
+            )}
+            <TriSelect
+              label="¿Orientado ante barreras de acceso?"
+              value={orientedRegardingBarriers}
+              onChange={(value) => setValue("orientedRegardingBarriers", value)}
+            />
+            {treatmentSituation === "INTERRUMPIDO" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Motivo de interrupción</Label>
                   <Select
-                    items={hospitals.map((h) => ({
-                      value: h.id,
-                      label: h.name,
-                    }))}
-                    value={sourceHealthCenterId ?? ""}
-                    onValueChange={(v) =>
-                      setValue("sourceHealthCenterId", v ?? undefined)
+                    items={INTERRUPTION_REASON_ITEMS}
+                    value={interruptionReason ?? ""}
+                    onValueChange={(value) =>
+                      setValue(
+                        "interruptionReason",
+                        (value as InterruptionReason | null) ?? undefined,
+                      )
                     }
                   >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleccionar origen" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar motivo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {hospitals.map((h) => (
-                        <SelectItem key={h.id} value={h.id}>
-                          {h.name}
+                      {INTERRUPTION_REASON_ITEMS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1"
-                    onClick={onOpenNewHospital}
-                  >
-                    <Building2 className="size-3.5" />
-                    <Plus className="size-3" />
-                  </Button>
                 </div>
-              </div>
+                {interruptionReason === "OTHER" && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Otro motivo de interrupción</Label>
+                    <Textarea
+                      {...register("interruptionReasonOther")}
+                      placeholder="Describe el motivo"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            {treatmentSituation === "ABANDONED" && (
               <div className="space-y-2 md:col-span-2">
-                <Label>Hospital receptor</Label>
+                <Label>Motivo de abandono</Label>
+                <Textarea
+                  {...register("treatmentAbandonmentReason")}
+                  placeholder="Describe el motivo del abandono"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>¿Recibe este tratamiento por derivación?</Label>
+              <Select
+                items={yesNoItems}
+                value={isReferred ? "SI" : "NO"}
+                onValueChange={(v) => setValue("isReferred", v === "SI")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SI">Sí</SelectItem>
+                  <SelectItem value="NO">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {isReferred ? (
+              <>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Hospital de origen</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      items={hospitals.map((h) => ({
+                        value: h.id,
+                        label: h.name,
+                      }))}
+                      value={sourceHealthCenterId ?? ""}
+                      onValueChange={(v) =>
+                        setValue("sourceHealthCenterId", v ?? undefined)
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Seleccionar origen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hospitals.map((h) => (
+                          <SelectItem key={h.id} value={h.id}>
+                            {h.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      onClick={onOpenNewHospital}
+                    >
+                      <Building2 className="size-3.5" />
+                      <Plus className="size-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Hospital receptor</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      items={hospitals.map((h) => ({
+                        value: h.id,
+                        label: h.name,
+                      }))}
+                      value={receivingHealthCenterId ?? ""}
+                      onValueChange={(v) =>
+                        setValue("receivingHealthCenterId", v ?? undefined)
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Seleccionar receptor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hospitals.map((h) => (
+                          <SelectItem key={h.id} value={h.id}>
+                            {h.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      onClick={onOpenNewHospital}
+                    >
+                      <Building2 className="size-3.5" />
+                      <Plus className="size-3" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Hospital donde recibe el tratamiento</Label>
                 <div className="flex gap-2">
                   <Select
                     items={hospitals.map((h) => ({
@@ -3224,7 +3851,7 @@ function TratamientosForm({
                     }
                   >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleccionar receptor" />
+                      <SelectValue placeholder="Opcional" />
                     </SelectTrigger>
                     <SelectContent>
                       {hospitals.map((h) => (
@@ -3246,183 +3873,176 @@ function TratamientosForm({
                   </Button>
                 </div>
               </div>
-            </>
-          ) : (
+            )}
             <div className="space-y-2 md:col-span-2">
-              <Label>Hospital donde recibe el tratamiento</Label>
-              <div className="flex gap-2">
-                <Select
-                  items={hospitals.map((h) => ({
-                    value: h.id,
-                    label: h.name,
-                  }))}
-                  value={receivingHealthCenterId ?? ""}
-                  onValueChange={(v) =>
-                    setValue("receivingHealthCenterId", v ?? undefined)
-                  }
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Opcional" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {hospitals.map((h) => (
-                      <SelectItem key={h.id} value={h.id}>
-                        {h.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Label>Receta</Label>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="shrink-0 gap-1"
-                  onClick={onOpenNewHospital}
+                  className="gap-1.5"
+                  disabled={!canAttachPrescription}
+                  onClick={() => setPrescriptionUploadOpen(true)}
                 >
-                  <Building2 className="size-3.5" />
-                  <Plus className="size-3" />
+                  <FileUp className="size-3.5" />
+                  Agregar receta
                 </Button>
+                {!canAttachPrescription && (
+                  <p className="text-muted-foreground text-xs">
+                    La receta se puede adjuntar cuando el tratamiento ya esté
+                    guardado.
+                  </p>
+                )}
               </div>
             </div>
-          )}
-          <div className="space-y-2 md:col-span-2">
-            <Label>Receta</Label>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Motivo de no recibir tratamiento</Label>
+              <Textarea
+                {...register("notReceivingReason")}
+                placeholder="Completa si corresponde..."
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>
+                {mode === "REPLACE"
+                  ? "Motivo de actualización"
+                  : "Motivo del cambio"}
+              </Label>
+              <Input
+                {...register("changeReason")}
+                placeholder="Completa si corresponde..."
+              />
+            </div>
+          </div>
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Medicamentos</p>
+                <p className="text-muted-foreground text-xs">
+                  Se guardarán junto con el tratamiento al completar el
+                  seguimiento.
+                </p>
+              </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
-                disabled={!canAttachPrescription}
-                onClick={() => setPrescriptionUploadOpen(true)}
+                className="gap-1"
+                onClick={addMedication}
               >
-                <FileUp className="size-3.5" />
-                Agregar receta
+                <Plus className="size-3.5" />
+                Agregar
               </Button>
-              {!canAttachPrescription && (
-                <p className="text-muted-foreground text-xs">
-                  La receta se puede adjuntar cuando el tratamiento ya esté
-                  guardado.
-                </p>
-              )}
             </div>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Motivo de no recibir tratamiento</Label>
-            <Textarea
-              {...register("notReceivingReason")}
-              placeholder="Completa si corresponde..."
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>
-              {mode === "REPLACE"
-                ? "Motivo de actualización"
-                : "Motivo del cambio"}
-            </Label>
-            <Input
-              {...register("changeReason")}
-              placeholder="Completa si corresponde..."
-            />
-          </div>
-        </div>
-        <div className="space-y-3 border-t pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium">Medicamentos</p>
-              <p className="text-muted-foreground text-xs">
-                Se guardarán junto con el tratamiento al completar el
-                seguimiento.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={addMedication}
-            >
-              <Plus className="size-3.5" />
-              Agregar
-            </Button>
-          </div>
-          {medicationFields.map((field, index) => {
-            const medication = medications[index] ?? field
-            return (
-              <div
-                key={field.id}
-                className="bg-muted/20 space-y-4 rounded-md border p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">Medicamento {index + 1}</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive size-8"
-                    onClick={() => remove(index)}
-                  >
-                    <Minus className="size-3.5" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Nombre</Label>
-                    <Input
-                      value={medication.name}
-                      onChange={(event) =>
-                        updateMedication(index, { name: event.target.value })
-                      }
-                      placeholder="Ej: Tamoxifeno"
-                    />
+            {medicationFields.map((field, index) => {
+              const medication = medications[index] ?? field
+              return (
+                <div
+                  key={field.id}
+                  className="bg-muted/20 space-y-4 rounded-md border p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">
+                      Medicamento {index + 1}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive size-8"
+                      onClick={() => remove(index)}
+                    >
+                      <Minus className="size-3.5" />
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Descripción de dosis</Label>
-                    <Input
-                      value={medication.doseDescription ?? ""}
-                      onChange={(event) =>
-                        updateMedication(index, {
-                          doseDescription: event.target.value || undefined,
-                        })
-                      }
-                      placeholder="Ej: 2 tabletas"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Cantidad</Label>
+                      <Label>Nombre</Label>
                       <Input
-                        type="number"
-                        min={0}
-                        step="any"
-                        value={medication.doseAmount ?? ""}
+                        value={medication.name}
                         onChange={(event) =>
-                          updateMedication(index, {
-                            doseAmount: event.target.value
-                              ? Number(event.target.value)
-                              : undefined,
-                          })
+                          updateMedication(index, { name: event.target.value })
                         }
+                        placeholder="Ej: Tamoxifeno"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Unidad</Label>
+                      <Label>Descripción de dosis</Label>
+                      <Input
+                        value={medication.doseDescription ?? ""}
+                        onChange={(event) =>
+                          updateMedication(index, {
+                            doseDescription: event.target.value || undefined,
+                          })
+                        }
+                        placeholder="Ej: 2 tabletas"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Cantidad</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={medication.doseAmount ?? ""}
+                          onChange={(event) =>
+                            updateMedication(index, {
+                              doseAmount: event.target.value
+                                ? Number(event.target.value)
+                                : undefined,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Unidad</Label>
+                        <Select
+                          items={DOSE_UNITS}
+                          value={medication.doseUnit ?? ""}
+                          onValueChange={(value) =>
+                            updateMedication(index, {
+                              doseUnit: value as NonNullable<
+                                CreateTreatmentMedicationInput["doseUnit"]
+                              >,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Unidad" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DOSE_UNITS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Vía de administración</Label>
                       <Select
-                        items={DOSE_UNITS}
-                        value={medication.doseUnit ?? ""}
+                        items={MEDICATION_ROUTES}
+                        value={medication.route ?? ""}
                         onValueChange={(value) =>
                           updateMedication(index, {
-                            doseUnit: value as NonNullable<
-                              CreateTreatmentMedicationInput["doseUnit"]
+                            route: value as NonNullable<
+                              CreateTreatmentMedicationInput["route"]
                             >,
                           })
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Unidad" />
+                          <SelectValue placeholder="Seleccionar vía" />
                         </SelectTrigger>
                         <SelectContent>
-                          {DOSE_UNITS.map((option) => (
+                          {MEDICATION_ROUTES.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -3431,104 +4051,78 @@ function TratamientosForm({
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Vía de administración</Label>
-                    <Select
-                      items={MEDICATION_ROUTES}
-                      value={medication.route ?? ""}
-                      onValueChange={(value) =>
-                        updateMedication(index, {
-                          route: value as NonNullable<
-                            CreateTreatmentMedicationInput["route"]
-                          >,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar vía" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MEDICATION_ROUTES.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DurationInput
-                  label="Frecuencia del medicamento"
-                  units={["HOUR", "DAY", "WEEK", "MONTH"]}
-                  defaultUnit="HOUR"
-                  singleValue
-                  value={medication.frequency}
-                  onChange={(frequency) =>
-                    updateMedication(index, { frequency })
-                  }
-                />
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Fecha de inicio</Label>
-                    <Input
-                      type="date"
-                      value={medication.startDate ?? ""}
-                      onChange={(event) =>
-                        updateMedication(index, {
-                          startDate: event.target.value || undefined,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fecha de fin</Label>
-                    <Input
-                      type="date"
-                      min={medication.startDate ?? undefined}
-                      value={medication.endDate ?? ""}
-                      onChange={(event) =>
-                        updateMedication(index, {
-                          endDate: event.target.value || undefined,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notas</Label>
-                  <Textarea
-                    value={medication.notes ?? ""}
-                    onChange={(event) =>
-                      updateMedication(index, {
-                        notes: event.target.value || undefined,
-                      })
+                  <DurationInput
+                    label="Frecuencia del medicamento"
+                    units={["HOUR", "DAY", "WEEK", "MONTH"]}
+                    defaultUnit="HOUR"
+                    singleValue
+                    value={medication.frequency}
+                    onChange={(frequency) =>
+                      updateMedication(index, { frequency })
                     }
-                    placeholder="Indicaciones adicionales"
                   />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Fecha de inicio</Label>
+                      <Input
+                        type="date"
+                        value={medication.startDate ?? ""}
+                        onChange={(event) =>
+                          updateMedication(index, {
+                            startDate: event.target.value || undefined,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha de fin</Label>
+                      <Input
+                        type="date"
+                        min={medication.startDate ?? undefined}
+                        value={medication.endDate ?? ""}
+                        onChange={(event) =>
+                          updateMedication(index, {
+                            endDate: event.target.value || undefined,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notas</Label>
+                    <Textarea
+                      value={medication.notes ?? ""}
+                      onChange={(event) =>
+                        updateMedication(index, {
+                          notes: event.target.value || undefined,
+                        })
+                      }
+                      placeholder="Indicaciones adicionales"
+                    />
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <Button type="submit" size="sm" disabled={!canPickDiagnosis}>
-          Guardar tratamiento
-        </Button>
-        <DraftBadge saved={Boolean(draft?.length)} />
-      </div>
-    </form>
-    <PatientDocumentUploadDialog
-      open={prescriptionUploadOpen}
-      onOpenChange={setPrescriptionUploadOpen}
-      diagnoses={diagnoses}
-      treatments={treatments}
-      isPending={uploadPrescriptionMutation.isPending}
-      defaultDocumentType="PRESCRIPTION"
-      lockedTreatmentId={selectedTreatment?.id}
-      hideTypeSelect
-      onSubmit={(input) => uploadPrescriptionMutation.mutate(input)}
-    />
+        <div className="flex items-center gap-3">
+          <Button type="submit" size="sm" disabled={!canPickDiagnosis}>
+            Guardar tratamiento
+          </Button>
+          <DraftBadge saved={Boolean(draft?.length)} />
+        </div>
+      </form>
+      <PatientDocumentUploadDialog
+        open={prescriptionUploadOpen}
+        onOpenChange={setPrescriptionUploadOpen}
+        diagnoses={diagnoses}
+        treatments={treatments}
+        isPending={uploadPrescriptionMutation.isPending}
+        defaultDocumentType="PRESCRIPTION"
+        lockedTreatmentId={selectedTreatment?.id}
+        hideTypeSelect
+        onSubmit={(input) => uploadPrescriptionMutation.mutate(input)}
+      />
     </>
   )
 }
@@ -4312,24 +4906,55 @@ function SeguimientoSocialForm({
 function DiagnosticStatusCard({
   patientId,
   followUpId,
+  readOnly = false,
 }: {
   patientId: string
   followUpId: string
+  readOnly?: boolean
 }) {
-  const queryClient = useQueryClient()
   const { data: current, isLoading } = useQuery({
     queryKey: ["patient-diagnostic-status-current", patientId],
     queryFn: () => patientsApi.getCurrentDiagnosticStatus(patientId),
   })
-  const [status, setStatus] = useState<DiagnosticStatus | "">("")
-  const [supportedBySepa, setSupportedBySepa] = useState<boolean | undefined>()
-  const [notes, setNotes] = useState("")
 
-  useEffect(() => {
-    setStatus(current?.status ?? "")
-    setSupportedBySepa(current?.supportedBySepa ?? undefined)
-    setNotes(current?.notes ?? "")
-  }, [current])
+  return (
+    <DiagnosticStatusForm
+      key={current?.id ?? "empty"}
+      patientId={patientId}
+      followUpId={followUpId}
+      current={current}
+      isLoading={isLoading}
+      readOnly={readOnly}
+    />
+  )
+}
+
+function DiagnosticStatusForm({
+  patientId,
+  followUpId,
+  current,
+  isLoading,
+  readOnly,
+}: {
+  patientId: string
+  followUpId: string
+  current: PatientDiagnosticStatusEvent | null | undefined
+  isLoading: boolean
+  readOnly: boolean
+}) {
+  const queryClient = useQueryClient()
+  const [status, setStatus] = useState<DiagnosticStatus | "">(
+    "",
+  )
+  const [supportedBySepa, setSupportedBySepa] = useState<boolean | undefined>(
+    current?.supportedBySepa ?? undefined,
+  )
+  const [notes, setNotes] = useState(current?.notes ?? "")
+  const [diagnosis, setDiagnosis] = useState("")
+  const canTransition = !readOnly && current?.status === "SEARCHING"
+  const transitionItems = DIAGNOSTIC_STATUS_ITEMS.filter(
+    (option) => option.value !== "SEARCHING",
+  )
 
   const transitionMutation = useMutation({
     mutationFn: (body: TransitionPatientDiagnosticStatusDto) =>
@@ -4355,9 +4980,21 @@ function DiagnosticStatusCard({
       toast.error("Seleccioná el nuevo estado diagnóstico")
       return
     }
+    if (status === "CONFIRMED" && !diagnosis.trim()) {
+      toast.error("Ingresa el diagnóstico formal")
+      return
+    }
     transitionMutation.mutate({
       status,
       followUpId,
+      ...(status === "CONFIRMED"
+        ? {
+            diagnosis: {
+              diagnosis: diagnosis.trim(),
+              mode: "PARALLEL",
+            },
+          }
+        : {}),
       supportedBySepa,
       notes: notes.trim() || undefined,
     })
@@ -4379,14 +5016,18 @@ function DiagnosticStatusCard({
           {current?.supportedBySepa != null
             ? ` · Soporte SEPA: ${current.supportedBySepa ? "Sí" : "No"}`
             : ""}
+          {current?.occurredAt
+            ? ` · ${new Date(current.occurredAt).toLocaleDateString("es-PE")}`
+            : ""}
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {!readOnly && <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Nuevo estado</Label>
           <Select
-            items={DIAGNOSTIC_STATUS_ITEMS}
+            items={transitionItems}
             value={status}
+            disabled={!canTransition}
             onValueChange={(value) =>
               setStatus((value as DiagnosticStatus | null) ?? "")
             }
@@ -4395,7 +5036,7 @@ function DiagnosticStatusCard({
               <SelectValue placeholder="Seleccionar estado" />
             </SelectTrigger>
             <SelectContent>
-              {DIAGNOSTIC_STATUS_ITEMS.map((option) => (
+              {transitionItems.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -4403,6 +5044,16 @@ function DiagnosticStatusCard({
             </SelectContent>
           </Select>
         </div>
+        {status === "CONFIRMED" && (
+          <div className="space-y-2 md:col-span-2">
+            <Label>Diagnóstico formal</Label>
+            <Input
+              value={diagnosis}
+              onChange={(event) => setDiagnosis(event.target.value)}
+              placeholder="Escriba el diagnóstico confirmado"
+            />
+          </div>
+        )}
         <TriSelect
           label="¿Soportado por SEPA?"
           value={supportedBySepa}
@@ -4416,14 +5067,18 @@ function DiagnosticStatusCard({
             placeholder="Detalle del cambio de estado"
           />
         </div>
-      </div>
-      <Button
-        type="submit"
-        size="sm"
-        disabled={transitionMutation.isPending || !status}
-      >
-        {transitionMutation.isPending ? "Guardando…" : "Registrar transición"}
-      </Button>
+      </div>}
+      {!readOnly && (
+        <Button
+          type="submit"
+          size="sm"
+          disabled={transitionMutation.isPending || !canTransition || !status}
+        >
+          {transitionMutation.isPending
+            ? "Guardando…"
+            : "Registrar transición"}
+        </Button>
+      )}
     </form>
   )
 }

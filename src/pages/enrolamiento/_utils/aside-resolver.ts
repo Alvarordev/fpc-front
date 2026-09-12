@@ -28,7 +28,10 @@ function step7Script(
   const hasMedicalReport = draft.diagnoses.some(
     (diagnosis) => diagnosis.hasMedicalReport,
   )
-  const hasSoughtConsultation = draft.symptomReport.hasSoughtMedicalConsultation
+  const hasMedicalConsultation =
+    draft.symptomReport.hasMedicalConsultation !== undefined
+      ? draft.symptomReport.hasMedicalConsultation
+      : draft.symptomReport.hasSoughtMedicalConsultation
 
   const baseScript = (() => {
     if (hasInsurance) {
@@ -45,7 +48,7 @@ function step7Script(
   let medAppointmentGuidance = ""
   if (
     categoriaClinica === "SIGNS_AND_SYMPTOMS" &&
-    hasSoughtConsultation === false
+    hasMedicalConsultation === false
   ) {
     const insuranceType = draft.insurance.insuranceType
     if (insuranceType === "ESSALUD") {

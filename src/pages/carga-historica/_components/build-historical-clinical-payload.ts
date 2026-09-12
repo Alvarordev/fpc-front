@@ -43,6 +43,9 @@ type AddressPayload = WithRecordId<
 type SocialNotePayload = WithRecordId<
   components["schemas"]["HistoricalFollowUpSocialNoteDto"]
 >
+type NonOncologicalFollowUpPayload = WithRecordId<
+  components["schemas"]["HistoricalNonOncologicalFollowUpDto"]
+>
 
 export interface HistoricalClinicalPayload {
   interlocutorId: string
@@ -50,6 +53,7 @@ export interface HistoricalClinicalPayload {
   diagnoses?: DiagnosisPayload[]
   treatments?: TreatmentPayload[]
   symptomReport?: SymptomReportPayload
+  nonOncologicalFollowUp?: NonOncologicalFollowUpPayload
   healthBackgroundAssessment?: HealthBackgroundPayload
   insurance?: InsurancePayload
   sisAffiliation?: SisAffiliationPayload
@@ -64,6 +68,7 @@ export interface HistoricalClinicalRecordIds {
   /** Existing treatment id, positional against `drafts.treatments`. */
   treatments?: (string | undefined)[]
   symptomReportId?: string
+  nonOncologicalFollowUpId?: string
   healthBackgroundAssessmentId?: string
   insuranceId?: string
   sisAffiliationId?: string
@@ -104,6 +109,7 @@ function buildDiagnosis(
     symptomLeadingToCheckup: draft.symptomLeadingToCheckup,
     hasMedicalReport: draft.hasMedicalReport,
     isSepaActiveReferral: draft.isSepaActiveReferral,
+    changeReason: draft.changeReason,
     ...(waitTimeForDiagnosis ? { waitTimeForDiagnosis } : {}),
     clientRef: draft.draftId,
     ...(existingId ? { id: existingId } : {}),
@@ -231,19 +237,78 @@ export function buildHistoricalClinicalPayload({
   }
 
   if (drafts.symptomReport) {
-    const { symptomDuration, symptomFrequency, ...rest } = drafts.symptomReport
+    const {
+      symptomDuration,
+      symptomFrequency,
+      diagnosisSearchDuration,
+      reportedTreatmentFrequency,
+      ...rest
+    } = drafts.symptomReport
     const normalizedDuration = toDurationInput(symptomDuration)
     const normalizedFrequency = toDurationInput(symptomFrequency)
+    const normalizedDiagnosisSearchDuration = toDurationInput(
+      diagnosisSearchDuration,
+    )
+    const normalizedReportedTreatmentFrequency = toDurationInput(
+      reportedTreatmentFrequency,
+    )
     if (symptomDuration?.valueMin !== undefined && !normalizedDuration)
       throw new Error("Completa correctamente la duración de los síntomas")
     if (symptomFrequency?.valueMin !== undefined && !normalizedFrequency)
       throw new Error("Completa correctamente la frecuencia de los síntomas")
+    if (
+      diagnosisSearchDuration?.valueMin !== undefined &&
+      !normalizedDiagnosisSearchDuration
+    )
+      throw new Error("Completa correctamente el tiempo de búsqueda")
+    if (
+      reportedTreatmentFrequency?.valueMin !== undefined &&
+      !normalizedReportedTreatmentFrequency
+    )
+      throw new Error("Completa correctamente la frecuencia del tratamiento")
 
     payload.symptomReport = {
       ...rest,
       ...(normalizedDuration ? { symptomDuration: normalizedDuration } : {}),
       ...(normalizedFrequency ? { symptomFrequency: normalizedFrequency } : {}),
+      ...(normalizedDiagnosisSearchDuration
+        ? { diagnosisSearchDuration: normalizedDiagnosisSearchDuration }
+        : {}),
+      ...(normalizedReportedTreatmentFrequency
+        ? { reportedTreatmentFrequency: normalizedReportedTreatmentFrequency }
+        : {}),
       ...(recordIds.symptomReportId ? { id: recordIds.symptomReportId } : {}),
+    }
+  }
+
+  if (drafts.nonOncologicalFollowUp) {
+    const record = drafts.nonOncologicalFollowUp
+    const treatmentFrequency = toDurationInput(record.treatmentFrequency)
+    const controlPeriodicity = toDurationInput(record.controlPeriodicity)
+    if (
+      record.treatmentFrequency?.valueMin !== undefined &&
+      !treatmentFrequency
+    )
+      throw new Error("Completa correctamente la frecuencia del tratamiento")
+    if (
+      record.controlPeriodicity?.valueMin !== undefined &&
+      !controlPeriodicity
+    )
+      throw new Error("Completa correctamente la periodicidad de controles")
+    payload.nonOncologicalFollowUp = {
+      diagnosis: record.diagnosis.trim(),
+      occurredOn: record.occurredOn || undefined,
+      receivesTreatment: record.receivesTreatment,
+      treatmentName: record.receivesTreatment === false ? undefined : record.treatmentName,
+      medication: record.receivesTreatment === false ? undefined : record.medication,
+      treatmentFrequency,
+      hasControls: record.hasControls,
+      controlSpecialty: record.hasControls === true ? record.controlSpecialty : undefined,
+      controlPeriodicity,
+      status: record.status,
+      dischargedOn: record.dischargedOn,
+      dischargeReason: record.dischargeReason,
+      ...(record.id ? { id: record.id } : {}),
     }
   }
 
@@ -429,9 +494,18 @@ export function historicalClinicalDraftsFromPatient(
         hasRequestedMedicalConsultation:
           symptomReport.hasRequestedMedicalConsultation,
         consultationStatus: symptomReport.consultationStatus,
-        consultationNotObtainedReason:
-          symptomReport.consultationNotObtainedReason,
-        healthCenterId: symptomReport.healthCenterId,
+         consultationNotObtainedReason:
+           symptomReport.consultationNotObtainedReason,
+         hasMedicalConsultation: symptomReport.hasMedicalConsultation,
+         noMedicalConsultationReason:
+           symptomReport.noMedicalConsultationReason,
+         firstConsultationDate: symptomReport.firstConsultationDate,
+         isAwaitingDiagnosis: symptomReport.isAwaitingDiagnosis,
+         hasReferral: symptomReport.hasReferral,
+         referredHealthCenterId: symptomReport.referredHealthCenterId,
+         referralNotProvidedReason: symptomReport.referralNotProvidedReason,
+         nextConsultationDate: symptomReport.nextConsultationDate,
+         healthCenterId: symptomReport.healthCenterId,
         specialty: symptomReport.specialty,
         hasReceivedDiagnosis: symptomReport.hasReceivedDiagnosis,
         reportedDiagnosis: symptomReport.reportedDiagnosis,
@@ -454,6 +528,32 @@ export function historicalClinicalDraftsFromPatient(
             ),
           }
         : {}),
+    }
+  }
+
+  const nonOncologicalFollowUp = patient.nonOncologicalFollowUps?.find(
+    (record) => record.followUpId === followUpId,
+  )
+  if (nonOncologicalFollowUp) {
+    recordIds.nonOncologicalFollowUpId = nonOncologicalFollowUp.id
+    drafts.nonOncologicalFollowUp = {
+      id: nonOncologicalFollowUp.id,
+      diagnosis: nonOncologicalFollowUp.diagnosis,
+      occurredOn: nonOncologicalFollowUp.occurredOn,
+      receivesTreatment: nonOncologicalFollowUp.receivesTreatment,
+      treatmentName: nonOncologicalFollowUp.treatmentName,
+      medication: nonOncologicalFollowUp.medication,
+      treatmentFrequency: normalizeDuration(
+        nonOncologicalFollowUp.treatmentFrequency,
+      ),
+      hasControls: nonOncologicalFollowUp.hasControls,
+      controlSpecialty: nonOncologicalFollowUp.controlSpecialty,
+      controlPeriodicity: normalizeDuration(
+        nonOncologicalFollowUp.controlPeriodicity,
+      ),
+      status: nonOncologicalFollowUp.status,
+      dischargedOn: nonOncologicalFollowUp.dischargedOn,
+      dischargeReason: nonOncologicalFollowUp.dischargeReason,
     }
   }
 

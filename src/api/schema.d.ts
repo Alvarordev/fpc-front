@@ -1726,6 +1726,41 @@ export interface paths {
         patch: operations["HistoricalRecordsController_updatePsychooncologyAppointment"];
         trace?: never;
     };
+    "/patients/{patientId}/non-oncological-follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient non-oncological follow-ups */
+        get: operations["PatientNonOncologicalFollowUpsController_findAll"];
+        put?: never;
+        /** Record a non-oncological follow-up */
+        post: operations["PatientNonOncologicalFollowUpsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/non-oncological-follow-ups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update or discharge a non-oncological follow-up */
+        patch: operations["PatientNonOncologicalFollowUpsController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2334,7 +2369,7 @@ export interface components {
             appointmentTime?: string;
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
-            hasReferralSheet?: boolean;
+            hasReferralSheet?: boolean | null;
             referredTo?: string;
             referralNotProvidedReason?: string;
             difficulties?: string;
@@ -2362,7 +2397,7 @@ export interface components {
         EnrollmentSymptomReportDto: {
             discomfortSeverity?: string;
             discomfortDescription?: string;
-            hasDiscomfort?: boolean;
+            hasDiscomfort?: boolean | null;
             checkupMotivation?: string;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
@@ -2373,7 +2408,16 @@ export interface components {
             painLocation?: string;
             painDescription?: string;
             hasSoughtMedicalConsultation?: boolean;
-            hasRequestedMedicalConsultation?: boolean;
+            hasRequestedMedicalConsultation?: boolean | null;
+            hasMedicalConsultation?: boolean | null;
+            noMedicalConsultationReason?: string;
+            firstConsultationDate?: string;
+            isAwaitingDiagnosis?: boolean | null;
+            hasReferral?: boolean | null;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
+            referralNotProvidedReason?: string;
+            nextConsultationDate?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
@@ -2381,9 +2425,9 @@ export interface components {
             healthCenterId?: string;
             specialty?: string;
             diagnosisSearchDuration?: components["schemas"]["DurationDto"];
-            hasReceivedDiagnosis?: boolean;
+            hasReceivedDiagnosis?: boolean | null;
             reportedDiagnosis?: string;
-            isReceivingReportedTreatment?: boolean;
+            isReceivingReportedTreatment?: boolean | null;
             reportedTreatment?: string;
             reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
             notReceivingTreatmentReason?: string;
@@ -2413,6 +2457,22 @@ export interface components {
             emotionalDistressScore?: number;
             /** @enum {string} */
             preferredModality?: "CALL" | "VIDEO_CALL";
+        };
+        EnrollmentNonOncologicalFollowUpDto: {
+            /** Format: uuid */
+            diagnosticStatusEventId?: string | null;
+            diagnosis: string;
+            /** Format: date */
+            occurredOn?: string;
+            receivesTreatment?: boolean | null;
+            treatmentName?: string | null;
+            medication?: string | null;
+            treatmentFrequency?: components["schemas"]["DurationDto"] | null;
+            hasControls?: boolean | null;
+            controlSpecialty?: string | null;
+            controlPeriodicity?: components["schemas"]["DurationDto"] | null;
+            /** @enum {string} */
+            status?: "ACTIVE" | "DISCHARGED";
         };
         CreateEnrollmentFamilyTalkInterestDto: {
             talkName: string;
@@ -2446,6 +2506,7 @@ export interface components {
             symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
             healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
             psychooncologySupportAssessment?: components["schemas"]["EnrollmentPsychooncologySupportAssessmentDto"];
+            nonOncologicalFollowUp?: components["schemas"]["EnrollmentNonOncologicalFollowUpDto"];
             currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
             entrySource?: string;
@@ -2826,7 +2887,7 @@ export interface components {
         };
         PatientTimelineOutcomeDto: {
             /** @enum {string} */
-            type: "DIAGNOSIS" | "TREATMENT" | "MEDICATION" | "SYMPTOM" | "INSURANCE" | "SIS_AFFILIATION" | "ADDRESS" | "SOCIAL_NOTE" | "REMINDER" | "PSYCHOONCOLOGY_APPOINTMENT" | "MEDICAL_APPOINTMENT" | "ALERT";
+            type: "DIAGNOSIS" | "TREATMENT" | "MEDICATION" | "SYMPTOM" | "INSURANCE" | "SIS_AFFILIATION" | "ADDRESS" | "SOCIAL_NOTE" | "REMINDER" | "PSYCHOONCOLOGY_APPOINTMENT" | "MEDICAL_APPOINTMENT" | "NON_ONCOLOGICAL_FOLLOW_UP" | "DIAGNOSTIC_STATUS" | "ALERT";
             /** Format: uuid */
             recordId: string;
             /** @description Etiqueta legible del tipo de registro */
@@ -3346,6 +3407,17 @@ export interface components {
             painDescription: string | null;
             hasSoughtMedicalConsultation: boolean;
             hasRequestedMedicalConsultation: boolean | null;
+            hasMedicalConsultation: boolean | null;
+            noMedicalConsultationReason: string | null;
+            /** Format: date */
+            firstConsultationDate: string | null;
+            isAwaitingDiagnosis: boolean | null;
+            hasReferral: boolean | null;
+            /** Format: uuid */
+            referredHealthCenterId: string | null;
+            referralNotProvidedReason: string | null;
+            /** Format: date */
+            nextConsultationDate: string | null;
             /** @enum {string|null} */
             consultationStatus: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED" | null;
             consultationNotObtainedReason: string | null;
@@ -3410,6 +3482,37 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        PatientNonOncologicalFollowUpResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            followUpId: string | null;
+            /** Format: uuid */
+            enrollmentId: string | null;
+            /** Format: uuid */
+            diagnosticStatusEventId: string | null;
+            diagnosis: string;
+            /** Format: date */
+            occurredOn: string;
+            receivesTreatment: boolean | null;
+            treatmentName: string | null;
+            medication: string | null;
+            treatmentFrequency: components["schemas"]["DurationResponseDto"] | null;
+            hasControls: boolean | null;
+            controlSpecialty: string | null;
+            controlPeriodicity: components["schemas"]["DurationResponseDto"] | null;
+            /** @enum {string} */
+            status: "ACTIVE" | "DISCHARGED";
+            /** Format: date */
+            dischargedOn: string | null;
+            dischargeReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         PatientDetailsWithSummaryResponseDto: {
             /** Format: uuid */
             id: string;
@@ -3450,6 +3553,7 @@ export interface components {
             symptomReports: components["schemas"]["PatientSymptomReportResponseDto"][];
             healthBackgroundAssessments: components["schemas"]["PatientHealthBackgroundAssessmentResponseDto"][];
             psychooncologySupportAssessments: components["schemas"]["PatientPsychooncologySupportAssessmentResponseDto"][];
+            nonOncologicalFollowUps: components["schemas"]["PatientNonOncologicalFollowUpResponseDto"][];
             companions: components["schemas"]["CompanionPatientResponseDto"][];
         };
         UpdatePatientDto: {
@@ -3522,7 +3626,7 @@ export interface components {
             appointmentTime?: string;
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
-            hasReferralSheet?: boolean;
+            hasReferralSheet?: boolean | null;
             referredTo?: string;
             referralNotProvidedReason?: string;
             difficulties?: string;
@@ -3690,7 +3794,7 @@ export interface components {
             enrollmentId?: string;
             discomfortSeverity?: string;
             discomfortDescription?: string;
-            hasDiscomfort?: boolean;
+            hasDiscomfort?: boolean | null;
             checkupMotivation?: string;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
@@ -3701,7 +3805,16 @@ export interface components {
             painLocation?: string;
             painDescription?: string;
             hasSoughtMedicalConsultation?: boolean;
-            hasRequestedMedicalConsultation?: boolean;
+            hasRequestedMedicalConsultation?: boolean | null;
+            hasMedicalConsultation?: boolean | null;
+            noMedicalConsultationReason?: string;
+            firstConsultationDate?: string;
+            isAwaitingDiagnosis?: boolean | null;
+            hasReferral?: boolean | null;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
+            referralNotProvidedReason?: string;
+            nextConsultationDate?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
@@ -3709,9 +3822,9 @@ export interface components {
             healthCenterId?: string;
             specialty?: string;
             diagnosisSearchDuration?: components["schemas"]["DurationDto"];
-            hasReceivedDiagnosis?: boolean;
+            hasReceivedDiagnosis?: boolean | null;
             reportedDiagnosis?: string;
-            isReceivingReportedTreatment?: boolean;
+            isReceivingReportedTreatment?: boolean | null;
             reportedTreatment?: string;
             reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
             notReceivingTreatmentReason?: string;
@@ -4173,6 +4286,7 @@ export interface components {
             symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
             healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
             psychooncologySupportAssessment?: components["schemas"]["EnrollmentPsychooncologySupportAssessmentDto"];
+            nonOncologicalFollowUp?: components["schemas"]["EnrollmentNonOncologicalFollowUpDto"];
             currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
             entrySource?: string;
@@ -4237,6 +4351,27 @@ export interface components {
              */
             diagnosisId?: string;
         };
+        HistoricalNonOncologicalFollowUpDto: {
+            /** Format: uuid */
+            diagnosticStatusEventId?: string | null;
+            diagnosis: string;
+            /** Format: date */
+            occurredOn?: string;
+            receivesTreatment?: boolean | null;
+            treatmentName?: string | null;
+            medication?: string | null;
+            treatmentFrequency?: components["schemas"]["DurationDto"] | null;
+            hasControls?: boolean | null;
+            controlSpecialty?: string | null;
+            controlPeriodicity?: components["schemas"]["DurationDto"] | null;
+            /** @enum {string} */
+            status?: "ACTIVE" | "DISCHARGED";
+            /** Format: uuid */
+            id?: string;
+            /** Format: date */
+            dischargedOn?: string | null;
+            dischargeReason?: string | null;
+        };
         HistoricalFollowUpSocialNoteDto: {
             /** @enum {string} */
             type: "SOCIAL_WORKER" | "CONADIS" | "FISSAL";
@@ -4268,6 +4403,7 @@ export interface components {
             diagnoses?: components["schemas"]["EnrollmentDiagnosisDto"][];
             treatments?: components["schemas"]["HistoricalFollowUpTreatmentDto"][];
             symptomReport?: components["schemas"]["EnrollmentSymptomReportDto"];
+            nonOncologicalFollowUp?: components["schemas"]["HistoricalNonOncologicalFollowUpDto"];
             healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
             insurance?: components["schemas"]["EnrollmentInsuranceDto"];
             sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
@@ -4356,7 +4492,7 @@ export interface components {
         UpdateHistoricalSymptomReportDto: {
             discomfortSeverity?: string;
             discomfortDescription?: string;
-            hasDiscomfort?: boolean;
+            hasDiscomfort?: boolean | null;
             checkupMotivation?: string;
             signsAndSymptoms?: string;
             indicationsReceived?: string;
@@ -4367,7 +4503,16 @@ export interface components {
             painLocation?: string;
             painDescription?: string;
             hasSoughtMedicalConsultation?: boolean;
-            hasRequestedMedicalConsultation?: boolean;
+            hasRequestedMedicalConsultation?: boolean | null;
+            hasMedicalConsultation?: boolean | null;
+            noMedicalConsultationReason?: string;
+            firstConsultationDate?: string;
+            isAwaitingDiagnosis?: boolean | null;
+            hasReferral?: boolean | null;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
+            referralNotProvidedReason?: string;
+            nextConsultationDate?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
@@ -4375,9 +4520,9 @@ export interface components {
             healthCenterId?: string;
             specialty?: string;
             diagnosisSearchDuration?: components["schemas"]["DurationDto"];
-            hasReceivedDiagnosis?: boolean;
+            hasReceivedDiagnosis?: boolean | null;
             reportedDiagnosis?: string;
-            isReceivingReportedTreatment?: boolean;
+            isReceivingReportedTreatment?: boolean | null;
             reportedTreatment?: string;
             reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
             notReceivingTreatmentReason?: string;
@@ -4463,6 +4608,7 @@ export interface components {
             diagnoses?: components["schemas"]["UpdateHistoricalDiagnosisDto"][];
             treatments?: components["schemas"]["UpdateHistoricalTreatmentDto"][];
             symptomReport?: components["schemas"]["UpdateHistoricalSymptomReportDto"];
+            nonOncologicalFollowUp?: components["schemas"]["HistoricalNonOncologicalFollowUpDto"];
             healthBackgroundAssessment?: components["schemas"]["UpdateHistoricalHealthBackgroundDto"];
             insurance?: components["schemas"]["UpdateHistoricalInsuranceDto"];
             sisAffiliation?: components["schemas"]["UpdateHistoricalSisAffiliationDto"];
@@ -4480,7 +4626,7 @@ export interface components {
             /** Format: date */
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
-            hasReferralSheet?: boolean;
+            hasReferralSheet?: boolean | null;
             referredTo?: string;
             referralNotProvidedReason?: string;
             difficulties?: string;
@@ -4544,7 +4690,7 @@ export interface components {
             /** Format: date */
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
-            hasReferralSheet?: boolean;
+            hasReferralSheet?: boolean | null;
             referredTo?: string;
             referralNotProvidedReason?: string;
             difficulties?: string;
@@ -4634,6 +4780,45 @@ export interface components {
             additionalObservations?: string | null;
             recommendations?: string | null;
             referral?: string | null;
+        };
+        CreatePatientNonOncologicalFollowUpDto: {
+            /** Format: uuid */
+            followUpId?: string | null;
+            /** Format: uuid */
+            enrollmentId?: string | null;
+            /** Format: uuid */
+            diagnosticStatusEventId?: string | null;
+            diagnosis: string;
+            /** Format: date */
+            occurredOn?: string;
+            receivesTreatment?: boolean | null;
+            treatmentName?: string | null;
+            medication?: string | null;
+            treatmentFrequency?: components["schemas"]["DurationDto"] | null;
+            hasControls?: boolean | null;
+            controlSpecialty?: string | null;
+            controlPeriodicity?: components["schemas"]["DurationDto"] | null;
+            /** @enum {string} */
+            status?: "ACTIVE" | "DISCHARGED";
+        };
+        UpdatePatientNonOncologicalFollowUpDto: {
+            /** Format: uuid */
+            diagnosticStatusEventId?: string | null;
+            diagnosis?: string;
+            /** Format: date */
+            occurredOn?: string;
+            receivesTreatment?: boolean | null;
+            treatmentName?: string | null;
+            medication?: string | null;
+            treatmentFrequency?: components["schemas"]["DurationDto"] | null;
+            hasControls?: boolean | null;
+            controlSpecialty?: string | null;
+            controlPeriodicity?: components["schemas"]["DurationDto"] | null;
+            /** @enum {string} */
+            status?: "ACTIVE" | "DISCHARGED";
+            /** Format: date */
+            dischargedOn?: string | null;
+            dischargeReason?: string | null;
         };
     };
     responses: never;
@@ -10544,6 +10729,142 @@ export interface operations {
                 content?: never;
             };
             /** @description Appointment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientNonOncologicalFollowUpsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientNonOncologicalFollowUpResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientNonOncologicalFollowUpsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientNonOncologicalFollowUpDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientNonOncologicalFollowUpResponseDto"];
+                };
+            };
+            /** @description Invalid non-oncological follow-up */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient, follow-up, or enrollment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientNonOncologicalFollowUpsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientNonOncologicalFollowUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientNonOncologicalFollowUpResponseDto"];
+                };
+            };
+            /** @description Invalid non-oncological follow-up */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Non-oncological follow-up not found */
             404: {
                 headers: {
                     [name: string]: unknown;
