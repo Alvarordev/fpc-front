@@ -1,6 +1,10 @@
 import { create } from "zustand"
 import { authApi } from "@/api/auth"
-import { clearAccessToken, registerAuthExpiredHandler } from "@/lib/auth-session"
+import {
+  clearAccessToken,
+  refreshAccessToken,
+  registerAuthExpiredHandler,
+} from "@/lib/auth-session"
 import type { LoginRequest, User } from "@/types"
 
 interface AuthState {
@@ -42,13 +46,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       return restoreSessionPromise
     }
 
-    set({ isLoading: true })
-    restoreSessionPromise = authApi
-      .restoreSession()
-      .then((user) => set({ user }))
+    const hasUser = get().user !== null
+
+    if (!hasUser) {
+      set({ isLoading: true })
+    }
+
+    restoreSessionPromise = (
+      hasUser
+        ? refreshAccessToken().then(() => undefined)
+        : authApi.restoreSession().then((user) => {
+            set({ user })
+          })
+    )
       .catch(() => {
-        clearAccessToken()
-        set({ user: null })
+        get().clearSession()
       })
       .finally(() => {
         set({ isLoading: false })

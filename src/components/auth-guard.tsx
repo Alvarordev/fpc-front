@@ -21,7 +21,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [needsSessionRestore, restoreSession])
 
-  if (isLoading || (needsSessionRestore && user)) {
+  if (!user && isLoading) {
     return null
   }
 

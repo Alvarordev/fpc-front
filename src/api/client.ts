@@ -1,6 +1,12 @@
 import createClient from "openapi-fetch"
-import { expireAuthSession, getAccessToken } from "@/lib/auth-session"
+import {
+  expireAuthSession,
+  getAccessToken,
+  refreshAccessToken,
+} from "@/lib/auth-session"
 import type { paths } from "./schema"
+
+export const AUTH_RETRY_HEADER = "X-Auth-Retry"
 
 export const api = createClient<paths>({
   baseUrl: import.meta.env.VITE_API_URL,
@@ -10,6 +16,67 @@ export const api = createClient<paths>({
     }),
 })
 
+function isAuthPath(pathOrUrl: string): boolean {
+  try {
+    return new URL(pathOrUrl, "http://local.invalid").pathname.includes(
+      "/auth/",
+    )
+  } catch {
+    return pathOrUrl.includes("/auth/")
+  }
+}
+
+function withAccessToken(headers: Headers): Headers {
+  const next = new Headers(headers)
+  const accessToken = getAccessToken()
+
+  if (accessToken) {
+    next.set("Authorization", `Bearer ${accessToken}`)
+  } else {
+    next.delete("Authorization")
+  }
+
+  return next
+}
+
+async function recoverFromUnauthorized(
+  request: Request,
+): Promise<Response | null> {
+  if (isAuthPath(request.url)) {
+    return null
+  }
+
+  if (request.headers.get(AUTH_RETRY_HEADER) === "1") {
+    expireAuthSession()
+    return null
+  }
+
+  try {
+    const failedAuthorization = request.headers.get("Authorization")
+    const currentToken = getAccessToken()
+
+    if (!currentToken || `Bearer ${currentToken}` === failedAuthorization) {
+      await refreshAccessToken()
+    }
+  } catch {
+    expireAuthSession()
+    return null
+  }
+
+  const headers = withAccessToken(request.headers)
+  headers.set(AUTH_RETRY_HEADER, "1")
+
+  const retryResponse = await fetch(new Request(request, { headers }), {
+    credentials: "include",
+  })
+
+  if (retryResponse.status === 401) {
+    expireAuthSession()
+  }
+
+  return retryResponse
+}
+
 api.use({
   onRequest({ request }) {
     const accessToken = getAccessToken()
@@ -18,21 +85,16 @@ api.use({
       return
     }
 
-    const headers = new Headers(request.headers)
-    headers.set("Authorization", `Bearer ${accessToken}`)
-
+    const headers = withAccessToken(request.headers)
     return new Request(request, { headers })
   },
-  onResponse({ request, response }) {
-    // /auth/* handles its own error states (invalid credentials, failed refresh).
-    if (
-      response.status === 401 &&
-      !new URL(request.url).pathname.startsWith("/auth/")
-    ) {
-      expireAuthSession()
+  async onResponse({ request, response }) {
+    if (response.status !== 401) {
+      return response
     }
 
-    return response
+    const retried = await recoverFromUnauthorized(request)
+    return retried ?? response
   },
 })
 
@@ -41,12 +103,7 @@ export async function apiFetch(
   init: RequestInit = {},
 ): Promise<Response> {
   const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ?? ""
-  const headers = new Headers(init.headers)
-  const accessToken = getAccessToken()
-
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`)
-  }
+  const headers = withAccessToken(new Headers(init.headers))
 
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
@@ -54,9 +111,17 @@ export async function apiFetch(
     headers,
   })
 
-  if (response.status === 401 && !path.startsWith("/auth/")) {
-    expireAuthSession()
+  if (response.status !== 401 || isAuthPath(path)) {
+    return response
   }
 
-  return response
+  const retried = await recoverFromUnauthorized(
+    new Request(`${baseUrl}${path}`, {
+      ...init,
+      credentials: "include",
+      headers,
+    }),
+  )
+
+  return retried ?? response
 }

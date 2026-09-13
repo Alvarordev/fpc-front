@@ -1,6 +1,6 @@
 import type { components } from "./schema"
 import { api } from "./client"
-import { setAccessToken } from "@/lib/auth-session"
+import { refreshAccessToken, setAccessToken } from "@/lib/auth-session"
 
 export type AuthUser = components["schemas"]["AuthenticatedUserResponseDto"]
 export type LoginCredentials = components["schemas"]["LoginDto"]
@@ -41,14 +41,11 @@ export const authApi = {
   },
 
   async restoreSession(): Promise<components["schemas"]["UserResponseDto"]> {
-    const { data: refreshData, response: refreshResponse } =
-      await api.POST("/auth/refresh")
-
-    if (!refreshData) {
-      throw new AuthApiError(refreshResponse.status, "La sesión no es válida")
+    try {
+      await refreshAccessToken()
+    } catch {
+      throw new AuthApiError(401, "La sesión no es válida")
     }
-
-    setAccessToken(refreshData.accessToken)
 
     const { data: user, response: userResponse } = await api.GET("/users/me")
 

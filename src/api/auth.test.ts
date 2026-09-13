@@ -55,7 +55,9 @@ describe("authentication API", () => {
 
     expect(user.email).toBe("admin@example.com")
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:3000/auth/refresh")
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
       credentials: "include",
     })
 
@@ -63,5 +65,34 @@ describe("authentication API", () => {
     expect(userRequest.headers.get("Authorization")).toBe(
       "Bearer restored-access-token",
     )
+  })
+
+  it("reuses a single in-flight refresh request", async () => {
+    vi.stubEnv("VITE_API_URL", "http://localhost:3000")
+    vi.stubGlobal("localStorage", createStorage())
+
+    let resolveRefresh: ((value: Response) => void) | undefined
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveRefresh = resolve
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { refreshAccessToken } = await import("@/lib/auth-session")
+    const first = refreshAccessToken()
+    const second = refreshAccessToken()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    resolveRefresh?.(
+      new Response(JSON.stringify({ accessToken: "shared-token" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    await expect(first).resolves.toBe("shared-token")
+    await expect(second).resolves.toBe("shared-token")
   })
 })

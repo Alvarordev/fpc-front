@@ -1,9 +1,10 @@
-import { ACCESS_TOKEN_KEY } from "@/lib/constants"
+import { ACCESS_TOKEN_KEY, API_URL } from "@/lib/constants"
 
 const storage = typeof localStorage === "undefined" ? null : localStorage
 
 let accessToken: string | null = storage?.getItem(ACCESS_TOKEN_KEY) ?? null
 let authExpiredHandler: (() => void) | null = null
+let refreshPromise: Promise<string> | null = null
 
 export function getAccessToken(): string | null {
   return accessToken
@@ -56,4 +57,35 @@ export function isAccessTokenExpired(
 export function expireAuthSession(): void {
   clearAccessToken()
   authExpiredHandler?.()
+}
+
+export function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) {
+    return refreshPromise
+  }
+
+  refreshPromise = (async () => {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    })
+
+    if (!response.ok) {
+      throw new Error("La sesión no es válida")
+    }
+
+    const data = (await response.json()) as { accessToken?: unknown }
+
+    if (typeof data.accessToken !== "string" || data.accessToken.length === 0) {
+      throw new Error("La sesión no es válida")
+    }
+
+    setAccessToken(data.accessToken)
+    return data.accessToken
+  })().finally(() => {
+    refreshPromise = null
+  })
+
+  return refreshPromise
 }
