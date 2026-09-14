@@ -48,4 +48,15 @@ describe("clinical follow-up drafts", () => {
   it("keeps an explicitly saved health background draft pending", () => {
     expect(hasAnyClinicalDraft({ healthBackground: {} })).toBe(true)
   })
+
+  it("marks a diagnostic result as pending until the follow-up is completed", () => {
+    expect(
+      hasAnyClinicalDraft({
+        diagnosticStatus: {
+          status: "RULED_OUT",
+          supportedBySepa: true,
+        },
+      }),
+    ).toBe(true)
+  })
 })

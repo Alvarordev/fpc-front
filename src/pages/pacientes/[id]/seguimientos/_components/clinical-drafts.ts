@@ -7,6 +7,7 @@ import type {
   CreatePatientSymptomReportInput,
   CreatePatientTreatmentInput,
   PatientDetailsInput,
+  TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
 import type { DurationDraft } from "@/types/duration"
 
@@ -106,6 +107,14 @@ export type NonOncologicalFollowUpDraft = {
   dischargeReason?: string | null
 }
 
+export type DiagnosticStatusDraft = {
+  eventId?: string
+  status: Exclude<TransitionPatientDiagnosticStatusDto["status"], "SEARCHING">
+  diagnosis?: string
+  supportedBySepa?: boolean
+  notes?: string
+}
+
 /** Contact choice kept as draft in historical mode (no immediate PATCH). */
 export type ContactDraft = {
   interlocutorId: string
@@ -121,6 +130,7 @@ export interface ClinicalDrafts {
   socialNotes?: SocialNoteDraft[]
   symptomReport?: SymptomReportDraft
   nonOncologicalFollowUp?: NonOncologicalFollowUpDraft
+  diagnosticStatus?: DiagnosticStatusDraft
   insurance?: InsuranceDraft
   sisAffiliation?: SisAffiliationDraft
   healthBackground?: HealthBackgroundAssessmentDraft
@@ -137,6 +147,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.socialNotes?.length ||
     drafts.symptomReport ||
     drafts.nonOncologicalFollowUp ||
+    drafts.diagnosticStatus ||
     drafts.insurance ||
     drafts.sisAffiliation ||
     drafts.healthBackground ||

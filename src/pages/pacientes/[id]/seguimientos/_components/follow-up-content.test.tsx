@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   listAgents: vi.fn(),
   getPatient: vi.fn(),
   updateDetails: vi.fn(),
+  transitionDiagnosticStatus: vi.fn(),
 }))
 
 vi.mock("react-router-dom", () => ({
@@ -41,6 +42,7 @@ vi.mock("@/api/patients", () => ({
   patientsApi: {
     getById: mocks.getPatient,
     updateDetails: mocks.updateDetails,
+    transitionDiagnosticStatus: mocks.transitionDiagnosticStatus,
   },
 }))
 vi.mock("@/api/psychooncology-appointments", () => ({
@@ -223,4 +225,46 @@ describe("FollowUpContent closed follow-up editing", () => {
       })
     },
   )
+
+  it("persists a diagnostic result together with the completed follow-up", async () => {
+    const user = userEvent.setup()
+    mocks.getById.mockResolvedValue(scheduledFollowUp)
+    mocks.update.mockResolvedValue({
+      ...scheduledFollowUp,
+      status: "COMPLETED",
+    })
+    mocks.transitionDiagnosticStatus.mockResolvedValue({
+      id: "event-ruled-out",
+    })
+    renderFollowUp()
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Completar" })).toBeTruthy(),
+    )
+    useFollowUpDraftStore.getState().updateClinical((previous) => ({
+      ...previous,
+      diagnosticStatus: {
+        status: "RULED_OUT",
+        supportedBySepa: true,
+        notes: "Resultado revisado",
+      },
+    }))
+
+    await user.click(screen.getByRole("button", { name: "Completar" }))
+    await user.click(
+      screen.getByRole("button", { name: "Completar seguimiento" }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.transitionDiagnosticStatus).toHaveBeenCalledWith(
+        "patient-1",
+        {
+          status: "RULED_OUT",
+          followUpId: "follow-up-1",
+          supportedBySepa: true,
+          notes: "Resultado revisado",
+        },
+      )
+    })
+  })
 })

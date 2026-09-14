@@ -1200,7 +1200,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Transition patient diagnostic status */
+        /**
+         * Record a patient diagnostic status result
+         * @description Appends a diagnostic result event. A previously recorded result can be corrected without removing its history.
+         */
         post: operations["PatientDiagnosticStatusesController_transition"];
         delete?: never;
         options?: never;
@@ -3879,6 +3882,9 @@ export interface components {
             notes: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            searchStartedAt: string | null;
+            searchDurationMinutes: number | null;
         };
         DiagnosticStatusDiagnosisDto: {
             /**
@@ -8952,7 +8958,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient is not searching for diagnosis */
+            /** @description Diagnostic search has not been started */
             409: {
                 headers: {
                     [name: string]: unknown;

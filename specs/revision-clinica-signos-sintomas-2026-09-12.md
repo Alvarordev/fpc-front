@@ -204,6 +204,17 @@ La ficha de seguimiento y el resumen mostrarán el estado vigente y la fecha del
 evento que lo produjo. El estado debe aparecer al final del apartado de
 síntomas, junto con el indicador clínico correspondiente.
 
+`SEARCHING` representa una búsqueda diagnóstica abierta iniciada desde signos y
+síntomas. El usuario solo registrará como resultado `CONFIRMED` o `RULED_OUT`.
+Los resultados podrán corregirse en seguimientos posteriores sin eliminar los
+eventos anteriores: cada corrección agregará un nuevo evento y el más reciente
+seguirá siendo el estado vigente.
+
+La duración de la búsqueda se calculará entre el `occurredAt` del primer evento
+`SEARCHING` y el `occurredAt` del resultado vigente. No se almacenará como una
+duración ingresada manualmente ni se confundirá con `waitTimeForDiagnosis`, que
+pertenece al diagnóstico formal.
+
 ### 5.1 Indicadores 6 y 7
 
 Los indicadores conservarán la numeración funcional de la auditoría de la

@@ -296,6 +296,9 @@ export function FollowUpContent() {
         queryKey: ["patient-profile", patientId],
       }),
       queryClient.invalidateQueries({
+        queryKey: ["patient-diagnostic-status-current", patientId],
+      }),
+      queryClient.invalidateQueries({
         queryKey: ["patient-summary", patientId],
       }),
       queryClient.invalidateQueries({
@@ -529,7 +532,52 @@ export function FollowUpContent() {
       })
     }
 
-    if (clinicalDrafts.nonOncologicalFollowUp) {
+    let diagnosticStatusEventId =
+      clinicalDrafts.nonOncologicalFollowUp?.diagnosticStatusEventId
+    const diagnosticStatusDraft = clinicalDrafts.diagnosticStatus
+    if (diagnosticStatusDraft) {
+      if (diagnosticStatusDraft.eventId) {
+        diagnosticStatusEventId = diagnosticStatusDraft.eventId
+      } else {
+        if (
+          diagnosticStatusDraft.status === "CONFIRMED" &&
+          !diagnosticStatusDraft.diagnosis?.trim()
+        )
+          throw new Error("Indica el diagnóstico formal")
+
+        const event = await patientsApi.transitionDiagnosticStatus(patientId!, {
+          status: diagnosticStatusDraft.status,
+          followUpId: followUpId!,
+          ...(diagnosticStatusDraft.status === "CONFIRMED"
+            ? {
+                diagnosis: {
+                  diagnosis: diagnosticStatusDraft.diagnosis!.trim(),
+                  mode: "PARALLEL",
+                },
+              }
+            : {}),
+          supportedBySepa: diagnosticStatusDraft.supportedBySepa,
+          notes: diagnosticStatusDraft.notes?.trim() || undefined,
+        })
+        diagnosticStatusEventId = event.id
+        useFollowUpDraftStore.getState().updateClinical((previous) =>
+          previous.diagnosticStatus?.status === diagnosticStatusDraft.status
+            ? {
+                ...previous,
+                diagnosticStatus: {
+                  ...previous.diagnosticStatus,
+                  eventId: event.id,
+                },
+              }
+            : previous,
+        )
+      }
+    }
+
+    if (
+      clinicalDrafts.nonOncologicalFollowUp &&
+      (!diagnosticStatusDraft || diagnosticStatusDraft.status === "RULED_OUT")
+    ) {
       const record = clinicalDrafts.nonOncologicalFollowUp
       const treatmentFrequency = toDurationInput(record.treatmentFrequency)
       const controlPeriodicity = toDurationInput(record.controlPeriodicity)
@@ -546,7 +594,7 @@ export function FollowUpContent() {
       const input = {
         diagnosis: record.diagnosis.trim(),
         followUpId,
-        diagnosticStatusEventId: record.diagnosticStatusEventId,
+        diagnosticStatusEventId,
         occurredOn: record.occurredOn || undefined,
         receivesTreatment: record.receivesTreatment,
         treatmentName:

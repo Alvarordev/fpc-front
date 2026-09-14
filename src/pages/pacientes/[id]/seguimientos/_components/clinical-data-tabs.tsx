@@ -40,7 +40,6 @@ import type {
   PatientSisAffiliation,
   PatientTreatment,
   PatientDiagnosticStatusEvent,
-  TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
 import { patientsApi } from "@/api/patients"
 import { followUpsApi } from "@/api/follow-ups"
@@ -58,7 +57,6 @@ import {
 import {
   Activity,
   Building2,
-  ClipboardPlus,
   FileUp,
   HeartPulse,
   History,
@@ -99,6 +97,7 @@ import {
 import {
   draftDiagnosisOptionId,
   type ClinicalDrafts,
+  type DiagnosticStatusDraft,
   type DiagnosisDecisionMode,
   type DiagnosisDraft,
   type HealthBackgroundAssessmentDraft,
@@ -168,10 +167,6 @@ type ShelterSepaProvider = NonNullable<
 type ProgramDropoutReasonCode = NonNullable<
   PatientDetailsInput["programDropoutReasonCode"]
 >
-type DiagnosticStatus = NonNullable<
-  TransitionPatientDiagnosticStatusDto["status"]
->
-
 const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(
   interruptionReasonLabels,
 )
@@ -191,6 +186,14 @@ const NON_ONCOLOGICAL_STATUS_ITEMS = [
   { value: "ACTIVE", label: "Activo" },
   { value: "DISCHARGED", label: "Dado de alta" },
 ] as const
+
+function formatDiagnosticSearchDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} h`
+  const days = Math.floor(hours / 24)
+  return `${days} ${days === 1 ? "día" : "días"}`
+}
 
 const CARE_PROGRAMS = [
   { value: "COPHOES", label: "COPHOES" },
@@ -345,7 +348,6 @@ export function ClinicalDataTabs({
       queryKey: ["patient-diagnostic-status-current", patientId],
       queryFn: () => patientsApi.getCurrentDiagnosticStatus(patientId),
     })
-  const [ruledOutEventId, setRuledOutEventId] = useState<string | null>(null)
   const { data: hospitals = [] } = useQuery({
     queryKey: ["healthCenters"],
     queryFn: () => healthCentersApi.list(),
@@ -489,24 +491,23 @@ export function ClinicalDataTabs({
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   const currentDiagnoses = diagnoses.filter((diagnosis) => diagnosis.isCurrent)
   const showDiagnosticStatus = Boolean(
-    enrollmentSymptomReport || diagnosticStatus || ruledOutEventId,
+    enrollmentSymptomReport || diagnosticStatus || drafts.diagnosticStatus,
   )
+  const effectiveDiagnosticStatus =
+    drafts.diagnosticStatus?.status ?? diagnosticStatus?.status
   const showInlineNonOncologicalFollowUp =
-    diagnosticStatus?.status === "RULED_OUT" || Boolean(ruledOutEventId)
-  const nonOncologicalDiagnosticStatusEventId =
-    ruledOutEventId ??
-    (diagnosticStatus?.status === "RULED_OUT" ? diagnosticStatus.id : null)
-
-  const visibleActiveTab =
-    showInlineNonOncologicalFollowUp && activeTab === "no-oncologico"
-      ? "sintomas"
-      : activeTab
+    effectiveDiagnosticStatus === "RULED_OUT"
+  const nonOncologicalDiagnosticStatusEventId = drafts.diagnosticStatus
+    ? null
+    : diagnosticStatus?.status === "RULED_OUT"
+      ? diagnosticStatus.id
+      : null
 
   return (
     <>
       <Tabs
         orientation="vertical"
-        value={visibleActiveTab}
+        value={activeTab}
         onValueChange={(value) => setActiveTab(String(value))}
         className="flex-col items-stretch gap-3 lg:flex-row"
       >
@@ -527,18 +528,6 @@ export function ClinicalDataTabs({
             <span className="min-w-0 break-words">Síntomas</span>
             {drafts.symptomReport && <DraftDot />}
           </TabsTrigger>
-          {!showInlineNonOncologicalFollowUp && (
-            <TabsTrigger
-              value="no-oncologico"
-              className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
-            >
-              <ClipboardPlus className="size-4 text-emerald-600" />
-              <span className="min-w-0 break-words">
-                Seguimiento no oncológico
-              </span>
-              {drafts.nonOncologicalFollowUp && <DraftDot />}
-            </TabsTrigger>
-          )}
           <TabsTrigger
             value="direcciones"
             className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
@@ -621,15 +610,17 @@ export function ClinicalDataTabs({
             diagnosticStatusSection={
               showDiagnosticStatus ? (
                 <DiagnosticStatusSection
-                  patientId={patientId}
-                  followUpId={followUpId}
+                  key={`${diagnosticStatus?.id ?? "none"}:${drafts.diagnosticStatus?.status ?? "none"}:${drafts.diagnosticStatus?.eventId ?? "none"}`}
                   current={diagnosticStatus}
                   isLoading={isDiagnosticStatusLoading}
                   readOnly={isHistorical}
-                  onTransition={(event) => {
-                    if (event.status === "RULED_OUT")
-                      setRuledOutEventId(event.id)
-                  }}
+                  draft={drafts.diagnosticStatus}
+                  onDraftChange={(diagnosticStatus) =>
+                    onDraftsChange((prev) => ({
+                      ...prev,
+                      diagnosticStatus,
+                    }))
+                  }
                 />
               ) : null
             }
@@ -655,24 +646,6 @@ export function ClinicalDataTabs({
             }
           />
         </TabsContent>
-        {!showInlineNonOncologicalFollowUp && (
-          <TabsContent
-            value="no-oncologico"
-            keepMounted
-            className="min-w-0 flex-1 pr-1"
-          >
-            <NonOncologicalFollowUpForm
-              key={drafts.nonOncologicalFollowUp?.id ?? "new"}
-              draft={drafts.nonOncologicalFollowUp}
-              onSave={(nonOncologicalFollowUp) =>
-                onDraftsChange((prev) => ({
-                  ...prev,
-                  nonOncologicalFollowUp,
-                }))
-              }
-            />
-          </TabsContent>
-        )}
         <TabsContent
           value="antecedentes"
           keepMounted
@@ -5250,85 +5223,57 @@ function SeguimientoSocialForm({
 // ── Situación del diagnóstico oncológico ──
 
 function DiagnosticStatusSection({
-  patientId,
-  followUpId,
   current,
   isLoading,
   readOnly,
-  onTransition,
+  draft,
+  onDraftChange,
 }: {
-  patientId: string
-  followUpId: string
   current: PatientDiagnosticStatusEvent | null | undefined
   isLoading: boolean
   readOnly: boolean
-  onTransition?: (event: PatientDiagnosticStatusEvent) => void
+  draft?: DiagnosticStatusDraft
+  onDraftChange: (draft: DiagnosticStatusDraft) => void
 }) {
-  const queryClient = useQueryClient()
-  const [status, setStatus] = useState<DiagnosticStatus | "">("")
-  const [supportedBySepa, setSupportedBySepa] = useState<boolean | undefined>(
-    current?.supportedBySepa ?? undefined,
+  const [status, setStatus] = useState<DiagnosticStatusDraft["status"] | "">(
+    draft?.status ?? "",
   )
-  const [notes, setNotes] = useState(current?.notes ?? "")
-  const [diagnosis, setDiagnosis] = useState("")
-  const canTransition = !readOnly && current?.status === "SEARCHING"
-  const transitionItems = DIAGNOSTIC_STATUS_ITEMS.filter(
+  const [supportedBySepa, setSupportedBySepa] = useState<boolean | undefined>(
+    draft?.supportedBySepa ?? current?.supportedBySepa ?? undefined,
+  )
+  const [notes, setNotes] = useState(draft?.notes ?? current?.notes ?? "")
+  const [diagnosis, setDiagnosis] = useState(
+    draft?.diagnosis ?? current?.reportedDiagnosis ?? "",
+  )
+  const resultItems = DIAGNOSTIC_STATUS_ITEMS.filter(
     (option) => option.value !== "SEARCHING",
   )
 
-  const transitionMutation = useMutation({
-    mutationFn: (body: TransitionPatientDiagnosticStatusDto) =>
-      patientsApi.transitionDiagnosticStatus(patientId, body),
-    onSuccess: async (event) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["patient-diagnostic-status-current", patientId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["patient-profile", patientId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["patient-timeline", patientId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["patient-follow-ups", patientId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["patient-summary", patientId],
-        }),
-      ])
-      onTransition?.(event)
-      toast.success("Estado diagnóstico actualizado")
+  function updateDraft(
+    patch: Partial<DiagnosticStatusDraft> & {
+      status?: DiagnosticStatusDraft["status"]
     },
-    onError: (error: Error) =>
-      toast.error("No se pudo actualizar el estado diagnóstico", {
-        description: error.message,
-      }),
-  })
+  ) {
+    const nextStatus = patch.status ?? status
+    if (!nextStatus) return
 
-  function handleSubmit() {
-    if (!status) {
-      toast.error("Seleccioná el nuevo estado diagnóstico")
-      return
+    const nextSupportedBySepa =
+      "supportedBySepa" in patch ? patch.supportedBySepa : supportedBySepa
+    const nextNotes = "notes" in patch ? (patch.notes ?? "") : notes
+    const nextDiagnosis =
+      "diagnosis" in patch ? (patch.diagnosis ?? "") : diagnosis
+    const nextDraft: DiagnosticStatusDraft = {
+      status: nextStatus,
+      supportedBySepa: nextSupportedBySepa,
+      notes: nextNotes,
+      ...(nextStatus === "CONFIRMED" ? { diagnosis: nextDiagnosis } : {}),
     }
-    if (status === "CONFIRMED" && !diagnosis.trim()) {
-      toast.error("Ingresa el diagnóstico formal")
-      return
-    }
-    transitionMutation.mutate({
-      status,
-      followUpId,
-      ...(status === "CONFIRMED"
-        ? {
-            diagnosis: {
-              diagnosis: diagnosis.trim(),
-              mode: "PARALLEL",
-            },
-          }
-        : {}),
-      supportedBySepa,
-      notes: notes.trim() || undefined,
-    })
+
+    setStatus(nextStatus)
+    setSupportedBySepa(nextSupportedBySepa)
+    setNotes(nextNotes)
+    setDiagnosis(nextDiagnosis)
+    onDraftChange(nextDraft)
   }
 
   const currentLabel = current?.status
@@ -5349,25 +5294,32 @@ function DiagnosticStatusSection({
           {current?.occurredAt
             ? ` · ${new Date(current.occurredAt).toLocaleDateString("es-PE")}`
             : ""}
+          {current?.searchDurationMinutes != null
+            ? ` · Tiempo en búsqueda: ${formatDiagnosticSearchDuration(current.searchDurationMinutes)}`
+            : ""}
+          {draft?.status
+            ? ` · Por guardar: ${diagnosticStatusLabels[draft.status]}`
+            : ""}
         </p>
       </div>
       {!readOnly && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>Nuevo estado</Label>
+            <Label>Situación del diagnóstico</Label>
             <Select
-              items={transitionItems}
+              items={resultItems}
               value={status}
-              disabled={!canTransition}
               onValueChange={(value) =>
-                setStatus((value as DiagnosticStatus | null) ?? "")
+                updateDraft({
+                  status: value as DiagnosticStatusDraft["status"],
+                })
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar estado" />
               </SelectTrigger>
               <SelectContent>
-                {transitionItems.map((option) => (
+                {resultItems.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -5377,38 +5329,36 @@ function DiagnosticStatusSection({
           </div>
           {status === "CONFIRMED" && (
             <div className="space-y-2 md:col-span-2">
-              <Label>Diagnóstico formal</Label>
+              <Label>Diagnóstico formal *</Label>
               <Input
                 value={diagnosis}
-                onChange={(event) => setDiagnosis(event.target.value)}
+                onChange={(event) =>
+                  updateDraft({ diagnosis: event.target.value })
+                }
                 placeholder="Escriba el diagnóstico confirmado"
               />
             </div>
           )}
-          <TriSelect
-            label="¿Soportado por SEPA?"
-            value={supportedBySepa}
-            onChange={setSupportedBySepa}
-          />
-          <div className="space-y-2 md:col-span-2">
-            <Label>Notas (opcional)</Label>
-            <Input
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Detalle del cambio de estado"
-            />
-          </div>
+          {status && (
+            <>
+              <TriSelect
+                label="¿Soportado por SEPA?"
+                value={supportedBySepa}
+                onChange={(value) => updateDraft({ supportedBySepa: value })}
+              />
+              <div className="space-y-2 md:col-span-2">
+                <Label>Notas (opcional)</Label>
+                <Input
+                  value={notes}
+                  onChange={(event) =>
+                    updateDraft({ notes: event.target.value })
+                  }
+                  placeholder="Detalle del cambio de estado"
+                />
+              </div>
+            </>
+          )}
         </div>
-      )}
-      {!readOnly && (
-        <Button
-          type="button"
-          onClick={handleSubmit}
-          size="sm"
-          disabled={transitionMutation.isPending || !canTransition || !status}
-        >
-          {transitionMutation.isPending ? "Guardando…" : "Registrar transición"}
-        </Button>
       )}
     </div>
   )
