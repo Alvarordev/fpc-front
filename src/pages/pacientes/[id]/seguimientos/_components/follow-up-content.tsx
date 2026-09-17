@@ -56,7 +56,11 @@ import {
   ReminderFormDialog,
   type ReminderFormValues,
 } from "../../_components/reminder-form-dialog"
-import { resolveSpecialty } from "@/components/medical-appointment-fields"
+import {
+  resolveSpecialty,
+  resolveSpecialtyLabel,
+} from "@/components/medical-appointment-fields"
+import { useCatalog } from "@/hooks/use-catalog"
 import {
   FollowUpStatusConfirmationDialog,
   type FollowUpStatusAction,
@@ -172,6 +176,7 @@ export function FollowUpContent() {
     enabled: canManage,
     staleTime: 60_000,
   })
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const patientQuery = usePatient(patientId ?? "")
   useEffect(() => {
     const record = patientQuery.data?.nonOncologicalFollowUps?.find(
@@ -797,11 +802,15 @@ export function FollowUpContent() {
 
   function addReminderDraft(values: ReminderFormValues) {
     const specialty = resolveSpecialty(values.medicalAppointment)
+    const specialtyLabel = resolveSpecialtyLabel(
+      specialtyItems,
+      values.medicalAppointment,
+    )
     draftStore.addReminder({
       kind: values.kind,
       description:
         values.kind === "MEDICAL_APPOINTMENT"
-          ? values.description.trim() || `Cita: ${specialty}`
+          ? values.description.trim() || `Cita: ${specialtyLabel}`
           : values.description,
       dueAt: values.dueAt,
       medicalAppointment:

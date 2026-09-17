@@ -44,3 +44,12 @@ export function catalogSelectItems(items: CatalogItem[]) {
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "es"))
     .map((item) => ({ value: item.code, label: item.label }))
 }
+
+export function formatCatalogCodesList(
+  items: CatalogItem[],
+  codes: string[] | null | undefined,
+  separator = ", ",
+): string {
+  if (!codes?.length) return "—"
+  return codes.map((code) => catalogLabel(items, code)).join(separator)
+}

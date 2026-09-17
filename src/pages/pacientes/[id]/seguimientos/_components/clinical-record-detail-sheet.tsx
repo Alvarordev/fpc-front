@@ -15,6 +15,7 @@ import {
 import { DURATION_UNIT_LABELS } from "@/types/duration"
 import { useTreatmentMedications } from "../../_hooks/use-patient-records"
 import { CatalogValue } from "@/components/catalog-select"
+import { formatCatalogCodesList, useCatalog } from "@/hooks/use-catalog"
 import {
   cancerStageLabels,
   medicationDoseUnitLabels,
@@ -212,6 +213,7 @@ function TreatmentDetails({
   isLoadingMedications: boolean
   hasMedicationError: boolean
 }) {
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const situation =
     treatment.treatmentSituation ??
     (treatment.isCurrent ? "EN_CURSO" : "FINALIZADO")
@@ -297,7 +299,10 @@ function TreatmentDetails({
           />
           <Detail
             label="Especialidades de teleconsulta"
-            value={treatment.teleconsultationSpecialties?.join(", ")}
+            value={formatCatalogCodesList(
+              specialtyItems,
+              treatment.teleconsultationSpecialties,
+            )}
           />
           <Detail
             label="Motivo de no recibir tratamiento"

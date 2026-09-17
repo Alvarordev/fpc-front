@@ -8,6 +8,7 @@ import {
   UserRound,
 } from "lucide-react"
 import type { Reminder } from "@/api/reminders"
+import { CatalogValue } from "@/components/catalog-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -105,7 +106,10 @@ export function ReminderDetailDialog({
                 </p>
                 {appointment && (
                   <p className="text-muted-foreground mt-2 text-xs">
-                    {appointment.specialty}
+                    <CatalogValue
+                      kind="medical_specialty"
+                      code={appointment.specialty}
+                    />
                     {appointment.healthCenterName
                       ? ` · ${appointment.healthCenterName}`
                       : ""}

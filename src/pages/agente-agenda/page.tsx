@@ -37,6 +37,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAuthStore } from "@/store/auth-store"
+import { resolveSpecialtyLabel } from "@/components/medical-appointment-fields"
+import { useCatalog } from "@/hooks/use-catalog"
 import { CompleteMedicalReminderDialog } from "@/pages/pacientes/[id]/_components/complete-medical-reminder-dialog"
 import {
   ReminderFormDialog,
@@ -82,6 +84,7 @@ export default function AgentAgendaPage() {
     queryFn: agentsApi.list,
     staleTime: 60_000,
   })
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const agent = agentsQuery.data?.find((item) => item.userId === user?.id)
   const agentId = agent?.id
 
@@ -307,7 +310,7 @@ export default function AgentAgendaPage() {
         description:
           values.kind === "MEDICAL_APPOINTMENT"
             ? values.description.trim() ||
-              `Cita: ${values.medicalAppointment.specialty}`
+              `Cita: ${resolveSpecialtyLabel(specialtyItems, values.medicalAppointment)}`
             : values.description,
         dueAt: new Date(values.dueAt).toISOString(),
         assignedAgentId: agentId,

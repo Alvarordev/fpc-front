@@ -1,6 +1,8 @@
 import { Building2, Stethoscope } from "lucide-react"
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select"
+import type { CatalogItem } from "@/api/catalogs"
 import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
+import { catalogLabel } from "@/hooks/use-catalog"
 import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers"
 
 export interface MedicalAppointmentFieldsValue {
@@ -18,6 +20,15 @@ interface MedicalAppointmentFieldsProps {
 
 export function resolveSpecialty(value: MedicalAppointmentFieldsValue): string {
   return value.specialty.trim()
+}
+
+export function resolveSpecialtyLabel(
+  items: CatalogItem[],
+  value: MedicalAppointmentFieldsValue,
+): string {
+  const code = value.specialty.trim()
+  if (!code) return ""
+  return catalogLabel(items, code)
 }
 
 export function MedicalAppointmentFields({

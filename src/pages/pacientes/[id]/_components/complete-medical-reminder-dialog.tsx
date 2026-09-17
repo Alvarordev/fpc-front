@@ -21,6 +21,7 @@ import type {
   CompleteReminderInput,
   Reminder,
 } from "@/api/reminders"
+import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 
 type AppointmentOutcomeStatus = "COMPLETED" | "NO_ANSWER" | "CANCELLED"
@@ -169,9 +170,14 @@ export function CompleteMedicalReminderDialog({
         <DialogHeader>
           <DialogTitle>Completar cita médica</DialogTitle>
           <DialogDescription>
-            {specialty
-              ? `Registrá el resultado de la cita de ${specialty}.`
-              : "Registrá el resultado de la cita médica."}
+            {specialty ? (
+              <>
+                Registrá el resultado de la cita de{" "}
+                <CatalogValue kind="medical_specialty" code={specialty} />.
+              </>
+            ) : (
+              "Registrá el resultado de la cita médica."
+            )}
           </DialogDescription>
         </DialogHeader>
 

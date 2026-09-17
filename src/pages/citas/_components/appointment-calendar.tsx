@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MedicalAppointment } from "@/api/medical-appointments";
+import type { CatalogItem } from "@/api/catalogs";
+import { CatalogValue } from "@/components/catalog-select";
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +55,14 @@ const formatTimeRange = (timeStr?: string | null) => {
   return `${fmtStart} - ${fmtEnd}`;
 };
 
+function specialtyLabel(
+  items: CatalogItem[],
+  code: string | null | undefined,
+) {
+  if (!code) return "General"
+  return catalogLabel(items, code)
+}
+
 // ─── Reminder Modal ─────────────────────────────────────────────────────────
 const REMINDER_WEBHOOK = "https://jaffjos-n8n.3ezxho.easypanel.host/webhook/recordatorio";
 
@@ -63,6 +74,7 @@ interface ReminderModalProps {
 }
 
 function ReminderModal({ appt, onClose, onEdit, formatTimeRange }: ReminderModalProps) {
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
 
@@ -81,7 +93,7 @@ function ReminderModal({ appt, onClose, onEdit, formatTimeRange }: ReminderModal
         fecha: appt.appointmentDate ?? "",
         hora_inicio: appt.appointmentTime ?? "",
         hora_rango: formatTimeRange(appt.appointmentTime) ?? "",
-        especialidad: appt.specialty ?? "General",
+        especialidad: specialtyLabel(specialtyItems, appt.specialty),
         hospital: appt.healthCenterName ?? "",
         motivo: appt.difficulties ?? "",
         hoja_referencia: appt.hasReferralSheet ?? false,
@@ -172,7 +184,7 @@ function ReminderModal({ appt, onClose, onEdit, formatTimeRange }: ReminderModal
                 <Stethoscope className="size-3" /> Especialidad
               </span>
               <div className="font-medium text-foreground mt-0.5 truncate">
-                {appt.specialty || "General"}
+                <CatalogValue kind="medical_specialty" code={appt.specialty} />
               </div>
             </div>
           </div>
@@ -255,6 +267,7 @@ export function AppointmentCalendar({
   appointments,
   onEditAppointment,
 }: AppointmentCalendarProps) {
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppt, setSelectedAppt] = useState<MedicalAppointment | null>(null);
 
@@ -431,7 +444,7 @@ export function AppointmentCalendar({
                         {appt.specialty && (
                           <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
                             <Stethoscope className="size-2.5 shrink-0" />
-                            {appt.specialty}
+                            {specialtyLabel(specialtyItems, appt.specialty)}
                           </div>
                         )}
                       </div>

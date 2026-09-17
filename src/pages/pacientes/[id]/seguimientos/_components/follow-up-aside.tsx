@@ -1,6 +1,7 @@
 import { Brain, TriangleAlert, Bell, CalendarPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 import type { ReminderKind } from "@/api/reminders"
 
@@ -151,10 +152,15 @@ export function FollowUpAside({
                     </span>
                   )}
                   <p className="text-xs text-amber-800">
-                    {reminder.kind === "MEDICAL_APPOINTMENT"
-                      ? reminder.medicalAppointment?.specialty ??
-                        reminder.description
-                      : reminder.description}
+                    {reminder.kind === "MEDICAL_APPOINTMENT" &&
+                    reminder.medicalAppointment?.specialty ? (
+                      <CatalogValue
+                        kind="medical_specialty"
+                        code={reminder.medicalAppointment.specialty}
+                      />
+                    ) : (
+                      reminder.description
+                    )}
                   </p>
                   <p className="text-[10px] text-amber-700/80">
                     {formatDraftDueAt(reminder.dueAt)}

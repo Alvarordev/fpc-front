@@ -11,6 +11,8 @@ import {
   Edit,
 } from "lucide-react";
 import type { MedicalAppointment } from "@/api/medical-appointments";
+import type { CatalogItem } from "@/api/catalogs";
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog";
 
 interface AppointmentTableProps {
   appointments: MedicalAppointment[];
@@ -34,10 +36,19 @@ const formatTimeRange = (timeStr?: string | null) => {
   return `${fmtStart} - ${fmtEnd}`;
 };
 
+function specialtyLabel(
+  items: CatalogItem[],
+  code: string | null | undefined,
+) {
+  if (!code) return "General"
+  return catalogLabel(items, code)
+}
+
 export function AppointmentTable({
   appointments,
   onEditAppointment,
 }: AppointmentTableProps) {
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const [searchTerm, setSearchTerm] = useState("");
   const [referralFilter, setReferralFilter] = useState<"ALL" | "WITH" | "WITHOUT">("ALL");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -49,7 +60,9 @@ export function AppointmentTable({
       const matchName = appt.patientFullName?.toLowerCase().includes(term);
       const matchDni = appt.patientDni?.toLowerCase().includes(term);
       const matchHospital = appt.healthCenterName?.toLowerCase().includes(term);
-      const matchSpecialty = appt.specialty?.toLowerCase().includes(term);
+      const specialtyText = specialtyLabel(specialtyItems, appt.specialty).toLowerCase();
+      const matchSpecialty =
+        appt.specialty?.toLowerCase().includes(term) || specialtyText.includes(term);
       if (!matchName && !matchDni && !matchHospital && !matchSpecialty) {
         return false;
       }
@@ -64,7 +77,7 @@ export function AppointmentTable({
 
   const handleCopyDetails = (appt: MedicalAppointment) => {
     const timeText = formatTimeRange(appt.appointmentTime) || "Por confirmar";
-    const text = `📋 *Recordatorio de Cita Médica - FPC*\n\n👤 *Paciente:* ${appt.patientFullName || "N/A"}\n🪪 *DNI:* ${appt.patientDni || "N/A"}\n🏥 *Hospital:* ${appt.healthCenterName || "N/A"}\n🩺 *Especialidad:* ${appt.specialty || "General"}\n📅 *Fecha:* ${appt.appointmentDate || "Por confirmar"}\n⏰ *Horario (30 min):* ${timeText}\n📄 *Hoja Referencia:* ${appt.hasReferralSheet ? "Sí cuenta" : "Pendiente"}`;
+    const text = `📋 *Recordatorio de Cita Médica - FPC*\n\n👤 *Paciente:* ${appt.patientFullName || "N/A"}\n🪪 *DNI:* ${appt.patientDni || "N/A"}\n🏥 *Hospital:* ${appt.healthCenterName || "N/A"}\n🩺 *Especialidad:* ${specialtyLabel(specialtyItems, appt.specialty)}\n📅 *Fecha:* ${appt.appointmentDate || "Por confirmar"}\n⏰ *Horario (30 min):* ${timeText}\n📄 *Hoja Referencia:* ${appt.hasReferralSheet ? "Sí cuenta" : "Pendiente"}`;
     navigator.clipboard.writeText(text);
     setCopiedId(appt.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -152,7 +165,7 @@ export function AppointmentTable({
                       <td className="p-3">
                         <div className="font-medium text-foreground flex items-center gap-1">
                           <Stethoscope className="size-3.5 text-muted-foreground shrink-0" />
-                          {appt.specialty || "General"}
+                          {specialtyLabel(specialtyItems, appt.specialty)}
                         </div>
                         {appt.isFirstConsultation && (
                           <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded-full mt-0.5 inline-block">

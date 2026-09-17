@@ -12,6 +12,7 @@ import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers";
 import { useUpdateMedicalAppointment } from "../_hooks/use-medical-appointments";
 import type { MedicalAppointment, UpdateMedicalAppointmentInput } from "@/api/medical-appointments";
 import { Calendar, Clock, Stethoscope, Building2, FileCheck, Loader2 } from "lucide-react";
+import { CatalogValue } from "@/components/catalog-select";
 
 interface EditAppointmentDialogProps {
   appointment: MedicalAppointment | null;
@@ -122,7 +123,7 @@ export function EditAppointmentDialog({
               Especialidad Médica
             </label>
             <div className="w-full bg-muted/30 border rounded-md px-3 py-1.5 text-muted-foreground">
-              {appointment.specialty}
+              <CatalogValue kind="medical_specialty" code={appointment.specialty} />
             </div>
             <p className="text-[10px] text-muted-foreground">
               La especialidad no se puede cambiar — agenda una nueva cita si el paciente necesita otra.

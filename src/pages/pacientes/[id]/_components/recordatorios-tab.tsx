@@ -8,7 +8,11 @@ import {
   type CompleteReminderInput,
   type Reminder,
 } from "@/api/reminders"
-import { resolveSpecialty } from "@/components/medical-appointment-fields"
+import {
+  resolveSpecialty,
+  resolveSpecialtyLabel,
+} from "@/components/medical-appointment-fields"
+import { useCatalog } from "@/hooks/use-catalog"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/store/auth-store"
 import { CompleteMedicalReminderDialog } from "./complete-medical-reminder-dialog"
@@ -46,6 +50,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
     enabled: canManage,
     staleTime: 60_000,
   })
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
 
   async function invalidate() {
     await Promise.all([
@@ -160,6 +165,10 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
     }
 
     const specialty = resolveSpecialty(values.medicalAppointment)
+    const specialtyLabel =
+      values.kind === "MEDICAL_APPOINTMENT"
+        ? resolveSpecialtyLabel(specialtyItems, values.medicalAppointment)
+        : ""
     const dueAt = new Date(values.dueAt).toISOString()
 
     if (editingReminder) {
@@ -168,7 +177,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         input: {
           description:
             values.kind === "MEDICAL_APPOINTMENT"
-              ? values.description.trim() || `Cita: ${specialty}`
+              ? values.description.trim() || `Cita: ${specialtyLabel}`
               : values.description,
           dueAt,
           assignedAgentId,
@@ -184,7 +193,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
     if (values.kind === "MEDICAL_APPOINTMENT") {
       createMutation.mutate({
         subjectPatientId: pacienteId,
-        description: values.description.trim() || `Cita: ${specialty}`,
+        description: values.description.trim() || `Cita: ${specialtyLabel}`,
         dueAt,
         assignedAgentId,
         kind: "MEDICAL_APPOINTMENT",

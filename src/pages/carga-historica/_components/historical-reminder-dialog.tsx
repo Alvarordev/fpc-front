@@ -25,8 +25,10 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   MedicalAppointmentFields,
   resolveSpecialty,
+  resolveSpecialtyLabel,
   type MedicalAppointmentFieldsValue,
 } from "@/components/medical-appointment-fields"
+import { useCatalog } from "@/hooks/use-catalog"
 import { cn } from "@/lib/utils"
 import { Field, SelectField } from "./historical-form-fields"
 import {
@@ -224,6 +226,7 @@ function HistoricalReminderForm({
     queryFn: agentsApi.list,
     staleTime: 60_000,
   })
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const medicalAppointmentsQuery = useQuery({
     queryKey: ["patient-medical-appointments", patientId],
     queryFn: () => patientsApi.listMedicalAppointments(patientId),
@@ -300,7 +303,8 @@ function HistoricalReminderForm({
       if (isMedical && !specialty)
         throw new Error("Indica la especialidad de la cita médica")
       const finalDescription = isMedical
-        ? description.trim() || `Cita: ${specialty}`
+        ? description.trim() ||
+          `Cita: ${resolveSpecialtyLabel(specialtyItems, appointment)}`
         : description.trim()
       if (!finalDescription) throw new Error("Describe el recordatorio")
 

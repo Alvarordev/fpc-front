@@ -649,7 +649,14 @@ export function OverviewSection({
                       />
                       <Field
                         label="Especialidad"
-                        value={item.diagnosisSpecialty}
+                        value={
+                          item.diagnosisSpecialty ? (
+                            <CatalogValue
+                              kind="medical_specialty"
+                              code={item.diagnosisSpecialty}
+                            />
+                          ) : null
+                        }
                       />
                       <Field
                         label="Centro de salud"
@@ -838,7 +845,12 @@ export function OverviewSection({
             {patient.medicalAppointments.map((item) => (
               <div key={item.id} className="rounded-md border p-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
-                  <b>{item.specialty}</b>
+                  <b>
+                    <CatalogValue
+                      kind="medical_specialty"
+                      code={item.specialty}
+                    />
+                  </b>
                   <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase">
                     {item.status === "SCHEDULED"
                       ? "Programada"
