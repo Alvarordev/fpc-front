@@ -12,6 +12,7 @@ import {
   UserRound,
   GraduationCap,
   Archive,
+  BookMarked,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -76,6 +77,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
           icon: GraduationCap,
         },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
+        { title: "Catálogos", url: "/catalogos", icon: BookMarked },
       ],
     },
   ],
@@ -112,6 +114,7 @@ export const pathTitles: Record<string, string> = {
   "/citas": "Citas Médicas",
   "/charlas": "Charlas de prevención",
   "/hospitales": "Hospitales",
+  "/catalogos": "Catálogos",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",
 }

@@ -14,6 +14,7 @@ import DisponibilidadPage from "@/pages/disponibilidad/page"
 import EquipoSepaPage from "@/pages/equipo-sepa/page"
 import UsersPage from "@/pages/usuarios/page"
 import HealthCentersPage from "@/pages/hospitales/page"
+import CatalogsPage from "@/pages/catalogos/page"
 import AlertsPage from "@/pages/alertas/page"
 import AppointmentsPage from "@/pages/citas/page"
 import EnrolamientoPage from "@/pages/enrolamiento/page"
@@ -108,6 +109,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
             <HealthCentersPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "catalogos",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN"]}>
+            <CatalogsPage />
           </RoleGuard>
         ),
       },

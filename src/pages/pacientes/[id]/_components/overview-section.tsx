@@ -44,6 +44,7 @@ import {
   relationshipLabels,
   roleLabels,
 } from "../_lib/clinical-labels"
+import { CatalogValue } from "@/components/catalog-select"
 import { usePatientAccompanies } from "../_hooks/use-patient-accompanies"
 import { Link } from "react-router-dom"
 import { DURATION_UNIT_LABELS } from "@/types/duration"
@@ -620,7 +621,10 @@ export function OverviewSection({
                       <div className="bg-primary mt-1.5 size-2.5 shrink-0 rounded-full" />
                       <div>
                         <p className="text-sm font-semibold">
-                          {item.diagnosis}
+                          <CatalogValue
+                            kind="cancer_diagnosis"
+                            code={item.diagnosis}
+                          />
                         </p>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           {item.cancerStage && (

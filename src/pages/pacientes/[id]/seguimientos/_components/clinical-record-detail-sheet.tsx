@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet"
 import { DURATION_UNIT_LABELS } from "@/types/duration"
 import { useTreatmentMedications } from "../../_hooks/use-patient-records"
+import { CatalogValue } from "@/components/catalog-select"
 import {
   cancerStageLabels,
   medicationDoseUnitLabels,
@@ -101,8 +102,26 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
 
       <DetailSection title="Información principal">
         <DetailGrid>
-          <Detail label="Diagnóstico" value={diagnosis.diagnosis} />
-          <Detail label="Especialidad" value={diagnosis.diagnosisSpecialty} />
+          <Detail
+            label="Diagnóstico"
+            value={
+              <CatalogValue
+                kind="cancer_diagnosis"
+                code={diagnosis.diagnosis}
+              />
+            }
+          />
+          <Detail
+            label="Especialidad"
+            value={
+              diagnosis.diagnosisSpecialty ? (
+                <CatalogValue
+                  kind="medical_specialty"
+                  code={diagnosis.diagnosisSpecialty}
+                />
+              ) : null
+            }
+          />
           <Detail
             label="Etapa"
             value={
@@ -201,10 +220,25 @@ function TreatmentDetails({
 
       <DetailSection title="Información principal">
         <DetailGrid>
-          <Detail label="Tipo de tratamiento" value={treatment.treatmentType} />
+          <Detail
+            label="Tipo de tratamiento"
+            value={
+              <CatalogValue
+                kind="treatment_type"
+                code={treatment.treatmentType}
+              />
+            }
+          />
           <Detail
             label="Diagnóstico asociado"
-            value={treatment.diagnosisSummary?.diagnosis}
+            value={
+              treatment.diagnosisSummary?.diagnosis ? (
+                <CatalogValue
+                  kind="cancer_diagnosis"
+                  code={treatment.diagnosisSummary.diagnosis}
+                />
+              ) : null
+            }
           />
           <Detail
             label="Situación"

@@ -51,7 +51,6 @@ const TRI_OPTIONS: SelectOption[] = [
 
 const EMPTY_APPOINTMENT: MedicalAppointmentFieldsValue = {
   specialty: "",
-  customSpecialty: "",
   healthCenterId: "",
   isFirstConsultation: false,
 }
@@ -195,7 +194,6 @@ function HistoricalReminderForm({
       medical
         ? {
             specialty: medical.specialty,
-            customSpecialty: "",
             healthCenterId: medical.healthCenterId ?? "",
             isFirstConsultation: medical.isFirstConsultation,
           }
@@ -242,7 +240,6 @@ function HistoricalReminderForm({
     if (!full) return
     setAppointment({
       specialty: full.specialty,
-      customSpecialty: "",
       healthCenterId: full.healthCenterId ?? "",
       isFirstConsultation: full.isFirstConsultation,
     })

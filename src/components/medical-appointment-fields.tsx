@@ -1,22 +1,10 @@
 import { Building2, Stethoscope } from "lucide-react"
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select"
+import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
 import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers"
-
-export const COMMON_SPECIALTIES = [
-  "Oncología Médica",
-  "Radioterapia",
-  "Mastología / Cirugía Oncológica",
-  "Ginecología Oncológica",
-  "Ecografía / Diagnóstico por Imágenes",
-  "Quimioterapia",
-  "Psicooncología",
-  "Cuidados Paliativos",
-  "Medicina General / Chequeo",
-] as const
 
 export interface MedicalAppointmentFieldsValue {
   specialty: string
-  customSpecialty: string
   healthCenterId: string
   isFirstConsultation: boolean
 }
@@ -29,9 +17,7 @@ interface MedicalAppointmentFieldsProps {
 }
 
 export function resolveSpecialty(value: MedicalAppointmentFieldsValue): string {
-  return value.specialty === "OTRO"
-    ? value.customSpecialty.trim()
-    : value.specialty.trim()
+  return value.specialty.trim()
 }
 
 export function MedicalAppointmentFields({
@@ -56,39 +42,18 @@ export function MedicalAppointmentFields({
         </label>
         {specialtyReadOnly ? (
           <div className="bg-muted/30 text-muted-foreground w-full rounded-md border px-3 py-2 text-xs">
-            {value.specialty}
+            <CatalogValue kind="medical_specialty" code={value.specialty} />
           </div>
         ) : (
-          <>
-            <select
-              value={value.specialty}
-              disabled={disabled}
-              onChange={(event) =>
-                onChange({ ...value, specialty: event.target.value })
-              }
-              className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
-            >
-              <option value="">-- Selecciona especialidad --</option>
-              {COMMON_SPECIALTIES.map((specialty) => (
-                <option key={specialty} value={specialty}>
-                  {specialty}
-                </option>
-              ))}
-              <option value="OTRO">Otra especialidad...</option>
-            </select>
-            {value.specialty === "OTRO" && (
-              <input
-                type="text"
-                disabled={disabled}
-                placeholder="Especificá la especialidad médica"
-                value={value.customSpecialty}
-                onChange={(event) =>
-                  onChange({ ...value, customSpecialty: event.target.value })
-                }
-                className="bg-background focus:ring-ring mt-1.5 w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
-              />
-            )}
-          </>
+          <CatalogSelect
+            kind="medical_specialty"
+            value={value.specialty || null}
+            disabled={disabled}
+            placeholder="Seleccionar especialidad..."
+            onValueChange={(code) =>
+              onChange({ ...value, specialty: code ?? "" })
+            }
+          />
         )}
       </div>
 

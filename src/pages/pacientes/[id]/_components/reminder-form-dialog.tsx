@@ -56,7 +56,6 @@ interface ReminderFormDialogProps {
 
 const EMPTY_APPOINTMENT: MedicalAppointmentFieldsValue = {
   specialty: "",
-  customSpecialty: "",
   healthCenterId: "",
   isFirstConsultation: false,
 }
@@ -96,7 +95,6 @@ export function ReminderFormDialog({
         medicalAppointment: appointment
           ? {
               specialty: appointment.specialty,
-              customSpecialty: "",
               healthCenterId: appointment.healthCenterId ?? "",
               isFirstConsultation: appointment.isFirstConsultation,
             }

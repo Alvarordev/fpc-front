@@ -59,7 +59,6 @@ const TIME_SLOTS = [
 
 const EMPTY_APPOINTMENT: MedicalAppointmentFieldsValue = {
   specialty: "",
-  customSpecialty: "",
   healthCenterId: "",
   isFirstConsultation: false,
 }

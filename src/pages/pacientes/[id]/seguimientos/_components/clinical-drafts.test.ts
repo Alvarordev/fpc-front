@@ -19,7 +19,7 @@ describe("clinical follow-up drafts", () => {
       mode: "REPLACE",
       seriesId: "series-1",
       diagnosisId: "diagnosis-1",
-      treatmentType: "Quimioterapia",
+      treatmentType: "QUIMIOTERAPIA",
       changeReason: "Nueva indicación médica",
     }
     const parallel: TreatmentDraft = {

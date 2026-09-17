@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -24,6 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { healthCentersApi } from "@/api/health-centers"
+import {
+  CatalogMultiSelect,
+  CatalogSelect,
+  CatalogValue,
+  NON_ONCOLOGICAL_DIAGNOSIS,
+} from "@/components/catalog-select"
+import { catalogLabel, catalogSelectItems, useCatalog } from "@/hooks/use-catalog"
 import type {
   CreatePatientAddressInput,
   CreatePatientTreatmentInput,
@@ -342,6 +349,12 @@ export function ClinicalDataTabs({
   const isHistorical = variant === "historical"
   const [activeTab, setActiveTab] = useState("datos")
   const [newHospitalOpen, setNewHospitalOpen] = useState(false)
+  const applyCreatedHospital = useRef<((id: string) => void) | null>(null)
+
+  function openNewHospital(apply: (id: string) => void) {
+    applyCreatedHospital.current = apply
+    setNewHospitalOpen(true)
+  }
   const { data: patient } = usePatient(patientId)
   const { data: diagnosticStatus, isLoading: isDiagnosticStatusLoading } =
     useQuery({
@@ -606,7 +619,7 @@ export function ClinicalDataTabs({
             enrollmentSymptomReport={enrollmentSymptomReport}
             hospitals={hospitals}
             historical={isHistorical}
-            onOpenNewHospital={() => setNewHospitalOpen(true)}
+            onOpenNewHospital={openNewHospital}
             diagnosticStatusSection={
               showDiagnosticStatus ? (
                 <DiagnosticStatusSection
@@ -712,7 +725,7 @@ export function ClinicalDataTabs({
             draft={drafts.diagnoses}
             hospitals={hospitals}
             currentDiagnoses={currentDiagnoses}
-            onOpenNewHospital={() => setNewHospitalOpen(true)}
+            onOpenNewHospital={openNewHospital}
             onViewDiagnosis={onViewDiagnosis}
             onSave={(diagnoses) =>
               onDraftsChange((prev) => ({ ...prev, diagnoses }))
@@ -731,7 +744,7 @@ export function ClinicalDataTabs({
             diagnoses={diagnoses}
             treatments={patient?.treatments ?? []}
             diagnosisDrafts={drafts.diagnoses}
-            onOpenNewHospital={() => setNewHospitalOpen(true)}
+            onOpenNewHospital={openNewHospital}
             onViewTreatment={onViewTreatment}
             onSave={(treatments) =>
               onDraftsChange((prev) => ({ ...prev, treatments }))
@@ -767,7 +780,11 @@ export function ClinicalDataTabs({
       </Tabs>
       <CreateHealthCenterDialog
         open={newHospitalOpen}
-        onOpenChange={setNewHospitalOpen}
+        onOpenChange={(open) => {
+          setNewHospitalOpen(open)
+          if (!open) applyCreatedHospital.current = null
+        }}
+        onCreated={(center) => applyCreatedHospital.current?.(center.id)}
       />
     </>
   )
@@ -1930,6 +1947,57 @@ function NonOncologicalFollowUpForm({
 
 // ── Síntomas ──
 
+function ReportedDiagnosisFields({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (next: string) => void
+}) {
+  const { data: items = [], isFetched } = useCatalog("cancer_diagnosis")
+  const codes = new Set(catalogSelectItems(items).map((item) => item.value))
+  const [nonOncological, setNonOncological] = useState(
+    () => Boolean(value) && !codes.has(value),
+  )
+
+  useEffect(() => {
+    if (!isFetched) return
+    if (value && !codes.has(value)) setNonOncological(true)
+  }, [isFetched, value, items])
+
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <Label>¿Cuál? *</Label>
+      <CatalogSelect
+        kind="cancer_diagnosis"
+        value={nonOncological ? NON_ONCOLOGICAL_DIAGNOSIS : value || null}
+        extraItems={[
+          {
+            value: NON_ONCOLOGICAL_DIAGNOSIS,
+            label: "Otro (no oncológico)",
+          },
+        ]}
+        onValueChange={(code) => {
+          if (code === NON_ONCOLOGICAL_DIAGNOSIS) {
+            setNonOncological(true)
+            if (value && codes.has(value)) onChange("")
+            return
+          }
+          setNonOncological(false)
+          onChange(code ?? "")
+        }}
+      />
+      {nonOncological && (
+        <Input
+          value={value && !codes.has(value) ? value : ""}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Escriba el diagnóstico no oncológico"
+        />
+      )}
+    </div>
+  )
+}
+
 type SymptomFormValues = Omit<
   CreatePatientSymptomReportInput,
   | "followUpId"
@@ -1956,7 +2024,7 @@ function SintomasForm({
   enrollmentSymptomReport: PatientSymptomReport | undefined
   hospitals: Array<{ id: string; name: string }>
   historical: boolean
-  onOpenNewHospital: () => void
+  onOpenNewHospital: (apply: (id: string) => void) => void
   diagnosticStatusSection?: ReactNode
   nonOncologicalFollowUpSection?: ReactNode
   onSave: (symptomReport: SymptomReportDraft) => void
@@ -2281,7 +2349,11 @@ function SintomasForm({
                     variant="outline"
                     size="sm"
                     className="shrink-0 gap-1"
-                    onClick={onOpenNewHospital}
+                    onClick={() =>
+                      onOpenNewHospital((id) =>
+                        setValue("healthCenterId", id),
+                      )
+                    }
                   >
                     <Building2 className="size-3.5" />
                     <Plus className="size-3" />
@@ -2290,7 +2362,11 @@ function SintomasForm({
               </div>
               <div className="space-y-2">
                 <Label>¿Con qué especialidad? *</Label>
-                <Input {...register("specialty")} placeholder="Ej: Oncología" />
+                <CatalogSelect
+                  kind="medical_specialty"
+                  value={watch("specialty") || null}
+                  onValueChange={(code) => setValue("specialty", code ?? "")}
+                />
               </div>
               <div className="space-y-2">
                 <Label>¿Cuándo fue la 1ra consulta que tuvo? *</Label>
@@ -2376,10 +2452,10 @@ function SintomasForm({
                 }}
               />
               {hasReceivedDiagnosis === true && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label>¿Cuál? *</Label>
-                  <Input {...register("reportedDiagnosis")} />
-                </div>
+                <ReportedDiagnosisFields
+                  value={watch("reportedDiagnosis") ?? ""}
+                  onChange={(next) => setValue("reportedDiagnosis", next)}
+                />
               )}
               <div className="space-y-2">
                 <Label>¿Cuándo es su siguiente consulta médica?</Label>
@@ -2407,9 +2483,12 @@ function SintomasForm({
             <>
               <div className="space-y-2">
                 <Label>Tratamiento informado *</Label>
-                <Input
-                  {...register("reportedTreatment")}
-                  placeholder="Ej: Quimioterapia"
+                <CatalogSelect
+                  kind="treatment_type"
+                  value={watch("reportedTreatment") || null}
+                  onValueChange={(code) =>
+                    setValue("reportedTreatment", code ?? "")
+                  }
                 />
               </div>
               <DurationInput
@@ -2508,7 +2587,7 @@ function DiagnosticoForm({
   draft: DiagnosisDraft[] | undefined
   hospitals: Array<{ id: string; name: string }>
   currentDiagnoses: PatientDiagnosis[]
-  onOpenNewHospital: () => void
+  onOpenNewHospital: (apply: (id: string) => void) => void
   onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
   onSave: (diagnoses: DiagnosisDraft[]) => void
 }) {
@@ -2702,7 +2781,14 @@ function DiagnosticoForm({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-semibold">
-                    {diagnosis.diagnosis}
+                    {diagnosis.diagnosis ? (
+                      <CatalogValue
+                        kind="cancer_diagnosis"
+                        code={diagnosis.diagnosis}
+                      />
+                    ) : (
+                      diagnosis.diagnosis
+                    )}
                   </span>
                   <span className="text-muted-foreground mt-0.5 block text-[11px]">
                     {diagnosis.cancerStage
@@ -2841,13 +2927,20 @@ function DiagnosticoForm({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
           <Label>Diagnóstico</Label>
-          <Input {...register("diagnosis")} placeholder="Ej: Cáncer de mama" />
+          <CatalogSelect
+            kind="cancer_diagnosis"
+            value={watch("diagnosis") || null}
+            onValueChange={(code) => setValue("diagnosis", code ?? "")}
+          />
         </div>
         <div className="space-y-2">
           <Label>Especialidad del diagnóstico</Label>
-          <Input
-            {...register("diagnosisSpecialty")}
-            placeholder="Ej: Oncología"
+          <CatalogSelect
+            kind="medical_specialty"
+            value={watch("diagnosisSpecialty") || null}
+            onValueChange={(code) =>
+              setValue("diagnosisSpecialty", code ?? "")
+            }
           />
         </div>
         <TriSelect
@@ -2924,7 +3017,9 @@ function DiagnosticoForm({
               variant="outline"
               size="sm"
               className="shrink-0 gap-1"
-              onClick={onOpenNewHospital}
+              onClick={() =>
+                onOpenNewHospital((id) => setValue("healthCenterId", id))
+              }
             >
               <Building2 className="size-3.5" />
               <Plus className="size-3" />
@@ -3011,7 +3106,7 @@ interface TreatmentFormValues {
   careProgram: CareProgram | undefined
   receivesTeleconsultation: boolean | undefined
   teleconsultationNote: string
-  teleconsultationSpecialties: string
+  teleconsultationSpecialties: string[]
   treatmentAbandonmentReason: string
   treatmentViaSepa: boolean | undefined
   interruptionReason: InterruptionReason | undefined
@@ -3053,7 +3148,7 @@ function TratamientosForm({
   diagnoses: PatientDiagnosis[]
   treatments: PatientTreatment[]
   diagnosisDrafts: DiagnosisDraft[] | undefined
-  onOpenNewHospital: () => void
+  onOpenNewHospital: (apply: (id: string) => void) => void
   onViewTreatment?: (treatment: PatientTreatment) => void
   onSave: (treatments: TreatmentDraft[]) => void
 }) {
@@ -3072,8 +3167,7 @@ function TratamientosForm({
         careProgram: initial?.careProgram,
         receivesTeleconsultation: initial?.receivesTeleconsultation,
         teleconsultationNote: initial?.teleconsultationNote ?? "",
-        teleconsultationSpecialties:
-          initial?.teleconsultationSpecialties?.join(", ") ?? "",
+        teleconsultationSpecialties: initial?.teleconsultationSpecialties ?? [],
         treatmentAbandonmentReason: initial?.treatmentAbandonmentReason ?? "",
         treatmentViaSepa: initial?.treatmentViaSepa,
         interruptionReason: initial?.interruptionReason,
@@ -3166,12 +3260,17 @@ function TratamientosForm({
       Boolean(selectedTreatment) &&
       editingDecisionIndex === null,
   )
+  const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
+  const { data: treatmentTypeItems = [] } = useCatalog("treatment_type")
   const diagnosisItems = [
     ...(diagnosisDrafts ?? []).map((item) => ({
       value: draftDiagnosisOptionId(item.draftId),
-      label: `${item.diagnosis} (nuevo)`,
+      label: `${catalogLabel(cancerDiagnoses, item.diagnosis)} (nuevo)`,
     })),
-    ...diagnoses.map((item) => ({ value: item.id, label: item.diagnosis })),
+    ...diagnoses.map((item) => ({
+      value: item.id,
+      label: catalogLabel(cancerDiagnoses, item.diagnosis),
+    })),
   ]
   const decisionModeItems = [
     { value: "PARALLEL", label: "Agregar tratamiento en paralelo" },
@@ -3203,8 +3302,7 @@ function TratamientosForm({
       careProgram: treatment.careProgram ?? undefined,
       receivesTeleconsultation: treatment.receivesTeleconsultation ?? undefined,
       teleconsultationNote: treatment.teleconsultationNote ?? "",
-      teleconsultationSpecialties:
-        treatment.teleconsultationSpecialties?.join(", ") ?? "",
+      teleconsultationSpecialties: treatment.teleconsultationSpecialties ?? [],
       treatmentAbandonmentReason: treatment.treatmentAbandonmentReason ?? "",
       treatmentViaSepa: treatment.treatmentViaSepa ?? undefined,
       interruptionReason: treatment.interruptionReason ?? undefined,
@@ -3298,8 +3396,7 @@ function TratamientosForm({
       careProgram: decision.careProgram,
       receivesTeleconsultation: decision.receivesTeleconsultation,
       teleconsultationNote: decision.teleconsultationNote ?? "",
-      teleconsultationSpecialties:
-        decision.teleconsultationSpecialties?.join(", ") ?? "",
+      teleconsultationSpecialties: decision.teleconsultationSpecialties ?? [],
       treatmentAbandonmentReason: decision.treatmentAbandonmentReason ?? "",
       treatmentViaSepa: decision.treatmentViaSepa,
       interruptionReason: decision.interruptionReason,
@@ -3479,16 +3576,9 @@ function TratamientosForm({
         ? {
             teleconsultationNote:
               values.teleconsultationNote.trim() || undefined,
-            ...(values.teleconsultationSpecialties
-              .split(",")
-              .map((specialty) => specialty.trim())
-              .filter(Boolean).length
+            ...(values.teleconsultationSpecialties.length
               ? {
-                  teleconsultationSpecialties:
-                    values.teleconsultationSpecialties
-                      .split(",")
-                      .map((specialty) => specialty.trim())
-                      .filter(Boolean),
+                  teleconsultationSpecialties: values.teleconsultationSpecialties,
                 }
               : {}),
           }
@@ -3569,7 +3659,7 @@ function TratamientosForm({
       careProgram: undefined,
       receivesTeleconsultation: undefined,
       teleconsultationNote: "",
-      teleconsultationSpecialties: "",
+      teleconsultationSpecialties: [],
       treatmentAbandonmentReason: "",
       treatmentViaSepa: undefined,
       interruptionReason: undefined,
@@ -3620,7 +3710,14 @@ function TratamientosForm({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-semibold">
-                      {treatment.treatmentType}
+                      {treatment.treatmentType ? (
+                        <CatalogValue
+                          kind="treatment_type"
+                          code={treatment.treatmentType}
+                        />
+                      ) : (
+                        treatment.treatmentType
+                      )}
                     </span>
                     <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
                       {treatment.diagnosisSummary?.diagnosis ??
@@ -3724,7 +3821,14 @@ function TratamientosForm({
                 <Select
                   items={currentTreatments.map((item) => ({
                     value: item.seriesId,
-                    label: `${item.treatmentType} · ${item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}`,
+                    label: `${catalogLabel(treatmentTypeItems, item.treatmentType)} · ${
+                      item.diagnosisSummary?.diagnosis
+                        ? catalogLabel(
+                            cancerDiagnoses,
+                            item.diagnosisSummary.diagnosis,
+                          )
+                        : "Sin diagnóstico"
+                    }`,
                   }))}
                   value={selectedSeriesId}
                   onValueChange={(value) => selectTreatment(value ?? "")}
@@ -3735,8 +3839,13 @@ function TratamientosForm({
                   <SelectContent>
                     {currentTreatments.map((item) => (
                       <SelectItem key={item.seriesId} value={item.seriesId}>
-                        {item.treatmentType} ·{" "}
-                        {item.diagnosisSummary?.diagnosis ?? "Sin diagnóstico"}
+                        {catalogLabel(treatmentTypeItems, item.treatmentType)} ·{" "}
+                        {item.diagnosisSummary?.diagnosis
+                          ? catalogLabel(
+                              cancerDiagnoses,
+                              item.diagnosisSummary.diagnosis,
+                            )
+                          : "Sin diagnóstico"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -3771,9 +3880,12 @@ function TratamientosForm({
             </div>
             <div className="space-y-2">
               <Label>Tipo de tratamiento</Label>
-              <Input
-                {...register("treatmentType")}
-                placeholder="Ej: Quimioterapia"
+              <CatalogSelect
+                kind="treatment_type"
+                value={watched.treatmentType || null}
+                onValueChange={(code) =>
+                  setValue("treatmentType", code ?? "")
+                }
               />
             </div>
             <TriSelect
@@ -3874,9 +3986,12 @@ function TratamientosForm({
                 </div>
                 <div className="space-y-2">
                   <Label>Especialidades de teleconsulta</Label>
-                  <Input
-                    {...register("teleconsultationSpecialties")}
-                    placeholder="Ej: Oncología, Psicología"
+                  <CatalogMultiSelect
+                    kind="medical_specialty"
+                    values={watched.teleconsultationSpecialties ?? []}
+                    onChange={(codes) =>
+                      setValue("teleconsultationSpecialties", codes)
+                    }
                   />
                 </div>
               </>
@@ -4044,7 +4159,11 @@ function TratamientosForm({
                       variant="outline"
                       size="sm"
                       className="shrink-0 gap-1"
-                      onClick={onOpenNewHospital}
+                      onClick={() =>
+                        onOpenNewHospital((id) =>
+                          setValue("sourceHealthCenterId", id),
+                        )
+                      }
                     >
                       <Building2 className="size-3.5" />
                       <Plus className="size-3" />
@@ -4080,7 +4199,11 @@ function TratamientosForm({
                       variant="outline"
                       size="sm"
                       className="shrink-0 gap-1"
-                      onClick={onOpenNewHospital}
+                      onClick={() =>
+                        onOpenNewHospital((id) =>
+                          setValue("receivingHealthCenterId", id),
+                        )
+                      }
                     >
                       <Building2 className="size-3.5" />
                       <Plus className="size-3" />
@@ -4118,7 +4241,11 @@ function TratamientosForm({
                     variant="outline"
                     size="sm"
                     className="shrink-0 gap-1"
-                    onClick={onOpenNewHospital}
+                    onClick={() =>
+                      onOpenNewHospital((id) =>
+                        setValue("receivingHealthCenterId", id),
+                      )
+                    }
                   >
                     <Building2 className="size-3.5" />
                     <Plus className="size-3" />

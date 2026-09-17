@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   createEnrollmentDiagnosisDraft,
@@ -32,6 +32,11 @@ import {
 import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 import { healthCentersApi } from "@/api/health-centers"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
+import {
+  CatalogSelect,
+  NON_ONCOLOGICAL_DIAGNOSIS,
+} from "@/components/catalog-select"
+import { catalogLabel, catalogSelectItems, useCatalog } from "@/hooks/use-catalog"
 import { DurationInput } from "@/components/duration-input"
 import { calculateDurationBetweenDates } from "@/types/duration"
 import type {
@@ -56,27 +61,6 @@ const stageLabels: Record<CancerStage, string> = {
   STAGE_4: "4",
   UNKNOWN: "Desconoce",
 }
-
-const DIAGNOSIS_OPTIONS = [
-  "Cáncer de mama",
-  "Cáncer de cuello uterino",
-  "Cáncer de próstata",
-  "Cáncer de estómago",
-  "Cáncer de pulmón",
-  "Cáncer de colon y recto",
-  "Cáncer de piel",
-  "Cáncer de hígado",
-  "Cáncer de tiroides",
-  "Leucemia",
-  "Linfoma",
-  "Cáncer de riñón",
-  "Cáncer de vejiga",
-  "Cáncer de páncreas",
-  "Cáncer de ovario",
-  "Sarcoma",
-  "Cáncer de esófago",
-  "Cáncer de endometrio",
-] as const
 
 const TREATMENT_SITUATIONS: Array<{
   value: TreatmentSituation
@@ -136,7 +120,6 @@ const TALK_TOPICS = [
   "Prevención general del cáncer",
 ] as const
 
-const OTHER_VALUE = "OTHER"
 const TALK_OTHER = "TALK_OTHER"
 
 type NewHospitalTarget =
@@ -213,28 +196,13 @@ export function Step7Atencion({
   const [newHospitalOpen, setNewHospitalOpen] = useState(false)
   const [newHospitalTarget, setNewHospitalTarget] =
     useState<NewHospitalTarget | null>(null)
-
-  const knownDiagnoses = DIAGNOSIS_OPTIONS as readonly string[]
-  const [otherDiagnosisIds, setOtherDiagnosisIds] = useState<Set<string>>(
-    () =>
-      new Set(
-        diagnoses
-          .filter(
-            (diagnosis) =>
-              Boolean(diagnosis.diagnosis) &&
-              !knownDiagnoses.includes(diagnosis.diagnosis),
-          )
-          .map((diagnosis) => diagnosis.draftId),
-      ),
+  const [nonOncologicalDiagnosis, setNonOncologicalDiagnosis] = useState(false)
+  const { data: cancerDiagnoses = [], isFetched: cancerDiagnosesFetched } =
+    useCatalog("cancer_diagnosis")
+  const { data: treatmentTypes = [] } = useCatalog("treatment_type")
+  const cancerDiagnosisCodes = new Set(
+    catalogSelectItems(cancerDiagnoses).map((item) => item.value),
   )
-  const isOtherDiagnosis =
-    Boolean(dx.diagnosis && !knownDiagnoses.includes(dx.diagnosis)) ||
-    otherDiagnosisIds.has(dx.draftId)
-  const diagnosisSelectValue = isOtherDiagnosis
-    ? OTHER_VALUE
-    : dx.diagnosis && knownDiagnoses.includes(dx.diagnosis)
-      ? dx.diagnosis
-      : ""
 
   const medicalAppointments = draft.medicalAppointments ?? []
   const medications = tx.medications ?? []
@@ -266,6 +234,17 @@ export function Step7Atencion({
   })
 
   const activeCenters = healthCenters.filter((c) => c.isActive)
+
+  useEffect(() => {
+    if (!cancerDiagnosesFetched) return
+    const reported = sr.reportedDiagnosis?.trim()
+    if (
+      reported &&
+      !catalogSelectItems(cancerDiagnoses).some((item) => item.value === reported)
+    ) {
+      setNonOncologicalDiagnosis(true)
+    }
+  }, [cancerDiagnosesFetched, cancerDiagnoses, sr.reportedDiagnosis])
 
   function updateAppointment(partial: Partial<AddMedicalAppointmentRequest>) {
     updateDraft({ medicalAppointments: [{ ...appointment, ...partial }] })
@@ -328,11 +307,6 @@ export function Step7Atencion({
       (_, diagnosisIndex) => diagnosisIndex !== index,
     )
     updateDraft({ diagnoses: updatedDiagnoses })
-    setOtherDiagnosisIds((previous) => {
-      const next = new Set(previous)
-      next.delete(diagnosis.draftId)
-      return next
-    })
     setSelectedDiagnosisIndex((current) =>
       current > index
         ? current - 1
@@ -763,13 +737,14 @@ export function Step7Atencion({
                     ¿Con qué especialidad?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    value={sr.specialty ?? ""}
-                    onChange={(e) =>
-                      updateSymptomReport({ specialty: e.target.value || null })
+                  <CatalogSelect
+                    kind="medical_specialty"
+                    value={sr.specialty ?? null}
+                    onValueChange={(code) =>
+                      updateSymptomReport({ specialty: code })
                     }
-                    placeholder="Ej: Medicina general"
-                    className="bg-card border"
+                    placeholder="Seleccionar especialidad..."
+                    triggerClassName={sc}
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -956,14 +931,15 @@ export function Step7Atencion({
                           ? "No"
                           : ""
                     }
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
                       updateSymptomReport({
                         hasReceivedDiagnosis: value === "Sí" ? true : false,
                         ...(!historical && value !== "Sí"
                           ? { reportedDiagnosis: null }
                           : {}),
                       })
-                    }
+                      if (value !== "Sí") setNonOncologicalDiagnosis(false)
+                    }}
                   >
                     <SelectTrigger className={sc}>
                       <SelectValue placeholder="Seleccionar..." />
@@ -982,19 +958,59 @@ export function Step7Atencion({
                     <Label className={fl}>
                       ¿Cuál? <span className="text-destructive">*</span>
                     </Label>
-                    <Input
-                      value={sr.reportedDiagnosis ?? ""}
-                      onChange={(e) =>
-                        updateSymptomReport({
-                          reportedDiagnosis: e.target.value || null,
-                        })
+                    <CatalogSelect
+                      kind="cancer_diagnosis"
+                      value={
+                        nonOncologicalDiagnosis
+                          ? NON_ONCOLOGICAL_DIAGNOSIS
+                          : (sr.reportedDiagnosis ?? null)
                       }
-                      placeholder="Escriba el diagnóstico brindado"
-                      className="bg-card border"
+                      extraItems={[
+                        {
+                          value: NON_ONCOLOGICAL_DIAGNOSIS,
+                          label: "Otro (no oncológico)",
+                        },
+                      ]}
+                      onValueChange={(code) => {
+                        if (code === NON_ONCOLOGICAL_DIAGNOSIS) {
+                          setNonOncologicalDiagnosis(true)
+                          if (
+                            sr.reportedDiagnosis &&
+                            cancerDiagnosisCodes.has(sr.reportedDiagnosis)
+                          ) {
+                            updateSymptomReport({ reportedDiagnosis: null })
+                          }
+                          return
+                        }
+                        setNonOncologicalDiagnosis(false)
+                        updateSymptomReport({
+                          reportedDiagnosis: code,
+                        })
+                      }}
+                      placeholder="Seleccionar diagnóstico..."
+                      triggerClassName={sc}
                     />
+                    {nonOncologicalDiagnosis && (
+                      <Input
+                        value={
+                          sr.reportedDiagnosis &&
+                          !cancerDiagnosisCodes.has(sr.reportedDiagnosis)
+                            ? sr.reportedDiagnosis
+                            : ""
+                        }
+                        onChange={(e) =>
+                          updateSymptomReport({
+                            reportedDiagnosis: e.target.value || null,
+                          })
+                        }
+                        placeholder="Escriba el diagnóstico no oncológico"
+                        className="bg-card border"
+                      />
+                    )}
                     <p className="text-muted-foreground text-xs">
-                      Este dato es preliminar y no crea un diagnóstico
-                      oncológico formal.
+                      Si no es oncológico, elegí “Otro (no oncológico)” y
+                      escribí el diagnóstico. No se agrega al catálogo de
+                      cáncer.
                     </p>
                   </div>
                 )}
@@ -1064,15 +1080,16 @@ export function Step7Atencion({
                     Tratamiento informado{" "}
                     <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    value={sr.reportedTreatment ?? ""}
-                    onChange={(e) =>
+                  <CatalogSelect
+                    kind="treatment_type"
+                    value={sr.reportedTreatment ?? null}
+                    onValueChange={(code) =>
                       updateSymptomReport({
-                        reportedTreatment: e.target.value || null,
+                        reportedTreatment: code,
                       })
                     }
-                    placeholder="Ej: Quimioterapia"
-                    className="bg-card border"
+                    placeholder="Seleccionar tratamiento..."
+                    triggerClassName={sc}
                   />
                 </div>
                 <DurationInput
@@ -1164,7 +1181,12 @@ export function Step7Atencion({
                               Diagnóstico {index + 1}
                             </span>
                             <span className="text-muted-foreground w-full truncate text-xs">
-                              {diagnosis.diagnosis.trim() || "Sin especificar"}
+                              {diagnosis.diagnosis.trim()
+                                ? catalogLabel(
+                                    cancerDiagnoses,
+                                    diagnosis.diagnosis,
+                                  )
+                                : "Sin especificar"}
                             </span>
                           </span>
                         </Button>
@@ -1196,47 +1218,15 @@ export function Step7Atencion({
                     ¿Cuál es su diagnóstico oncológico?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
-                  <Select
-                    items={[
-                      ...DIAGNOSIS_OPTIONS.map((value) => ({
-                        value,
-                        label: value,
-                      })),
-                      { value: OTHER_VALUE, label: "Otro (especificar)" },
-                    ]}
-                    value={diagnosisSelectValue}
-                    onValueChange={(v) => {
-                      if (!v) return
-                      if (v === OTHER_VALUE) {
-                        setOtherDiagnosisIds((previous) =>
-                          new Set(previous).add(dx.draftId),
-                        )
-                        updateDiagnosis({ diagnosis: "" })
-                      } else {
-                        setOtherDiagnosisIds((previous) => {
-                          const next = new Set(previous)
-                          next.delete(dx.draftId)
-                          return next
-                        })
-                        updateDiagnosis({ diagnosis: v })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className={sc}>
-                      <SelectValue placeholder="Seleccionar tipo..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DIAGNOSIS_OPTIONS.map((o) => (
-                        <SelectItem key={o} value={o}>
-                          {o}
-                        </SelectItem>
-                      ))}
-                      <SelectSeparator />
-                      <SelectItem value={OTHER_VALUE}>
-                        Otro (especificar)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <CatalogSelect
+                    kind="cancer_diagnosis"
+                    value={dx.diagnosis || null}
+                    onValueChange={(code) =>
+                      updateDiagnosis({ diagnosis: code ?? "" })
+                    }
+                    placeholder="Seleccionar tipo..."
+                    triggerClassName={sc}
+                  />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={flGrid}>
@@ -1269,19 +1259,6 @@ export function Step7Atencion({
                   </Select>
                 </div>
               </div>
-              {isOtherDiagnosis && (
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>Especifique el diagnóstico</Label>
-                  <Input
-                    value={dx.diagnosis}
-                    onChange={(e) =>
-                      updateDiagnosis({ diagnosis: e.target.value })
-                    }
-                    placeholder="Describa el diagnóstico oncológico..."
-                    className="bg-card border"
-                  />
-                </div>
-              )}
               <div className="flex flex-col gap-2">
                 <Label className={fl}>
                   ¿Qué síntoma lo llevó a realizarse su chequeo médico?
@@ -1435,15 +1412,16 @@ export function Step7Atencion({
                   <Label className={fl}>
                     ¿Qué especialidad lo diagnosticó?
                   </Label>
-                  <Input
-                    value={dx.diagnosisSpecialty ?? ""}
-                    onChange={(e) =>
+                  <CatalogSelect
+                    kind="medical_specialty"
+                    value={dx.diagnosisSpecialty ?? null}
+                    onValueChange={(code) =>
                       updateDiagnosis({
-                        diagnosisSpecialty: e.target.value || null,
+                        diagnosisSpecialty: code,
                       })
                     }
-                    placeholder="Especialidad"
-                    className="bg-card border"
+                    placeholder="Seleccionar especialidad..."
+                    triggerClassName={sc}
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1655,15 +1633,16 @@ export function Step7Atencion({
                       <Label className={flGrid}>
                         Especialidad de la consulta
                       </Label>
-                      <Input
-                        value={appointment.specialty ?? ""}
-                        onChange={(e) =>
+                      <CatalogSelect
+                        kind="medical_specialty"
+                        value={appointment.specialty ?? null}
+                        onValueChange={(code) =>
                           updateAppointment({
-                            specialty: e.target.value || null,
+                            specialty: code,
                           })
                         }
-                        placeholder="Especialidad"
-                        className="bg-card border"
+                        placeholder="Seleccionar especialidad..."
+                        triggerClassName={sc}
                       />
                     </div>
                   </div>
@@ -1687,15 +1666,16 @@ export function Step7Atencion({
                       <Label className={fl}>
                         Especialidad de la siguiente consulta
                       </Label>
-                      <Input
-                        value={appointment.nextAppointmentSpecialty ?? ""}
-                        onChange={(e) =>
+                      <CatalogSelect
+                        kind="medical_specialty"
+                        value={appointment.nextAppointmentSpecialty ?? null}
+                        onValueChange={(code) =>
                           updateAppointment({
-                            nextAppointmentSpecialty: e.target.value || null,
+                            nextAppointmentSpecialty: code,
                           })
                         }
-                        placeholder="Ej: Oncología"
-                        className="bg-card border"
+                        placeholder="Seleccionar especialidad..."
+                        triggerClassName={sc}
                       />
                     </div>
                   </div>
@@ -1858,10 +1838,21 @@ export function Step7Atencion({
                                   Tratamiento {index + 1}
                                 </span>
                                 <span className="text-muted-foreground w-full truncate text-xs">
-                                  {treatment.treatmentType.trim() ||
-                                    "Sin especificar"}
+                                  {treatment.treatmentType.trim()
+                                    ? catalogLabel(
+                                        treatmentTypes,
+                                        treatment.treatmentType,
+                                      )
+                                    : "Sin especificar"}
                                   {diagnosis
-                                    ? ` · ${diagnosis.diagnosis.trim() || `Diagnóstico ${diagnoses.indexOf(diagnosis) + 1}`}`
+                                    ? ` · ${
+                                        diagnosis.diagnosis.trim()
+                                          ? catalogLabel(
+                                              cancerDiagnoses,
+                                              diagnosis.diagnosis,
+                                            )
+                                          : `Diagnóstico ${diagnoses.indexOf(diagnosis) + 1}`
+                                      }`
                                     : " · Sin diagnóstico"}
                                 </span>
                               </span>
@@ -1892,9 +1883,12 @@ export function Step7Atencion({
                       <Select
                         items={diagnoses.map((diagnosis, index) => ({
                           value: diagnosis.draftId,
-                          label:
-                            diagnosis.diagnosis.trim() ||
-                            `Diagnóstico ${index + 1}`,
+                          label: diagnosis.diagnosis.trim()
+                            ? catalogLabel(
+                                cancerDiagnoses,
+                                diagnosis.diagnosis,
+                              )
+                            : `Diagnóstico ${index + 1}`,
                         }))}
                         value={tx.diagnosisRef}
                         onValueChange={(value) =>
@@ -1910,8 +1904,12 @@ export function Step7Atencion({
                               key={diagnosis.draftId}
                               value={diagnosis.draftId}
                             >
-                              {diagnosis.diagnosis.trim() ||
-                                `Diagnóstico ${index + 1}`}
+                              {diagnosis.diagnosis.trim()
+                                ? catalogLabel(
+                                    cancerDiagnoses,
+                                    diagnosis.diagnosis,
+                                  )
+                                : `Diagnóstico ${index + 1}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -2112,13 +2110,14 @@ export function Step7Atencion({
                         <Label className={flGrid}>
                           ¿Qué tipo de tratamiento recibe?
                         </Label>
-                        <Input
-                          value={tx.treatmentType}
-                          onChange={(e) =>
-                            updateTreatment({ treatmentType: e.target.value })
+                        <CatalogSelect
+                          kind="treatment_type"
+                          value={tx.treatmentType || null}
+                          onValueChange={(code) =>
+                            updateTreatment({ treatmentType: code ?? "" })
                           }
-                          placeholder="Ej: Quimioterapia"
-                          className="bg-card border"
+                          placeholder="Seleccionar tipo..."
+                          triggerClassName={sc}
                         />
                       </div>
                       <div className="flex flex-col gap-2">

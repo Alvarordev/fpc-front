@@ -103,7 +103,7 @@ runDescribe("enrollment flow against Nest", () => {
             {
               clientRef: "diagnosis-1",
               mode: "PARALLEL",
-              diagnosis: "Cáncer de mama",
+              diagnosis: "MAMA_DUCTAL",
               healthCenterId: healthCenter?.id,
             },
           ],
@@ -117,7 +117,7 @@ runDescribe("enrollment flow against Nest", () => {
           treatments: [
             {
               diagnosisRef: "diagnosis-1",
-              treatmentType: "Quimioterapia",
+              treatmentType: "QUIMIOTERAPIA",
               treatmentSituation: "EN_CURSO",
               treatmentFrequency: { valueMin: 3, unit: "WEEK" },
               isReferred: false,

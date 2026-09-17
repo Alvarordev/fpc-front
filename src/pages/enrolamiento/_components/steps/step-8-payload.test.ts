@@ -90,7 +90,7 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-1",
-            diagnosis: "Cáncer de mama",
+            diagnosis: "MAMA_DUCTAL",
             cancerStage: "STAGE_2",
             firstSymptomsDate: "2026-01-01",
             diagnosisDate: "2026-02-15",
@@ -101,7 +101,7 @@ describe("step 8 Nest enrollment payload", () => {
           {
             draftId: "treatment-1",
             diagnosisRef: "diagnosis-1",
-            treatmentType: "Quimioterapia",
+            treatmentType: "QUIMIOTERAPIA",
             treatmentFrequency: { valueMin: 3, unit: "WEEK" },
             treatmentSituation: "EN_CURSO",
             isReferred: true,
@@ -120,7 +120,7 @@ describe("step 8 Nest enrollment payload", () => {
         ],
         medicalAppointments: [
           {
-            specialty: "Oncología",
+            specialty: "ONCOLOGIA_MEDICA",
             healthCenterId: "center-1",
             appointmentDate: null,
             nextAppointmentDate: "2026-07-15",
@@ -165,9 +165,9 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.affiliationType).toBe("SELF")
     expect(payload.healthPhase).toBe("CANCER_DIAGNOSIS")
     expect(payload.insurance?.insuranceType).toBe("EPS")
-    expect(payload.diagnoses?.[0]?.diagnosis).toBe("Cáncer de mama")
+    expect(payload.diagnoses?.[0]?.diagnosis).toBe("MAMA_DUCTAL")
     expect(payload.diagnoses?.[0]?.mode).toBe("PARALLEL")
-    expect(payload.treatments?.[0]?.treatmentType).toBe("Quimioterapia")
+    expect(payload.treatments?.[0]?.treatmentType).toBe("QUIMIOTERAPIA")
     expect(payload.treatments?.[0]?.treatmentFrequency).toEqual({
       valueMin: 3,
       unit: "WEEK",
@@ -231,7 +231,7 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-breast",
-            diagnosis: "Cáncer de mama",
+            diagnosis: "MAMA_DUCTAL",
             isCurrent: true,
           },
           {
@@ -244,13 +244,13 @@ describe("step 8 Nest enrollment payload", () => {
           {
             draftId: "treatment-chemotherapy",
             diagnosisRef: "diagnosis-breast",
-            treatmentType: "Quimioterapia",
+            treatmentType: "QUIMIOTERAPIA",
             isCurrent: true,
           },
           {
             draftId: "treatment-surgery",
             diagnosisRef: "diagnosis-thyroid",
-            treatmentType: "Cirugía",
+            treatmentType: "CIRUGIA",
             isCurrent: true,
           },
         ],
@@ -265,11 +265,11 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.treatments).toEqual([
       expect.objectContaining({
         diagnosisRef: "diagnosis-breast",
-        treatmentType: "Quimioterapia",
+        treatmentType: "QUIMIOTERAPIA",
       }),
       expect.objectContaining({
         diagnosisRef: "diagnosis-thyroid",
-        treatmentType: "Cirugía",
+        treatmentType: "CIRUGIA",
       }),
     ])
   })
@@ -374,8 +374,8 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-1",
-            diagnosis: "Cáncer de mama",
-            diagnosisSpecialty: "Oncología",
+            diagnosis: "MAMA_DUCTAL",
+            diagnosisSpecialty: "ONCOLOGIA_MEDICA",
             isSepaActiveReferral: true,
             isCurrent: true,
           },
@@ -384,7 +384,7 @@ describe("step 8 Nest enrollment payload", () => {
           {
             draftId: "treatment-1",
             diagnosisRef: "diagnosis-1",
-            treatmentType: "Cirugía",
+            treatmentType: "CIRUGIA",
             operationName: "Mastectomía",
             treatmentSituation: "ABANDONED",
             treatmentAbandonmentReason: "Cambio de ciudad",
@@ -400,7 +400,7 @@ describe("step 8 Nest enrollment payload", () => {
     })
 
     expect(payload.diagnoses?.[0]).toMatchObject({
-      diagnosisSpecialty: "Oncología",
+      diagnosisSpecialty: "ONCOLOGIA_MEDICA",
     })
     expect(payload.diagnoses?.[0]).not.toHaveProperty("isSepaActiveReferral")
     expect(payload.treatments?.[0]).toMatchObject({
@@ -474,7 +474,7 @@ describe("step 8 Nest enrollment payload", () => {
             specialty: "Medicina general",
             appointmentDate: "2026-06-20",
             nextAppointmentDate: "2026-07-20",
-            nextAppointmentSpecialty: "Oncología",
+            nextAppointmentSpecialty: "ONCOLOGIA_MEDICA",
             hasReferralSheet: false,
             referralNotProvidedReason: "No fue necesario referir",
           },
@@ -603,7 +603,7 @@ describe("step 8 Nest enrollment payload", () => {
           hasReferral: null,
           hasReceivedDiagnosis: false,
           isReceivingReportedTreatment: true,
-          reportedTreatment: "Quimioterapia",
+          reportedTreatment: "QUIMIOTERAPIA",
           reportedTreatmentFrequency: { valueMin: 3, unit: "WEEK" },
         },
       }),
@@ -611,7 +611,7 @@ describe("step 8 Nest enrollment payload", () => {
 
     expect(payload.symptomReport).toMatchObject({
       isReceivingReportedTreatment: true,
-      reportedTreatment: "Quimioterapia",
+      reportedTreatment: "QUIMIOTERAPIA",
       reportedTreatmentFrequency: { valueMin: 3, unit: "WEEK" },
     })
     expect(payload.symptomReport).not.toHaveProperty(
@@ -662,7 +662,7 @@ describe("step 8 Nest enrollment payload", () => {
           consultationStatus: "NOT_OBTAINED",
           consultationNotObtainedReason: "Texto antiguo",
           healthCenterId: "center-1",
-          specialty: "Oncología",
+          specialty: "ONCOLOGIA_MEDICA",
           indicationsReceived: "Indicaciones antiguas",
           hasReceivedDiagnosis: false,
           reportedDiagnosis: "Diagnóstico antiguo",
@@ -671,7 +671,7 @@ describe("step 8 Nest enrollment payload", () => {
         },
         medicalAppointments: [
           {
-            specialty: "Oncología",
+            specialty: "ONCOLOGIA_MEDICA",
             appointmentDate: "2026-06-20",
             hasReferralSheet: false,
           },
@@ -799,7 +799,7 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-1",
-            diagnosis: "Cáncer de mama",
+            diagnosis: "MAMA_DUCTAL",
             isCurrent: true,
           },
         ],
@@ -829,7 +829,7 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-1",
-            diagnosis: "Cáncer de mama",
+            diagnosis: "MAMA_DUCTAL",
             firstSymptomsDate: "2026-01-01",
             diagnosisDate: "2026-03-02",
             waitTimeForDiagnosis: { valueMin: 1.5, unit: "MONTH" },
@@ -868,7 +868,7 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-1",
-            diagnosis: "Cáncer de mama",
+            diagnosis: "MAMA_DUCTAL",
             firstSymptomsDateUnknown: true,
             waitTimeForDiagnosis: { valueMin: 2, unit: "MONTH" },
             waitTimeForDiagnosisManuallyEdited: true,
@@ -901,7 +901,7 @@ describe("step 8 Nest enrollment payload", () => {
         diagnoses: [
           {
             draftId: "diagnosis-1",
-            diagnosis: "Cáncer de mama",
+            diagnosis: "MAMA_DUCTAL",
             isCurrent: true,
           },
         ],
@@ -982,7 +982,7 @@ describe("step 8 Nest enrollment payload", () => {
           diagnoses: [
             {
               draftId: "diagnosis-1",
-              diagnosis: "Cáncer de mama",
+              diagnosis: "MAMA_DUCTAL",
               isCurrent: true,
             },
           ],
@@ -990,7 +990,7 @@ describe("step 8 Nest enrollment payload", () => {
             {
               draftId: "treatment-1",
               diagnosisRef: "diagnosis-1",
-              treatmentType: "Quimioterapia",
+              treatmentType: "QUIMIOTERAPIA",
               startDate: "2026-08-20",
               endDate: "2026-02-20",
               isCurrent: true,

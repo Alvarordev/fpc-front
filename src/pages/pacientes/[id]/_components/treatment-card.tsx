@@ -22,6 +22,7 @@ import {
   type TreatmentMedication,
 } from "@/api/patients"
 import { DURATION_UNIT_LABELS } from "@/types/duration"
+import { CatalogValue } from "@/components/catalog-select"
 import {
   medicationDoseUnitLabels,
   medicationRouteLabels,
@@ -120,7 +121,10 @@ export function TreatmentCard({
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold">
-              {treatment.treatmentType}
+              <CatalogValue
+                kind="treatment_type"
+                code={treatment.treatmentType}
+              />
             </span>
             <Badge
               variant="outline"
@@ -136,8 +140,14 @@ export function TreatmentCard({
             )}
           </span>
           <span className="text-muted-foreground mt-1 block truncate text-xs">
-            {treatment.diagnosisSummary?.diagnosis ??
-              "Sin diagnóstico asociado"}
+            {treatment.diagnosisSummary?.diagnosis ? (
+              <CatalogValue
+                kind="cancer_diagnosis"
+                code={treatment.diagnosisSummary.diagnosis}
+              />
+            ) : (
+              "Sin diagnóstico asociado"
+            )}
           </span>
         </span>
         <ChevronDown
@@ -183,7 +193,14 @@ export function TreatmentCard({
             <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
               <Detail
                 label="Diagnóstico"
-                value={treatment.diagnosisSummary?.diagnosis}
+                value={
+                  treatment.diagnosisSummary?.diagnosis ? (
+                    <CatalogValue
+                      kind="cancer_diagnosis"
+                      code={treatment.diagnosisSummary.diagnosis}
+                    />
+                  ) : null
+                }
               />
               <Detail
                 label="Período"

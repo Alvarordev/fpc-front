@@ -1,4 +1,5 @@
 import { Calendar, CheckCircle2, Pencil, Stethoscope, XCircle } from "lucide-react"
+import { CatalogValue } from "@/components/catalog-select"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Reminder } from "@/api/reminders"
@@ -101,7 +102,10 @@ export function ReminderCard({
             </span>
             {appointment && (
               <p className="text-muted-foreground mt-1 text-[11px]">
-                {appointment.specialty}
+                <CatalogValue
+                  kind="medical_specialty"
+                  code={appointment.specialty}
+                />
                 {appointment.healthCenterName
                   ? ` · ${appointment.healthCenterName}`
                   : ""}

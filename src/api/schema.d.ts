@@ -602,7 +602,7 @@ export interface paths {
         /** List catalog items */
         get: operations["CatalogsController_findAll"];
         put?: never;
-        /** Create a catalog item */
+        /** Create a catalog item (agents/foundation: open kinds only) */
         post: operations["CatalogsController_create"];
         delete?: never;
         options?: never;
@@ -1974,6 +1974,8 @@ export interface components {
             avgDaysEnrollmentToSis: number | null;
             avgDaysPrimaryCareToDiagnosis: number | null;
             avgDaysDiagnosisToTreatment: number | null;
+            /** @description Average days from symptom onset to oncological confirmation or rule-out. */
+            avgDaysSymptomsToDiagnosis: number | null;
             activePatients: number;
             benefitSupport: number;
             benefitPsychooncology: number;
@@ -2282,6 +2284,7 @@ export interface components {
             comments?: string;
         };
         EnrollmentDiagnosisDto: {
+            diagnosisOther?: string | null;
             /**
              * @example PARALLEL
              * @enum {string}
@@ -2295,6 +2298,12 @@ export interface components {
             /** Format: uuid */
             referredHealthCenterId?: string | null;
             hasReferral?: boolean | null;
+            diagnosisSpecialtyOther?: string | null;
+            /**
+             * @deprecated
+             * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
+             */
+            symptomLeadingToCheckup?: string;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -2303,7 +2312,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
@@ -2323,12 +2331,15 @@ export interface components {
             startDate?: string;
             endDate?: string;
             isActive?: boolean;
+            /** Format: uuid */
+            followUpId?: string;
             notes?: string;
         };
         EnrollmentTreatmentDto: {
             /** Format: uuid */
             seriesId?: string;
             treatmentType: string;
+            treatmentTypeOther?: string;
             treatmentFrequency?: components["schemas"]["DurationDto"];
             isReferred?: boolean;
             /** Format: uuid */
@@ -2368,11 +2379,15 @@ export interface components {
         EnrollmentMedicalAppointmentDto: {
             /** Format: uuid */
             healthCenterId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
             specialty: string;
+            specialtyOther?: string;
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
+            nextAppointmentSpecialtyOther?: string;
             hasReferralSheet?: boolean | null;
             referredTo?: string;
             referralNotProvidedReason?: string;
@@ -2381,6 +2396,8 @@ export interface components {
             changeReason?: string;
             attendedViaSepa?: boolean;
             referredViaSepa?: boolean;
+            /** @enum {string} */
+            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
         };
         EnrollmentAddressDto: {
             /** @enum {string} */
@@ -2399,6 +2416,43 @@ export interface components {
             validTo?: string;
         };
         EnrollmentSymptomReportDto: {
+            /** @deprecated */
+            firstConsultationDate?: string;
+            /** @deprecated */
+            isAwaitingDiagnosis?: boolean | null;
+            /** @deprecated */
+            hasReferral?: boolean | null;
+            /**
+             * Format: uuid
+             * @deprecated
+             */
+            referredHealthCenterId?: string;
+            /** @deprecated */
+            referralNotProvidedReason?: string;
+            /** @deprecated */
+            nextConsultationDate?: string;
+            /**
+             * Format: uuid
+             * @deprecated
+             */
+            healthCenterId?: string;
+            /**
+             * @deprecated
+             * @description Legacy owner field. Persist on patient_medical_appointments instead.
+             */
+            specialty?: string;
+            /** @deprecated */
+            hasReceivedDiagnosis?: boolean | null;
+            /** @deprecated */
+            reportedDiagnosis?: string;
+            /** @deprecated */
+            isReceivingReportedTreatment?: boolean | null;
+            /** @deprecated */
+            reportedTreatment?: string;
+            /** @deprecated */
+            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
+            /** @deprecated */
+            notReceivingTreatmentReason?: string;
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean | null;
@@ -2415,26 +2469,10 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
-            firstConsultationDate?: string;
-            isAwaitingDiagnosis?: boolean | null;
-            hasReferral?: boolean | null;
-            /** Format: uuid */
-            referredHealthCenterId?: string;
-            referralNotProvidedReason?: string;
-            nextConsultationDate?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
-            /** Format: uuid */
-            healthCenterId?: string;
-            specialty?: string;
             diagnosisSearchDuration?: components["schemas"]["DurationDto"];
-            hasReceivedDiagnosis?: boolean | null;
-            reportedDiagnosis?: string;
-            isReceivingReportedTreatment?: boolean | null;
-            reportedTreatment?: string;
-            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
-            notReceivingTreatmentReason?: string;
         };
         CreatePatientActiveComorbidityDto: {
             conditionName: string;
@@ -2487,6 +2525,8 @@ export interface components {
         CreateEnrollmentDto: {
             /** @enum {string} */
             healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
+            currentlyAttendingConsultations?: boolean;
             notAttendingConsultationsNote?: string | null;
             notReceivingTreatmentReason?: string | null;
             /** Format: uuid */
@@ -2511,7 +2551,6 @@ export interface components {
             healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
             psychooncologySupportAssessment?: components["schemas"]["EnrollmentPsychooncologySupportAssessmentDto"];
             nonOncologicalFollowUp?: components["schemas"]["EnrollmentNonOncologicalFollowUpDto"];
-            currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
             entrySource?: string;
             entrySubSource?: string;
@@ -2819,11 +2858,15 @@ export interface components {
             patientId: string;
             /** Format: uuid */
             healthCenterId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
             specialty: string;
+            specialtyOther?: string;
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
+            nextAppointmentSpecialtyOther?: string;
             hasReferralSheet?: boolean;
             referredTo?: string;
             referralNotProvidedReason?: string;
@@ -3414,27 +3457,49 @@ export interface components {
             hasRequestedMedicalConsultation: boolean | null;
             hasMedicalConsultation: boolean | null;
             noMedicalConsultationReason: string | null;
-            /** Format: date */
+            /**
+             * Format: date
+             * @deprecated
+             */
             firstConsultationDate: string | null;
+            /** @deprecated */
             isAwaitingDiagnosis: boolean | null;
+            /** @deprecated */
             hasReferral: boolean | null;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @deprecated
+             */
             referredHealthCenterId: string | null;
+            /** @deprecated */
             referralNotProvidedReason: string | null;
-            /** Format: date */
+            /**
+             * Format: date
+             * @deprecated
+             */
             nextConsultationDate: string | null;
             /** @enum {string|null} */
             consultationStatus: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED" | null;
             consultationNotObtainedReason: string | null;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @deprecated
+             */
             healthCenterId: string | null;
+            /** @deprecated */
             specialty: string | null;
             diagnosisSearchDuration: components["schemas"]["DurationResponseDto"] | null;
+            /** @deprecated */
             hasReceivedDiagnosis: boolean | null;
+            /** @deprecated */
             reportedDiagnosis: string | null;
+            /** @deprecated */
             isReceivingReportedTreatment: boolean | null;
+            /** @deprecated */
             reportedTreatment: string | null;
+            /** @deprecated */
             reportedTreatmentFrequency: components["schemas"]["DurationResponseDto"] | null;
+            /** @deprecated */
             notReceivingTreatmentReason: string | null;
             /** Format: date-time */
             createdAt: string;
@@ -3580,6 +3645,7 @@ export interface components {
             deceasedAt?: string;
         };
         CreatePatientDiagnosisDto: {
+            diagnosisOther?: string | null;
             /**
              * @example PARALLEL
              * @enum {string}
@@ -3593,6 +3659,12 @@ export interface components {
             /** Format: uuid */
             referredHealthCenterId?: string | null;
             hasReferral?: boolean | null;
+            diagnosisSpecialtyOther?: string | null;
+            /**
+             * @deprecated
+             * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
+             */
+            symptomLeadingToCheckup?: string;
             /** Format: uuid */
             followUpId: string;
             diagnosis: string;
@@ -3603,7 +3675,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
@@ -3626,11 +3697,15 @@ export interface components {
             followUpId: string;
             /** Format: uuid */
             healthCenterId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
             specialty: string;
+            specialtyOther?: string;
             appointmentDate?: string;
             appointmentTime?: string;
             nextAppointmentDate?: string;
             nextAppointmentSpecialty?: string;
+            nextAppointmentSpecialtyOther?: string;
             hasReferralSheet?: boolean | null;
             referredTo?: string;
             referralNotProvidedReason?: string;
@@ -3639,6 +3714,8 @@ export interface components {
             changeReason?: string;
             attendedViaSepa?: boolean;
             referredViaSepa?: boolean;
+            /** @enum {string} */
+            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
         };
         CreatePatientSisAffiliationDto: {
             /** Format: uuid */
@@ -3658,6 +3735,7 @@ export interface components {
             /** Format: uuid */
             seriesId?: string;
             treatmentType: string;
+            treatmentTypeOther?: string;
             treatmentFrequency?: components["schemas"]["DurationDto"];
             isReferred?: boolean;
             /** Format: uuid */
@@ -3728,6 +3806,8 @@ export interface components {
             startDate?: string;
             endDate?: string;
             isActive?: boolean;
+            /** Format: uuid */
+            followUpId?: string;
             notes?: string;
         };
         CreatePatientAddressDto: {
@@ -3793,6 +3873,43 @@ export interface components {
             validTo?: string;
         };
         CreatePatientSymptomReportDto: {
+            /** @deprecated */
+            firstConsultationDate?: string;
+            /** @deprecated */
+            isAwaitingDiagnosis?: boolean | null;
+            /** @deprecated */
+            hasReferral?: boolean | null;
+            /**
+             * Format: uuid
+             * @deprecated
+             */
+            referredHealthCenterId?: string;
+            /** @deprecated */
+            referralNotProvidedReason?: string;
+            /** @deprecated */
+            nextConsultationDate?: string;
+            /**
+             * Format: uuid
+             * @deprecated
+             */
+            healthCenterId?: string;
+            /**
+             * @deprecated
+             * @description Legacy owner field. Persist on patient_medical_appointments instead.
+             */
+            specialty?: string;
+            /** @deprecated */
+            hasReceivedDiagnosis?: boolean | null;
+            /** @deprecated */
+            reportedDiagnosis?: string;
+            /** @deprecated */
+            isReceivingReportedTreatment?: boolean | null;
+            /** @deprecated */
+            reportedTreatment?: string;
+            /** @deprecated */
+            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
+            /** @deprecated */
+            notReceivingTreatmentReason?: string;
             /** Format: uuid */
             followUpId: string;
             /** Format: uuid */
@@ -3813,26 +3930,10 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
-            firstConsultationDate?: string;
-            isAwaitingDiagnosis?: boolean | null;
-            hasReferral?: boolean | null;
-            /** Format: uuid */
-            referredHealthCenterId?: string;
-            referralNotProvidedReason?: string;
-            nextConsultationDate?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
-            /** Format: uuid */
-            healthCenterId?: string;
-            specialty?: string;
             diagnosisSearchDuration?: components["schemas"]["DurationDto"];
-            hasReceivedDiagnosis?: boolean | null;
-            reportedDiagnosis?: string;
-            isReceivingReportedTreatment?: boolean | null;
-            reportedTreatment?: string;
-            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
-            notReceivingTreatmentReason?: string;
         };
         CreatePatientSocialNoteDto: {
             /** Format: uuid */
@@ -3887,6 +3988,7 @@ export interface components {
             searchDurationMinutes: number | null;
         };
         DiagnosticStatusDiagnosisDto: {
+            diagnosisOther?: string | null;
             /**
              * @example PARALLEL
              * @enum {string}
@@ -3900,6 +4002,12 @@ export interface components {
             /** Format: uuid */
             referredHealthCenterId?: string | null;
             hasReferral?: boolean | null;
+            diagnosisSpecialtyOther?: string | null;
+            /**
+             * @deprecated
+             * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
+             */
+            symptomLeadingToCheckup?: string;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -3908,7 +4016,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
@@ -4273,6 +4380,8 @@ export interface components {
         CreateHistoricalEnrollmentDto: {
             /** @enum {string} */
             healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
+            currentlyAttendingConsultations?: boolean;
             notAttendingConsultationsNote?: string | null;
             notReceivingTreatmentReason?: string | null;
             /** Format: uuid */
@@ -4295,7 +4404,6 @@ export interface components {
             healthBackgroundAssessment?: components["schemas"]["EnrollmentHealthBackgroundAssessmentDto"];
             psychooncologySupportAssessment?: components["schemas"]["EnrollmentPsychooncologySupportAssessmentDto"];
             nonOncologicalFollowUp?: components["schemas"]["EnrollmentNonOncologicalFollowUpDto"];
-            currentlyAttendingConsultations?: boolean;
             currentlyReceivingTreatment?: boolean;
             entrySource?: string;
             entrySubSource?: string;
@@ -4318,6 +4426,7 @@ export interface components {
             /** Format: uuid */
             seriesId?: string;
             treatmentType: string;
+            treatmentTypeOther?: string;
             treatmentFrequency?: components["schemas"]["DurationDto"];
             isReferred?: boolean;
             /** Format: uuid */
@@ -4419,6 +4528,7 @@ export interface components {
             socialNotes?: components["schemas"]["HistoricalFollowUpSocialNoteDto"][];
         };
         UpdateHistoricalDiagnosisDto: {
+            diagnosisOther?: string | null;
             /**
              * @example PARALLEL
              * @enum {string}
@@ -4432,6 +4542,12 @@ export interface components {
             /** Format: uuid */
             referredHealthCenterId?: string | null;
             hasReferral?: boolean | null;
+            diagnosisSpecialtyOther?: string | null;
+            /**
+             * @deprecated
+             * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
+             */
+            symptomLeadingToCheckup?: string;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -4440,7 +4556,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
@@ -4454,6 +4569,7 @@ export interface components {
             /** Format: uuid */
             seriesId?: string;
             treatmentType: string;
+            treatmentTypeOther?: string;
             treatmentFrequency?: components["schemas"]["DurationDto"];
             isReferred?: boolean;
             /** Format: uuid */
@@ -4498,6 +4614,43 @@ export interface components {
             id?: string;
         };
         UpdateHistoricalSymptomReportDto: {
+            /** @deprecated */
+            firstConsultationDate?: string;
+            /** @deprecated */
+            isAwaitingDiagnosis?: boolean | null;
+            /** @deprecated */
+            hasReferral?: boolean | null;
+            /**
+             * Format: uuid
+             * @deprecated
+             */
+            referredHealthCenterId?: string;
+            /** @deprecated */
+            referralNotProvidedReason?: string;
+            /** @deprecated */
+            nextConsultationDate?: string;
+            /**
+             * Format: uuid
+             * @deprecated
+             */
+            healthCenterId?: string;
+            /**
+             * @deprecated
+             * @description Legacy owner field. Persist on patient_medical_appointments instead.
+             */
+            specialty?: string;
+            /** @deprecated */
+            hasReceivedDiagnosis?: boolean | null;
+            /** @deprecated */
+            reportedDiagnosis?: string;
+            /** @deprecated */
+            isReceivingReportedTreatment?: boolean | null;
+            /** @deprecated */
+            reportedTreatment?: string;
+            /** @deprecated */
+            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
+            /** @deprecated */
+            notReceivingTreatmentReason?: string;
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean | null;
@@ -4514,26 +4667,10 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
-            firstConsultationDate?: string;
-            isAwaitingDiagnosis?: boolean | null;
-            hasReferral?: boolean | null;
-            /** Format: uuid */
-            referredHealthCenterId?: string;
-            referralNotProvidedReason?: string;
-            nextConsultationDate?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
-            /** Format: uuid */
-            healthCenterId?: string;
-            specialty?: string;
             diagnosisSearchDuration?: components["schemas"]["DurationDto"];
-            hasReceivedDiagnosis?: boolean | null;
-            reportedDiagnosis?: string;
-            isReceivingReportedTreatment?: boolean | null;
-            reportedTreatment?: string;
-            reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
-            notReceivingTreatmentReason?: string;
             /** Format: uuid */
             id?: string;
         };
@@ -4626,6 +4763,8 @@ export interface components {
         HistoricalReminderMedicalAppointmentDto: {
             /** Format: uuid */
             healthCenterId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
             specialty: string;
             /** Format: date */
             appointmentDate?: string;
@@ -4690,6 +4829,8 @@ export interface components {
             followUpId: string;
             /** Format: uuid */
             healthCenterId?: string;
+            /** Format: uuid */
+            referredHealthCenterId?: string;
             specialty: string;
             /** Format: date */
             appointmentDate?: string;
@@ -6779,7 +6920,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator, foundation, or agent role required; non-admins limited to open kinds */
             403: {
                 headers: {
                     [name: string]: unknown;
