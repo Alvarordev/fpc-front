@@ -167,8 +167,11 @@ export function CreateCatalogItemDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Orden</Label>
+            <Label>Orden en listas</Label>
             <Input type="number" min={0} {...register("sortOrder")} />
+            <p className="text-muted-foreground text-xs">
+              Posición en desplegables y en esta tabla. Menor número = más arriba.
+            </p>
           </div>
 
           <DialogFooter className="pt-2">

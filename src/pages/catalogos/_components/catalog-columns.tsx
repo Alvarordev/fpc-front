@@ -43,7 +43,7 @@ export function catalogColumns({
     },
     {
       accessorKey: "sortOrder",
-      header: "Orden",
+      header: "Orden en listas",
       cell: ({ getValue }) => (
         <span className="tabular-nums text-sm">{getValue() as number}</span>
       ),

@@ -5,7 +5,14 @@ import { toast } from "sonner"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/data-table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { CreateCatalogItemDialog } from "@/components/create-catalog-item-dialog"
 import { EditCatalogItemDialog } from "./edit-catalog-item-dialog"
 import { catalogColumns } from "./catalog-columns"
@@ -38,6 +45,15 @@ export function CatalogsContent() {
       void queryClient.invalidateQueries({ queryKey: catalogQueryKey(kind) })
     },
   })
+
+  const kindItems = useMemo(
+    () =>
+      ALL_CATALOG_KINDS.map((item) => ({
+        value: item,
+        label: CATALOG_KIND_LABELS[item],
+      })),
+    [],
+  )
 
   const columns = useMemo(
     () =>
@@ -94,28 +110,38 @@ export function CatalogsContent() {
         </Button>
       </div>
 
-      <Tabs
-        value={kind}
-        onValueChange={(value) => setKind((value as CatalogKind) ?? kind)}
-      >
-        <TabsList variant="line" className="h-auto w-full flex-wrap justify-start">
-          {ALL_CATALOG_KINDS.map((item) => (
-            <TabsTrigger key={item} value={item} className="text-xs">
-              {CATALOG_KIND_LABELS[item]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {ALL_CATALOG_KINDS.map((item) => (
-          <TabsContent key={item} value={item}>
-            <DataTable
-              data={kind === item ? items : []}
-              columns={columns}
-              isLoading={kind === item && isLoading}
-              emptyMessage="No hay ítems en este catálogo"
-            />
-          </TabsContent>
-        ))}
-      </Tabs>
+      <div className="space-y-4">
+        <div className="max-w-sm space-y-1.5">
+          <Label htmlFor="catalog-kind" className="text-muted-foreground text-xs">
+            Catálogo
+          </Label>
+          <Select
+            items={kindItems}
+            value={kind}
+            onValueChange={(value) =>
+              setKind((value as CatalogKind | null) ?? kind)
+            }
+          >
+            <SelectTrigger id="catalog-kind" className="w-full">
+              <SelectValue placeholder="Seleccionar catálogo" />
+            </SelectTrigger>
+            <SelectContent>
+              {kindItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <DataTable
+          data={items}
+          columns={columns}
+          isLoading={isLoading}
+          emptyMessage="No hay ítems en este catálogo"
+        />
+      </div>
 
       <CreateCatalogItemDialog
         kind={kind}
