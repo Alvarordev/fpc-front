@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import type { PatientTimelineOutcome } from "@/api/patient-timeline"
 import type { PatientDiagnosis, PatientTreatment } from "@/api/patients"
+import { CatalogValue } from "@/components/catalog-select"
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog"
 import { cn } from "@/lib/utils"
 
 const outcomeIcons: Record<
@@ -55,6 +57,8 @@ export function FollowUpOutcomes({
   onViewDiagnosis,
   onViewTreatment,
 }: FollowUpOutcomesProps) {
+  const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
+
   if (outcomes.length === 0) return null
 
   const visibleOutcomes = limit ? outcomes.slice(0, limit) : outcomes
@@ -94,7 +98,16 @@ export function FollowUpOutcomes({
                   {outcome.label}
                 </p>
                 <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed">
-                  {outcome.summary}
+                  {diagnosis ? (
+                    <CatalogValue
+                      kind="cancer_diagnosis"
+                      code={diagnosis.diagnosis}
+                    />
+                  ) : outcome.type === "DIAGNOSIS" ? (
+                    catalogLabel(cancerDiagnoses, outcome.summary)
+                  ) : (
+                    outcome.summary
+                  )}
                 </p>
               </div>
             </>

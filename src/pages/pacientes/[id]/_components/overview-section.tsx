@@ -886,9 +886,15 @@ export function OverviewSection({
                 </div>
                 <p className="text-muted-foreground mt-1">
                   {date(diagnosticStatus.occurredAt)}
-                  {diagnosticStatus.reportedDiagnosis
-                    ? ` · ${diagnosticStatus.reportedDiagnosis}`
-                    : ""}
+                  {diagnosticStatus.reportedDiagnosis && (
+                    <>
+                      {" · "}
+                      <CatalogValue
+                        kind="cancer_diagnosis"
+                        code={diagnosticStatus.reportedDiagnosis}
+                      />
+                    </>
+                  )}
                 </p>
               </div>
             )}

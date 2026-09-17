@@ -30,6 +30,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useAuthStore } from "@/store/auth-store"
+import type { CatalogItem } from "@/api/catalogs"
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog"
 import { usePatientDocuments } from "../_hooks/use-patient-documents"
 import { PatientDocumentPreviewDialog } from "./patient-document-preview-dialog"
 import { PatientDocumentUploadDialog } from "./patient-document-upload-dialog"
@@ -71,6 +73,7 @@ export function PatientDocumentsTab({
     useState<PatientDocument | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
+  const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
   const canManage =
     user?.role === "ADMIN" ||
     user?.role === "FOUNDATION" ||
@@ -247,6 +250,7 @@ export function PatientDocumentsTab({
                     document,
                     diagnoses,
                     treatments,
+                    cancerDiagnoses,
                   )}
                   isDownloading={downloadingId === document.id}
                   onPreview={setPreviewDocument}
@@ -440,11 +444,12 @@ function associationLabel(
   document: PatientDocument,
   diagnoses: PatientDiagnosis[],
   treatments: PatientTreatment[],
+  cancerDiagnosisItems: CatalogItem[],
 ): string | null {
   if (document.diagnosisId) {
     const diagnosis = diagnoses.find((item) => item.id === document.diagnosisId)
     return diagnosis
-      ? `Diagnóstico: ${diagnosis.diagnosis}`
+      ? `Diagnóstico: ${catalogLabel(cancerDiagnosisItems, diagnosis.diagnosis)}`
       : "Diagnóstico relacionado"
   }
   if (document.treatmentId) {

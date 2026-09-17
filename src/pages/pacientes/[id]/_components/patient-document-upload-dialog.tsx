@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { CatalogItem } from "@/api/catalogs"
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog"
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 
@@ -103,9 +105,10 @@ export function PatientDocumentUploadDialog({
     setFileInputKey((value) => value + 1)
   }, [open, defaultDocumentType, lockedTreatmentId])
 
+  const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
   const diagnosisItems = diagnoses.map((diagnosis) => ({
     value: diagnosis.id,
-    label: diagnosisLabel(diagnosis),
+    label: diagnosisLabel(diagnosis, cancerDiagnoses),
   }))
   const treatmentItems = treatments.map((treatment) => ({
     value: treatment.id,
@@ -357,9 +360,12 @@ export function PatientDocumentUploadDialog({
   )
 }
 
-function diagnosisLabel(diagnosis: PatientDiagnosis): string {
+function diagnosisLabel(
+  diagnosis: PatientDiagnosis,
+  cancerDiagnosisItems: CatalogItem[],
+): string {
   return [
-    diagnosis.diagnosis,
+    catalogLabel(cancerDiagnosisItems, diagnosis.diagnosis),
     diagnosis.isCurrent ? "Actual" : "Histórico",
     diagnosis.diagnosisDate
       ? new Date(diagnosis.diagnosisDate).toLocaleDateString("es-PE")

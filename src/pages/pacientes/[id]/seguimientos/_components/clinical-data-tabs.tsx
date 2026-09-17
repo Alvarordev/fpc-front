@@ -2639,6 +2639,17 @@ function DiagnosticoForm({
     { value: "PARALLEL", label: "Agregar diagnóstico activo" },
     { value: "REPLACE", label: "Reemplazar diagnóstico existente" },
   ] as const
+  const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
+
+  function diagnosisStageLabel(
+    code: string,
+    cancerStage: PatientDiagnosis["cancerStage"],
+  ) {
+    const stage = cancerStage
+      ? cancerStageOptions[cancerStage]
+      : "Etapa sin dato"
+    return `${catalogLabel(cancerDiagnoses, code)} · ${stage}`
+  }
 
   function updateDiagnosisDate(
     field: "diagnosisDate" | "firstSymptomsDate",
@@ -2824,10 +2835,19 @@ function DiagnosticoForm({
                 className="bg-card flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
               >
                 <span className="min-w-0">
-                  <b className="block truncate">{decision.diagnosis}</b>
+                  <b className="block truncate">
+                    {catalogLabel(cancerDiagnoses, decision.diagnosis)}
+                  </b>
                   <span className="text-muted-foreground text-xs">
                     {decision.mode === "REPLACE"
-                      ? `Reemplaza ${replacement?.diagnosis ?? "un diagnóstico"}`
+                      ? `Reemplaza ${
+                          replacement
+                            ? catalogLabel(
+                                cancerDiagnoses,
+                                replacement.diagnosis,
+                              )
+                            : "un diagnóstico"
+                        }`
                       : "Nuevo diagnóstico activo"}
                   </span>
                 </span>
@@ -2902,7 +2922,7 @@ function DiagnosticoForm({
             <Select
               items={currentDiagnoses.map((item) => ({
                 value: item.id,
-                label: `${item.diagnosis} · ${item.cancerStage ? cancerStageOptions[item.cancerStage] : "Etapa sin dato"}`,
+                label: diagnosisStageLabel(item.diagnosis, item.cancerStage),
               }))}
               value={replacementDiagnosisId}
               onValueChange={(value) => setReplacementDiagnosisId(value ?? "")}
@@ -2913,10 +2933,7 @@ function DiagnosticoForm({
               <SelectContent>
                 {currentDiagnoses.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.diagnosis} ·{" "}
-                    {item.cancerStage
-                      ? cancerStageOptions[item.cancerStage]
-                      : "Etapa sin dato"}
+                    {diagnosisStageLabel(item.diagnosis, item.cancerStage)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -3720,8 +3737,14 @@ function TratamientosForm({
                       )}
                     </span>
                     <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
-                      {treatment.diagnosisSummary?.diagnosis ??
-                        "Sin diagnóstico asociado"}
+                      {treatment.diagnosisSummary?.diagnosis ? (
+                        <CatalogValue
+                          kind="cancer_diagnosis"
+                          code={treatment.diagnosisSummary.diagnosis}
+                        />
+                      ) : (
+                        "Sin diagnóstico asociado"
+                      )}
                     </span>
                   </span>
                   <ChevronRight className="size-3.5 shrink-0 text-amber-700" />

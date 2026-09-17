@@ -65,9 +65,16 @@ export function ClinicalRecordDetailSheet({
             {title}
           </SheetTitle>
           <SheetDescription>
-            {diagnosis?.diagnosis ??
-              treatment?.treatmentType ??
-              "Registro clínico"}
+            {diagnosis?.diagnosis ? (
+              <CatalogValue kind="cancer_diagnosis" code={diagnosis.diagnosis} />
+            ) : treatment?.treatmentType ? (
+              <CatalogValue
+                kind="treatment_type"
+                code={treatment.treatmentType}
+              />
+            ) : (
+              "Registro clínico"
+            )}
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">

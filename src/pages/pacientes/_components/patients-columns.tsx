@@ -1,5 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
+import { CatalogValue } from "@/components/catalog-select"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { cn } from "@/lib/utils"
 import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
@@ -41,11 +42,19 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
   {
     accessorKey: "currentDiagnosis",
     header: "Diagnóstico",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">
-        {row.original.currentDiagnosis?.diagnosis ?? "-"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const diagnosis = row.original.currentDiagnosis?.diagnosis
+      if (!diagnosis) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      return (
+        <CatalogValue
+          kind="cancer_diagnosis"
+          code={diagnosis}
+          className="text-muted-foreground text-sm"
+        />
+      )
+    },
   },
   {
     id: "currentDepartment",
