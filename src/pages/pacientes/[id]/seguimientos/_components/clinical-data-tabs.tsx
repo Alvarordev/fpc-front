@@ -2573,7 +2573,7 @@ interface DiagnosisFormValues {
   symptomLeadingToCheckup: string
   waitTimeForDiagnosis: DurationDraft | undefined
   waitTimeForDiagnosisManuallyEdited: boolean
-  waitTimeForDiagnosisUnknown: boolean | undefined
+  remembersWaitTimeForDiagnosis: boolean
   hasMedicalReport: boolean
 }
 
@@ -2607,8 +2607,8 @@ function DiagnosticoForm({
         waitTimeForDiagnosis: initial?.waitTimeForDiagnosis,
         waitTimeForDiagnosisManuallyEdited:
           initial?.waitTimeForDiagnosisManuallyEdited ?? false,
-        waitTimeForDiagnosisUnknown:
-          initial?.waitTimeForDiagnosisUnknown,
+        remembersWaitTimeForDiagnosis:
+          initial?.remembersWaitTimeForDiagnosis ?? true,
         hasMedicalReport: initial?.hasMedicalReport ?? false,
       },
     })
@@ -2621,12 +2621,12 @@ function DiagnosticoForm({
   const waitTimeForDiagnosisManuallyEdited = watch(
     "waitTimeForDiagnosisManuallyEdited",
   )
-  const waitTimeForDiagnosisUnknown = watch("waitTimeForDiagnosisUnknown")
+  const remembersWaitTimeForDiagnosis = watch("remembersWaitTimeForDiagnosis")
   const calculatedWaitTime = calculateDurationBetweenDates(
     firstSymptomsDate,
     diagnosisDate,
   )
-  const visibleWaitTime = waitTimeForDiagnosisUnknown
+  const visibleWaitTime = !remembersWaitTimeForDiagnosis
     ? undefined
     : waitTimeForDiagnosisManuallyEdited
       ? waitTimeForDiagnosis
@@ -2665,7 +2665,7 @@ function DiagnosticoForm({
     const nextFirstSymptomsDate =
       field === "firstSymptomsDate" ? value : firstSymptomsDate
     setValue(field, value)
-    if (!waitTimeForDiagnosisUnknown) {
+    if (remembersWaitTimeForDiagnosis) {
       setValue(
         "waitTimeForDiagnosis",
         calculateDurationBetweenDates(nextFirstSymptomsDate, nextDiagnosisDate),
@@ -2695,7 +2695,7 @@ function DiagnosticoForm({
       return
     }
 
-    const normalizedWaitTime = values.waitTimeForDiagnosisUnknown
+    const normalizedWaitTime = values.remembersWaitTimeForDiagnosis === false
       ? null
       : values.waitTimeForDiagnosisManuallyEdited
         ? toDurationInput(values.waitTimeForDiagnosis)
@@ -2703,7 +2703,7 @@ function DiagnosticoForm({
           ? undefined
           : toDurationInput(values.waitTimeForDiagnosis)
     if (
-      !values.waitTimeForDiagnosisUnknown &&
+      values.remembersWaitTimeForDiagnosis !== false &&
       values.waitTimeForDiagnosis?.valueMin !== undefined &&
       !normalizedWaitTime
     ) {
@@ -2728,7 +2728,7 @@ function DiagnosticoForm({
       waitTimeForDiagnosis: normalizedWaitTime ?? undefined,
       waitTimeForDiagnosisManuallyEdited:
         values.waitTimeForDiagnosisManuallyEdited,
-      waitTimeForDiagnosisUnknown: values.waitTimeForDiagnosisUnknown,
+      remembersWaitTimeForDiagnosis: values.remembersWaitTimeForDiagnosis,
       hasMedicalReport: values.hasMedicalReport,
       ...(mode === "REPLACE" ? { replacementDiagnosisId } : {}),
     }
@@ -2752,7 +2752,7 @@ function DiagnosticoForm({
     setValue("symptomLeadingToCheckup", "")
     setValue("waitTimeForDiagnosis", undefined)
     setValue("waitTimeForDiagnosisManuallyEdited", false)
-    setValue("waitTimeForDiagnosisUnknown", false)
+    setValue("remembersWaitTimeForDiagnosis", true)
     setValue("hasMedicalReport", false)
     setMode("PARALLEL")
     setReplacementDiagnosisId("")
@@ -2779,8 +2779,8 @@ function DiagnosticoForm({
       decision.waitTimeForDiagnosisManuallyEdited ?? false,
     )
     setValue(
-      "waitTimeForDiagnosisUnknown",
-      decision.waitTimeForDiagnosisUnknown ?? false,
+      "remembersWaitTimeForDiagnosis",
+      decision.remembersWaitTimeForDiagnosis ?? true,
     )
     setValue("hasMedicalReport", decision.hasMedicalReport ?? false)
   }
@@ -3069,7 +3069,7 @@ function DiagnosticoForm({
         </div>
         {firstSymptomsDate &&
           diagnosisDate &&
-          !waitTimeForDiagnosisUnknown && (
+          remembersWaitTimeForDiagnosis && (
           <p className="text-muted-foreground text-xs">
             {calculatedWaitTime
               ? waitTimeForDiagnosisManuallyEdited
@@ -3079,23 +3079,17 @@ function DiagnosticoForm({
           </p>
         )}
         <div className="space-y-2">
-          <Label>¿No recuerda el tiempo de espera?</Label>
+          <Label>¿Recuerda el tiempo de espera?</Label>
           <Select
             items={[
               { value: "Sí", label: "Sí" },
               { value: "No", label: "No" },
             ]}
-            value={
-              waitTimeForDiagnosisUnknown
-                ? "Sí"
-                : waitTimeForDiagnosisUnknown === false
-                  ? "No"
-                  : ""
-            }
+            value={remembersWaitTimeForDiagnosis ? "Sí" : "No"}
             onValueChange={(value) => {
-              const unknown = value === "Sí"
-              setValue("waitTimeForDiagnosisUnknown", unknown)
-              if (unknown) {
+              const remembers = value === "Sí"
+              setValue("remembersWaitTimeForDiagnosis", remembers)
+              if (!remembers) {
                 setValue("waitTimeForDiagnosis", undefined)
                 setValue("waitTimeForDiagnosisManuallyEdited", false)
               }
@@ -3110,7 +3104,7 @@ function DiagnosticoForm({
             </SelectContent>
           </Select>
         </div>
-        {!waitTimeForDiagnosisUnknown && (
+        {remembersWaitTimeForDiagnosis && (
           <DurationInput
             key={`follow-up-wait-${firstSymptomsDate}-${diagnosisDate}-${waitTimeForDiagnosisManuallyEdited ? "manual" : "auto"}`}
             label="Tiempo de espera para diagnóstico"
@@ -3120,7 +3114,7 @@ function DiagnosticoForm({
             value={visibleWaitTime}
             onChange={(value) => {
               setValue("waitTimeForDiagnosis", value)
-              setValue("waitTimeForDiagnosisUnknown", false)
+              setValue("remembersWaitTimeForDiagnosis", true)
               setValue(
                 "waitTimeForDiagnosisManuallyEdited",
                 value?.valueMin !== undefined,

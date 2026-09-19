@@ -117,10 +117,11 @@ export function getEnrollmentComments(metadata: EnrollmentMetadataDraft) {
 
 export type EnrollmentDiagnosisDraft = AddDiagnosisRequest & {
   draftId: string
-  /** UI-only answer; the API receives a null firstSymptomsDate instead. */
-  firstSymptomsDateUnknown?: boolean
+  /** UI-only; when false the API receives no firstSymptomsDate. */
+  remembersFirstSymptomsDate?: boolean
   waitTimeForDiagnosisManuallyEdited?: boolean
-  waitTimeForDiagnosisUnknown?: boolean
+  /** UI-only; when false the API receives waitTimeForDiagnosis null. */
+  remembersWaitTimeForDiagnosis?: boolean
 }
 
 export type EnrollmentTreatmentDraft = Omit<
@@ -140,7 +141,13 @@ function newDraftId(prefix: string) {
 }
 
 export function createEnrollmentDiagnosisDraft(): EnrollmentDiagnosisDraft {
-  return { draftId: newDraftId("diagnosis"), diagnosis: "", isCurrent: true }
+  return {
+    draftId: newDraftId("diagnosis"),
+    diagnosis: "",
+    isCurrent: true,
+    remembersFirstSymptomsDate: true,
+    remembersWaitTimeForDiagnosis: true,
+  }
 }
 
 export function createEnrollmentTreatmentDraft(
@@ -348,12 +355,31 @@ function normalizeDraft(
     : legacyDiagnosis
       ? [legacyDiagnosis]
       : DEFAULT_DRAFT.diagnoses
-  const diagnoses = diagnosisInputs.map((diagnosis, index) => ({
-    ...createEnrollmentDiagnosisDraft(),
-    ...diagnosis,
-    draftId: diagnosis.draftId ?? `diagnosis-${index + 1}`,
-    waitTimeForDiagnosis: normalizeDuration(diagnosis.waitTimeForDiagnosis),
-  }))
+  const diagnoses = diagnosisInputs.map((diagnosis, index) => {
+    const legacy = diagnosis as LegacyDiagnosisDraft & {
+      firstSymptomsDateUnknown?: boolean
+      waitTimeForDiagnosisUnknown?: boolean
+    }
+    const remembersFirstSymptomsDate =
+      diagnosis.remembersFirstSymptomsDate ??
+      (legacy.firstSymptomsDateUnknown === undefined
+        ? true
+        : !legacy.firstSymptomsDateUnknown)
+    const remembersWaitTimeForDiagnosis =
+      diagnosis.remembersWaitTimeForDiagnosis ??
+      (legacy.waitTimeForDiagnosisUnknown === undefined
+        ? true
+        : !legacy.waitTimeForDiagnosisUnknown)
+
+    return {
+      ...createEnrollmentDiagnosisDraft(),
+      ...diagnosis,
+      draftId: diagnosis.draftId ?? `diagnosis-${index + 1}`,
+      remembersFirstSymptomsDate,
+      remembersWaitTimeForDiagnosis,
+      waitTimeForDiagnosis: normalizeDuration(diagnosis.waitTimeForDiagnosis),
+    }
+  })
 
   const hasLegacyTreatmentData = Boolean(
     legacyTreatment &&

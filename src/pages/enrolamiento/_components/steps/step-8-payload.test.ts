@@ -860,7 +860,7 @@ describe("step 8 Nest enrollment payload", () => {
             diagnosis: "MAMA_DUCTAL",
             firstSymptomsDate: "2026-01-01",
             diagnosisDate: "2026-03-02",
-            waitTimeForDiagnosisUnknown: true,
+            remembersWaitTimeForDiagnosis: false,
             isCurrent: true,
           },
         ],
@@ -970,7 +970,7 @@ describe("step 8 Nest enrollment payload", () => {
           {
             draftId: "diagnosis-1",
             diagnosis: "MAMA_DUCTAL",
-            firstSymptomsDateUnknown: true,
+            remembersFirstSymptomsDate: false,
             waitTimeForDiagnosis: { valueMin: 2, unit: "MONTH" },
             waitTimeForDiagnosisManuallyEdited: true,
             referredHealthCenterId: "center-referred",

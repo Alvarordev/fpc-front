@@ -145,6 +145,8 @@ const EMPTY_DIAGNOSIS: EnrollmentDiagnosisDraft = {
   draftId: "",
   diagnosis: "",
   isCurrent: true,
+  remembersFirstSymptomsDate: true,
+  remembersWaitTimeForDiagnosis: true,
 }
 
 const EMPTY_TREATMENT: EnrollmentTreatmentDraft = {
@@ -214,7 +216,8 @@ export function Step7Atencion({
     dx.firstSymptomsDate,
     dx.diagnosisDate,
   )
-  const visibleWaitTime = dx.waitTimeForDiagnosisUnknown
+  const remembersWaitTime = dx.remembersWaitTimeForDiagnosis ?? true
+  const visibleWaitTime = !remembersWaitTime
     ? undefined
     : dx.waitTimeForDiagnosisManuallyEdited
       ? (dx.waitTimeForDiagnosis ?? undefined)
@@ -349,7 +352,7 @@ export function Step7Atencion({
       ...dx,
       [field]: date || null,
       ...(field === "firstSymptomsDate"
-        ? { firstSymptomsDateUnknown: false }
+        ? { remembersFirstSymptomsDate: true }
         : {}),
     }
     updateDraft({
@@ -357,7 +360,8 @@ export function Step7Atencion({
         index === diagnosisIndex
           ? {
               ...nextDiagnosis,
-              waitTimeForDiagnosis: nextDiagnosis.waitTimeForDiagnosisUnknown
+              waitTimeForDiagnosis: (nextDiagnosis.remembersWaitTimeForDiagnosis ??
+              true) === false
                 ? undefined
                 : calculateDurationBetweenDates(
                     nextDiagnosis.firstSymptomsDate,
@@ -370,25 +374,25 @@ export function Step7Atencion({
     })
   }
 
-  function updateFirstSymptomsUnknown(value: string | null) {
-    const unknown = value === "Sí"
+  function updateFirstSymptomsRemembered(value: string | null) {
+    const remembers = value === "Sí"
     updateDiagnosis({
-      firstSymptomsDateUnknown: unknown,
-      firstSymptomsDate: unknown ? null : dx.firstSymptomsDate,
-      ...(unknown && !dx.waitTimeForDiagnosisManuallyEdited
+      remembersFirstSymptomsDate: remembers,
+      firstSymptomsDate: remembers ? dx.firstSymptomsDate : null,
+      ...(!remembers && !dx.waitTimeForDiagnosisManuallyEdited
         ? { waitTimeForDiagnosis: undefined }
         : {}),
     })
   }
 
-  function updateWaitTimeUnknown(value: string | null) {
-    const unknown = value === "Sí"
+  function updateWaitTimeRemembered(value: string | null) {
+    const remembers = value === "Sí"
     updateDiagnosis({
-      waitTimeForDiagnosisUnknown: unknown,
-      waitTimeForDiagnosis: unknown ? undefined : dx.waitTimeForDiagnosis,
-      waitTimeForDiagnosisManuallyEdited: unknown
-        ? false
-        : dx.waitTimeForDiagnosisManuallyEdited,
+      remembersWaitTimeForDiagnosis: remembers,
+      waitTimeForDiagnosis: remembers ? dx.waitTimeForDiagnosis : undefined,
+      waitTimeForDiagnosisManuallyEdited: remembers
+        ? dx.waitTimeForDiagnosisManuallyEdited
+        : false,
     })
   }
 
@@ -1305,18 +1309,12 @@ export function Step7Atencion({
                   {historical ? (
                     <>
                       <Label className={flGrid}>
-                        ¿No recuerda la fecha de los primeros síntomas?
+                        ¿Recuerda la fecha de los primeros síntomas?
                       </Label>
                       <Select
                         items={YES_NO_OPTIONS}
-                        value={
-                          dx.firstSymptomsDateUnknown === true
-                            ? "Sí"
-                            : dx.firstSymptomsDateUnknown === false
-                              ? "No"
-                              : ""
-                        }
-                        onValueChange={updateFirstSymptomsUnknown}
+                        value={(dx.remembersFirstSymptomsDate ?? true) ? "Sí" : "No"}
+                        onValueChange={updateFirstSymptomsRemembered}
                       >
                         <SelectTrigger className={sc}>
                           <SelectValue placeholder="Seleccionar..." />
@@ -1329,7 +1327,7 @@ export function Step7Atencion({
                           ))}
                         </SelectContent>
                       </Select>
-                      {dx.firstSymptomsDateUnknown !== true && (
+                      {(dx.remembersFirstSymptomsDate ?? true) && (
                         <Input
                           type="date"
                           value={dx.firstSymptomsDate ?? ""}
@@ -1365,7 +1363,7 @@ export function Step7Atencion({
               </div>
               {dx.firstSymptomsDate &&
                 dx.diagnosisDate &&
-                !dx.waitTimeForDiagnosisUnknown && (
+                remembersWaitTime && (
                 <p className="text-muted-foreground text-xs">
                   {calculatedWaitTime
                     ? dx.waitTimeForDiagnosisManuallyEdited
@@ -1376,18 +1374,12 @@ export function Step7Atencion({
               )}
               <div className="flex flex-col gap-2">
                 <Label className={flGrid}>
-                  ¿No recuerda el tiempo de espera?
+                  ¿Recuerda el tiempo de espera?
                 </Label>
                 <Select
                   items={YES_NO_OPTIONS}
-                  value={
-                    dx.waitTimeForDiagnosisUnknown === true
-                      ? "Sí"
-                      : dx.waitTimeForDiagnosisUnknown === false
-                        ? "No"
-                        : ""
-                  }
-                  onValueChange={updateWaitTimeUnknown}
+                  value={remembersWaitTime ? "Sí" : "No"}
+                  onValueChange={updateWaitTimeRemembered}
                 >
                   <SelectTrigger className={sc}>
                     <SelectValue placeholder="Seleccionar..." />
@@ -1401,7 +1393,7 @@ export function Step7Atencion({
                   </SelectContent>
                 </Select>
               </div>
-              {dx.waitTimeForDiagnosisUnknown !== true && (
+              {remembersWaitTime && (
                 <DurationInput
                   label="Tiempo de espera para el diagnóstico"
                   units={["DAY", "WEEK", "MONTH", "YEAR"]}
@@ -1411,7 +1403,7 @@ export function Step7Atencion({
                   onChange={(waitTimeForDiagnosis) =>
                     updateDiagnosis({
                       waitTimeForDiagnosis,
-                      waitTimeForDiagnosisUnknown: false,
+                      remembersWaitTimeForDiagnosis: true,
                       waitTimeForDiagnosisManuallyEdited:
                         waitTimeForDiagnosis !== undefined,
                     })

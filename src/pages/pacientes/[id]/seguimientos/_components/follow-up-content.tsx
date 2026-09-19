@@ -397,11 +397,11 @@ export function FollowUpContent() {
         mode,
         replacementDiagnosisId,
         waitTimeForDiagnosisManuallyEdited,
-        waitTimeForDiagnosisUnknown,
+        remembersWaitTimeForDiagnosis,
         changeReason,
         ...diagnosisDraft
       } = diagnosisDecision
-      const waitTimeForDiagnosis = waitTimeForDiagnosisUnknown
+      const waitTimeForDiagnosis = remembersWaitTimeForDiagnosis === false
         ? null
         : waitTimeForDiagnosisManuallyEdited
           ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
@@ -409,7 +409,7 @@ export function FollowUpContent() {
             ? undefined
             : toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
       if (
-        !waitTimeForDiagnosisUnknown &&
+        remembersWaitTimeForDiagnosis !== false &&
         diagnosisDraft.waitTimeForDiagnosis?.valueMin !== undefined &&
         !waitTimeForDiagnosis
       )

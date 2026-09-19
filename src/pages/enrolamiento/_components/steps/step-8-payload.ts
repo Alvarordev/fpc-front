@@ -169,7 +169,8 @@ export function buildEnrollmentPayload({
       hasReferral: diagnosis.hasReferral ?? undefined,
       diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
       symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
-      waitTimeForDiagnosis: diagnosis.waitTimeForDiagnosisUnknown
+      waitTimeForDiagnosis: (diagnosis.remembersWaitTimeForDiagnosis ?? true) ===
+      false
         ? null
         : diagnosis.waitTimeForDiagnosisManuallyEdited
           ? duration(

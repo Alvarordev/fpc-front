@@ -76,7 +76,7 @@ export interface HistoricalClinicalRecordIds {
 }
 
 function resolveWaitTimeForDiagnosis(draft: DiagnosisDraft) {
-  if (draft.waitTimeForDiagnosisUnknown) return null
+  if (draft.remembersWaitTimeForDiagnosis === false) return null
   const manuallyEdited = draft.waitTimeForDiagnosisManuallyEdited
   if (manuallyEdited) return toDurationInput(draft.waitTimeForDiagnosis)
   if (draft.firstSymptomsDate && draft.diagnosisDate) return undefined
@@ -89,7 +89,7 @@ function buildDiagnosis(
 ): DiagnosisPayload {
   const waitTimeForDiagnosis = resolveWaitTimeForDiagnosis(draft)
   if (
-    !draft.waitTimeForDiagnosisUnknown &&
+    draft.remembersWaitTimeForDiagnosis !== false &&
     draft.waitTimeForDiagnosis?.valueMin !== undefined &&
     !waitTimeForDiagnosis
   )
@@ -404,10 +404,11 @@ export function historicalClinicalDraftsFromPatient(
         waitTimeForDiagnosis: normalizeDuration(diagnosis.waitTimeForDiagnosis),
         waitTimeForDiagnosisManuallyEdited:
           diagnosis.waitTimeSource === "REPORTED",
-        waitTimeForDiagnosisUnknown:
+        remembersWaitTimeForDiagnosis: !(
           Boolean(diagnosis.firstSymptomsDate && diagnosis.diagnosisDate) &&
           diagnosis.waitTimeForDiagnosis == null &&
-          diagnosis.waitTimeSource == null,
+          diagnosis.waitTimeSource == null
+        ),
       } satisfies DiagnosisDraft
     })
   }
