@@ -397,15 +397,19 @@ export function FollowUpContent() {
         mode,
         replacementDiagnosisId,
         waitTimeForDiagnosisManuallyEdited,
+        waitTimeForDiagnosisUnknown,
         changeReason,
         ...diagnosisDraft
       } = diagnosisDecision
-      const waitTimeForDiagnosis = waitTimeForDiagnosisManuallyEdited
-        ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
-        : diagnosisDraft.firstSymptomsDate && diagnosisDraft.diagnosisDate
-          ? undefined
-          : toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
+      const waitTimeForDiagnosis = waitTimeForDiagnosisUnknown
+        ? null
+        : waitTimeForDiagnosisManuallyEdited
+          ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
+          : diagnosisDraft.firstSymptomsDate && diagnosisDraft.diagnosisDate
+            ? undefined
+            : toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
       if (
+        !waitTimeForDiagnosisUnknown &&
         diagnosisDraft.waitTimeForDiagnosis?.valueMin !== undefined &&
         !waitTimeForDiagnosis
       )
@@ -465,7 +469,12 @@ export function FollowUpContent() {
         endDate: treatmentDraft.endDate,
         changeReason: treatmentDraft.changeReason,
         notReceivingReason: treatmentDraft.notReceivingReason,
-        operationName: treatmentDraft.operationName,
+        ...(treatmentDraft.treatmentType === "CIRUGIA"
+          ? { operationName: treatmentDraft.operationName }
+          : {}),
+        ...(treatmentDraft.treatmentType === "QUIMIOTERAPIA"
+          ? { chemotherapyRoute: treatmentDraft.chemotherapyRoute }
+          : {}),
         careProgram: treatmentDraft.careProgram,
         receivesTeleconsultation: treatmentDraft.receivesTeleconsultation,
         teleconsultationNote:

@@ -169,17 +169,19 @@ export function buildEnrollmentPayload({
       hasReferral: diagnosis.hasReferral ?? undefined,
       diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
       symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
-      waitTimeForDiagnosis: diagnosis.waitTimeForDiagnosisManuallyEdited
-        ? duration(
-            diagnosis.waitTimeForDiagnosis,
-            `tiempo de espera para el diagnóstico ${index + 1}`,
-          )
-        : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
-          ? undefined
-          : duration(
+      waitTimeForDiagnosis: diagnosis.waitTimeForDiagnosisUnknown
+        ? null
+        : diagnosis.waitTimeForDiagnosisManuallyEdited
+          ? duration(
               diagnosis.waitTimeForDiagnosis,
               `tiempo de espera para el diagnóstico ${index + 1}`,
-            ),
+            )
+          : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
+            ? undefined
+            : duration(
+                diagnosis.waitTimeForDiagnosis,
+                `tiempo de espera para el diagnóstico ${index + 1}`,
+              ),
       hasMedicalReport: diagnosis.hasMedicalReport ?? undefined,
     }
   })
@@ -202,8 +204,8 @@ export function buildEnrollmentPayload({
       throw new Error(
         `Asocia el tratamiento ${index + 1} a un diagnóstico válido`,
       )
-    const isOperation =
-      treatment.isOperation ?? Boolean(treatment.operationName)
+    const isSurgery = treatmentType === "CIRUGIA"
+    const isChemotherapy = treatmentType === "QUIMIOTERAPIA"
     const treatmentStartDate = value(treatment.startDate)
     const treatmentEndDate = value(treatment.endDate)
     const isReferred = treatment.isReferred ?? false
@@ -214,8 +216,8 @@ export function buildEnrollmentPayload({
       throw new Error(
         `Indica el motivo de abandono del tratamiento ${index + 1}`,
       )
-    if (isOperation && !value(treatment.operationName))
-      throw new Error(`Ingresa el nombre de la operación ${index + 1}`)
+    if (isSurgery && !value(treatment.operationName))
+      throw new Error(`Selecciona el procedimiento de la cirugía ${index + 1}`)
     if (
       treatmentStartDate &&
       treatmentEndDate &&
@@ -279,7 +281,10 @@ export function buildEnrollmentPayload({
       startDate: treatmentStartDate,
       endDate: treatmentEndDate,
       notReceivingReason: value(treatment.notReceivingReason),
-      operationName: isOperation ? value(treatment.operationName) : undefined,
+      ...(isSurgery ? { operationName: value(treatment.operationName) } : {}),
+      ...(isChemotherapy
+        ? { chemotherapyRoute: value(treatment.chemotherapyRoute) }
+        : {}),
       treatmentSituation: treatment.treatmentSituation ?? undefined,
       ...(treatment.treatmentSituation === "ABANDONED"
         ? {
@@ -533,9 +538,11 @@ export function buildEnrollmentPayload({
     contacts,
     details: {
       birthDepartment:
+        draft.details.birthCountry ||
         draft.details.birthDepartment === UNKNOWN_BIRTH_DEPARTMENT
           ? undefined
           : value(draft.details.birthDepartment),
+      birthCountry: value(draft.details.birthCountry),
       primaryHealthCenterId: value(draft.details.primaryHealthCenterId),
       travelTimeToHospital: duration(
         draft.details.travelTimeToHospital,

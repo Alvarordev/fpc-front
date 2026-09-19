@@ -166,7 +166,15 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
           />
           <Detail
             label="Tiempo de espera"
-            value={formatDuration(diagnosis.waitTimeForDiagnosis)}
+            value={
+              diagnosis.waitTimeForDiagnosis
+                ? formatDuration(diagnosis.waitTimeForDiagnosis)
+                : diagnosis.waitTimeSource == null &&
+                    diagnosis.diagnosisDate &&
+                    diagnosis.firstSymptomsDate
+                  ? "No recuerda"
+                  : formatDuration(diagnosis.waitTimeForDiagnosis)
+            }
             icon={Clock}
           />
           <Detail
@@ -264,7 +272,28 @@ function TreatmentDetails({
             icon={Calendar}
           />
           <Detail label="Programa de atención" value={treatment.careProgram} />
-          <Detail label="Operación" value={treatment.operationName} />
+          <Detail
+            label="Vía de quimioterapia"
+            value={
+              treatment.chemotherapyRoute ? (
+                <CatalogValue
+                  kind="chemotherapy_route"
+                  code={treatment.chemotherapyRoute}
+                />
+              ) : null
+            }
+          />
+          <Detail
+            label="Procedimiento quirúrgico"
+            value={
+              treatment.operationName ? (
+                <CatalogValue
+                  kind="surgical_procedure"
+                  code={treatment.operationName}
+                />
+              ) : null
+            }
+          />
           <Detail
             label="Centro de origen"
             value={

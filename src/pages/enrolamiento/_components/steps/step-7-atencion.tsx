@@ -214,9 +214,11 @@ export function Step7Atencion({
     dx.firstSymptomsDate,
     dx.diagnosisDate,
   )
-  const visibleWaitTime = dx.waitTimeForDiagnosisManuallyEdited
-    ? dx.waitTimeForDiagnosis
-    : (calculatedWaitTime ?? dx.waitTimeForDiagnosis)
+  const visibleWaitTime = dx.waitTimeForDiagnosisUnknown
+    ? undefined
+    : dx.waitTimeForDiagnosisManuallyEdited
+      ? (dx.waitTimeForDiagnosis ?? undefined)
+      : (calculatedWaitTime ?? dx.waitTimeForDiagnosis ?? undefined)
   const [showFamilyTalks, setShowFamilyTalks] = useState(ft.length > 0)
   const [talkOtherIndices, setTalkOtherIndices] = useState<Set<number>>(() => {
     const topics = TALK_TOPICS as readonly string[]
@@ -355,10 +357,12 @@ export function Step7Atencion({
         index === diagnosisIndex
           ? {
               ...nextDiagnosis,
-              waitTimeForDiagnosis: calculateDurationBetweenDates(
-                nextDiagnosis.firstSymptomsDate,
-                nextDiagnosis.diagnosisDate,
-              ),
+              waitTimeForDiagnosis: nextDiagnosis.waitTimeForDiagnosisUnknown
+                ? undefined
+                : calculateDurationBetweenDates(
+                    nextDiagnosis.firstSymptomsDate,
+                    nextDiagnosis.diagnosisDate,
+                  ),
               waitTimeForDiagnosisManuallyEdited: false,
             }
           : diagnosis,
@@ -374,6 +378,17 @@ export function Step7Atencion({
       ...(unknown && !dx.waitTimeForDiagnosisManuallyEdited
         ? { waitTimeForDiagnosis: undefined }
         : {}),
+    })
+  }
+
+  function updateWaitTimeUnknown(value: string | null) {
+    const unknown = value === "Sí"
+    updateDiagnosis({
+      waitTimeForDiagnosisUnknown: unknown,
+      waitTimeForDiagnosis: unknown ? undefined : dx.waitTimeForDiagnosis,
+      waitTimeForDiagnosisManuallyEdited: unknown
+        ? false
+        : dx.waitTimeForDiagnosisManuallyEdited,
     })
   }
 
@@ -1348,7 +1363,9 @@ export function Step7Atencion({
                   )}
                 </div>
               </div>
-              {dx.firstSymptomsDate && dx.diagnosisDate && (
+              {dx.firstSymptomsDate &&
+                dx.diagnosisDate &&
+                !dx.waitTimeForDiagnosisUnknown && (
                 <p className="text-muted-foreground text-xs">
                   {calculatedWaitTime
                     ? dx.waitTimeForDiagnosisManuallyEdited
@@ -1357,20 +1374,50 @@ export function Step7Atencion({
                     : "Las fechas deben estar en orden para calcular el tiempo de espera."}
                 </p>
               )}
-              <DurationInput
-                label="Tiempo de espera para el diagnóstico"
-                units={["DAY", "WEEK", "MONTH", "YEAR"]}
-                defaultUnit="DAY"
-                singleValue
-                value={visibleWaitTime}
-                onChange={(waitTimeForDiagnosis) =>
-                  updateDiagnosis({
-                    waitTimeForDiagnosis,
-                    waitTimeForDiagnosisManuallyEdited:
-                      waitTimeForDiagnosis !== undefined,
-                  })
-                }
-              />
+              <div className="flex flex-col gap-2">
+                <Label className={flGrid}>
+                  ¿No recuerda el tiempo de espera?
+                </Label>
+                <Select
+                  items={YES_NO_OPTIONS}
+                  value={
+                    dx.waitTimeForDiagnosisUnknown === true
+                      ? "Sí"
+                      : dx.waitTimeForDiagnosisUnknown === false
+                        ? "No"
+                        : ""
+                  }
+                  onValueChange={updateWaitTimeUnknown}
+                >
+                  <SelectTrigger className={sc}>
+                    <SelectValue placeholder="Seleccionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {YES_NO_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {dx.waitTimeForDiagnosisUnknown !== true && (
+                <DurationInput
+                  label="Tiempo de espera para el diagnóstico"
+                  units={["DAY", "WEEK", "MONTH", "YEAR"]}
+                  defaultUnit="DAY"
+                  singleValue
+                  value={visibleWaitTime}
+                  onChange={(waitTimeForDiagnosis) =>
+                    updateDiagnosis({
+                      waitTimeForDiagnosis,
+                      waitTimeForDiagnosisUnknown: false,
+                      waitTimeForDiagnosisManuallyEdited:
+                        waitTimeForDiagnosis !== undefined,
+                    })
+                  }
+                />
+              )}
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <Label className={flGrid}>¿Dónde fue diagnosticado?</Label>
@@ -2114,62 +2161,63 @@ export function Step7Atencion({
                           kind="treatment_type"
                           value={tx.treatmentType || null}
                           onValueChange={(code) =>
-                            updateTreatment({ treatmentType: code ?? "" })
+                            updateTreatment({
+                              treatmentType: code ?? "",
+                              chemotherapyRoute:
+                                code === "QUIMIOTERAPIA"
+                                  ? tx.chemotherapyRoute
+                                  : null,
+                              operationName:
+                                code === "CIRUGIA" ? tx.operationName : null,
+                            })
                           }
                           placeholder="Seleccionar tipo..."
                           triggerClassName={sc}
                         />
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <Label className={flGrid}>¿Es una operación?</Label>
-                        <Select
-                          items={YES_NO_OPTIONS}
-                          value={
-                            (tx.isOperation ?? Boolean(tx.operationName)) ===
-                            true
-                              ? "Sí"
-                              : (tx.isOperation ??
-                                    Boolean(tx.operationName)) === false
-                                ? "No"
-                                : ""
-                          }
-                          onValueChange={(value) =>
-                            updateTreatment({
-                              isOperation: value === "Sí",
-                              operationName:
-                                value === "Sí" ? tx.operationName : null,
-                            })
-                          }
-                        >
-                          <SelectTrigger className={sc}>
-                            <SelectValue placeholder="Seleccionar..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {YES_NO_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {(tx.isOperation ?? Boolean(tx.operationName)) && (
+                      {tx.treatmentType === "QUIMIOTERAPIA" && (
                         <div className="flex flex-col gap-2">
                           <Label className={flGrid}>
-                            Nombre de la operación
+                            Vía de quimioterapia
                           </Label>
-                          <Input
-                            value={tx.operationName ?? ""}
-                            onChange={(e) =>
+                          <CatalogSelect
+                            kind="chemotherapy_route"
+                            value={tx.chemotherapyRoute || null}
+                            onValueChange={(code) =>
                               updateTreatment({
-                                operationName: e.target.value || null,
+                                chemotherapyRoute: code ?? null,
                               })
                             }
-                            placeholder="Ej: Mastectomía"
-                            className="bg-card border"
+                            placeholder="Seleccionar vía..."
+                            triggerClassName={sc}
+                          />
+                        </div>
+                      )}
+                      {tx.treatmentType === "CIRUGIA" && (
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>
+                            Procedimiento quirúrgico
+                          </Label>
+                          <CatalogSelect
+                            kind="surgical_procedure"
+                            value={tx.operationName || null}
+                            onValueChange={(code) =>
+                              updateTreatment({
+                                operationName: code ?? null,
+                              })
+                            }
+                            extraItems={
+                              tx.operationName
+                                ? [
+                                    {
+                                      value: tx.operationName,
+                                      label: tx.operationName,
+                                    },
+                                  ]
+                                : []
+                            }
+                            placeholder="Seleccionar procedimiento..."
+                            triggerClassName={sc}
                           />
                         </div>
                       )}

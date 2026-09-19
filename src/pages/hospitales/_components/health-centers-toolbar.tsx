@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DEPARTMENTS } from "../_utils/departments";
-import { HEALTH_CENTER_CATEGORIES } from "../_utils/categories";
+import { catalogSelectItems, useCatalog } from "@/hooks/use-catalog";
 
 interface HealthCentersToolbarProps {
   search: string;
@@ -28,6 +28,8 @@ export function HealthCentersToolbar({
   category,
   onCategoryChange,
 }: HealthCentersToolbarProps) {
+  const { data: categories = [] } = useCatalog("health_center_category");
+  const categoryItems = catalogSelectItems(categories);
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative max-w-xs">
@@ -64,10 +66,7 @@ export function HealthCentersToolbar({
       <Select
         items={[
           { value: "all", label: "Todas las categorías" },
-          ...HEALTH_CENTER_CATEGORIES.map((item) => ({
-            value: item.value,
-            label: item.label,
-          })),
+          ...categoryItems,
         ]}
         value={category}
         onValueChange={(v) => onCategoryChange(v ?? "all")}
@@ -80,7 +79,7 @@ export function HealthCentersToolbar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todas las categorías</SelectItem>
-          {HEALTH_CENTER_CATEGORIES.map((item) => (
+          {categoryItems.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               {item.label}
             </SelectItem>

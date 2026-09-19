@@ -28,7 +28,7 @@ import type {
   HealthCenter,
 } from "@/api/health-centers"
 import { DEPARTMENTS } from "../_utils/departments"
-import { HEALTH_CENTER_CATEGORIES } from "../_utils/categories"
+import { CatalogSelect } from "@/components/catalog-select"
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
@@ -158,25 +158,13 @@ export function CreateHealthCenterDialog({
 
           <div className="space-y-2">
             <Label>Categoría</Label>
-            <Select
-              items={HEALTH_CENTER_CATEGORIES.map((item) => ({
-                value: item.value,
-                label: item.label,
-              }))}
-              value={category}
+            <CatalogSelect
+              kind="health_center_category"
+              allowCreate={false}
+              value={category || null}
               onValueChange={(v) => setValue("category", v ?? "")}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar categoría..." />
-              </SelectTrigger>
-              <SelectContent>
-                {HEALTH_CENTER_CATEGORIES.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar categoría..."
+            />
             {errors.category && (
               <p className="text-destructive text-xs">
                 {errors.category.message}

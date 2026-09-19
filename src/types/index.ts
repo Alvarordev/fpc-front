@@ -146,6 +146,9 @@ export interface CreatePatientRequest {
 
 export interface EnrollPatientDetailsRequest {
   birthDepartment?: string | null
+  birthCountry?: string | null
+  /** UI-only; omitted from the enrollment payload. */
+  bornInPeru?: boolean
   primaryHealthCenterId?: string | null
   travelTimeToHospital?: DurationDraft
   emergencyContactName?: string | null
@@ -192,7 +195,7 @@ export interface AddDiagnosisRequest {
   hasReferral?: boolean | null
   diagnosisSpecialty?: string | null
   symptomLeadingToCheckup?: string | null
-  waitTimeForDiagnosis?: DurationDraft
+  waitTimeForDiagnosis?: DurationDraft | null
   hasMedicalReport?: boolean
   isSepaActiveReferral?: boolean | null
   isCurrent: boolean
@@ -253,10 +256,9 @@ export interface AddTreatmentRequest {
   isCurrent: boolean
   changeReason?: string | null
   notReceivingReason?: string | null
-  /** UI-only flag; the API stores the operation name when present. */
-  isOperation?: boolean
   treatmentSituation?: TreatmentSituation | null
   operationName?: string | null
+  chemotherapyRoute?: string | null
   careProgram?: CareProgram | null
   receivesTeleconsultation?: boolean | null
   teleconsultationNote?: string | null

@@ -76,6 +76,7 @@ export interface HistoricalClinicalRecordIds {
 }
 
 function resolveWaitTimeForDiagnosis(draft: DiagnosisDraft) {
+  if (draft.waitTimeForDiagnosisUnknown) return null
   const manuallyEdited = draft.waitTimeForDiagnosisManuallyEdited
   if (manuallyEdited) return toDurationInput(draft.waitTimeForDiagnosis)
   if (draft.firstSymptomsDate && draft.diagnosisDate) return undefined
@@ -88,6 +89,7 @@ function buildDiagnosis(
 ): DiagnosisPayload {
   const waitTimeForDiagnosis = resolveWaitTimeForDiagnosis(draft)
   if (
+    !draft.waitTimeForDiagnosisUnknown &&
     draft.waitTimeForDiagnosis?.valueMin !== undefined &&
     !waitTimeForDiagnosis
   )
@@ -110,7 +112,7 @@ function buildDiagnosis(
     hasMedicalReport: draft.hasMedicalReport,
     isSepaActiveReferral: draft.isSepaActiveReferral,
     changeReason: draft.changeReason,
-    ...(waitTimeForDiagnosis ? { waitTimeForDiagnosis } : {}),
+    waitTimeForDiagnosis,
     clientRef: draft.draftId,
     ...(existingId ? { id: existingId } : {}),
   }
@@ -132,6 +134,8 @@ function buildTreatment(
 
   if (draft.mode === "REPLACE" && !draft.seriesId)
     throw new Error("Selecciona el tratamiento que deseas actualizar")
+  if (draft.treatmentType === "CIRUGIA" && !draft.operationName?.trim())
+    throw new Error("Selecciona el procedimiento quirúrgico")
 
   const treatmentFrequency = toDurationInput(draft.treatmentFrequency)
   if (draft.treatmentFrequency && !treatmentFrequency)
@@ -154,7 +158,12 @@ function buildTreatment(
     endDate: draft.endDate,
     changeReason: draft.changeReason,
     notReceivingReason: draft.notReceivingReason,
-    operationName: draft.operationName,
+    ...(draft.treatmentType === "CIRUGIA"
+      ? { operationName: draft.operationName }
+      : {}),
+    ...(draft.treatmentType === "QUIMIOTERAPIA"
+      ? { chemotherapyRoute: draft.chemotherapyRoute }
+      : {}),
     careProgram: draft.careProgram,
     receivesTeleconsultation: draft.receivesTeleconsultation,
     teleconsultationNote:
@@ -395,6 +404,10 @@ export function historicalClinicalDraftsFromPatient(
         waitTimeForDiagnosis: normalizeDuration(diagnosis.waitTimeForDiagnosis),
         waitTimeForDiagnosisManuallyEdited:
           diagnosis.waitTimeSource === "REPORTED",
+        waitTimeForDiagnosisUnknown:
+          Boolean(diagnosis.firstSymptomsDate && diagnosis.diagnosisDate) &&
+          diagnosis.waitTimeForDiagnosis == null &&
+          diagnosis.waitTimeSource == null,
       } satisfies DiagnosisDraft
     })
   }
@@ -421,6 +434,7 @@ export function historicalClinicalDraftsFromPatient(
         changeReason: treatment.changeReason,
         notReceivingReason: treatment.notReceivingReason,
         operationName: treatment.operationName,
+        chemotherapyRoute: treatment.chemotherapyRoute,
         careProgram: treatment.careProgram,
         receivesTeleconsultation: treatment.receivesTeleconsultation,
         teleconsultationNote: treatment.teleconsultationNote,

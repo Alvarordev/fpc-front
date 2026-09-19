@@ -31,6 +31,7 @@ import {
 } from "lucide-react"
 import { enrollmentsApi } from "@/api/enrollments"
 import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
+import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 import {
   cancerStageLabels,
@@ -44,7 +45,6 @@ import {
   relationshipLabels,
   roleLabels,
 } from "../_lib/clinical-labels"
-import { CatalogValue } from "@/components/catalog-select"
 import { usePatientAccompanies } from "../_hooks/use-patient-accompanies"
 import { Link } from "react-router-dom"
 import { DURATION_UNIT_LABELS } from "@/types/duration"
@@ -460,12 +460,21 @@ export function OverviewSection({
               </p>
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <Field
-                  label="Departamento de nacimiento"
+                  label={
+                    details.birthCountry
+                      ? "País de nacimiento"
+                      : "Departamento de nacimiento"
+                  }
                   value={
-                    details.birthDepartment
-                      ? (DEPARTMENT_LABELS[details.birthDepartment] ??
-                        details.birthDepartment)
-                      : null
+                    details.birthCountry ? (
+                      <CatalogValue
+                        kind="country"
+                        code={details.birthCountry}
+                      />
+                    ) : details.birthDepartment ? (
+                      (DEPARTMENT_LABELS[details.birthDepartment] ??
+                      details.birthDepartment)
+                    ) : null
                   }
                 />
                 <Field
@@ -674,13 +683,21 @@ export function OverviewSection({
                           icon={AlertTriangle}
                         />
                       )}
-                      {item.waitTimeForDiagnosis && (
+                      {item.waitTimeForDiagnosis ? (
                         <Field
                           label="Tiempo de espera"
                           value={durationLabel(item.waitTimeForDiagnosis)}
                           icon={Clock}
                         />
-                      )}
+                      ) : item.waitTimeSource == null &&
+                        item.diagnosisDate &&
+                        item.firstSymptomsDate ? (
+                        <Field
+                          label="Tiempo de espera"
+                          value="No recuerda"
+                          icon={Clock}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 ))}

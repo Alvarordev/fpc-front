@@ -120,6 +120,7 @@ export type EnrollmentDiagnosisDraft = AddDiagnosisRequest & {
   /** UI-only answer; the API receives a null firstSymptomsDate instead. */
   firstSymptomsDateUnknown?: boolean
   waitTimeForDiagnosisManuallyEdited?: boolean
+  waitTimeForDiagnosisUnknown?: boolean
 }
 
 export type EnrollmentTreatmentDraft = Omit<

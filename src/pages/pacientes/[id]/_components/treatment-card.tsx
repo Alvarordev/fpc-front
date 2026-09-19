@@ -232,8 +232,27 @@ export function TreatmentCard({
                   icon={Building2}
                 />
               )}
+              {treatment.chemotherapyRoute && (
+                <Detail
+                  label="Vía de quimioterapia"
+                  value={
+                    <CatalogValue
+                      kind="chemotherapy_route"
+                      code={treatment.chemotherapyRoute}
+                    />
+                  }
+                />
+              )}
               {treatment.operationName && (
-                <Detail label="Operación" value={treatment.operationName} />
+                <Detail
+                  label="Procedimiento quirúrgico"
+                  value={
+                    <CatalogValue
+                      kind="surgical_procedure"
+                      code={treatment.operationName}
+                    />
+                  }
+                />
               )}
               {treatment.careProgram && (
                 <Detail

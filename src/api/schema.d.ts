@@ -2228,7 +2228,8 @@ export interface components {
             healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
             /** @enum {string|null} */
             healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
-            birthDepartment?: string;
+            birthDepartment?: string | null;
+            birthCountry?: string | null;
             /** Format: uuid */
             primaryHealthCenterId?: string;
             travelTimeToHospital?: components["schemas"]["DurationDto"];
@@ -2304,6 +2305,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -2312,7 +2314,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
@@ -2351,6 +2352,7 @@ export interface components {
             changeReason?: string;
             notReceivingReason?: string;
             operationName?: string;
+            chemotherapyRoute?: string;
             /** @enum {string} */
             careProgram?: "COPHOES" | "PADOMI";
             receivesTeleconsultation?: boolean;
@@ -2764,8 +2766,7 @@ export interface components {
             name: string;
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
-            /** @enum {string} */
-            category: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2";
+            category: string;
         };
         HealthCenterResponseDto: {
             /** Format: uuid */
@@ -2774,8 +2775,7 @@ export interface components {
             slug: string;
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
-            /** @enum {string|null} */
-            category: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2" | null;
+            category: string | null;
             isActive: boolean;
             patientCount: number;
             /** Format: date-time */
@@ -2787,8 +2787,7 @@ export interface components {
             name?: string;
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
-            /** @enum {string} */
-            category?: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-E" | "III-2";
+            category?: string;
             isActive?: boolean;
         };
         CatalogItemResponseDto: {
@@ -2835,7 +2834,7 @@ export interface components {
         };
         CreateCatalogItemDto: {
             /** @enum {string} */
-            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type";
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure";
             code: string;
             label: string;
             parentCode?: string | null;
@@ -3220,6 +3219,7 @@ export interface components {
             /** @enum {string|null} */
             healthSubcategory: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
             birthDepartment: string | null;
+            birthCountry: string | null;
             /** Format: uuid */
             primaryHealthCenterId: string | null;
             primaryHealthCenterName?: string | null;
@@ -3333,6 +3333,7 @@ export interface components {
             changeReason: string | null;
             notReceivingReason: string | null;
             operationName: string | null;
+            chemotherapyRoute: string | null;
             /** @enum {string|null} */
             careProgram: "COPHOES" | "PADOMI" | null;
             receivesTeleconsultation: boolean | null;
@@ -3665,6 +3666,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             /** Format: uuid */
             followUpId: string;
             diagnosis: string;
@@ -3675,7 +3677,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
@@ -3747,6 +3748,7 @@ export interface components {
             changeReason?: string;
             notReceivingReason?: string;
             operationName?: string;
+            chemotherapyRoute?: string;
             /** @enum {string} */
             careProgram?: "COPHOES" | "PADOMI";
             receivesTeleconsultation?: boolean;
@@ -4008,6 +4010,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -4016,7 +4019,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
@@ -4438,6 +4440,7 @@ export interface components {
             changeReason?: string;
             notReceivingReason?: string;
             operationName?: string;
+            chemotherapyRoute?: string;
             /** @enum {string} */
             careProgram?: "COPHOES" | "PADOMI";
             receivesTeleconsultation?: boolean;
@@ -4548,6 +4551,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
             /** @enum {string} */
             cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
@@ -4556,7 +4560,6 @@ export interface components {
             /** Format: uuid */
             healthCenterId?: string;
             diagnosisSpecialty?: string;
-            waitTimeForDiagnosis?: components["schemas"]["DurationDto"];
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
@@ -4581,6 +4584,7 @@ export interface components {
             changeReason?: string;
             notReceivingReason?: string;
             operationName?: string;
+            chemotherapyRoute?: string;
             /** @enum {string} */
             careProgram?: "COPHOES" | "PADOMI";
             receivesTeleconsultation?: boolean;
@@ -6867,7 +6871,7 @@ export interface operations {
         parameters: {
             query?: {
                 includeInactive?: boolean;
-                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type";
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure";
             };
             header?: never;
             path?: never;

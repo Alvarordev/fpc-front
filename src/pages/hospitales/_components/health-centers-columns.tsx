@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Building2, MapPin, MoreHorizontal, Pencil, Power, PowerOff } from "lucide-react";
 import type { HealthCenter } from "@/api/health-centers";
-import { CATEGORY_LABELS } from "../_utils/categories";
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog";
 
 const departmentLabels: Record<string, string> = {
   AMAZONAS: "Amazonas",
@@ -43,6 +43,18 @@ const departmentLabels: Record<string, string> = {
 interface HealthCenterColumnsOptions {
   onEdit: (center: HealthCenter) => void;
   onToggleActive: (center: HealthCenter) => void;
+}
+
+function HealthCenterCategoryCell({ code }: { code: string | null }) {
+  const { data: items = [] } = useCatalog("health_center_category");
+  if (!code) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="text-sm text-muted-foreground">
+      {catalogLabel(items, code)}
+    </span>
+  );
 }
 
 export function healthCenterColumns({
@@ -84,14 +96,7 @@ export function healthCenterColumns({
       header: "Categoría",
       cell: ({ getValue }) => {
         const category = getValue() as HealthCenter["category"];
-        if (!category) {
-          return <span className="text-sm text-muted-foreground">—</span>;
-        }
-        return (
-          <span className="text-sm text-muted-foreground">
-            {CATEGORY_LABELS[category] ?? category}
-          </span>
-        );
+        return <HealthCenterCategoryCell code={category} />;
       },
     },
     {

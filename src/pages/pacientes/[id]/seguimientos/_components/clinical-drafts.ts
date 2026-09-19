@@ -37,6 +37,7 @@ export type DiagnosisDraft = Omit<
   replacementDiagnosisId?: string
   waitTimeForDiagnosis?: DurationDraft
   waitTimeForDiagnosisManuallyEdited?: boolean
+  waitTimeForDiagnosisUnknown?: boolean
 }
 export type TreatmentDecisionMode = "REPLACE" | "PARALLEL"
 export type TreatmentDraft = Omit<

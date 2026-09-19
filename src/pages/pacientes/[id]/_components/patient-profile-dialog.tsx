@@ -30,11 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { CatalogSelect } from "@/components/catalog-select"
+import { educationLabels, genderLabels } from "../_lib/clinical-labels"
 import {
   DEPARTMENTS,
   DEPARTMENT_LABELS,
 } from "@/pages/hospitales/_utils/departments"
-import { educationLabels, genderLabels } from "../_lib/clinical-labels"
+import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import {
   patientHealthPhaseLabels,
   patientHealthSubcategoryOptions,
@@ -55,7 +57,9 @@ export type PatientProfileFormValues = {
   secondaryPhone: string
   hasWhatsapp: boolean
   email: string
+  bornInPeru: boolean | ""
   birthDepartment: string
+  birthCountry: string
   healthPhase: HealthPhaseValue | ""
   healthSubcategory: HealthSubcategoryValue
   primaryHealthCenterId: string
@@ -78,7 +82,9 @@ const DEFAULT_FORM_VALUES: PatientProfileFormValues = {
   secondaryPhone: "",
   hasWhatsapp: false,
   email: "",
+  bornInPeru: "",
   birthDepartment: "",
+  birthCountry: "",
   healthPhase: "",
   healthSubcategory: "UNASSIGNED",
   primaryHealthCenterId: "",
@@ -142,7 +148,13 @@ function formValuesFromPatient(
     secondaryPhone: patient.secondaryPhone ?? "",
     hasWhatsapp: patient.hasWhatsapp,
     email: patient.email ?? "",
+    bornInPeru: patient.details?.birthCountry
+      ? false
+      : patient.details?.birthDepartment
+        ? true
+        : "",
     birthDepartment: patient.details?.birthDepartment ?? "",
+    birthCountry: patient.details?.birthCountry ?? "",
     healthPhase: patient.details?.healthPhase ?? "",
     healthSubcategory: patient.details?.healthSubcategory ?? "UNASSIGNED",
     primaryHealthCenterId: patient.details?.primaryHealthCenterId ?? "",
@@ -188,6 +200,8 @@ export function PatientProfileDialog({
   const formValues = useWatch({ control })
   const gender = formValues.gender ?? ""
   const birthDepartment = formValues.birthDepartment ?? ""
+  const birthCountry = formValues.birthCountry ?? ""
+  const bornInPeru = formValues.bornInPeru
   const healthPhase = formValues.healthPhase ?? ""
   const healthSubcategory = formValues.healthSubcategory ?? "UNASSIGNED"
   const primaryHealthCenterId = formValues.primaryHealthCenterId ?? ""
@@ -204,9 +218,14 @@ export function PatientProfileDialog({
     genderLabels[gender],
   )
   const departmentItems = withCurrentOption(
-    DEPARTMENTS,
+    [
+      ...DEPARTMENTS,
+      { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
+    ],
     birthDepartment,
-    DEPARTMENT_LABELS[birthDepartment],
+    birthDepartment === UNKNOWN_BIRTH_DEPARTMENT
+      ? "No menciona"
+      : DEPARTMENT_LABELS[birthDepartment],
   )
   const educationItems = withCurrentOption(EDUCATION_OPTIONS, educationLevel)
   const healthCenterItems = withCurrentOption(
@@ -241,7 +260,17 @@ export function PatientProfileDialog({
 
       if (canEditDetails) {
         const detailsInput: PatientDetailsInput = {
-          birthDepartment: optionalText(values.birthDepartment),
+          ...(values.bornInPeru === false
+            ? {
+                birthCountry: optionalText(values.birthCountry),
+                birthDepartment: null,
+              }
+            : values.bornInPeru === true
+              ? {
+                  birthDepartment: optionalText(values.birthDepartment),
+                  birthCountry: null,
+                }
+              : {}),
           healthPhase: values.healthPhase || undefined,
           healthSubcategory:
             values.healthSubcategory === "UNASSIGNED"
@@ -422,26 +451,73 @@ export function PatientProfileDialog({
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Departamento de nacimiento</Label>
+                  <Label>¿Nació en el Perú?</Label>
                   <Select
-                    items={departmentItems}
-                    value={birthDepartment}
-                    onValueChange={(value) =>
-                      setValue("birthDepartment", value ?? "")
+                    items={[
+                      { value: "Sí", label: "Sí" },
+                      { value: "No", label: "No" },
+                    ]}
+                    value={
+                      bornInPeru === true
+                        ? "Sí"
+                        : bornInPeru === false
+                          ? "No"
+                          : ""
                     }
+                    onValueChange={(value) => {
+                      const inPeru = value === "Sí"
+                      setValue("bornInPeru", inPeru)
+                      if (inPeru) setValue("birthCountry", "")
+                      else setValue("birthDepartment", "")
+                    }}
                   >
-                    <SelectTrigger id="patient-birth-department">
-                      <SelectValue placeholder="Seleccionar departamento" />
+                    <SelectTrigger id="patient-born-in-peru">
+                      <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {departmentItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
+                    <SelectContent>
+                      <SelectItem value="Sí">Sí</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {(bornInPeru === true ||
+                  (!birthCountry && Boolean(birthDepartment))) && (
+                  <div className="space-y-2">
+                    <Label>Departamento de nacimiento</Label>
+                    <Select
+                      items={departmentItems}
+                      value={birthDepartment}
+                      onValueChange={(value) =>
+                        setValue("birthDepartment", value ?? "")
+                      }
+                    >
+                      <SelectTrigger id="patient-birth-department">
+                        <SelectValue placeholder="Seleccionar departamento" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {departmentItems.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {(bornInPeru === false || Boolean(birthCountry)) &&
+                  bornInPeru !== true && (
+                  <div className="space-y-2">
+                    <Label>País de nacimiento</Label>
+                    <CatalogSelect
+                      kind="country"
+                      value={birthCountry || null}
+                      onValueChange={(code) =>
+                        setValue("birthCountry", code ?? "")
+                      }
+                      placeholder="Seleccionar país"
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Centro de salud principal</Label>
                   <Select

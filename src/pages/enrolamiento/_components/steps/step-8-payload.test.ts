@@ -251,6 +251,7 @@ describe("step 8 Nest enrollment payload", () => {
             draftId: "treatment-surgery",
             diagnosisRef: "diagnosis-thyroid",
             treatmentType: "CIRUGIA",
+            operationName: "MASTECTOMIA",
             isCurrent: true,
           },
         ],
@@ -270,6 +271,7 @@ describe("step 8 Nest enrollment payload", () => {
       expect.objectContaining({
         diagnosisRef: "diagnosis-thyroid",
         treatmentType: "CIRUGIA",
+        operationName: "MASTECTOMIA",
       }),
     ])
   })
@@ -844,6 +846,105 @@ describe("step 8 Nest enrollment payload", () => {
       valueMin: 1.5,
       unit: "MONTH",
     })
+  })
+
+  it("sends null wait time when the patient does not remember it", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        patientData: { fullName: "Paciente Test", primaryPhone: "988111222" },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            firstSymptomsDate: "2026-01-01",
+            diagnosisDate: "2026-03-02",
+            waitTimeForDiagnosisUnknown: true,
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toBeNull()
+  })
+
+  it("maps a foreign birth country without a peru department", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        details: { birthCountry: "VENEZUELA", birthDepartment: "LIMA" },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.details?.birthCountry).toBe("VENEZUELA")
+    expect(payload.details?.birthDepartment).toBeUndefined()
+  })
+
+  it("requires a surgical procedure when the treatment type is surgery", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "CIRUGIA",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("Selecciona el procedimiento de la cirugía 1")
+  })
+
+  it("includes chemotherapy route for chemotherapy treatments", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            chemotherapyRoute: "INTRAVENOSA",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.treatments?.[0]).toMatchObject({
+      treatmentType: "QUIMIOTERAPIA",
+      chemotherapyRoute: "INTRAVENOSA",
+    })
+    expect(payload.treatments?.[0]).not.toHaveProperty("operationName")
   })
 
   it("maps referral answers and unknown historical values without sending sentinels", () => {

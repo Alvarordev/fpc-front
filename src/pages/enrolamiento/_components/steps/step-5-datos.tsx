@@ -8,6 +8,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { DurationInput } from "@/components/duration-input"
+import { CatalogSelect } from "@/components/catalog-select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -639,34 +640,105 @@ export function Step5Datos({
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label className={fl}>Departamento de nacimiento</Label>
+            <Label className={fl}>¿Nació en el Perú?</Label>
             <Select
-              items={[
-                ...DEPARTMENTS,
-                { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
-              ]}
-              value={details.birthDepartment ?? ""}
-              onValueChange={(value) =>
-                updateDraft({
-                  details: { ...details, birthDepartment: value || undefined },
-                })
+              items={YES_NO_OPTIONS}
+              value={
+                details.bornInPeru === true
+                  ? "Sí"
+                  : details.bornInPeru === false
+                    ? "No"
+                    : details.birthCountry
+                      ? "No"
+                      : details.birthDepartment
+                        ? "Sí"
+                        : ""
               }
+              onValueChange={(value) => {
+                const inPeru = value === "Sí"
+                updateDraft({
+                  details: {
+                    ...details,
+                    bornInPeru: inPeru,
+                    birthDepartment: inPeru
+                      ? details.birthDepartment
+                      : undefined,
+                    birthCountry: inPeru ? undefined : details.birthCountry,
+                  },
+                })
+              }}
             >
               <SelectTrigger className={sc}>
-                <SelectValue placeholder="Seleccionar departamento..." />
+                <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
-                {[
-                  ...DEPARTMENTS,
-                  { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
-                ].map((department) => (
-                  <SelectItem key={department.value} value={department.value}>
-                    {department.label}
+                {YES_NO_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+          {(details.bornInPeru === true ||
+            (!details.birthCountry && Boolean(details.birthDepartment))) && (
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>Departamento de nacimiento</Label>
+              <Select
+                items={[
+                  ...DEPARTMENTS,
+                  { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
+                ]}
+                value={details.birthDepartment ?? ""}
+                onValueChange={(value) =>
+                  updateDraft({
+                    details: {
+                      ...details,
+                      bornInPeru: true,
+                      birthCountry: undefined,
+                      birthDepartment: value || undefined,
+                    },
+                  })
+                }
+              >
+                <SelectTrigger className={sc}>
+                  <SelectValue placeholder="Seleccionar departamento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    ...DEPARTMENTS,
+                    { value: UNKNOWN_BIRTH_DEPARTMENT, label: "No menciona" },
+                  ].map((department) => (
+                    <SelectItem key={department.value} value={department.value}>
+                      {department.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {(details.bornInPeru === false || Boolean(details.birthCountry)) &&
+            details.bornInPeru !== true && (
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>País de nacimiento</Label>
+              <CatalogSelect
+                kind="country"
+                value={details.birthCountry ?? null}
+                onValueChange={(code) =>
+                  updateDraft({
+                    details: {
+                      ...details,
+                      bornInPeru: false,
+                      birthDepartment: undefined,
+                      birthCountry: code ?? undefined,
+                    },
+                  })
+                }
+                placeholder="Seleccionar país..."
+                triggerClassName={sc}
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label className={fl}>Zonificación de residencia</Label>
             <Select

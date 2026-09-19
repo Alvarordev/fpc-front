@@ -2573,6 +2573,7 @@ interface DiagnosisFormValues {
   symptomLeadingToCheckup: string
   waitTimeForDiagnosis: DurationDraft | undefined
   waitTimeForDiagnosisManuallyEdited: boolean
+  waitTimeForDiagnosisUnknown: boolean | undefined
   hasMedicalReport: boolean
 }
 
@@ -2606,6 +2607,8 @@ function DiagnosticoForm({
         waitTimeForDiagnosis: initial?.waitTimeForDiagnosis,
         waitTimeForDiagnosisManuallyEdited:
           initial?.waitTimeForDiagnosisManuallyEdited ?? false,
+        waitTimeForDiagnosisUnknown:
+          initial?.waitTimeForDiagnosisUnknown,
         hasMedicalReport: initial?.hasMedicalReport ?? false,
       },
     })
@@ -2618,13 +2621,16 @@ function DiagnosticoForm({
   const waitTimeForDiagnosisManuallyEdited = watch(
     "waitTimeForDiagnosisManuallyEdited",
   )
+  const waitTimeForDiagnosisUnknown = watch("waitTimeForDiagnosisUnknown")
   const calculatedWaitTime = calculateDurationBetweenDates(
     firstSymptomsDate,
     diagnosisDate,
   )
-  const visibleWaitTime = waitTimeForDiagnosisManuallyEdited
-    ? waitTimeForDiagnosis
-    : (calculatedWaitTime ?? waitTimeForDiagnosis)
+  const visibleWaitTime = waitTimeForDiagnosisUnknown
+    ? undefined
+    : waitTimeForDiagnosisManuallyEdited
+      ? waitTimeForDiagnosis
+      : (calculatedWaitTime ?? waitTimeForDiagnosis)
   const [mode, setMode] = useState<DiagnosisDecisionMode>(
     initial?.mode ?? "PARALLEL",
   )
@@ -2659,11 +2665,13 @@ function DiagnosticoForm({
     const nextFirstSymptomsDate =
       field === "firstSymptomsDate" ? value : firstSymptomsDate
     setValue(field, value)
-    setValue(
-      "waitTimeForDiagnosis",
-      calculateDurationBetweenDates(nextFirstSymptomsDate, nextDiagnosisDate),
-    )
-    setValue("waitTimeForDiagnosisManuallyEdited", false)
+    if (!waitTimeForDiagnosisUnknown) {
+      setValue(
+        "waitTimeForDiagnosis",
+        calculateDurationBetweenDates(nextFirstSymptomsDate, nextDiagnosisDate),
+      )
+      setValue("waitTimeForDiagnosisManuallyEdited", false)
+    }
   }
 
   function onSubmit(values: DiagnosisFormValues) {
@@ -2687,12 +2695,15 @@ function DiagnosticoForm({
       return
     }
 
-    const normalizedWaitTime = values.waitTimeForDiagnosisManuallyEdited
-      ? toDurationInput(values.waitTimeForDiagnosis)
-      : values.firstSymptomsDate && values.diagnosisDate
-        ? undefined
-        : toDurationInput(values.waitTimeForDiagnosis)
+    const normalizedWaitTime = values.waitTimeForDiagnosisUnknown
+      ? null
+      : values.waitTimeForDiagnosisManuallyEdited
+        ? toDurationInput(values.waitTimeForDiagnosis)
+        : values.firstSymptomsDate && values.diagnosisDate
+          ? undefined
+          : toDurationInput(values.waitTimeForDiagnosis)
     if (
+      !values.waitTimeForDiagnosisUnknown &&
       values.waitTimeForDiagnosis?.valueMin !== undefined &&
       !normalizedWaitTime
     ) {
@@ -2714,9 +2725,10 @@ function DiagnosticoForm({
       firstSymptomsDate: values.firstSymptomsDate || undefined,
       healthCenterId: values.healthCenterId,
       symptomLeadingToCheckup: values.symptomLeadingToCheckup || undefined,
-      waitTimeForDiagnosis: normalizedWaitTime,
+      waitTimeForDiagnosis: normalizedWaitTime ?? undefined,
       waitTimeForDiagnosisManuallyEdited:
         values.waitTimeForDiagnosisManuallyEdited,
+      waitTimeForDiagnosisUnknown: values.waitTimeForDiagnosisUnknown,
       hasMedicalReport: values.hasMedicalReport,
       ...(mode === "REPLACE" ? { replacementDiagnosisId } : {}),
     }
@@ -2740,6 +2752,7 @@ function DiagnosticoForm({
     setValue("symptomLeadingToCheckup", "")
     setValue("waitTimeForDiagnosis", undefined)
     setValue("waitTimeForDiagnosisManuallyEdited", false)
+    setValue("waitTimeForDiagnosisUnknown", false)
     setValue("hasMedicalReport", false)
     setMode("PARALLEL")
     setReplacementDiagnosisId("")
@@ -2764,6 +2777,10 @@ function DiagnosticoForm({
     setValue(
       "waitTimeForDiagnosisManuallyEdited",
       decision.waitTimeForDiagnosisManuallyEdited ?? false,
+    )
+    setValue(
+      "waitTimeForDiagnosisUnknown",
+      decision.waitTimeForDiagnosisUnknown ?? false,
     )
     setValue("hasMedicalReport", decision.hasMedicalReport ?? false)
   }
@@ -3050,7 +3067,9 @@ function DiagnosticoForm({
             placeholder="Ej: Bulto en seno"
           />
         </div>
-        {firstSymptomsDate && diagnosisDate && (
+        {firstSymptomsDate &&
+          diagnosisDate &&
+          !waitTimeForDiagnosisUnknown && (
           <p className="text-muted-foreground text-xs">
             {calculatedWaitTime
               ? waitTimeForDiagnosisManuallyEdited
@@ -3059,21 +3078,56 @@ function DiagnosticoForm({
               : "Las fechas deben estar en orden para calcular el tiempo de espera."}
           </p>
         )}
-        <DurationInput
-          key={`follow-up-wait-${firstSymptomsDate}-${diagnosisDate}-${waitTimeForDiagnosisManuallyEdited ? "manual" : "auto"}`}
-          label="Tiempo de espera para diagnóstico"
-          units={["DAY", "WEEK", "MONTH", "YEAR"]}
-          defaultUnit="DAY"
-          singleValue
-          value={visibleWaitTime}
-          onChange={(value) => {
-            setValue("waitTimeForDiagnosis", value)
-            setValue(
-              "waitTimeForDiagnosisManuallyEdited",
-              value?.valueMin !== undefined,
-            )
-          }}
-        />
+        <div className="space-y-2">
+          <Label>¿No recuerda el tiempo de espera?</Label>
+          <Select
+            items={[
+              { value: "Sí", label: "Sí" },
+              { value: "No", label: "No" },
+            ]}
+            value={
+              waitTimeForDiagnosisUnknown
+                ? "Sí"
+                : waitTimeForDiagnosisUnknown === false
+                  ? "No"
+                  : ""
+            }
+            onValueChange={(value) => {
+              const unknown = value === "Sí"
+              setValue("waitTimeForDiagnosisUnknown", unknown)
+              if (unknown) {
+                setValue("waitTimeForDiagnosis", undefined)
+                setValue("waitTimeForDiagnosisManuallyEdited", false)
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Sí">Sí</SelectItem>
+              <SelectItem value="No">No</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {!waitTimeForDiagnosisUnknown && (
+          <DurationInput
+            key={`follow-up-wait-${firstSymptomsDate}-${diagnosisDate}-${waitTimeForDiagnosisManuallyEdited ? "manual" : "auto"}`}
+            label="Tiempo de espera para diagnóstico"
+            units={["DAY", "WEEK", "MONTH", "YEAR"]}
+            defaultUnit="DAY"
+            singleValue
+            value={visibleWaitTime}
+            onChange={(value) => {
+              setValue("waitTimeForDiagnosis", value)
+              setValue("waitTimeForDiagnosisUnknown", false)
+              setValue(
+                "waitTimeForDiagnosisManuallyEdited",
+                value?.valueMin !== undefined,
+              )
+            }}
+          />
+        )}
         <div className="flex items-center gap-3 space-y-2 pt-2">
           <Checkbox
             checked={watch("hasMedicalReport")}
@@ -3118,8 +3172,8 @@ interface TreatmentFormValues {
   treatmentType: string
   treatmentFrequency: DurationDraft | undefined
   treatmentSituation: TreatmentSituation | undefined
-  isOperation: boolean | undefined
   operationName: string
+  chemotherapyRoute: string
   careProgram: CareProgram | undefined
   receivesTeleconsultation: boolean | undefined
   teleconsultationNote: string
@@ -3179,8 +3233,8 @@ function TratamientosForm({
         treatmentType: initial?.treatmentType ?? "",
         treatmentFrequency: initial?.treatmentFrequency,
         treatmentSituation: initial?.treatmentSituation,
-        isOperation: initial?.operationName ? true : undefined,
         operationName: initial?.operationName ?? "",
+        chemotherapyRoute: initial?.chemotherapyRoute ?? "",
         careProgram: initial?.careProgram,
         receivesTeleconsultation: initial?.receivesTeleconsultation,
         teleconsultationNote: initial?.teleconsultationNote ?? "",
@@ -3228,7 +3282,6 @@ function TratamientosForm({
   const receivingHealthCenterId = watched.receivingHealthCenterId
   const treatmentFrequency = watched.treatmentFrequency
   const treatmentSituation = watched.treatmentSituation
-  const isOperation = watched.isOperation
   const receivesTeleconsultation = watched.receivesTeleconsultation
   const treatmentViaSepa = watched.treatmentViaSepa
   const interruptionReason = watched.interruptionReason
@@ -3314,8 +3367,8 @@ function TratamientosForm({
           }
         : undefined,
       treatmentSituation: treatment.treatmentSituation ?? undefined,
-      isOperation: treatment.operationName ? true : undefined,
       operationName: treatment.operationName ?? "",
+      chemotherapyRoute: treatment.chemotherapyRoute ?? "",
       careProgram: treatment.careProgram ?? undefined,
       receivesTeleconsultation: treatment.receivesTeleconsultation ?? undefined,
       teleconsultationNote: treatment.teleconsultationNote ?? "",
@@ -3408,8 +3461,8 @@ function TratamientosForm({
       treatmentType: decision.treatmentType,
       treatmentFrequency: decision.treatmentFrequency,
       treatmentSituation: decision.treatmentSituation,
-      isOperation: decision.operationName ? true : undefined,
       operationName: decision.operationName ?? "",
+      chemotherapyRoute: decision.chemotherapyRoute ?? "",
       careProgram: decision.careProgram,
       receivesTeleconsultation: decision.receivesTeleconsultation,
       teleconsultationNote: decision.teleconsultationNote ?? "",
@@ -3495,8 +3548,11 @@ function TratamientosForm({
       toast.error("Especificá la barrera de acceso")
       return
     }
-    if (values.isOperation && !values.operationName.trim()) {
-      toast.error("Ingresa el nombre de la operación")
+    if (
+      values.treatmentType === "CIRUGIA" &&
+      !values.operationName.trim()
+    ) {
+      toast.error("Selecciona el procedimiento quirúrgico")
       return
     }
 
@@ -3584,9 +3640,14 @@ function TratamientosForm({
       treatmentType: values.treatmentType.trim(),
       treatmentFrequency: normalizedFrequency,
       treatmentSituation: values.treatmentSituation,
-      operationName: values.isOperation
-        ? values.operationName.trim() || undefined
-        : undefined,
+      operationName:
+        values.treatmentType === "CIRUGIA"
+          ? values.operationName.trim() || undefined
+          : undefined,
+      chemotherapyRoute:
+        values.treatmentType === "QUIMIOTERAPIA"
+          ? values.chemotherapyRoute.trim() || undefined
+          : undefined,
       careProgram: values.careProgram,
       receivesTeleconsultation: values.receivesTeleconsultation,
       ...(values.receivesTeleconsultation === true
@@ -3671,8 +3732,8 @@ function TratamientosForm({
       treatmentType: "",
       treatmentFrequency: undefined,
       treatmentSituation: undefined,
-      isOperation: undefined,
       operationName: "",
+      chemotherapyRoute: "",
       careProgram: undefined,
       receivesTeleconsultation: undefined,
       teleconsultationNote: "",
@@ -3906,25 +3967,46 @@ function TratamientosForm({
               <CatalogSelect
                 kind="treatment_type"
                 value={watched.treatmentType || null}
-                onValueChange={(code) =>
+                onValueChange={(code) => {
                   setValue("treatmentType", code ?? "")
-                }
+                  if (code !== "QUIMIOTERAPIA") setValue("chemotherapyRoute", "")
+                  if (code !== "CIRUGIA") setValue("operationName", "")
+                }}
               />
             </div>
-            <TriSelect
-              label="¿Es una operación?"
-              value={isOperation}
-              onChange={(value) => {
-                setValue("isOperation", value)
-                if (!value) setValue("operationName", "")
-              }}
-            />
-            {isOperation && (
+            {watched.treatmentType === "QUIMIOTERAPIA" && (
               <div className="space-y-2">
-                <Label>Nombre de la operación</Label>
-                <Input
-                  {...register("operationName")}
-                  placeholder="Ej: Mastectomía"
+                <Label>Vía de quimioterapia</Label>
+                <CatalogSelect
+                  kind="chemotherapy_route"
+                  value={watched.chemotherapyRoute || null}
+                  onValueChange={(code) =>
+                    setValue("chemotherapyRoute", code ?? "")
+                  }
+                  placeholder="Seleccionar vía..."
+                />
+              </div>
+            )}
+            {watched.treatmentType === "CIRUGIA" && (
+              <div className="space-y-2">
+                <Label>Procedimiento quirúrgico</Label>
+                <CatalogSelect
+                  kind="surgical_procedure"
+                  value={watched.operationName || null}
+                  onValueChange={(code) =>
+                    setValue("operationName", code ?? "")
+                  }
+                  extraItems={
+                    watched.operationName
+                      ? [
+                          {
+                            value: watched.operationName,
+                            label: watched.operationName,
+                          },
+                        ]
+                      : []
+                  }
+                  placeholder="Seleccionar procedimiento..."
                 />
               </div>
             )}

@@ -15,6 +15,9 @@ export const OPEN_CATALOG_KINDS = [
   "native_language",
   "entry_source",
   "entry_sub_source",
+  "country",
+  "chemotherapy_route",
+  "surgical_procedure",
 ] as const satisfies readonly CatalogKind[]
 
 export type OpenCatalogKind = (typeof OPEN_CATALOG_KINDS)[number]
@@ -40,6 +43,9 @@ export const CATALOG_KIND_LABELS: Record<CatalogKind, string> = {
   patient_health_phase: "Fase clínica",
   patient_health_subcategory: "Subcategoría clínica",
   treatment_type: "Tipo de tratamiento",
+  country: "País",
+  chemotherapy_route: "Vía de quimioterapia",
+  surgical_procedure: "Procedimiento quirúrgico",
 }
 
 export const PRIORITY_CATALOG_KINDS: CatalogKind[] = [

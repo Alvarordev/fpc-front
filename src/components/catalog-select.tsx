@@ -55,7 +55,10 @@ export function CatalogSelect({
   const [createOpen, setCreateOpen] = useState(false)
   const { data: items = [] } = useCatalog(kind)
   const catalogItems = catalogSelectItems(items)
-  const selectItems = [...catalogItems, ...extraItems]
+  const extra = extraItems.filter(
+    (item) => !catalogItems.some((catalogItem) => catalogItem.value === item.value),
+  )
+  const selectItems = [...catalogItems, ...extra]
 
   function handleCreated(item: CatalogItem) {
     onValueChange(item.code)
