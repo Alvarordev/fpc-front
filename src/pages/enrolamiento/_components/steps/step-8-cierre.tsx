@@ -16,6 +16,7 @@ import { enrollmentsApi } from "@/api/enrollments"
 import { historicalRecordsApi } from "@/api/historical-records"
 import { useAuthStore } from "@/store/auth-store"
 import { useEnrollmentStore } from "../../_store/enrollment-store"
+import { CatalogValue } from "@/components/catalog-select"
 import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 import { toast } from "sonner"
 import { buildEnrollmentPayload } from "./step-8-payload"
@@ -217,7 +218,27 @@ export function Step8Cierre({
             Seguro
           </span>
           <span className="font-medium">
-            {draft.insurance.insuranceType || "—"}
+            {draft.insurance.insuranceType &&
+            draft.insurance.insuranceType !== "NONE" ? (
+              <>
+                <CatalogValue
+                  kind="insurance_type"
+                  code={draft.insurance.insuranceType}
+                />
+                {draft.insurance.insuranceType === "EPS" &&
+                  draft.insurance.epsProvider && (
+                    <>
+                      {" · "}
+                      <CatalogValue
+                        kind="eps_provider"
+                        code={draft.insurance.epsProvider}
+                      />
+                    </>
+                  )}
+              </>
+            ) : (
+              "Sin seguro"
+            )}
           </span>
         </div>
       </div>

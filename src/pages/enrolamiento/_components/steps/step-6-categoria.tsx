@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tag } from "lucide-react"
+import { CatalogValue } from "@/components/catalog-select"
 import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
 const CATEGORY_OPTIONS = [
@@ -50,7 +51,13 @@ export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
         </p>
         <p className="text-foreground/70 text-sm">
           Seguro seleccionado:{" "}
-          <strong>{seguro && seguro !== "NONE" ? seguro : "Sin seguro"}</strong>
+          <strong>
+            {seguro && seguro !== "NONE" ? (
+              <CatalogValue kind="insurance_type" code={seguro} />
+            ) : (
+              "Sin seguro"
+            )}
+          </strong>
           . Esta selección determina los campos del siguiente paso.
         </p>
       </div>

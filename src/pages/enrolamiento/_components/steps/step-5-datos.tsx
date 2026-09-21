@@ -58,25 +58,6 @@ const EDU: Record<EducationLevel, string> = {
   HIGHER: "Superior",
 }
 
-const INS: Record<InsuranceType, string> = {
-  SIS: "SIS",
-  ESSALUD: "EsSalud",
-  EPS: "EPS",
-  FUERZAS_ARMADAS: "Fuerzas Armadas",
-  SALUDPOL: "SaludPol",
-  NONE: "Ninguno",
-}
-
-const EPS_LABELS: Record<EpsProvider, string> = {
-  PACIFICO: "Pacífico",
-  RIMAC: "Rímac",
-  MAPFRE: "Mapfre",
-  LA_POSITIVA: "La Positiva",
-  SANITAS: "Sanitas",
-  ONCOSALUD: "Oncosalud",
-  OTHER: "Otro",
-}
-
 const ENTRY_POINTS = [
   "Llamada directa",
   "Referido por paciente",
@@ -1386,13 +1367,13 @@ export function Step5Datos({
               <Label className={fl}>
                 Tipo de seguro <span className="text-destructive">*</span>
               </Label>
-              <Select
-                items={Object.entries(INS).map(([value, label]) => ({
-                  value,
-                  label,
-                }))}
+              <CatalogSelect
+                kind="insurance_type"
+                excludeCodes={["NONE"]}
                 value={insurance.insuranceType}
-                onValueChange={(value) =>
+                triggerClassName={sc}
+                onValueChange={(value) => {
+                  if (!value) return
                   updateDraft({
                     insurance: {
                       ...insurance,
@@ -1401,49 +1382,26 @@ export function Step5Datos({
                         value !== "EPS" ? undefined : insurance.epsProvider,
                     },
                   })
-                }
-              >
-                <SelectTrigger className={sc}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(INS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                }}
+              />
             </div>
             {insurance.insuranceType === "EPS" && (
               <div className="flex flex-col gap-2">
                 <Label className={fl}>Proveedor EPS</Label>
-                <Select
-                  items={Object.entries(EPS_LABELS).map(([value, label]) => ({
-                    value,
-                    label,
-                  }))}
+                <CatalogSelect
+                  kind="eps_provider"
                   value={insurance.epsProvider ?? ""}
+                  placeholder="Seleccionar..."
+                  triggerClassName={sc}
                   onValueChange={(value) =>
                     updateDraft({
                       insurance: {
                         ...insurance,
-                        epsProvider: value as EpsProvider,
+                        epsProvider: (value as EpsProvider) ?? undefined,
                       },
                     })
                   }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(EPS_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
             )}
           </>

@@ -50,25 +50,6 @@ export const cancerStageBadgeClass: Record<CancerStage, string> = {
   UNKNOWN: "bg-muted text-muted-foreground border-transparent",
 }
 
-export const insuranceLabels: Record<InsuranceType, string> = {
-  SIS: "SIS",
-  ESSALUD: "EsSalud",
-  EPS: "EPS",
-  FUERZAS_ARMADAS: "Fuerzas Armadas",
-  SALUDPOL: "SaludPol",
-  NONE: "Sin seguro",
-}
-
-export const epsLabels: Record<EpsProvider, string> = {
-  PACIFICO: "Pacífico",
-  RIMAC: "Rímac",
-  MAPFRE: "Mapfre",
-  LA_POSITIVA: "La Positiva",
-  SANITAS: "Sanitas",
-  ONCOSALUD: "Oncosalud",
-  OTHER: "Otro",
-}
-
 export const genderLabels: Record<string, string> = {
   M: "Masculino",
   F: "Femenino",

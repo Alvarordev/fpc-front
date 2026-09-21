@@ -16,7 +16,11 @@ import {
   formatCatalogValue,
   useCatalog,
 } from "@/hooks/use-catalog"
-import type { CatalogItem, CatalogKind } from "@/api/catalogs"
+import {
+  OPEN_CATALOG_KINDS,
+  type CatalogItem,
+  type CatalogKind,
+} from "@/api/catalogs"
 import { cn } from "@/lib/utils"
 
 export const NON_ONCOLOGICAL_DIAGNOSIS = "__NON_ONCOLOGICAL__"
@@ -32,6 +36,7 @@ type CatalogSelectProps = {
   placeholder?: string
   disabled?: boolean
   extraItems?: CatalogSelectOption[]
+  excludeCodes?: string[]
   triggerClassName?: string
 }
 
@@ -48,15 +53,25 @@ export function CatalogSelect({
   placeholder = "Seleccionar...",
   disabled = false,
   extraItems = [],
+  excludeCodes = [],
   triggerClassName,
 }: CatalogSelectProps) {
   const role = useAuthStore((state) => state.user?.role)
-  const showCreate = allowCreate ?? canCreateCatalogDefault(role)
+  const isOpenKind = OPEN_CATALOG_KINDS.includes(
+    kind as (typeof OPEN_CATALOG_KINDS)[number],
+  )
+  const showCreate =
+    allowCreate ?? (isOpenKind && canCreateCatalogDefault(role))
   const [createOpen, setCreateOpen] = useState(false)
   const { data: items = [] } = useCatalog(kind)
-  const catalogItems = catalogSelectItems(items)
+  const excluded = new Set(excludeCodes)
+  const catalogItems = catalogSelectItems(items).filter(
+    (item) => !excluded.has(item.value),
+  )
   const extra = extraItems.filter(
-    (item) => !catalogItems.some((catalogItem) => catalogItem.value === item.value),
+    (item) =>
+      !excluded.has(item.value) &&
+      !catalogItems.some((catalogItem) => catalogItem.value === item.value),
   )
   const selectItems = [...catalogItems, ...extra]
 

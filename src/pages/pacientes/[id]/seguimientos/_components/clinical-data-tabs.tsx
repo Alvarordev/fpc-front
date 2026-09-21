@@ -88,8 +88,6 @@ import {
   cancerStageLabels as cancerStageOptions,
   diagnosticStatusLabels,
   educationLabels as educationOptions,
-  epsLabels as epsOptions,
-  insuranceLabels as insuranceOptions,
   interruptionReasonLabels,
   labelMapToSelectItems,
   normalizeZoneType,
@@ -4743,48 +4741,27 @@ function SeguroForm({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo de seguro</Label>
-          <Select
-            items={Object.entries(insuranceOptions).map(([value, label]) => ({
-              value,
-              label,
-            }))}
+          <CatalogSelect
+            kind="insurance_type"
             value={insuranceType}
-            onValueChange={(v) => setValue("insuranceType", v as InsuranceType)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(insuranceOptions).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Seleccionar"
+            onValueChange={(v) => {
+              if (!v) return
+              setValue("insuranceType", v as InsuranceType)
+            }}
+          />
         </div>
         {insuranceType === "EPS" && (
           <div className="space-y-2">
             <Label>Proveedor EPS</Label>
-            <Select
-              items={Object.entries(epsOptions).map(([value, label]) => ({
-                value,
-                label,
-              }))}
+            <CatalogSelect
+              kind="eps_provider"
               value={epsProvider}
-              onValueChange={(v) => setValue("epsProvider", v as EpsProvider)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(epsOptions).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar"
+              onValueChange={(v) =>
+                setValue("epsProvider", (v as EpsProvider) ?? "")
+              }
+            />
           </div>
         )}
         <div className="space-y-2">

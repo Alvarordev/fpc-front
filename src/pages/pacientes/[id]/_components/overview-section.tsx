@@ -37,10 +37,8 @@ import {
   cancerStageLabels,
   diagnosticStatusLabels,
   educationLabels,
-  epsLabels,
   healthPhaseLabels,
   genderLabels,
-  insuranceLabels,
   zoneTypeLabels,
   relationshipLabels,
   roleLabels,
@@ -821,10 +819,18 @@ export function OverviewSection({
                 className="flex items-center justify-between gap-2 rounded-md border p-3 text-sm"
               >
                 <span>
-                  <b>{insuranceLabels[item.insuranceType]}</b>
+                  <b>
+                    <CatalogValue
+                      kind="insurance_type"
+                      code={item.insuranceType}
+                    />
+                  </b>
                   {item.epsProvider && (
                     <span className="text-muted-foreground ml-2">
-                      {epsLabels[item.epsProvider]}
+                      <CatalogValue
+                        kind="eps_provider"
+                        code={item.epsProvider}
+                      />
                     </span>
                   )}
                   {item.insuranceType === "ESSALUD" &&
