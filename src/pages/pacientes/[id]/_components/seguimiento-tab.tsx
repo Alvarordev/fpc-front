@@ -289,7 +289,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
     user?.role === "ADMIN" || user?.role === "FOUNDATION"
 
   const timelineQuery = useInfiniteQuery({
-    queryKey: ["patient-timeline", pacienteId],
+    queryKey: ["patient-timeline", pacienteId, "infinite"],
     queryFn: ({ pageParam }) =>
       patientTimelineApi.list(pacienteId, {
         limit: PATIENT_TIMELINE_PAGE_SIZE,
@@ -297,7 +297,8 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _pages, lastPageParam) => {
-      const nextOffset = lastPageParam + lastPage.data.length
+      const loaded = lastPage.data?.length ?? 0
+      const nextOffset = lastPageParam + loaded
       return nextOffset < lastPage.total ? nextOffset : undefined
     },
     enabled: Boolean(pacienteId),

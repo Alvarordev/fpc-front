@@ -127,7 +127,7 @@ export function HistoricalRecordsPanel({
     staleTime: 30_000,
   })
   const timelineQuery = useInfiniteQuery({
-    queryKey: ["patient-timeline", patientId],
+    queryKey: ["patient-timeline", patientId, "infinite"],
     queryFn: ({ pageParam }) =>
       patientTimelineApi.list(patientId, {
         limit: PATIENT_TIMELINE_PAGE_SIZE,
@@ -135,7 +135,8 @@ export function HistoricalRecordsPanel({
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _pages, lastPageParam) => {
-      const nextOffset = lastPageParam + lastPage.data.length
+      const loaded = lastPage.data?.length ?? 0
+      const nextOffset = lastPageParam + loaded
       return nextOffset < lastPage.total ? nextOffset : undefined
     },
     enabled: Boolean(patientId),
