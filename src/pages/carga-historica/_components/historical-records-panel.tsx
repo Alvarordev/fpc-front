@@ -21,6 +21,7 @@ import {
 } from "@/api/patient-timeline"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   Card,
   CardContent,
@@ -45,7 +46,12 @@ type DialogTarget =
   | { kind: "REMINDER"; reminderId?: string }
   | { kind: "PSYCHOONCOLOGY"; appointmentId?: string }
 
+function isEnrollmentFollowUp(event: PatientTimelineEvent) {
+  return event.kind === "FOLLOW_UP" && event.purpose === "ENROLLMENT"
+}
+
 function eventTitle(event: PatientTimelineEvent) {
+  if (isEnrollmentFollowUp(event)) return "Enrolamiento"
   if (event.kind === "FOLLOW_UP")
     return `Seguimiento · ${optionLabel(FOLLOW_UP_TYPE_OPTIONS, event.type)}`
   if (event.kind === "REMINDER") return "Recordatorio"
@@ -67,6 +73,7 @@ function eventStatus(event: PatientTimelineEvent) {
 }
 
 function editTargetForEvent(event: PatientTimelineEvent): DialogTarget | null {
+  if (isEnrollmentFollowUp(event)) return null
   if (event.kind === "FOLLOW_UP")
     return { kind: "FOLLOW_UP", followUpId: event.followUpId }
   if (event.kind === "REMINDER")
@@ -318,17 +325,44 @@ export function HistoricalRecordsPanel({
               <div className="before:bg-border relative space-y-3 before:absolute before:top-2 before:bottom-2 before:left-2 before:w-px">
                 {timelineEvents.map((event) => {
                   const editTarget = editTargetForEvent(event)
+                  const isEnrollment = isEnrollmentFollowUp(event)
                   return (
                     <div
                       key={`${event.kind}-${event.id}`}
                       className="relative flex gap-3 pl-1"
                     >
-                      <div className="border-background bg-primary ring-primary/30 z-10 mt-1 flex size-3 shrink-0 rounded-full border-2 ring-1" />
-                      <div className="bg-card min-w-0 flex-1 rounded-xl border p-3">
+                      <div
+                        className={cn(
+                          "border-background z-10 mt-1 flex size-3 shrink-0 rounded-full border-2 ring-1",
+                          isEnrollment
+                            ? "bg-blue-500 ring-blue-500/30"
+                            : "bg-primary ring-primary/30",
+                        )}
+                      />
+                      <div
+                        className={cn(
+                          "min-w-0 flex-1 rounded-xl border p-3",
+                          isEnrollment
+                            ? "border-blue-500 bg-blue-50/50"
+                            : "bg-card",
+                        )}
+                      >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-medium">
-                            {eventTitle(event)}
-                          </p>
+                          <div className="min-w-0">
+                            <p
+                              className={cn(
+                                "text-sm font-medium",
+                                isEnrollment && "text-blue-800",
+                              )}
+                            >
+                              {eventTitle(event)}
+                            </p>
+                            {isEnrollment && event.kind === "FOLLOW_UP" && (
+                              <p className="text-muted-foreground text-xs">
+                                {optionLabel(FOLLOW_UP_TYPE_OPTIONS, event.type)}
+                              </p>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">{eventStatus(event)}</Badge>
                             <span className="text-muted-foreground text-xs">
