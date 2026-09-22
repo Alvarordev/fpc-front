@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMemo, useState } from "react"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import { enrollmentsApi } from "@/api/enrollments"
 import { patientsApi } from "@/api/patients"
 import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
 import {
+  PATIENT_TIMELINE_PAGE_SIZE,
   patientTimelineApi,
   type PatientTimelineEvent,
 } from "@/api/patient-timeline"
@@ -125,17 +126,31 @@ export function HistoricalRecordsPanel({
     enabled: Boolean(patientId),
     staleTime: 30_000,
   })
-  const timelineQuery = useQuery({
+  const timelineQuery = useInfiniteQuery({
     queryKey: ["patient-timeline", patientId],
-    queryFn: () => patientTimelineApi.list(patientId),
+    queryFn: ({ pageParam }) =>
+      patientTimelineApi.list(patientId, {
+        limit: PATIENT_TIMELINE_PAGE_SIZE,
+        offset: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _pages, lastPageParam) => {
+      const nextOffset = lastPageParam + lastPage.data.length
+      return nextOffset < lastPage.total ? nextOffset : undefined
+    },
     enabled: Boolean(patientId),
   })
 
+  const timelineEvents = useMemo(
+    () => timelineQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [timelineQuery.data],
+  )
   const enrollmentFollowUpIds = new Set(
     (enrollmentsQuery.data ?? []).map((enrollment) => enrollment.followUpId),
   )
-  const followUpEvents =
-    timelineQuery.data?.data.filter((event) => event.kind === "FOLLOW_UP") ?? []
+  const followUpEvents = timelineEvents.filter(
+    (event) => event.kind === "FOLLOW_UP",
+  )
   const followUpItems: SelectOption[] = [
     ...(enrollmentsQuery.data ?? []).map((enrollment) => ({
       value: enrollment.followUpId,
@@ -291,83 +306,100 @@ export function HistoricalRecordsPanel({
           )}
           {!timelineQuery.isLoading &&
             !timelineQuery.isError &&
-            timelineQuery.data?.data.length === 0 && (
+            timelineEvents.length === 0 && (
               <div className="text-muted-foreground flex flex-col items-center gap-2 py-8 text-center text-sm">
                 <ClipboardList className="size-8 opacity-50" />
                 Todavía no hay registros visibles para este paciente.
               </div>
             )}
-          {timelineQuery.data?.data.length ? (
-            <div className="before:bg-border relative space-y-3 before:absolute before:top-2 before:bottom-2 before:left-2 before:w-px">
-              {timelineQuery.data.data.map((event) => {
-                const editTarget = editTargetForEvent(event)
-                return (
-                  <div
-                    key={`${event.kind}-${event.id}`}
-                    className="relative flex gap-3 pl-1"
-                  >
-                    <div className="border-background bg-primary ring-primary/30 z-10 mt-1 flex size-3 shrink-0 rounded-full border-2 ring-1" />
-                    <div className="bg-card min-w-0 flex-1 rounded-xl border p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-medium">
-                          {eventTitle(event)}
+          {timelineEvents.length > 0 ? (
+            <div className="space-y-4">
+              <div className="before:bg-border relative space-y-3 before:absolute before:top-2 before:bottom-2 before:left-2 before:w-px">
+                {timelineEvents.map((event) => {
+                  const editTarget = editTargetForEvent(event)
+                  return (
+                    <div
+                      key={`${event.kind}-${event.id}`}
+                      className="relative flex gap-3 pl-1"
+                    >
+                      <div className="border-background bg-primary ring-primary/30 z-10 mt-1 flex size-3 shrink-0 rounded-full border-2 ring-1" />
+                      <div className="bg-card min-w-0 flex-1 rounded-xl border p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-medium">
+                            {eventTitle(event)}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{eventStatus(event)}</Badge>
+                            <span className="text-muted-foreground text-xs">
+                              {event.occurredAtIsApproximate &&
+                                "Fecha aproximada · "}
+                              {formatHistoricalDate(event.occurredAt)}
+                            </span>
+                            {editTarget && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 gap-1 text-xs"
+                                onClick={() => openDialog(editTarget)}
+                              >
+                                <Pencil className="size-3.5" />
+                                Editar
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          {eventDescription(event)}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{eventStatus(event)}</Badge>
-                          <span className="text-muted-foreground text-xs">
-                            {event.occurredAtIsApproximate &&
-                              "Fecha aproximada · "}
-                            {formatHistoricalDate(event.occurredAt)}
+                        {event.kind === "FOLLOW_UP" &&
+                          event.outcomes.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {event.outcomes.map((outcome) => (
+                                <Badge
+                                  key={`${outcome.type}-${outcome.recordId}`}
+                                  variant="secondary"
+                                >
+                                  {outcome.label}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        <div className="text-muted-foreground/80 mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t pt-2 text-[11px]">
+                          <span>
+                            Creado en CRM:{" "}
+                            {formatHistoricalDateTime(event.createdAt)}
                           </span>
-                          {editTarget && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 gap-1 text-xs"
-                              onClick={() => openDialog(editTarget)}
-                            >
-                              <Pencil className="size-3.5" />
-                              Editar
-                            </Button>
+                          <span>
+                            Actualizado:{" "}
+                            {formatHistoricalDateTime(event.updatedAt)}
+                          </span>
+                          {event.historicalLoadedByEmail && (
+                            <span>
+                              Usuario de carga: {event.historicalLoadedByEmail}
+                            </span>
                           )}
                         </div>
                       </div>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        {eventDescription(event)}
-                      </p>
-                      {event.kind === "FOLLOW_UP" &&
-                        event.outcomes.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {event.outcomes.map((outcome) => (
-                              <Badge
-                                key={`${outcome.type}-${outcome.recordId}`}
-                                variant="secondary"
-                              >
-                                {outcome.label}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      <div className="text-muted-foreground/80 mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t pt-2 text-[11px]">
-                        <span>
-                          Creado en CRM:{" "}
-                          {formatHistoricalDateTime(event.createdAt)}
-                        </span>
-                        <span>
-                          Actualizado:{" "}
-                          {formatHistoricalDateTime(event.updatedAt)}
-                        </span>
-                        {event.historicalLoadedByEmail && (
-                          <span>
-                            Usuario de carga: {event.historicalLoadedByEmail}
-                          </span>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+              {timelineQuery.hasNextPage && (
+                <div className="flex justify-center pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={timelineQuery.isFetchingNextPage}
+                    onClick={() => timelineQuery.fetchNextPage()}
+                  >
+                    {timelineQuery.isFetchingNextPage
+                      ? "Cargando..."
+                      : "Ver más"}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : null}
         </CardContent>

@@ -8,6 +8,13 @@ export type PatientTimelineOutcome =
 export type PatientTimeline =
   components["schemas"]["PatientTimelineResponseDto"]
 
+export const PATIENT_TIMELINE_PAGE_SIZE = 50
+
+export type PatientTimelineListParams = {
+  limit?: number
+  offset?: number
+}
+
 export class PatientTimelineApiError extends Error {
   readonly status: number
 
@@ -19,9 +26,18 @@ export class PatientTimelineApiError extends Error {
 }
 
 export const patientTimelineApi = {
-  async list(patientId: string): Promise<PatientTimeline> {
+  async list(
+    patientId: string,
+    params: PatientTimelineListParams = {},
+  ): Promise<PatientTimeline> {
     const { data, response } = await api.GET("/patients/{id}/timeline", {
-      params: { path: { id: patientId } },
+      params: {
+        path: { id: patientId },
+        query: {
+          limit: params.limit,
+          offset: params.offset,
+        },
+      },
     })
 
     if (!data) {

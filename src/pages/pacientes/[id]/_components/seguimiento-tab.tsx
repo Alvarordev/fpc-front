@@ -1,6 +1,11 @@
 import { useMemo, useState, type ComponentType } from "react"
 import { useNavigate } from "react-router-dom"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import {
   AlertCircle,
   ArrowRight,
@@ -24,6 +29,7 @@ import { agentsApi } from "@/api/agents"
 import { patientsApi } from "@/api/patients"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
 import {
+  PATIENT_TIMELINE_PAGE_SIZE,
   patientTimelineApi,
   type PatientTimelineEvent,
 } from "@/api/patient-timeline"
@@ -282,9 +288,18 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
   const requiresAgentSelection =
     user?.role === "ADMIN" || user?.role === "FOUNDATION"
 
-  const timelineQuery = useQuery({
+  const timelineQuery = useInfiniteQuery({
     queryKey: ["patient-timeline", pacienteId],
-    queryFn: () => patientTimelineApi.list(pacienteId),
+    queryFn: ({ pageParam }) =>
+      patientTimelineApi.list(pacienteId, {
+        limit: PATIENT_TIMELINE_PAGE_SIZE,
+        offset: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _pages, lastPageParam) => {
+      const nextOffset = lastPageParam + lastPage.data.length
+      return nextOffset < lastPage.total ? nextOffset : undefined
+    },
     enabled: Boolean(pacienteId),
   })
   const followUpsQuery = useQuery({
@@ -351,7 +366,10 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
       }),
   })
 
-  const events = timelineQuery.data?.data
+  const events = useMemo(
+    () => timelineQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [timelineQuery.data],
+  )
   const followUps = followUpsQuery.data
   const scheduledFollowUps = useMemo(
     () =>
@@ -379,7 +397,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
     })[0]
   const historyEvents = useMemo(
     () =>
-      (events ?? [])
+      events
         .filter(isIndependentHistoryEvent)
         .sort(
           (a, b) =>
@@ -537,34 +555,51 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
             </div>
 
             {historyGroups.length > 0 ? (
-              <div className="relative space-y-8 pl-4 sm:pl-8">
-                <div className="bg-border absolute top-1 bottom-1 left-1.5 w-px sm:left-5" />
-                {historyGroups.map((group) => (
-                  <div key={group.label} className="relative space-y-3">
-                    <div className="relative flex items-center gap-3">
-                      <span className="bg-muted-foreground/60 ring-background relative z-10 size-3 rounded-full ring-4" />
-                      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                        {group.label}
-                      </p>
+              <div className="space-y-4">
+                <div className="relative space-y-8 pl-4 sm:pl-8">
+                  <div className="bg-border absolute top-1 bottom-1 left-1.5 w-px sm:left-5" />
+                  {historyGroups.map((group) => (
+                    <div key={group.label} className="relative space-y-3">
+                      <div className="relative flex items-center gap-3">
+                        <span className="bg-muted-foreground/60 ring-background relative z-10 size-3 rounded-full ring-4" />
+                        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                          {group.label}
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {group.events.map((event) => (
+                          <TimelineEventCard
+                            key={`${event.kind}-${event.id}`}
+                            event={event}
+                            onClick={
+                              event.kind === "FOLLOW_UP"
+                                ? () =>
+                                    navigate(
+                                      `/pacientes/${pacienteId}/seguimientos/${event.followUpId}`,
+                                    )
+                                : undefined
+                            }
+                          />
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-3">
-                      {group.events.map((event) => (
-                        <TimelineEventCard
-                          key={`${event.kind}-${event.id}`}
-                          event={event}
-                          onClick={
-                            event.kind === "FOLLOW_UP"
-                              ? () =>
-                                  navigate(
-                                    `/pacientes/${pacienteId}/seguimientos/${event.followUpId}`,
-                                  )
-                              : undefined
-                          }
-                        />
-                      ))}
-                    </div>
+                  ))}
+                </div>
+                {timelineQuery.hasNextPage && (
+                  <div className="flex justify-center pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={timelineQuery.isFetchingNextPage}
+                      onClick={() => timelineQuery.fetchNextPage()}
+                    >
+                      {timelineQuery.isFetchingNextPage
+                        ? "Cargando..."
+                        : "Ver más"}
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
             ) : (
               <Card className="ring-foreground/5 flex min-h-36 flex-col items-center justify-center gap-2 border-dashed p-6 text-center ring-1">
