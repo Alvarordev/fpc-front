@@ -33,10 +33,11 @@ export const patientTimelineApi = {
     const { data, response } = await api.GET("/patients/{id}/timeline", {
       params: {
         path: { id: patientId },
+        // OpenAPI tipa estos ints de Nest como Object; en runtime son number.
         query: {
           limit: params.limit,
           offset: params.offset,
-        },
+        } as never,
       },
     })
 
