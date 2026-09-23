@@ -2602,6 +2602,15 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ApiErrorResponseDto: {
+            statusCode: number;
+            /** @description Stable machine-readable error code when one is known */
+            code?: string;
+            message: string;
+            path: string;
+            /** Format: date-time */
+            timestamp: string;
+        };
         UpdateEnrollmentSurveyDto: {
             followUpQualityRating: number;
         };
@@ -6223,7 +6232,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
             };
             /** @description JWT missing, invalid, or expired */
             401: {
@@ -6246,12 +6257,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient is already enrolled or enrollment data conflicts */
+            /** @description Patient is already enrolled, the DNI already exists, or enrollment data conflicts */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
             };
         };
     };
@@ -10502,7 +10515,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
             };
             /** @description JWT missing, invalid, or expired */
             401: {
@@ -10524,6 +10539,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Patient is already enrolled, the DNI already exists, or enrollment data conflicts */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
             };
         };
     };

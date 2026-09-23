@@ -33,8 +33,11 @@ import { HistoricalFollowUpDialog } from "./historical-follow-up-dialog"
 import { HistoricalPsychooncologyDialog } from "./historical-psychooncology-dialog"
 import { HistoricalReminderDialog } from "./historical-reminder-dialog"
 import {
+  APPOINTMENT_STATUS_OPTIONS,
   FOLLOW_UP_PURPOSE_OPTIONS,
+  FOLLOW_UP_STATUS_OPTIONS,
   FOLLOW_UP_TYPE_OPTIONS,
+  REMINDER_STATUS_OPTIONS,
   formatHistoricalDate,
   formatHistoricalDateTime,
   optionLabel,
@@ -69,7 +72,14 @@ function eventDescription(event: PatientTimelineEvent) {
 }
 
 function eventStatus(event: PatientTimelineEvent) {
-  return event.kind === "SOCIAL_NOTE" ? "NOTA" : event.status
+  if (event.kind === "SOCIAL_NOTE") return "Nota"
+  if (event.kind === "REMINDER")
+    return optionLabel(REMINDER_STATUS_OPTIONS, event.status)
+  if (event.kind === "PSYCHOONCOLOGY_APPOINTMENT")
+    return optionLabel(APPOINTMENT_STATUS_OPTIONS, event.status)
+  if (event.kind === "FOLLOW_UP")
+    return optionLabel(FOLLOW_UP_STATUS_OPTIONS, event.status)
+  return "—"
 }
 
 function editTargetForEvent(event: PatientTimelineEvent): DialogTarget | null {
