@@ -2267,10 +2267,8 @@ export interface components {
             programDropoutReasonCode?: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "OTHER";
         };
         EnrollmentInsuranceDto: {
-            /** @enum {string} */
-            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
-            /** @enum {string} */
-            epsProvider?: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER";
+            insuranceType: string;
+            epsProvider?: string;
             changeReason?: string;
             startDate?: string;
             endDate?: string;
@@ -3375,10 +3373,8 @@ export interface components {
             patientId: string;
             /** Format: uuid */
             followUpId: string;
-            /** @enum {string} */
-            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
-            /** @enum {string|null} */
-            epsProvider: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER" | null;
+            insuranceType: string;
+            epsProvider: string | null;
             isCurrent: boolean;
             changeReason: string | null;
             /** Format: date */
@@ -3691,12 +3687,10 @@ export interface components {
             changeReason?: string;
         };
         CreatePatientInsuranceDto: {
+            insuranceType: string;
+            epsProvider?: string;
             /** Format: uuid */
             followUpId: string;
-            /** @enum {string} */
-            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
-            /** @enum {string} */
-            epsProvider?: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER";
             changeReason?: string;
             startDate?: string;
             endDate?: string;
@@ -4696,10 +4690,8 @@ export interface components {
             id?: string;
         };
         UpdateHistoricalInsuranceDto: {
-            /** @enum {string} */
-            insuranceType: "SIS" | "ESSALUD" | "EPS" | "FUERZAS_ARMADAS" | "SALUDPOL" | "NONE";
-            /** @enum {string} */
-            epsProvider?: "RIMAC" | "PACIFICO" | "MAPFRE" | "SANITAS" | "LA_POSITIVA" | "ONCOSALUD" | "OTHER";
+            insuranceType: string;
+            epsProvider?: string;
             changeReason?: string;
             startDate?: string;
             endDate?: string;
