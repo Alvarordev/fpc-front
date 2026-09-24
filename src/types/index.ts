@@ -29,22 +29,9 @@ export type EducationLevel =
   | "HIGHER_INCOMPLETE"
   | "HIGHER"
 
-export type InsuranceType =
-  | "SIS"
-  | "ESSALUD"
-  | "EPS"
-  | "FUERZAS_ARMADAS"
-  | "SALUDPOL"
-  | "NONE"
+export type InsuranceType = string
 
-export type EpsProvider =
-  | "PACIFICO"
-  | "RIMAC"
-  | "MAPFRE"
-  | "LA_POSITIVA"
-  | "SANITAS"
-  | "ONCOSALUD"
-  | "OTHER"
+export type EpsProvider = string
 
 export type CancerStage =
   | "STAGE_1"

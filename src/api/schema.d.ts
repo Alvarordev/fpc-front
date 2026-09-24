@@ -2224,10 +2224,8 @@ export interface components {
             label?: string;
         };
         UpsertPatientDetailsDto: {
-            /** @enum {string} */
-            healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
-            /** @enum {string|null} */
-            healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
+            healthPhase?: string;
+            healthSubcategory?: string | null;
             birthDepartment?: string | null;
             birthCountry?: string | null;
             /** Format: uuid */
@@ -2237,8 +2235,7 @@ export interface components {
             emergencyContactPhone?: string;
             zoneType?: string;
             emergencyContactGender?: string;
-            /** @enum {string} */
-            educationLevel?: "INITIAL" | "PRIMARY_INCOMPLETE" | "PRIMARY" | "SECONDARY_INCOMPLETE" | "SECONDARY" | "TECHNICAL" | "TECHNICAL_INCOMPLETE" | "HIGHER" | "HIGHER_INCOMPLETE" | "NONE";
+            educationLevel?: string;
             nativeLanguage?: string;
             childrenCount?: number;
             requiresTranslation?: boolean;
@@ -2253,18 +2250,15 @@ export interface components {
             /** Format: date */
             programDropoutDate?: string;
             transportationViaSepa?: boolean;
-            /** @enum {string} */
-            transportationSepaProvider?: "CRUZ_DEL_SUR" | "LATAM_AVION_SOLIDARIO" | "OTHER";
+            transportationSepaProvider?: string;
             transportationSepaProviderOther?: string;
             shelterViaSepa?: boolean;
-            /** @enum {string} */
-            shelterSepaProvider?: "FRIEDA_HELLER" | "CASA_MAGIA" | "CASA_RONALD_MCDONALD" | "INSPIRA" | "ALINEN" | "OTHER";
+            shelterSepaProvider?: string;
             shelterSepaProviderOther?: string;
             attendedEducationalTalk?: boolean;
             /** Format: date */
             attendedEducationalTalkAt?: string;
-            /** @enum {string} */
-            programDropoutReasonCode?: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "OTHER";
+            programDropoutReasonCode?: string;
         };
         EnrollmentInsuranceDto: {
             insuranceType: string;
@@ -2305,8 +2299,7 @@ export interface components {
             symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
-            /** @enum {string} */
-            cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
+            cancerStage?: string;
             diagnosisDate?: string;
             firstSymptomsDate?: string;
             /** Format: uuid */
@@ -2351,13 +2344,11 @@ export interface components {
             notReceivingReason?: string;
             operationName?: string;
             chemotherapyRoute?: string;
-            /** @enum {string} */
-            careProgram?: "COPHOES" | "PADOMI";
+            careProgram?: string;
             receivesTeleconsultation?: boolean;
             teleconsultationNote?: string;
             teleconsultationSpecialties?: string[];
-            /** @enum {string} */
-            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentSituation?: string;
             treatmentAbandonmentReason?: string;
             /** @enum {string} */
             interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
@@ -2366,8 +2357,7 @@ export interface components {
             scheduledSessions?: number;
             completedSessions?: number;
             hormonalTreatmentCompleted?: boolean;
-            /** @enum {string} */
-            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierCode?: string;
             accessBarrierOther?: string;
             orientedRegardingBarriers?: boolean;
             hasLatestPrescription?: boolean;
@@ -2523,8 +2513,7 @@ export interface components {
             familyMemberEmail?: string;
         };
         CreateEnrollmentDto: {
-            /** @enum {string} */
-            healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            healthPhase: string;
             /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
             currentlyAttendingConsultations?: boolean;
             notAttendingConsultationsNote?: string | null;
@@ -3178,10 +3167,8 @@ export interface components {
             currentDiagnosis: components["schemas"]["CurrentDiagnosisResponseDto"] | null;
             currentDepartment: string | null;
             latestFollowUp: components["schemas"]["LatestFollowUpResponseDto"] | null;
-            /** @enum {string|null} */
-            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
-            /** @enum {string|null} */
-            healthSubcategory: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
+            healthPhase: string | null;
+            healthSubcategory: string | null;
             primaryCompanionName: string | null;
         };
         PatientListResponseDto: {
@@ -3211,8 +3198,7 @@ export interface components {
         PatientHealthPhaseHistoryResponseDto: {
             /** Format: uuid */
             id: string;
-            /** @enum {string} */
-            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+            healthPhase: string;
             /** Format: date-time */
             changedAt: string;
         };
@@ -3221,10 +3207,8 @@ export interface components {
             id: string;
             /** Format: uuid */
             patientId: string;
-            /** @enum {string|null} */
-            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS" | null;
-            /** @enum {string|null} */
-            healthSubcategory: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
+            healthPhase: string | null;
+            healthSubcategory: string | null;
             birthDepartment: string | null;
             birthCountry: string | null;
             /** Format: uuid */
@@ -3235,8 +3219,7 @@ export interface components {
             emergencyContactPhone: string | null;
             zoneType: string | null;
             emergencyContactGender: string | null;
-            /** @enum {string|null} */
-            educationLevel: "INITIAL" | "PRIMARY_INCOMPLETE" | "PRIMARY" | "SECONDARY_INCOMPLETE" | "SECONDARY" | "TECHNICAL" | "TECHNICAL_INCOMPLETE" | "HIGHER" | "HIGHER_INCOMPLETE" | "NONE" | null;
+            educationLevel: string | null;
             nativeLanguage: string | null;
             childrenCount: number | null;
             requiresTranslation: boolean;
@@ -3251,18 +3234,15 @@ export interface components {
             /** Format: date */
             programDropoutDate: string | null;
             transportationViaSepa: boolean | null;
-            /** @enum {string|null} */
-            transportationSepaProvider: "CRUZ_DEL_SUR" | "LATAM_AVION_SOLIDARIO" | "OTHER" | null;
+            transportationSepaProvider: string | null;
             transportationSepaProviderOther: string | null;
             shelterViaSepa: boolean | null;
-            /** @enum {string|null} */
-            shelterSepaProvider: "FRIEDA_HELLER" | "CASA_MAGIA" | "CASA_RONALD_MCDONALD" | "INSPIRA" | "ALINEN" | "OTHER" | null;
+            shelterSepaProvider: string | null;
             shelterSepaProviderOther: string | null;
             attendedEducationalTalk: boolean | null;
             /** Format: date */
             attendedEducationalTalkAt: string | null;
-            /** @enum {string|null} */
-            programDropoutReasonCode: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "OTHER" | null;
+            programDropoutReasonCode: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3277,8 +3257,7 @@ export interface components {
             /** Format: uuid */
             followUpId: string;
             diagnosis: string;
-            /** @enum {string|null} */
-            cancerStage: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN" | null;
+            cancerStage: string | null;
             /** Format: date */
             diagnosisDate: string | null;
             /** Format: date */
@@ -3306,8 +3285,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             diagnosis: string;
-            /** @enum {string|null} */
-            cancerStage: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN" | null;
+            cancerStage: string | null;
             /** Format: date */
             diagnosisDate: string | null;
         };
@@ -3341,13 +3319,11 @@ export interface components {
             notReceivingReason: string | null;
             operationName: string | null;
             chemotherapyRoute: string | null;
-            /** @enum {string|null} */
-            careProgram: "COPHOES" | "PADOMI" | null;
+            careProgram: string | null;
             receivesTeleconsultation: boolean | null;
             teleconsultationNote: string | null;
             teleconsultationSpecialties: string[] | null;
-            /** @enum {string|null} */
-            treatmentSituation: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION" | null;
+            treatmentSituation: string | null;
             treatmentAbandonmentReason: string | null;
             treatmentViaSepa: boolean | null;
             /** @enum {string|null} */
@@ -3356,8 +3332,7 @@ export interface components {
             scheduledSessions: number | null;
             completedSessions: number | null;
             hormonalTreatmentCompleted: boolean | null;
-            /** @enum {string|null} */
-            accessBarrierCode: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER" | null;
+            accessBarrierCode: string | null;
             accessBarrierOther: string | null;
             orientedRegardingBarriers: boolean | null;
             hasLatestPrescription: boolean | null;
@@ -3675,8 +3650,7 @@ export interface components {
             /** Format: uuid */
             followUpId: string;
             diagnosis: string;
-            /** @enum {string} */
-            cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
+            cancerStage?: string;
             diagnosisDate?: string;
             firstSymptomsDate?: string;
             /** Format: uuid */
@@ -3752,13 +3726,11 @@ export interface components {
             notReceivingReason?: string;
             operationName?: string;
             chemotherapyRoute?: string;
-            /** @enum {string} */
-            careProgram?: "COPHOES" | "PADOMI";
+            careProgram?: string;
             receivesTeleconsultation?: boolean;
             teleconsultationNote?: string;
             teleconsultationSpecialties?: string[];
-            /** @enum {string} */
-            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentSituation?: string;
             treatmentAbandonmentReason?: string;
             /** @enum {string} */
             interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
@@ -3767,8 +3739,7 @@ export interface components {
             scheduledSessions?: number;
             completedSessions?: number;
             hormonalTreatmentCompleted?: boolean;
-            /** @enum {string} */
-            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierCode?: string;
             accessBarrierOther?: string;
             orientedRegardingBarriers?: boolean;
             hasLatestPrescription?: boolean;
@@ -4015,8 +3986,7 @@ export interface components {
             symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
-            /** @enum {string} */
-            cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
+            cancerStage?: string;
             diagnosisDate?: string;
             firstSymptomsDate?: string;
             /** Format: uuid */
@@ -4383,8 +4353,7 @@ export interface components {
             completedOn?: string;
         };
         CreateHistoricalEnrollmentDto: {
-            /** @enum {string} */
-            healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            healthPhase: string;
             /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
             currentlyAttendingConsultations?: boolean;
             notAttendingConsultationsNote?: string | null;
@@ -4444,13 +4413,11 @@ export interface components {
             notReceivingReason?: string;
             operationName?: string;
             chemotherapyRoute?: string;
-            /** @enum {string} */
-            careProgram?: "COPHOES" | "PADOMI";
+            careProgram?: string;
             receivesTeleconsultation?: boolean;
             teleconsultationNote?: string;
             teleconsultationSpecialties?: string[];
-            /** @enum {string} */
-            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentSituation?: string;
             treatmentAbandonmentReason?: string;
             /** @enum {string} */
             interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
@@ -4459,8 +4426,7 @@ export interface components {
             scheduledSessions?: number;
             completedSessions?: number;
             hormonalTreatmentCompleted?: boolean;
-            /** @enum {string} */
-            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierCode?: string;
             accessBarrierOther?: string;
             orientedRegardingBarriers?: boolean;
             hasLatestPrescription?: boolean;
@@ -4556,8 +4522,7 @@ export interface components {
             symptomLeadingToCheckup?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
-            /** @enum {string} */
-            cancerStage?: "STAGE_1" | "STAGE_2" | "STAGE_3" | "STAGE_4" | "UNKNOWN";
+            cancerStage?: string;
             diagnosisDate?: string;
             firstSymptomsDate?: string;
             /** Format: uuid */
@@ -4588,13 +4553,11 @@ export interface components {
             notReceivingReason?: string;
             operationName?: string;
             chemotherapyRoute?: string;
-            /** @enum {string} */
-            careProgram?: "COPHOES" | "PADOMI";
+            careProgram?: string;
             receivesTeleconsultation?: boolean;
             teleconsultationNote?: string;
             teleconsultationSpecialties?: string[];
-            /** @enum {string} */
-            treatmentSituation?: "EN_CURSO" | "PENDIENTE_DE_INICIO" | "INTERRUMPIDO" | "FINALIZADO" | "SEARCHING" | "ABANDONED" | "DECEASED_DURING_TREATMENT" | "NOT_APPLICABLE" | "REMISSION";
+            treatmentSituation?: string;
             treatmentAbandonmentReason?: string;
             /** @enum {string} */
             interruptionReason?: "ADVERSE_REACTION" | "THERAPEUTIC_OPTION_EVAL" | "OTHER";
@@ -4603,8 +4566,7 @@ export interface components {
             scheduledSessions?: number;
             completedSessions?: number;
             hormonalTreatmentCompleted?: boolean;
-            /** @enum {string} */
-            accessBarrierCode?: "TRANSFER" | "LODGING" | "ALTERNATIVE_MEDICINE" | "EXCESSIVE_COST" | "DOES_NOT_WANT_TO_START" | "STOCKOUT" | "INFUSION_ROOM_INOPERATIVE" | "PATIENT_OVERLOAD" | "OTHER";
+            accessBarrierCode?: string;
             accessBarrierOther?: string;
             orientedRegardingBarriers?: boolean;
             hasLatestPrescription?: boolean;
@@ -7327,8 +7289,8 @@ export interface operations {
                 role?: "UNKNOWN" | "PATIENT" | "COMPANION";
                 status?: "UNENROLLED" | "ENROLLED";
                 activityStatus?: "ACTIVE" | "INACTIVE" | "REACTIVE";
-                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
-                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | "UNASSIGNED";
+                healthPhase?: string;
+                healthSubcategory?: string;
                 segment?: "CARE" | "PROSPECTS";
                 search?: string;
                 limit?: number;
