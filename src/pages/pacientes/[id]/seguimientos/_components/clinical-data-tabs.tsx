@@ -84,16 +84,9 @@ import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-
 import { PatientDocumentUploadDialog } from "../../_components/patient-document-upload-dialog"
 import { usePatient } from "../../_hooks/use-patient"
 import {
-  accessBarrierLabels,
-  cancerStageLabels as cancerStageOptions,
   diagnosticStatusLabels,
-  educationLabels as educationOptions,
   interruptionReasonLabels,
   labelMapToSelectItems,
-  normalizeZoneType,
-  programDropoutReasonCodeLabels,
-  shelterSepaProviderLabels,
-  transportationSepaProviderLabels,
   type CancerStage,
   type EducationLevel,
   type EpsProvider,
@@ -138,21 +131,6 @@ const CLINICAL_TRI_OPTIONS = [
   { value: "NO_MENCIONA", label: "No menciona" },
 ] as const
 
-const TREATMENT_SITUATIONS = [
-  { value: "EN_CURSO", label: "En proceso" },
-  { value: "PENDIENTE_DE_INICIO", label: "En espera" },
-  { value: "INTERRUMPIDO", label: "Suspendido" },
-  { value: "FINALIZADO", label: "Culminado" },
-  { value: "SEARCHING", label: "En búsqueda" },
-  { value: "ABANDONED", label: "Abandonado" },
-  {
-    value: "DECEASED_DURING_TREATMENT",
-    label: "Culminado en situación de tratamiento",
-  },
-  { value: "NOT_APPLICABLE", label: "N/A" },
-  { value: "REMISSION", label: "En remisión" },
-] as const
-
 type TreatmentSituation = NonNullable<
   CreatePatientTreatmentInput["treatmentSituation"]
 >
@@ -175,16 +153,6 @@ type ProgramDropoutReasonCode = NonNullable<
 const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(
   interruptionReasonLabels,
 )
-const ACCESS_BARRIER_ITEMS = labelMapToSelectItems(accessBarrierLabels)
-const TRANSPORTATION_SEPA_PROVIDER_ITEMS = labelMapToSelectItems(
-  transportationSepaProviderLabels,
-)
-const SHELTER_SEPA_PROVIDER_ITEMS = labelMapToSelectItems(
-  shelterSepaProviderLabels,
-)
-const PROGRAM_DROPOUT_REASON_CODE_ITEMS = labelMapToSelectItems(
-  programDropoutReasonCodeLabels,
-)
 const DIAGNOSTIC_STATUS_ITEMS = labelMapToSelectItems(diagnosticStatusLabels)
 
 const NON_ONCOLOGICAL_STATUS_ITEMS = [
@@ -199,11 +167,6 @@ function formatDiagnosticSearchDuration(minutes: number): string {
   const days = Math.floor(hours / 24)
   return `${days} ${days === 1 ? "día" : "días"}`
 }
-
-const CARE_PROGRAMS = [
-  { value: "COPHOES", label: "COPHOES" },
-  { value: "PADOMI", label: "PADOMI" },
-] as const
 
 const HEALTH_BACKGROUND_CAUSES = [
   { value: "DIAGNOSIS", label: "Diagnóstico" },
@@ -1415,11 +1378,6 @@ const ADDRESS_TYPES = [
 ] as const
 
 const DEPARTMENT_OPTIONS = DEPARTMENTS
-
-const ZONE_TYPES = [
-  { value: "URBAN", label: "Urbana" },
-  { value: "RURAL", label: "Rural" },
-] as const
 
 function isHttpUrl(value: string) {
   try {
@@ -2644,13 +2602,14 @@ function DiagnosticoForm({
     { value: "REPLACE", label: "Reemplazar diagnóstico existente" },
   ] as const
   const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
+  const { data: cancerStages = [] } = useCatalog("cancer_stage")
 
   function diagnosisStageLabel(
     code: string,
     cancerStage: PatientDiagnosis["cancerStage"],
   ) {
     const stage = cancerStage
-      ? cancerStageOptions[cancerStage]
+      ? catalogLabel(cancerStages, cancerStage)
       : "Etapa sin dato"
     return `${catalogLabel(cancerDiagnoses, code)} · ${stage}`
   }
@@ -2817,9 +2776,14 @@ function DiagnosticoForm({
                     )}
                   </span>
                   <span className="text-muted-foreground mt-0.5 block text-[11px]">
-                    {diagnosis.cancerStage
-                      ? cancerStageOptions[diagnosis.cancerStage]
-                      : "Etapa sin dato"}
+                    {diagnosis.cancerStage ? (
+                      <CatalogValue
+                        kind="cancer_stage"
+                        code={diagnosis.cancerStage}
+                      />
+                    ) : (
+                      "Etapa sin dato"
+                    )}
                   </span>
                 </span>
                 <ChevronRight className="size-3.5 shrink-0 text-blue-700" />
@@ -2982,25 +2946,15 @@ function DiagnosticoForm({
         />
         <div className="space-y-2">
           <Label>Etapa</Label>
-          <Select
-            items={Object.entries(cancerStageOptions).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-            value={cancerStage}
-            onValueChange={(v) => setValue("cancerStage", v as CancerStage)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar etapa" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(cancerStageOptions).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CatalogSelect
+            kind="cancer_stage"
+            allowCreate={false}
+            value={cancerStage || null}
+            onValueChange={(code) =>
+              setValue("cancerStage", (code ?? "") as CancerStage)
+            }
+            placeholder="Seleccionar etapa"
+          />
         </div>
         <div className="space-y-2">
           <Label>Fecha de diagnóstico</Label>
@@ -4004,24 +3958,15 @@ function TratamientosForm({
             )}
             <div className="space-y-2">
               <Label>Programa de atención</Label>
-              <Select
-                items={CARE_PROGRAMS}
-                value={watched.careProgram ?? ""}
-                onValueChange={(value) =>
-                  setValue("careProgram", value as CareProgram)
+              <CatalogSelect
+                kind="care_program"
+                allowCreate={false}
+                value={watched.careProgram ?? null}
+                onValueChange={(code) =>
+                  setValue("careProgram", (code ?? undefined) as CareProgram)
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar programa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CARE_PROGRAMS.map((program) => (
-                    <SelectItem key={program.value} value={program.value}>
-                      {program.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Seleccionar programa"
+              />
             </div>
             <DurationInput
               label="Frecuencia del tratamiento"
@@ -4033,27 +3978,18 @@ function TratamientosForm({
             />
             <div className="space-y-2">
               <Label>Situación del tratamiento</Label>
-              <Select
-                items={TREATMENT_SITUATIONS}
-                value={treatmentSituation ?? ""}
-                onValueChange={(value) =>
+              <CatalogSelect
+                kind="treatment_situation"
+                allowCreate={false}
+                value={treatmentSituation ?? null}
+                onValueChange={(code) =>
                   setValue(
                     "treatmentSituation",
-                    value as TreatmentFormValues["treatmentSituation"],
+                    (code || undefined) as TreatmentFormValues["treatmentSituation"],
                   )
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar situación" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TREATMENT_SITUATIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Seleccionar situación"
+              />
             </div>
             <div className="space-y-2">
               <Label>Fecha de inicio</Label>
@@ -4127,27 +4063,18 @@ function TratamientosForm({
             />
             <div className="space-y-2">
               <Label>Barrera de acceso</Label>
-              <Select
-                items={ACCESS_BARRIER_ITEMS}
-                value={accessBarrierCode ?? ""}
-                onValueChange={(value) =>
+              <CatalogSelect
+                kind="access_barrier"
+                allowCreate={false}
+                value={accessBarrierCode ?? null}
+                onValueChange={(code) =>
                   setValue(
                     "accessBarrierCode",
-                    (value as AccessBarrierCode | null) ?? undefined,
+                    (code as AccessBarrierCode | null) ?? undefined,
                   )
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar barrera" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCESS_BARRIER_ITEMS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Seleccionar barrera"
+              />
             </div>
             {accessBarrierCode === "OTHER" && (
               <div className="space-y-2">
@@ -4896,8 +4823,7 @@ function SeguimientoSocialForm({
   const { register, handleSubmit, watch, setValue, reset } =
     useForm<SocialFormValues>({
       defaultValues: {
-        zoneType:
-          normalizeZoneType(draft?.zoneType ?? currentDetails?.zoneType) ?? "",
+        zoneType: draft?.zoneType ?? currentDetails?.zoneType ?? "",
         nativeLanguage:
           draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
         educationLevel:
@@ -4977,8 +4903,7 @@ function SeguimientoSocialForm({
   useEffect(() => {
     if (!currentDetails && !draft) return
     reset({
-      zoneType:
-        normalizeZoneType(draft?.zoneType ?? currentDetails?.zoneType) ?? "",
+      zoneType: draft?.zoneType ?? currentDetails?.zoneType ?? "",
       nativeLanguage:
         draft?.nativeLanguage ?? currentDetails?.nativeLanguage ?? "",
       educationLevel:
@@ -5111,55 +5036,33 @@ function SeguimientoSocialForm({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Zonificación de residencia</Label>
-          <Select
-            items={ZONE_TYPES}
-            value={watch("zoneType")}
-            onValueChange={(value) => setValue("zoneType", value ?? "")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar zonificación" />
-            </SelectTrigger>
-            <SelectContent>
-              {ZONE_TYPES.map((zone) => (
-                <SelectItem key={zone.value} value={zone.value}>
-                  {zone.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CatalogSelect
+            kind="zone_type"
+            allowCreate={false}
+            value={watch("zoneType") || null}
+            onValueChange={(code) => setValue("zoneType", code ?? "")}
+            placeholder="Seleccionar zonificación"
+          />
         </div>
         <div className="space-y-2">
           <Label>Grado de instrucción</Label>
-          <Select
-            items={Object.entries(educationOptions).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-            value={watch("educationLevel") ?? ""}
-            onValueChange={(value) =>
-              setValue(
-                "educationLevel",
-                (value as EducationLevel | null) ?? undefined,
-              )
+          <CatalogSelect
+            kind="education_level"
+            allowCreate={false}
+            value={watch("educationLevel") || null}
+            onValueChange={(code) =>
+              setValue("educationLevel", (code as EducationLevel) || undefined)
             }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar grado" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(educationOptions).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Seleccionar grado"
+          />
         </div>
         <div className="space-y-2">
           <Label>Lengua materna/originaria</Label>
-          <Input
-            {...register("nativeLanguage")}
-            placeholder="Español, Quechua..."
+          <CatalogSelect
+            kind="native_language"
+            value={watch("nativeLanguage") || null}
+            onValueChange={(code) => setValue("nativeLanguage", code ?? "")}
+            placeholder="Seleccionar lengua"
           />
         </div>
         <div className="space-y-2">
@@ -5223,27 +5126,18 @@ function SeguimientoSocialForm({
           <>
             <div className="space-y-2">
               <Label>Proveedor de traslado SEPA</Label>
-              <Select
-                items={TRANSPORTATION_SEPA_PROVIDER_ITEMS}
-                value={watch("transportationSepaProvider") ?? ""}
-                onValueChange={(value) =>
+              <CatalogSelect
+                kind="sepa_transport"
+                allowCreate={false}
+                value={watch("transportationSepaProvider") ?? null}
+                onValueChange={(code) =>
                   setValue(
                     "transportationSepaProvider",
-                    (value as TransportationSepaProvider | null) ?? undefined,
+                    (code as TransportationSepaProvider | null) ?? undefined,
                   )
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar proveedor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSPORTATION_SEPA_PROVIDER_ITEMS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Seleccionar proveedor"
+              />
             </div>
             {watch("transportationSepaProvider") === "OTHER" && (
               <div className="space-y-2">
@@ -5272,27 +5166,18 @@ function SeguimientoSocialForm({
           <>
             <div className="space-y-2">
               <Label>Albergue / proveedor SEPA</Label>
-              <Select
-                items={SHELTER_SEPA_PROVIDER_ITEMS}
-                value={watch("shelterSepaProvider") ?? ""}
-                onValueChange={(value) =>
+              <CatalogSelect
+                kind="sepa_shelter"
+                allowCreate={false}
+                value={watch("shelterSepaProvider") ?? null}
+                onValueChange={(code) =>
                   setValue(
                     "shelterSepaProvider",
-                    (value as ShelterSepaProvider | null) ?? undefined,
+                    (code as ShelterSepaProvider | null) ?? undefined,
                   )
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar albergue" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SHELTER_SEPA_PROVIDER_ITEMS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Seleccionar albergue"
+              />
             </div>
             {watch("shelterSepaProvider") === "OTHER" && (
               <div className="space-y-2">
@@ -5327,27 +5212,18 @@ function SeguimientoSocialForm({
         </div>
         <div className="space-y-2">
           <Label>Motivo de abandono del programa</Label>
-          <Select
-            items={PROGRAM_DROPOUT_REASON_CODE_ITEMS}
-            value={watch("programDropoutReasonCode") ?? ""}
-            onValueChange={(value) =>
+          <CatalogSelect
+            kind="program_dropout_reason"
+            allowCreate={false}
+            value={watch("programDropoutReasonCode") ?? null}
+            onValueChange={(code) =>
               setValue(
                 "programDropoutReasonCode",
-                (value as ProgramDropoutReasonCode | null) ?? undefined,
+                (code as ProgramDropoutReasonCode | null) ?? undefined,
               )
             }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar motivo" />
-            </SelectTrigger>
-            <SelectContent>
-              {PROGRAM_DROPOUT_REASON_CODE_ITEMS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Seleccionar motivo"
+          />
         </div>
         <div className="space-y-2 md:col-span-2">
           <Label>Detalle / otro motivo de abandono</Label>

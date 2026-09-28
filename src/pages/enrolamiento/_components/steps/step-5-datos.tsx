@@ -29,7 +29,6 @@ import type {
 import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import {
   genderLabels,
-  normalizeZoneType,
   relationshipSelectOptions,
 } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
@@ -44,42 +43,6 @@ const fl =
   "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
 const ic = "bg-card border"
 const sc = "w-full bg-card border"
-
-const EDU: Record<EducationLevel, string> = {
-  NONE: "Sin estudios",
-  INITIAL: "Inicial",
-  PRIMARY_INCOMPLETE: "Primaria incompleta",
-  PRIMARY: "Primaria",
-  SECONDARY_INCOMPLETE: "Secundaria incompleta",
-  SECONDARY: "Secundaria",
-  TECHNICAL_INCOMPLETE: "Técnica incompleta",
-  TECHNICAL: "Técnica",
-  HIGHER_INCOMPLETE: "Superior incompleta",
-  HIGHER: "Superior",
-}
-
-const ENTRY_POINTS = [
-  "Llamada directa",
-  "Referido por paciente",
-  "Referido por Voluntario",
-  "Redes Sociales de FPC",
-  "Campaña prevención",
-  "Centro de salud/hospital",
-  "Otro",
-] as const
-
-const ZONE_TYPES = [
-  { value: "URBAN", label: "Urbana" },
-  { value: "RURAL", label: "Rural" },
-] as const
-
-const NATIVE_LANGUAGES = [
-  "Castellano",
-  "Quechua",
-  "Aymara",
-  "Lenguaje de Señas",
-  "Otros",
-] as const
 
 const YES_NO_OPTIONS = [
   { value: "Sí", label: "Sí" },
@@ -303,31 +266,6 @@ export function Step5Datos({
   historical?: boolean
 }) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
-  const [entryPoint, setEntryPoint] = useState<string>(() => {
-    const saved = draft.enrollmentMetadata.programEntryPoint
-    if (!saved) return ""
-    return (ENTRY_POINTS as readonly string[]).includes(saved) ? saved : "Otro"
-  })
-  const [customEntryPoint, setCustomEntryPoint] = useState<string>(() => {
-    const saved = draft.enrollmentMetadata.programEntryPoint
-    if (!saved || (ENTRY_POINTS as readonly string[]).includes(saved)) return ""
-    return saved
-  })
-  const [nativeLanguage, setNativeLanguage] = useState<string>(() => {
-    const saved = draft.details.nativeLanguage
-    if (!saved) return ""
-    return (NATIVE_LANGUAGES as readonly string[]).includes(saved)
-      ? saved
-      : "Otros"
-  })
-  const [customNativeLanguage, setCustomNativeLanguage] = useState<string>(
-    () => {
-      const saved = draft.details.nativeLanguage
-      if (!saved || (NATIVE_LANGUAGES as readonly string[]).includes(saved))
-        return ""
-      return saved
-    },
-  )
   const [error, setError] = useState<string | null>(null)
 
   const pd = draft.patientData
@@ -496,28 +434,6 @@ export function Step5Datos({
     }
     setError(null)
     nextStep()
-  }
-
-  function handleEntryPointChange(value: string) {
-    setEntryPoint(value)
-    setCustomEntryPoint("")
-    updateDraft({
-      enrollmentMetadata: {
-        ...meta,
-        programEntryPoint: value === "Otro" ? undefined : value,
-      },
-    })
-  }
-
-  function handleNativeLanguageChange(value: string) {
-    setNativeLanguage(value)
-    setCustomNativeLanguage("")
-    updateDraft({
-      details: {
-        ...details,
-        nativeLanguage: value === "Otros" ? undefined : value,
-      },
-    })
   }
 
   return (
@@ -722,26 +638,18 @@ export function Step5Datos({
           )}
           <div className="flex flex-col gap-2">
             <Label className={fl}>Zonificación de residencia</Label>
-            <Select
-              items={ZONE_TYPES}
-              value={normalizeZoneType(details.zoneType) ?? ""}
-              onValueChange={(value) =>
+            <CatalogSelect
+              kind="zone_type"
+              allowCreate={false}
+              value={details.zoneType ?? null}
+              onValueChange={(code) =>
                 updateDraft({
-                  details: { ...details, zoneType: value || undefined },
+                  details: { ...details, zoneType: code ?? undefined },
                 })
               }
-            >
-              <SelectTrigger className={sc}>
-                <SelectValue placeholder="Seleccionar zonificación..." />
-              </SelectTrigger>
-              <SelectContent>
-                {ZONE_TYPES.map((zone) => (
-                  <SelectItem key={zone.value} value={zone.value}>
-                    {zone.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar zonificación..."
+              triggerClassName={sc}
+            />
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -1201,52 +1109,36 @@ export function Step5Datos({
         <SectionHeader icon={GraduationCap} title="Perfil Socioeducativo" />
         <div className="flex flex-col gap-2">
           <Label className={fl}>Nivel educativo</Label>
-          <Select
-            items={Object.entries(EDU).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-            value={details.educationLevel ?? ""}
-            onValueChange={(value) =>
+          <CatalogSelect
+            kind="education_level"
+            allowCreate={false}
+            value={details.educationLevel ?? null}
+            onValueChange={(code) =>
               updateDraft({
                 details: {
                   ...details,
-                  educationLevel: value as EducationLevel,
+                  educationLevel: (code as EducationLevel | null) ?? undefined,
                 },
               })
             }
-          >
-            <SelectTrigger className={sc}>
-              <SelectValue placeholder="Seleccionar..." />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(EDU).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Seleccionar..."
+            triggerClassName={sc}
+          />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label className={fl}>Lengua nativa</Label>
-            <Select
-              items={NATIVE_LANGUAGES.map((value) => ({ value, label: value }))}
-              value={nativeLanguage}
-              onValueChange={(value) => handleNativeLanguageChange(value ?? "")}
-            >
-              <SelectTrigger className={sc}>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {NATIVE_LANGUAGES.map((language) => (
-                  <SelectItem key={language} value={language}>
-                    {language}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CatalogSelect
+              kind="native_language"
+              value={details.nativeLanguage ?? null}
+              onValueChange={(code) =>
+                updateDraft({
+                  details: { ...details, nativeLanguage: code ?? undefined },
+                })
+              }
+              placeholder="Seleccionar..."
+              triggerClassName={sc}
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label className={fl}>¿Requiere traducción?</Label>
@@ -1272,25 +1164,6 @@ export function Step5Datos({
             </Select>
           </div>
         </div>
-        {nativeLanguage === "Otros" && (
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>Especificar lengua</Label>
-            <Input
-              placeholder="Escriba la lengua nativa"
-              className={ic}
-              value={customNativeLanguage}
-              onChange={(event) => {
-                setCustomNativeLanguage(event.target.value)
-                updateDraft({
-                  details: {
-                    ...details,
-                    nativeLanguage: event.target.value || undefined,
-                  },
-                })
-              }}
-            />
-          </div>
-        )}
         <div className="flex flex-col gap-2">
           <Label className={fl}>¿Actualmente trabaja?</Label>
           <Select
@@ -1414,42 +1287,21 @@ export function Step5Datos({
           <Label className={fl}>
             ¿Cuál fue el punto de ingreso al programa?
           </Label>
-          <Select
-            items={ENTRY_POINTS.map((value) => ({ value, label: value }))}
-            value={entryPoint}
-            onValueChange={(value) => handleEntryPointChange(value ?? "")}
-          >
-            <SelectTrigger className={sc}>
-              <SelectValue placeholder="Seleccionar..." />
-            </SelectTrigger>
-            <SelectContent>
-              {ENTRY_POINTS.map((point) => (
-                <SelectItem key={point} value={point}>
-                  {point}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CatalogSelect
+            kind="entry_source"
+            value={meta.programEntryPoint ?? null}
+            onValueChange={(code) =>
+              updateDraft({
+                enrollmentMetadata: {
+                  ...meta,
+                  programEntryPoint: code ?? undefined,
+                },
+              })
+            }
+            placeholder="Seleccionar..."
+            triggerClassName={sc}
+          />
         </div>
-        {entryPoint === "Otro" && (
-          <div className="flex flex-col gap-2">
-            <Label className={fl}>Especificar</Label>
-            <Input
-              placeholder="Describa el punto de ingreso"
-              className={ic}
-              value={customEntryPoint}
-              onChange={(event) => {
-                setCustomEntryPoint(event.target.value)
-                updateDraft({
-                  enrollmentMetadata: {
-                    ...meta,
-                    programEntryPoint: event.target.value || undefined,
-                  },
-                })
-              }}
-            />
-          </div>
-        )}
       </section>
 
       {error && <p className="text-destructive text-sm">{error}</p>}

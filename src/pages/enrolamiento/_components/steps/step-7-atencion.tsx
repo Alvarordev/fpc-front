@@ -54,32 +54,6 @@ const fl =
 const flGrid = `${fl} min-h-5`
 const sc = "w-full bg-card border"
 
-const stageLabels: Record<CancerStage, string> = {
-  STAGE_1: "1",
-  STAGE_2: "2",
-  STAGE_3: "3",
-  STAGE_4: "4",
-  UNKNOWN: "Desconoce",
-}
-
-const TREATMENT_SITUATIONS: Array<{
-  value: TreatmentSituation
-  label: string
-}> = [
-  { value: "EN_CURSO", label: "En proceso" },
-  { value: "PENDIENTE_DE_INICIO", label: "En espera" },
-  { value: "INTERRUMPIDO", label: "Suspendido" },
-  { value: "FINALIZADO", label: "Culminado" },
-  { value: "SEARCHING", label: "En búsqueda" },
-  { value: "ABANDONED", label: "Abandonado" },
-  {
-    value: "DECEASED_DURING_TREATMENT",
-    label: "Culminado en situación de tratamiento",
-  },
-  { value: "NOT_APPLICABLE", label: "N/A" },
-  { value: "REMISSION", label: "En remisión" },
-]
-
 const YES_NO_OPTIONS = [
   { value: "Sí", label: "Sí" },
   { value: "No", label: "No" },
@@ -1251,31 +1225,18 @@ export function Step7Atencion({
                   <Label className={flGrid}>
                     ¿Conoce el estadio del diagnóstico? (1, 2, 3, 4 o desconoce)
                   </Label>
-                  <Select
-                    items={Object.entries(stageLabels).map(
-                      ([value, label]) => ({
-                        value,
-                        label,
-                      }),
-                    )}
-                    value={dx.cancerStage ?? ""}
-                    onValueChange={(v) =>
+                  <CatalogSelect
+                    kind="cancer_stage"
+                    allowCreate={false}
+                    value={dx.cancerStage ?? null}
+                    onValueChange={(code) =>
                       updateDiagnosis({
-                        cancerStage: (v as CancerStage) || null,
+                        cancerStage: (code as CancerStage) || null,
                       })
                     }
-                  >
-                    <SelectTrigger className={sc}>
-                      <SelectValue placeholder="Estadio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(stageLabels).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>
-                          {v}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Estadio"
+                    triggerClassName={sc}
+                  />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -2120,28 +2081,20 @@ export function Step7Atencion({
                         <Label className={flGrid}>
                           Situación del tratamiento
                         </Label>
-                        <Select
-                          items={TREATMENT_SITUATIONS}
-                          value={tx.treatmentSituation ?? ""}
-                          onValueChange={(v) =>
+                        <CatalogSelect
+                          kind="treatment_situation"
+                          allowCreate={false}
+                          value={tx.treatmentSituation ?? null}
+                          onValueChange={(code) =>
                             updateTreatment({
-                              treatmentSituation: (v || undefined) as
+                              treatmentSituation: (code || undefined) as
                                 | TreatmentSituation
                                 | undefined,
                             })
                           }
-                        >
-                          <SelectTrigger className={sc}>
-                            <SelectValue placeholder="Seleccionar..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TREATMENT_SITUATIONS.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>
-                                {s.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Seleccionar..."
+                          triggerClassName={sc}
+                        />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

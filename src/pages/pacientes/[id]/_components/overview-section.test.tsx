@@ -52,6 +52,43 @@ vi.mock("@/api/enrollments", () => ({
   enrollmentsApi: { listByPatient: mocks.listEnrollments },
 }))
 
+vi.mock("@/api/catalogs", async () => {
+  const actual = await vi.importActual<typeof import("@/api/catalogs")>(
+    "@/api/catalogs",
+  )
+  return {
+    ...actual,
+    catalogsApi: {
+      ...actual.catalogsApi,
+      list: async (filters: { kind?: string }) => {
+        const item = (code: string, label: string, kind: string) => ({
+          id: code,
+          kind,
+          code,
+          label,
+          parentCode: null,
+          sortOrder: 0,
+          isActive: true,
+          isSystem: true,
+          metadata: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        })
+        if (filters.kind === "education_level") {
+          return [item("SECONDARY", "Secundaria", "education_level")]
+        }
+        if (filters.kind === "native_language") {
+          return [item("QUECHUA", "Quechua", "native_language")]
+        }
+        if (filters.kind === "zone_type") {
+          return [item("RURAL", "Rural", "zone_type")]
+        }
+        return []
+      },
+    },
+  }
+})
+
 vi.mock("@/api/patients", () => ({
   patientsApi: {
     getSummary: mocks.getSummary,
@@ -197,7 +234,7 @@ describe("OverviewSection", () => {
     expect(screen.getByText("Datos de procedencia y residencia")).toBeTruthy()
     expect(screen.getByText("Perfil socioeconómico y familiar")).toBeTruthy()
     expect(screen.getByText("Grado de instrucción")).toBeTruthy()
-    expect(screen.getByText("Secundaria")).toBeTruthy()
+    expect(await screen.findByText("Secundaria")).toBeTruthy()
     expect(screen.getByText("Lengua materna/originaria")).toBeTruthy()
     expect(screen.getByText("Quechua")).toBeTruthy()
     expect(screen.getByText("¿Tiene hijos?")).toBeTruthy()

@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CatalogSelect } from "@/components/catalog-select"
-import { educationLabels, genderLabels } from "../_lib/clinical-labels"
+import { genderLabels } from "../_lib/clinical-labels"
 import {
   DEPARTMENTS,
   DEPARTMENT_LABELS,
@@ -100,10 +100,6 @@ const GENDER_OPTIONS = Object.entries(genderLabels).map(([value, label]) => ({
   value,
   label,
 }))
-
-const EDUCATION_OPTIONS = Object.entries(educationLabels).map(
-  ([value, label]) => ({ value, label }),
-)
 
 const HEALTH_PHASE_OPTIONS: { value: HealthPhaseValue; label: string }[] = [
   { value: "CANCER_DIAGNOSIS", label: "Diagnóstico de Cáncer" },
@@ -227,7 +223,6 @@ export function PatientProfileDialog({
       ? "No menciona"
       : DEPARTMENT_LABELS[birthDepartment],
   )
-  const educationItems = withCurrentOption(EDUCATION_OPTIONS, educationLevel)
   const healthCenterItems = withCurrentOption(
     healthCenters
       .filter((center) => center.isActive)
@@ -621,33 +616,28 @@ export function PatientProfileDialog({
                 </div>
                 <div className="space-y-2">
                   <Label>Nivel educativo</Label>
-                  <Select
-                    items={educationItems}
-                    value={educationLevel}
-                    onValueChange={(value) =>
+                  <CatalogSelect
+                    kind="education_level"
+                    allowCreate={false}
+                    value={educationLevel || null}
+                    onValueChange={(code) =>
                       setValue(
                         "educationLevel",
-                        (value ?? "") as EducationValue | "",
+                        (code ?? "") as EducationValue | "",
                       )
                     }
-                  >
-                    <SelectTrigger id="patient-education-level">
-                      <SelectValue placeholder="Seleccionar nivel" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {educationItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Seleccionar nivel"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="patient-native-language">Lengua nativa</Label>
-                  <Input
-                    id="patient-native-language"
-                    {...register("nativeLanguage")}
+                  <Label>Lengua nativa</Label>
+                  <CatalogSelect
+                    kind="native_language"
+                    value={formValues.nativeLanguage || null}
+                    onValueChange={(code) =>
+                      setValue("nativeLanguage", code ?? "")
+                    }
+                    placeholder="Seleccionar lengua"
                   />
                 </div>
               </div>

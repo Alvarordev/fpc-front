@@ -36,10 +36,8 @@ import { cn } from "@/lib/utils"
 import {
   cancerStageLabels,
   diagnosticStatusLabels,
-  educationLabels,
   healthPhaseLabels,
   genderLabels,
-  zoneTypeLabels,
   relationshipLabels,
   roleLabels,
 } from "../_lib/clinical-labels"
@@ -483,10 +481,12 @@ export function OverviewSection({
                 <Field
                   label="Zonificación de residencia"
                   value={
-                    details.zoneType
-                      ? (zoneTypeLabels[details.zoneType.toUpperCase()] ??
-                        details.zoneType)
-                      : null
+                    details.zoneType ? (
+                      <CatalogValue
+                        kind="zone_type"
+                        code={details.zoneType}
+                      />
+                    ) : null
                   }
                   icon={MapPin}
                 />
@@ -542,15 +542,25 @@ export function OverviewSection({
                 <Field
                   label="Grado de instrucción"
                   value={
-                    details.educationLevel
-                      ? educationLabels[details.educationLevel]
-                      : null
+                    details.educationLevel ? (
+                      <CatalogValue
+                        kind="education_level"
+                        code={details.educationLevel}
+                      />
+                    ) : null
                   }
                   icon={GraduationCap}
                 />
                 <Field
                   label="Lengua materna/originaria"
-                  value={details.nativeLanguage}
+                  value={
+                    details.nativeLanguage ? (
+                      <CatalogValue
+                        kind="native_language"
+                        code={details.nativeLanguage}
+                      />
+                    ) : null
+                  }
                   icon={Languages}
                 />
                 <Field
