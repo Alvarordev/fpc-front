@@ -142,7 +142,7 @@ export interface EnrollPatientDetailsRequest {
   emergencyContactPhone?: string | null
   zoneType?: string | null
   emergencyContactGender?: string | null
-  educationLevel?: EducationLevel | null
+  educationLevel?: string | null
   nativeLanguage?: string | null
   requiresTranslation?: boolean
   evidenceOfDomesticViolence?: boolean | null

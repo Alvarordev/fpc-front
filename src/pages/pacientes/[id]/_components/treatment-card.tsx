@@ -26,7 +26,6 @@ import { CatalogValue } from "@/components/catalog-select"
 import {
   medicationDoseUnitLabels,
   medicationRouteLabels,
-  treatmentSituationLabels,
 } from "../_lib/clinical-labels"
 import { useTreatmentMedications } from "../_hooks/use-patient-records"
 import {
@@ -85,6 +84,8 @@ function statusClass(status: ReturnType<typeof treatmentStatus>) {
       return "border-border bg-muted text-muted-foreground"
     case "REMISSION":
       return "border-violet-200 bg-violet-50 text-violet-700"
+    default:
+      return "border-border bg-muted text-muted-foreground"
   }
 }
 
@@ -99,7 +100,6 @@ export function TreatmentCard({
 }) {
   const [open, setOpen] = useState(false)
   const status = treatmentStatus(treatment)
-  const statusLabel = treatmentSituationLabels[status]
 
   return (
     <article
@@ -130,7 +130,7 @@ export function TreatmentCard({
               variant="outline"
               className={cn("text-[10px]", statusClass(status))}
             >
-              {statusLabel}
+              <CatalogValue kind="treatment_situation" code={status} />
             </Badge>
             {treatment.isReferred && (
               <Badge variant="outline" className="gap-1 text-[10px]">

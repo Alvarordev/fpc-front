@@ -20,7 +20,6 @@ import {
   cancerStageLabels,
   medicationDoseUnitLabels,
   medicationRouteLabels,
-  treatmentSituationLabels,
 } from "../../_lib/clinical-labels"
 
 interface ClinicalRecordDetailSheetProps {
@@ -232,7 +231,9 @@ function TreatmentDetails({
         <Badge variant={treatment.isCurrent ? "default" : "outline"}>
           {treatment.isCurrent ? "Activo" : "Histórico"}
         </Badge>
-        <Badge variant="outline">{treatmentSituationLabels[situation]}</Badge>
+        <Badge variant="outline">
+          <CatalogValue kind="treatment_situation" code={situation} />
+        </Badge>
       </div>
 
       <DetailSection title="Información principal">
@@ -259,7 +260,9 @@ function TreatmentDetails({
           />
           <Detail
             label="Situación"
-            value={treatmentSituationLabels[situation]}
+            value={
+              <CatalogValue kind="treatment_situation" code={situation} />
+            }
           />
           <Detail
             label="Frecuencia"
