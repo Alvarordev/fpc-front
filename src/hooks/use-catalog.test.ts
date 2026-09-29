@@ -41,6 +41,26 @@ describe("catalogSelectItems", () => {
       "GASTRICO",
     ])
   })
+
+  it("filters by parentCode when provided", () => {
+    const items = catalogSelectItems(
+      [
+        item({
+          code: "WHATSAPP",
+          label: "WhatsApp",
+          parentCode: "LINEA_TELEFONICA",
+        }),
+        item({
+          code: "FACEBOOK",
+          label: "Facebook",
+          parentCode: "REDES_SOCIALES",
+        }),
+      ],
+      "LINEA_TELEFONICA",
+    )
+
+    expect(items.map((entry) => entry.value)).toEqual(["WHATSAPP"])
+  })
 })
 
 describe("formatCatalogValue", () => {

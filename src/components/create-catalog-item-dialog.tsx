@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -16,12 +16,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   CATALOG_KIND_LABELS,
   catalogsApi,
   type CatalogItem,
   type CatalogKind,
 } from "@/api/catalogs"
-import { catalogQueryKey } from "@/hooks/use-catalog"
+import {
+  catalogQueryKey,
+  catalogSelectItems,
+} from "@/hooks/use-catalog"
 import {
   isReservedCatalogCode,
   slugifyCatalogCode,
@@ -52,8 +62,13 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
+const PARENT_KIND_BY_KIND: Partial<Record<CatalogKind, CatalogKind>> = {
+  entry_sub_source: "entry_source",
+}
+
 interface CreateCatalogItemDialogProps {
   kind: CatalogKind
+  parentCode?: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: (item: CatalogItem) => void
@@ -61,12 +76,24 @@ interface CreateCatalogItemDialogProps {
 
 export function CreateCatalogItemDialog({
   kind,
+  parentCode: lockedParentCode,
   open,
   onOpenChange,
   onCreated,
 }: CreateCatalogItemDialogProps) {
   const queryClient = useQueryClient()
   const [codeTouched, setCodeTouched] = useState(false)
+  const [selectedParentCode, setSelectedParentCode] = useState("")
+  const parentKind = PARENT_KIND_BY_KIND[kind]
+  const needsParentPicker = Boolean(parentKind) && !lockedParentCode
+  const { data: parentItems = [] } = useQuery({
+    queryKey: [...catalogQueryKey(parentKind ?? "entry_source"), false],
+    queryFn: () => catalogsApi.list({ kind: parentKind ?? "entry_source" }),
+    enabled: Boolean(parentKind) && open,
+    staleTime: 5 * 60_000,
+  })
+  const parentSelectItems = catalogSelectItems(parentItems)
+  const resolvedParentCode = lockedParentCode || selectedParentCode || undefined
   const createMutation = useMutation({
     mutationFn: catalogsApi.create,
     onSuccess: () => {
@@ -91,6 +118,7 @@ export function CreateCatalogItemDialog({
   useEffect(() => {
     if (!open) return
     setCodeTouched(false)
+    setSelectedParentCode("")
     reset({ label: "", code: "", sortOrder: "900" })
   }, [open, reset])
 
@@ -105,12 +133,17 @@ export function CreateCatalogItemDialog({
   }
 
   async function onSubmit(values: FormValues) {
+    if (parentKind && !resolvedParentCode) {
+      toast.error("Seleccioná la fuente de ingreso padre")
+      return
+    }
     try {
       const created = await createMutation.mutateAsync({
         kind,
         label: values.label.trim(),
         code: values.code.trim(),
         sortOrder: Number(values.sortOrder) || 900,
+        ...(resolvedParentCode ? { parentCode: resolvedParentCode } : {}),
       })
       onCreated?.(created)
       toast.success(`"${created.label}" creado`)
@@ -142,6 +175,28 @@ export function CreateCatalogItemDialog({
           }}
           className="space-y-4 py-2"
         >
+          {needsParentPicker && (
+            <div className="space-y-2">
+              <Label>Fuente de ingreso</Label>
+              <Select
+                items={parentSelectItems}
+                value={selectedParentCode}
+                onValueChange={(value) => setSelectedParentCode(value ?? "")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar fuente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {parentSelectItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Etiqueta</Label>
             <Input

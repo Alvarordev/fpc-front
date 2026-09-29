@@ -48,6 +48,14 @@ export const CATALOG_KIND_LABELS: Record<CatalogKind, string> = {
   surgical_procedure: "Procedimiento quirúrgico",
 }
 
+/** Labels as they appear on enrollment / clinical forms, for error copy. */
+export const CATALOG_FORM_FIELD_LABELS: Record<CatalogKind, string> = {
+  ...CATALOG_KIND_LABELS,
+  entry_source: "Punto de ingreso",
+  entry_sub_source: "Cómo se enteró concretamente",
+  patient_health_phase: "Categorización",
+}
+
 export const PRIORITY_CATALOG_KINDS: CatalogKind[] = [
   "cancer_diagnosis",
   "medical_specialty",

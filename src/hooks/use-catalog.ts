@@ -37,9 +37,15 @@ export function formatCatalogValue(
   return label
 }
 
-export function catalogSelectItems(items: CatalogItem[]) {
+export function catalogSelectItems(
+  items: CatalogItem[],
+  parentCode?: string | null,
+) {
   return items
     .filter((item) => item.isActive && item.code !== RESERVED_CATALOG_CODE)
+    .filter(
+      (item) => parentCode === undefined || item.parentCode === parentCode,
+    )
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "es"))
     .map((item) => ({ value: item.code, label: item.label }))

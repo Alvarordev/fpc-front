@@ -3488,13 +3488,6 @@ function TratamientosForm({
       return
     }
     if (
-      values.accessBarrierCode === "OTHER" &&
-      !values.accessBarrierOther.trim()
-    ) {
-      toast.error("Especificá la barrera de acceso")
-      return
-    }
-    if (
       values.treatmentType === "CIRUGIA" &&
       !values.operationName.trim()
     ) {
@@ -3942,16 +3935,6 @@ function TratamientosForm({
                   onValueChange={(code) =>
                     setValue("operationName", code ?? "")
                   }
-                  extraItems={
-                    watched.operationName
-                      ? [
-                          {
-                            value: watched.operationName,
-                            label: watched.operationName,
-                          },
-                        ]
-                      : []
-                  }
                   placeholder="Seleccionar procedimiento..."
                 />
               </div>
@@ -4076,15 +4059,6 @@ function TratamientosForm({
                 placeholder="Seleccionar barrera"
               />
             </div>
-            {accessBarrierCode === "OTHER" && (
-              <div className="space-y-2">
-                <Label>Otra barrera de acceso</Label>
-                <Input
-                  {...register("accessBarrierOther")}
-                  placeholder="Especificá la barrera"
-                />
-              </div>
-            )}
             <TriSelect
               label="¿Orientado ante barreras de acceso?"
               value={orientedRegardingBarriers}
@@ -5139,15 +5113,6 @@ function SeguimientoSocialForm({
                 placeholder="Seleccionar proveedor"
               />
             </div>
-            {watch("transportationSepaProvider") === "OTHER" && (
-              <div className="space-y-2">
-                <Label>Otro proveedor de traslado</Label>
-                <Input
-                  {...register("transportationSepaProviderOther")}
-                  placeholder="Especificá el proveedor"
-                />
-              </div>
-            )}
           </>
         )}
 
@@ -5179,15 +5144,6 @@ function SeguimientoSocialForm({
                 placeholder="Seleccionar albergue"
               />
             </div>
-            {watch("shelterSepaProvider") === "OTHER" && (
-              <div className="space-y-2">
-                <Label>Otro albergue</Label>
-                <Input
-                  {...register("shelterSepaProviderOther")}
-                  placeholder="Especificá el albergue"
-                />
-              </div>
-            )}
           </>
         )}
 
@@ -5226,10 +5182,10 @@ function SeguimientoSocialForm({
           />
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Detalle / otro motivo de abandono</Label>
+          <Label>Notas sobre el abandono (opcional)</Label>
           <Input
             {...register("programDropoutReason")}
-            placeholder="Detalle adicional del motivo..."
+            placeholder="Detalle adicional, si hace falta"
           />
         </div>
       </div>

@@ -314,6 +314,7 @@ export interface EnrollmentMetadataRequest {
   affiliationType?: AffiliationType
   isOncologicalPatient?: boolean
   programEntryPoint?: string | null
+  programEntrySubSource?: string | null
   currentlyAttendingConsultations?: boolean | null
   currentlyReceivingTreatment?: boolean | null
   notAttendingConsultationsNote?: string | null

@@ -8,9 +8,8 @@ import type { CatalogItem } from "@/api/catalogs"
 const listMock = vi.fn()
 
 vi.mock("@/api/catalogs", async () => {
-  const actual = await vi.importActual<typeof import("@/api/catalogs")>(
-    "@/api/catalogs",
-  )
+  const actual =
+    await vi.importActual<typeof import("@/api/catalogs")>("@/api/catalogs")
   return {
     ...actual,
     catalogsApi: {
@@ -54,7 +53,13 @@ const otro: CatalogItem = {
   isSystem: true,
 }
 
-function renderSelect(value: string | null = "MAMA_DUCTAL") {
+function renderSelect(
+  value: string | null = "MAMA_DUCTAL",
+  props: Partial<{
+    kind: "cancer_diagnosis" | "entry_source" | "entry_sub_source"
+    parentCode: string | null
+  }> = {},
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -62,8 +67,9 @@ function renderSelect(value: string | null = "MAMA_DUCTAL") {
   return render(
     <QueryClientProvider client={client}>
       <CatalogSelect
-        kind="cancer_diagnosis"
+        kind={props.kind ?? "cancer_diagnosis"}
         value={value}
+        parentCode={props.parentCode}
         onValueChange={vi.fn()}
       />
     </QueryClientProvider>,
@@ -77,5 +83,18 @@ describe("CatalogSelect", () => {
       await screen.findByText("Cáncer de mama ductal infiltrante"),
     ).toBeTruthy()
     expect(screen.queryByText("Otro diagnóstico oncológico")).toBeNull()
+  })
+
+  it("disables a hierarchical select until a parent is chosen", async () => {
+    renderSelect(null, { kind: "entry_sub_source", parentCode: null })
+    expect(await screen.findByText("Seleccioná primero la fuente")).toBeTruthy()
+  })
+
+  it("warns in Spanish when the saved value is not in the catalog", async () => {
+    renderSelect("Call center", { kind: "entry_source" })
+    const alert = await screen.findByTestId("catalog-unknown-value")
+    expect(alert.textContent).toContain("Call center")
+    expect(alert.textContent).toContain("Punto de ingreso")
+    expect(alert.textContent).toContain("no está en el catálogo")
   })
 })

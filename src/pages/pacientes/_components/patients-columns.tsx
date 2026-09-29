@@ -4,7 +4,6 @@ import { CatalogValue } from "@/components/catalog-select"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { cn } from "@/lib/utils"
 import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
-import { healthPhaseLabels } from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
 
 const healthPhaseStyles: Record<PatientHealthPhase, string> = {
@@ -83,7 +82,7 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
       }
       return (
         <Badge className={cn("border font-medium", healthPhaseStyles[phase])}>
-          {healthPhaseLabels[phase]}
+          <CatalogValue kind="patient_health_phase" code={phase} />
         </Badge>
       )
     },

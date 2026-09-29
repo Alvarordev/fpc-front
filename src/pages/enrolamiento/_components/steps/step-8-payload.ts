@@ -723,6 +723,7 @@ export function buildEnrollmentPayload({
         }
       : {}),
     entrySource: value(meta.programEntryPoint),
+    entrySubSource: value(meta.programEntrySubSource),
     consentToContact: meta.informedConsentAccepted ?? undefined,
     consentToShareData: meta.dataPolicyAccepted ?? undefined,
     isOncologicalPatient: meta.isOncologicalPatient ?? undefined,

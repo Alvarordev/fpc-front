@@ -42,6 +42,18 @@ export function catalogColumns({
       ),
     },
     {
+      accessorKey: "parentCode",
+      header: "Padre",
+      cell: ({ row }) =>
+        row.original.parentCode ? (
+          <span className="text-muted-foreground font-mono text-xs">
+            {row.original.parentCode}
+          </span>
+        ) : (
+          <span className="text-muted-foreground/50">—</span>
+        ),
+    },
+    {
       accessorKey: "sortOrder",
       header: "Orden en listas",
       cell: ({ getValue }) => (

@@ -34,9 +34,7 @@ import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
 import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 import {
-  cancerStageLabels,
   diagnosticStatusLabels,
-  healthPhaseLabels,
   genderLabels,
   relationshipLabels,
   roleLabels,
@@ -390,9 +388,14 @@ export function OverviewSection({
                 <Field
                   label="Fase de salud"
                   value={
-                    details?.healthPhase
-                      ? healthPhaseLabels[details.healthPhase]
-                      : "Sin clasificar"
+                    details?.healthPhase ? (
+                      <CatalogValue
+                        kind="patient_health_phase"
+                        code={details.healthPhase}
+                      />
+                    ) : (
+                      "Sin clasificar"
+                    )
                   }
                 />
                 <Field
@@ -405,7 +408,25 @@ export function OverviewSection({
                 />
                 <Field
                   label="Punto de ingreso"
-                  value={enrollment?.entrySource}
+                  value={
+                    enrollment?.entrySource ? (
+                      <span>
+                        <CatalogValue
+                          kind="entry_source"
+                          code={enrollment.entrySource}
+                        />
+                        {enrollment.entrySubSource ? (
+                          <>
+                            {" · "}
+                            <CatalogValue
+                              kind="entry_sub_source"
+                              code={enrollment.entrySubSource}
+                            />
+                          </>
+                        ) : null}
+                      </span>
+                    ) : null
+                  }
                 />
               </>
             )}
@@ -518,7 +539,12 @@ export function OverviewSection({
                         key={item.id}
                         className="bg-muted/20 flex items-center justify-between gap-3 rounded-md border p-3 text-sm"
                       >
-                        <span>{healthPhaseLabels[item.healthPhase]}</span>
+                        <span>
+                          <CatalogValue
+                            kind="patient_health_phase"
+                            code={item.healthPhase}
+                          />
+                        </span>
                         <span className="text-muted-foreground text-xs">
                           {new Date(item.changedAt).toLocaleDateString(
                             "es-PE",
@@ -646,7 +672,10 @@ export function OverviewSection({
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           {item.cancerStage && (
                             <Badge variant="outline" className="text-[10px]">
-                              {cancerStageLabels[item.cancerStage]}
+                              <CatalogValue
+                                kind="cancer_stage"
+                                code={item.cancerStage}
+                              />
                             </Badge>
                           )}
                           <Badge

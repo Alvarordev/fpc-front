@@ -4,21 +4,9 @@ import {
   type CategoriaClinica,
 } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Tag } from "lucide-react"
-import { CatalogValue } from "@/components/catalog-select"
+import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
 import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
-
-const CATEGORY_OPTIONS = [
-  { value: "SIGNS_AND_SYMPTOMS", label: "Signos y Síntomas" },
-  { value: "CANCER_DIAGNOSIS", label: "Diagnóstico de Cáncer" },
-] as const
 
 export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
   const { categoriaClinica, setCategoria, nextStep, prevStep, draft } =
@@ -67,25 +55,18 @@ export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
           <Label className="text-muted-foreground/70 text-[10px] font-bold tracking-[0.1em] uppercase">
             Categorización <span className="text-destructive">*</span>
           </Label>
-          <Select
-            items={CATEGORY_OPTIONS}
-            value={categoriaClinica ?? ""}
-            onValueChange={(v) => {
-              setCategoria(v as CategoriaClinica)
+          <CatalogSelect
+            kind="patient_health_phase"
+            allowCreate={false}
+            excludeCodes={["ANNUAL_CHECKUP"]}
+            value={categoriaClinica}
+            onValueChange={(code) => {
+              setCategoria((code as CategoriaClinica) ?? null)
               setShowCategoryError(false)
             }}
-          >
-            <SelectTrigger className="bg-card w-full border">
-              <SelectValue placeholder="Seleccionar..." />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Seleccionar..."
+            triggerClassName="bg-card w-full border"
+          />
           {showCategoryError && (
             <p className="text-destructive text-xs">
               Selecciona una categoría clínica.

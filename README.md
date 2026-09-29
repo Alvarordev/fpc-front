@@ -73,4 +73,8 @@ El comando actualiza `src/api/schema.d.ts`. No edites ese archivo manualmente.
 ```bash
 pnpm build
 pnpm test:run
+pnpm exec playwright install chromium
+pnpm test:e2e
 ```
+
+Los hooks de git (`pre-commit` y `pre-push`) corren los unitarios y el E2E de catálogo/enrolamiento. La primera vez instala Chromium con `pnpm exec playwright install chromium`.

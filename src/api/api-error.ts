@@ -1,3 +1,5 @@
+import { humanizeCatalogApiMessage } from "@/lib/catalog-api-error"
+
 export class ApiRequestError extends Error {
   readonly status: number
   readonly code?: string
@@ -16,7 +18,10 @@ export function apiErrorFromBody(
   fallback: string,
 ): ApiRequestError {
   const parsed = parseApiErrorBody(body)
-  return new ApiRequestError(parsed.message ?? fallback, status, parsed.code)
+  const message = parsed.message
+    ? humanizeCatalogApiMessage(parsed.message)
+    : fallback
+  return new ApiRequestError(message, status, parsed.code)
 }
 
 function parseApiErrorBody(body: unknown): {

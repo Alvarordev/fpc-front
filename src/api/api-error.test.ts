@@ -47,8 +47,24 @@ describe("apiErrorFromBody", () => {
   })
 
   it("falls back when the body is empty", () => {
-    const error = apiErrorFromBody(undefined, 500, "No se pudo completar el enrolamiento")
+    const error = apiErrorFromBody(
+      undefined,
+      500,
+      "No se pudo completar el enrolamiento",
+    )
     expect(error.message).toBe("No se pudo completar el enrolamiento")
     expect(error.code).toBeUndefined()
+  })
+
+  it("translates an unknown catalog value into Spanish with the form field", () => {
+    const error = apiErrorFromBody(
+      { message: "Unknown entry_source catalog value: Call center" },
+      400,
+      "No se pudo completar el enrolamiento",
+    )
+    expect(error.message).toContain("Punto de ingreso")
+    expect(error.message).toContain("Call center")
+    expect(error.message).toContain("no está en el catálogo")
+    expect(error.message).not.toMatch(/Unknown /)
   })
 })

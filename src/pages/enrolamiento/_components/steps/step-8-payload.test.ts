@@ -153,6 +153,8 @@ describe("step 8 Nest enrollment payload", () => {
           dataPolicyAccepted: true,
           informedConsentAccepted: true,
           surveyAccepted: true,
+          programEntryPoint: "LINEA_TELEFONICA",
+          programEntrySubSource: "WHATSAPP",
         },
       }),
     })
@@ -164,6 +166,8 @@ describe("step 8 Nest enrollment payload", () => {
     })
     expect(payload.affiliationType).toBe("SELF")
     expect(payload.healthPhase).toBe("CANCER_DIAGNOSIS")
+    expect(payload.entrySource).toBe("LINEA_TELEFONICA")
+    expect(payload.entrySubSource).toBe("WHATSAPP")
     expect(payload.insurance?.insuranceType).toBe("EPS")
     expect(payload.diagnoses?.[0]?.diagnosis).toBe("MAMA_DUCTAL")
     expect(payload.diagnoses?.[0]?.mode).toBe("PARALLEL")

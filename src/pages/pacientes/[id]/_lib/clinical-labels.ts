@@ -3,12 +3,10 @@ import type {
   CreatePatientInsuranceInput,
   PatientDetailsInput,
   PatientDetailsResponse,
-  PatientHealthPhase,
 } from "@/api/patients"
 import type {
   MedicationDoseUnit,
   MedicationRoute,
-  TreatmentSituation,
 } from "@/types"
 
 export type CancerStage = NonNullable<
@@ -19,27 +17,6 @@ export type EpsProvider = NonNullable<
   CreatePatientInsuranceInput["epsProvider"]
 >
 export type EducationLevel = NonNullable<PatientDetailsInput["educationLevel"]>
-
-export const educationLabels: Record<EducationLevel, string> = {
-  NONE: "Ninguno",
-  INITIAL: "Inicial",
-  PRIMARY_INCOMPLETE: "Primaria incompleta",
-  PRIMARY: "Primaria",
-  SECONDARY_INCOMPLETE: "Secundaria incompleta",
-  SECONDARY: "Secundaria",
-  TECHNICAL_INCOMPLETE: "Técnica incompleta",
-  TECHNICAL: "Técnica",
-  HIGHER_INCOMPLETE: "Superior incompleta",
-  HIGHER: "Superior",
-}
-
-export const cancerStageLabels: Record<CancerStage, string> = {
-  STAGE_1: "Etapa 1",
-  STAGE_2: "Etapa 2",
-  STAGE_3: "Etapa 3",
-  STAGE_4: "Etapa 4",
-  UNKNOWN: "Etapa desconocida",
-}
 
 /** Tailwind classes for a stage severity badge, from mild (1) to severe (4/unknown). */
 export const cancerStageBadgeClass: Record<CancerStage, string> = {
@@ -60,12 +37,6 @@ export const roleLabels: Record<PatientDetailsResponse["role"], string> = {
   UNKNOWN: "Sin definir",
   PATIENT: "Paciente",
   COMPANION: "Acompañante",
-}
-
-export const healthPhaseLabels: Record<PatientHealthPhase, string> = {
-  CANCER_DIAGNOSIS: "Diagnóstico de Cáncer",
-  ANNUAL_CHECKUP: "Control Anual",
-  SIGNS_AND_SYMPTOMS: "Signos y Síntomas",
 }
 
 /** Catálogo alineado al PDF de observaciones CRM (parentesco de contactos). */
@@ -97,18 +68,6 @@ export const relationshipSelectOptions = [
   { value: "OTHER", label: relationshipLabels.OTHER },
 ] as const
 
-export const treatmentSituationLabels: Record<TreatmentSituation, string> = {
-  EN_CURSO: "En proceso",
-  PENDIENTE_DE_INICIO: "En espera",
-  INTERRUMPIDO: "Suspendido",
-  FINALIZADO: "Culminado",
-  SEARCHING: "En búsqueda",
-  ABANDONED: "Abandonado",
-  DECEASED_DURING_TREATMENT: "Culminado en situación de tratamiento",
-  NOT_APPLICABLE: "N/A",
-  REMISSION: "En remisión",
-}
-
 export const medicationDoseUnitLabels: Record<MedicationDoseUnit, string> = {
   MG: "mg",
   G: "g",
@@ -134,41 +93,6 @@ export const interruptionReasonLabels = {
     "Por reacción / efectos adversos / toxicidad del tratamiento",
   THERAPEUTIC_OPTION_EVAL: "Evaluación de opción terapéutica",
   OTHER: "Otros",
-} as const
-
-/** Barreras de acceso para iniciar o continuar tratamiento. */
-export const accessBarrierLabels = {
-  TRANSFER: "Traslado",
-  LODGING: "Alojamiento",
-  ALTERNATIVE_MEDICINE: "Medicina alternativa",
-  EXCESSIVE_COST: "Gasto excesivo",
-  DOES_NOT_WANT_TO_START: "No desea iniciar el tratamiento",
-  STOCKOUT: "Desabastecimiento",
-  INFUSION_ROOM_INOPERATIVE: "Inoperatividad de salas de infusiones",
-  PATIENT_OVERLOAD: "Sobrecarga de pacientes",
-  OTHER: "Otros motivos",
-} as const
-
-export const transportationSepaProviderLabels = {
-  CRUZ_DEL_SUR: "Cruz del Sur",
-  LATAM_AVION_SOLIDARIO: "LATAM – Avión Solidario",
-  OTHER: "Otro",
-} as const
-
-export const shelterSepaProviderLabels = {
-  FRIEDA_HELLER: "Albergue Frieda Heller – FPC",
-  CASA_MAGIA: "Casa Magia",
-  CASA_RONALD_MCDONALD: "Casa Ronald McDonald",
-  INSPIRA: "Albergue Inspira",
-  ALINEN: "ALINEN",
-  OTHER: "Otro",
-} as const
-
-export const programDropoutReasonCodeLabels = {
-  VOLUNTARY: "Solicita baja del programa de manera voluntaria",
-  UNLOCATABLE: "Persona no ubicable",
-  DECEASED: "Fallecimiento",
-  OTHER: "Otros motivos",
 } as const
 
 export const diagnosticStatusLabels = {

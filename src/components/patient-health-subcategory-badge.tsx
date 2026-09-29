@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge"
+import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 import {
   patientHealthSubcategoryColors,
@@ -16,7 +17,10 @@ export function PatientHealthSubcategoryBadge({
   className,
 }: PatientHealthSubcategoryBadgeProps) {
   const colors = subcategory
-    ? patientHealthSubcategoryColors[subcategory]
+    ? (patientHealthSubcategoryColors[subcategory] ?? {
+        badge: "border-border bg-muted/50 text-muted-foreground",
+        dot: "bg-muted-foreground",
+      })
     : {
         badge: "border-border bg-muted/50 text-muted-foreground",
         dot: "bg-muted-foreground",
@@ -25,9 +29,14 @@ export function PatientHealthSubcategoryBadge({
   return (
     <Badge className={cn("border font-medium", colors.badge, className)}>
       <span className={cn("size-2 rounded-full", colors.dot)} />
-      {subcategory
-        ? patientHealthSubcategoryLabels[subcategory]
-        : "Sin subcategoría"}
+      {subcategory ? (
+        <CatalogValue
+          kind="patient_health_subcategory"
+          code={subcategory}
+        />
+      ) : (
+        "Sin subcategoría"
+      )}
     </Badge>
   )
 }
@@ -47,7 +56,7 @@ export function PatientHealthSubcategoryDot({
       title={patientHealthSubcategoryLabels[subcategory]}
       className={cn(
         "inline-block size-2 shrink-0 rounded-full",
-        patientHealthSubcategoryColors[subcategory].dot,
+        patientHealthSubcategoryColors[subcategory]?.dot ?? "bg-muted-foreground",
         className,
       )}
     />

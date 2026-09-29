@@ -45,9 +45,56 @@ vi.mock("@/api/patients", () => ({
     transitionDiagnosticStatus: mocks.transitionDiagnosticStatus,
   },
 }))
-vi.mock("@/api/psychooncology-appointments", () => ({
-  psychooncologyAppointmentsApi: { create: vi.fn() },
-}))
+vi.mock("@/api/catalogs", async () => {
+  const actual = await vi.importActual<typeof import("@/api/catalogs")>(
+    "@/api/catalogs",
+  )
+  return {
+    ...actual,
+    catalogsApi: {
+      ...actual.catalogsApi,
+      list: async (filters: { kind?: string }) => {
+        const item = (code: string, label: string, kind: string) => ({
+          id: code,
+          kind,
+          code,
+          label,
+          parentCode: null,
+          sortOrder: 0,
+          isActive: true,
+          isSystem: true,
+          metadata: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        })
+        if (filters.kind === "patient_health_subcategory") {
+          return [
+            item(
+              "UNDER_CONTROLS",
+              "En controles",
+              "patient_health_subcategory",
+            ),
+            item(
+              "ACTIVE_TREATMENT",
+              "Tratamiento activo",
+              "patient_health_subcategory",
+            ),
+          ]
+        }
+        if (filters.kind === "patient_health_phase") {
+          return [
+            item(
+              "CANCER_DIAGNOSIS",
+              "Diagnóstico de cáncer",
+              "patient_health_phase",
+            ),
+          ]
+        }
+        return []
+      },
+    },
+  }
+})
 
 vi.mock("@/store/auth-store", () => ({
   useAuthStore: (
@@ -172,7 +219,7 @@ describe("FollowUpContent closed follow-up editing", () => {
     })
     await user.click(subcategory)
     await user.click(
-      await screen.findByRole("option", { name: "Pacientes en Controles" }),
+      await screen.findByRole("option", { name: "En controles" }),
     )
 
     await waitFor(() => {

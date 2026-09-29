@@ -83,6 +83,17 @@ vi.mock("@/api/catalogs", async () => {
         if (filters.kind === "zone_type") {
           return [item("RURAL", "Rural", "zone_type")]
         }
+        if (filters.kind === "entry_source") {
+          return [item("CAMPANA", "Campaña", "entry_source")]
+        }
+        if (filters.kind === "patient_health_phase") {
+          return [
+            item("CANCER_DIAGNOSIS", "Diagnóstico de cáncer", "patient_health_phase"),
+          ]
+        }
+        if (filters.kind === "cancer_stage") {
+          return [item("STAGE_2", "Estadio II", "cancer_stage")]
+        }
         return []
       },
     },
@@ -216,7 +227,7 @@ function renderOverview() {
 describe("OverviewSection", () => {
   beforeEach(() => {
     mocks.listEnrollments.mockResolvedValue([
-      { id: "enrollment-1", entrySource: "Campaña prevención" },
+      { id: "enrollment-1", entrySource: "CAMPANA", entrySubSource: null },
     ])
     mocks.getSummary.mockResolvedValue({ status: "READY", summary: null })
     mocks.refreshSummary.mockResolvedValue({ status: "READY", summary: null })
@@ -225,7 +236,7 @@ describe("OverviewSection", () => {
   it("shows derived patient information and current residences", async () => {
     renderOverview()
 
-    expect(await screen.findByText("Campaña prevención")).toBeTruthy()
+    expect(await screen.findByText("Campaña")).toBeTruthy()
     expect(screen.getByText("Edad")).toBeTruthy()
     expect(screen.getByText("Sexo")).toBeTruthy()
     expect(screen.getAllByText("Femenino").length).toBeGreaterThan(0)

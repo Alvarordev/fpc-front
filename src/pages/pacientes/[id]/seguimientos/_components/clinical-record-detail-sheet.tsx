@@ -17,7 +17,6 @@ import { useTreatmentMedications } from "../../_hooks/use-patient-records"
 import { CatalogValue } from "@/components/catalog-select"
 import { formatCatalogCodesList, useCatalog } from "@/hooks/use-catalog"
 import {
-  cancerStageLabels,
   medicationDoseUnitLabels,
   medicationRouteLabels,
 } from "../../_lib/clinical-labels"
@@ -101,9 +100,11 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
           {diagnosis.isCurrent ? "Activo" : "Histórico"}
         </Badge>
         <Badge variant="outline">
-          {diagnosis.cancerStage
-            ? cancerStageLabels[diagnosis.cancerStage]
-            : "Etapa sin dato"}
+          {diagnosis.cancerStage ? (
+            <CatalogValue kind="cancer_stage" code={diagnosis.cancerStage} />
+          ) : (
+            "Etapa sin dato"
+          )}
         </Badge>
       </div>
 
@@ -132,9 +133,12 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
           <Detail
             label="Etapa"
             value={
-              diagnosis.cancerStage
-                ? cancerStageLabels[diagnosis.cancerStage]
-                : null
+              diagnosis.cancerStage ? (
+                <CatalogValue
+                  kind="cancer_stage"
+                  code={diagnosis.cancerStage}
+                />
+              ) : null
             }
           />
           <Detail

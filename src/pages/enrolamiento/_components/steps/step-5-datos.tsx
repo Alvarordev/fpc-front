@@ -1295,6 +1295,25 @@ export function Step5Datos({
                 enrollmentMetadata: {
                   ...meta,
                   programEntryPoint: code ?? undefined,
+                  programEntrySubSource: undefined,
+                },
+              })
+            }
+            placeholder="Seleccionar..."
+            triggerClassName={sc}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>¿Cómo se enteró concretamente?</Label>
+          <CatalogSelect
+            kind="entry_sub_source"
+            parentCode={meta.programEntryPoint ?? null}
+            value={meta.programEntrySubSource ?? null}
+            onValueChange={(code) =>
+              updateDraft({
+                enrollmentMetadata: {
+                  ...meta,
+                  programEntrySubSource: code ?? undefined,
                 },
               })
             }

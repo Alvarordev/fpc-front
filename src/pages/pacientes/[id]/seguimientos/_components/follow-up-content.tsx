@@ -60,7 +60,10 @@ import {
   resolveSpecialty,
   resolveSpecialtyLabel,
 } from "@/components/medical-appointment-fields"
-import { useCatalog } from "@/hooks/use-catalog"
+import { CatalogValue } from "@/components/catalog-select"
+import { catalogSelectItems, useCatalog } from "@/hooks/use-catalog"
+import { usePatient } from "../../_hooks/use-patient"
+import { normalizeDuration, toDurationInput } from "@/types/duration"
 import {
   FollowUpStatusConfirmationDialog,
   type FollowUpStatusAction,
@@ -70,11 +73,7 @@ import {
   followUpNotesKey,
   useFollowUpDraftStore,
 } from "../_store/follow-up-draft-store"
-import { usePatient } from "../../_hooks/use-patient"
-import { normalizeDuration, toDurationInput } from "@/types/duration"
 import {
-  patientHealthPhaseLabels,
-  patientHealthSubcategoryOptions,
   patientHealthSubcategoryPhase,
   requiresActiveDiagnosis,
 } from "@/lib/patient-health-subcategory"
@@ -95,14 +94,6 @@ const EDITABLE_STATUS_OPTIONS = [
 ] as const
 
 const NO_SUBCATEGORY_VALUE = "UNASSIGNED"
-
-const HEALTH_SUBCATEGORY_SELECT_ITEMS = [
-  { value: NO_SUBCATEGORY_VALUE, label: "Sin subcategoría" },
-  ...patientHealthSubcategoryOptions.map(({ value, label }) => ({
-    value,
-    label,
-  })),
-]
 
 function isClosedFollowUpStatus(
   status: FollowUp["status"],
@@ -1159,6 +1150,14 @@ function PatientHealthSubcategoryControl({
   isPending: boolean
   onChange: (value: PatientHealthSubcategory | null) => void
 }) {
+  const { data: subcategoryItems = [] } = useCatalog(
+    "patient_health_subcategory",
+  )
+  const catalogItems = catalogSelectItems(subcategoryItems)
+  const selectItems = [
+    { value: NO_SUBCATEGORY_VALUE, label: "Sin subcategoría" },
+    ...catalogItems,
+  ]
   const selectedValue = value ?? NO_SUBCATEGORY_VALUE
   const selectedPhase = value
     ? patientHealthSubcategoryPhase[value]
@@ -1168,7 +1167,7 @@ function PatientHealthSubcategoryControl({
     <div className="min-w-56 space-y-1.5">
       <Label htmlFor="patient-follow-up-health-subcategory">Subcategoría</Label>
       <Select
-        items={HEALTH_SUBCATEGORY_SELECT_ITEMS}
+        items={selectItems}
         value={selectedValue}
         onValueChange={(nextValue) => {
           if (!nextValue || nextValue === NO_SUBCATEGORY_VALUE) {
@@ -1188,12 +1187,14 @@ function PatientHealthSubcategoryControl({
         </SelectTrigger>
         <SelectContent className="max-h-72">
           <SelectItem value={NO_SUBCATEGORY_VALUE}>Sin subcategoría</SelectItem>
-          {patientHealthSubcategoryOptions.map((option) => (
+          {catalogItems.map((option) => (
             <SelectItem
               key={option.value}
               value={option.value}
               disabled={
-                requiresActiveDiagnosis(option.value) && !hasActiveDiagnosis
+                requiresActiveDiagnosis(
+                  option.value as PatientHealthSubcategory,
+                ) && !hasActiveDiagnosis
               }
             >
               {option.label}
@@ -1203,9 +1204,11 @@ function PatientHealthSubcategoryControl({
       </Select>
       <p className="text-muted-foreground text-[11px]">
         Fase de salud:{" "}
-        {selectedPhase
-          ? patientHealthPhaseLabels[selectedPhase]
-          : "Sin clasificar"}
+        {selectedPhase ? (
+          <CatalogValue kind="patient_health_phase" code={selectedPhase} />
+        ) : (
+          "Sin clasificar"
+        )}
       </p>
       {!hasActiveDiagnosis && (
         <p className="text-muted-foreground text-[11px]">

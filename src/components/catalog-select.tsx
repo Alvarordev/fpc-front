@@ -21,6 +21,7 @@ import {
   type CatalogItem,
   type CatalogKind,
 } from "@/api/catalogs"
+import { unknownCatalogValueMessage } from "@/lib/catalog-api-error"
 import { cn } from "@/lib/utils"
 
 export const NON_ONCOLOGICAL_DIAGNOSIS = "__NON_ONCOLOGICAL__"
@@ -38,6 +39,7 @@ type CatalogSelectProps = {
   extraItems?: CatalogSelectOption[]
   excludeCodes?: string[]
   triggerClassName?: string
+  parentCode?: string | null
 }
 
 function canCreateCatalogDefault(role: string | undefined) {
@@ -55,25 +57,39 @@ export function CatalogSelect({
   extraItems = [],
   excludeCodes = [],
   triggerClassName,
+  parentCode,
 }: CatalogSelectProps) {
   const role = useAuthStore((state) => state.user?.role)
   const isOpenKind = OPEN_CATALOG_KINDS.includes(
     kind as (typeof OPEN_CATALOG_KINDS)[number],
   )
+  const needsParent = parentCode !== undefined
+  const missingParent = needsParent && !parentCode
+  const isDisabled = disabled || missingParent
   const showCreate =
-    allowCreate ?? (isOpenKind && canCreateCatalogDefault(role))
+    (allowCreate ?? (isOpenKind && canCreateCatalogDefault(role))) &&
+    !missingParent
   const [createOpen, setCreateOpen] = useState(false)
-  const { data: items = [] } = useCatalog(kind)
+  const { data: items = [], isFetched } = useCatalog(kind)
   const excluded = new Set(excludeCodes)
-  const catalogItems = catalogSelectItems(items).filter(
-    (item) => !excluded.has(item.value),
-  )
+  const catalogItems = catalogSelectItems(
+    items,
+    needsParent ? parentCode : undefined,
+  ).filter((item) => !excluded.has(item.value))
   const extra = extraItems.filter(
     (item) =>
       !excluded.has(item.value) &&
       !catalogItems.some((catalogItem) => catalogItem.value === item.value),
   )
   const selectItems = [...catalogItems, ...extra]
+  const selected = value?.trim() || ""
+  const isUnknownValue =
+    isFetched &&
+    Boolean(selected) &&
+    !selectItems.some((item) => item.value === selected)
+  const itemsForSelect = isUnknownValue
+    ? [...selectItems, { value: selected, label: selected }]
+    : selectItems
 
   function handleCreated(item: CatalogItem) {
     onValueChange(item.code)
@@ -82,39 +98,63 @@ export function CatalogSelect({
 
   return (
     <>
-      <div className="flex gap-2">
-        <Select
-          items={selectItems}
-          value={value ?? ""}
-          disabled={disabled}
-          onValueChange={(next) => onValueChange(next || null)}
-        >
-          <SelectTrigger className={cn("w-full", triggerClassName)}>
-            <SelectValue placeholder={placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {selectItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {showCreate && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 gap-1"
-            disabled={disabled}
-            onClick={() => setCreateOpen(true)}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex gap-2">
+          <Select
+            items={itemsForSelect}
+            value={value ?? ""}
+            disabled={isDisabled}
+            onValueChange={(next) => onValueChange(next || null)}
           >
-            <Plus className="size-3.5" />
-          </Button>
+            <SelectTrigger
+              className={cn(
+                "w-full",
+                isUnknownValue && "border-destructive",
+                triggerClassName,
+              )}
+            >
+              <SelectValue
+                placeholder={
+                  missingParent ? "Seleccioná primero la fuente" : placeholder
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {itemsForSelect.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {showCreate && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1"
+              disabled={isDisabled}
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          )}
+        </div>
+        {isUnknownValue && (
+          <p
+            role="alert"
+            data-testid="catalog-unknown-value"
+            className="text-destructive text-sm leading-snug"
+          >
+            {unknownCatalogValueMessage(kind, selected, {
+              allowCreate: showCreate,
+            })}
+          </p>
         )}
       </div>
       <CreateCatalogItemDialog
         kind={kind}
+        parentCode={parentCode ?? undefined}
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={handleCreated}
@@ -130,7 +170,12 @@ type CatalogValueProps = {
   className?: string
 }
 
-export function CatalogValue({ kind, code, other, className }: CatalogValueProps) {
+export function CatalogValue({
+  kind,
+  code,
+  other,
+  className,
+}: CatalogValueProps) {
   const { data: items = [] } = useCatalog(kind)
   return (
     <span className={className}>{formatCatalogValue(items, code, other)}</span>

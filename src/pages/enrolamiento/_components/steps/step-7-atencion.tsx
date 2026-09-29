@@ -2151,16 +2151,6 @@ export function Step7Atencion({
                                 operationName: code ?? null,
                               })
                             }
-                            extraItems={
-                              tx.operationName
-                                ? [
-                                    {
-                                      value: tx.operationName,
-                                      label: tx.operationName,
-                                    },
-                                  ]
-                                : []
-                            }
                             placeholder="Seleccionar procedimiento..."
                             triggerClassName={sc}
                           />
