@@ -2421,6 +2421,8 @@ export interface components {
             referralNotProvidedReason?: string;
             /** @deprecated */
             nextConsultationDate?: string;
+            nextConsultationSpecialty?: string;
+            nextConsultationNote?: string;
             /**
              * Format: uuid
              * @deprecated
@@ -3864,6 +3866,8 @@ export interface components {
             referralNotProvidedReason?: string;
             /** @deprecated */
             nextConsultationDate?: string;
+            nextConsultationSpecialty?: string;
+            nextConsultationNote?: string;
             /**
              * Format: uuid
              * @deprecated
@@ -4598,6 +4602,8 @@ export interface components {
             referralNotProvidedReason?: string;
             /** @deprecated */
             nextConsultationDate?: string;
+            nextConsultationSpecialty?: string;
+            nextConsultationNote?: string;
             /**
              * Format: uuid
              * @deprecated

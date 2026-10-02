@@ -463,12 +463,13 @@ describe("step 8 Nest enrollment payload", () => {
           symptomFrequency: { valueMin: 1, unit: "WEEK" },
           hasMedicalConsultation: true,
           firstConsultationDate: "2026-06-20",
-          isAwaitingDiagnosis: false,
           hasReferral: true,
           referredHealthCenterId: "center-2",
           hasReceivedDiagnosis: true,
           reportedDiagnosis: "Lesión por estudiar",
           nextConsultationDate: "2026-07-20",
+          nextConsultationSpecialty: "ONCOLOGIA_MEDICA",
+          nextConsultationNote: "Llevar resultados de laboratorio",
           hasRequestedMedicalConsultation: true,
           consultationStatus: "ATTENDED",
           healthCenterId: "center-1",
@@ -508,12 +509,13 @@ describe("step 8 Nest enrollment payload", () => {
       healthCenterId: "center-1",
       specialty: "Medicina general",
       firstConsultationDate: "2026-06-20",
-      isAwaitingDiagnosis: false,
       hasReferral: true,
       referredHealthCenterId: "center-2",
       hasReceivedDiagnosis: true,
       reportedDiagnosis: "Lesión por estudiar",
       nextConsultationDate: "2026-07-20",
+      nextConsultationSpecialty: "ONCOLOGIA_MEDICA",
+      nextConsultationNote: "Llevar resultados de laboratorio",
     })
     expect(payload.symptomReport).not.toHaveProperty("signsAndSymptoms")
     expect(payload.symptomReport).not.toHaveProperty("symptomDuration")
@@ -523,6 +525,27 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.medicalAppointments).toBeUndefined()
     expect(payload.diagnoses).toBeUndefined()
     expect(payload.treatments).toBeUndefined()
+  })
+
+  it("requires the next consultation specialty when a next date is set", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "SIGNS_AND_SYMPTOMS",
+        draft: draft({
+          symptomReport: {
+            hasDiscomfort: true,
+            hasMedicalConsultation: true,
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            firstConsultationDate: "2026-06-20",
+            nextConsultationDate: "2026-07-20",
+            hasReferral: null,
+            hasReceivedDiagnosis: false,
+          },
+        }),
+      }),
+    ).toThrow("especialidad de la siguiente consulta")
   })
 
   it("serializes the structured diagnosis search duration", () => {
@@ -536,7 +559,6 @@ describe("step 8 Nest enrollment payload", () => {
           healthCenterId: "center-1",
           specialty: "Medicina general",
           firstConsultationDate: "2026-06-20",
-          isAwaitingDiagnosis: true,
           diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
           hasReferral: null,
           hasReceivedDiagnosis: false,
@@ -545,9 +567,9 @@ describe("step 8 Nest enrollment payload", () => {
     })
 
     expect(payload.symptomReport).toMatchObject({
-      isAwaitingDiagnosis: true,
       diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
     })
+    expect(payload.symptomReport).not.toHaveProperty("isAwaitingDiagnosis")
   })
 
   it("rejects an incomplete structured diagnosis search duration", () => {
@@ -562,7 +584,6 @@ describe("step 8 Nest enrollment payload", () => {
             healthCenterId: "center-1",
             specialty: "Medicina general",
             firstConsultationDate: "2026-06-20",
-            isAwaitingDiagnosis: true,
             diagnosisSearchDuration: { valueMin: 3 },
             hasReferral: null,
             hasReceivedDiagnosis: false,
@@ -572,7 +593,7 @@ describe("step 8 Nest enrollment payload", () => {
     ).toThrow("tiempo de espera o búsqueda del diagnóstico")
   })
 
-  it("does not send a stale diagnosis search duration when not awaiting diagnosis", () => {
+  it("sends the diagnosis search duration without the awaiting-diagnosis flag", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
       categoriaClinica: "SIGNS_AND_SYMPTOMS",
@@ -583,7 +604,6 @@ describe("step 8 Nest enrollment payload", () => {
           healthCenterId: "center-1",
           specialty: "Medicina general",
           firstConsultationDate: "2026-06-20",
-          isAwaitingDiagnosis: false,
           diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
           hasReferral: null,
           hasReceivedDiagnosis: false,
@@ -591,7 +611,10 @@ describe("step 8 Nest enrollment payload", () => {
       }),
     })
 
-    expect(payload.symptomReport).not.toHaveProperty("diagnosisSearchDuration")
+    expect(payload.symptomReport).toMatchObject({
+      diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+    })
+    expect(payload.symptomReport).not.toHaveProperty("isAwaitingDiagnosis")
   })
 
   it("serializes the reported treatment branch when it is present", () => {
@@ -605,7 +628,6 @@ describe("step 8 Nest enrollment payload", () => {
           healthCenterId: "center-1",
           specialty: "Medicina general",
           firstConsultationDate: "2026-06-20",
-          isAwaitingDiagnosis: false,
           hasReferral: null,
           hasReceivedDiagnosis: false,
           isReceivingReportedTreatment: true,
@@ -736,7 +758,6 @@ describe("step 8 Nest enrollment payload", () => {
           healthCenterId: "center-1",
           specialty: "Medicina general",
           firstConsultationDate: "2026-06-20",
-          isAwaitingDiagnosis: true,
           hasReferral: false,
           referralNotProvidedReason: "No fue necesario referir",
           hasReceivedDiagnosis: false,
@@ -777,7 +798,6 @@ describe("step 8 Nest enrollment payload", () => {
           healthCenterId: "center-1",
           specialty: "Medicina general",
           firstConsultationDate: "2026-06-20",
-          isAwaitingDiagnosis: false,
           hasReferral: null,
           referredHealthCenterId: "legacy-center",
           referralNotProvidedReason: "legacy reason",

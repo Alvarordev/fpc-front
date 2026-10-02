@@ -131,8 +131,8 @@ export function CatalogSelect({
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="shrink-0 gap-1"
+              size="icon"
+              className="shrink-0"
               disabled={isDisabled}
               onClick={() => setCreateOpen(true)}
             >

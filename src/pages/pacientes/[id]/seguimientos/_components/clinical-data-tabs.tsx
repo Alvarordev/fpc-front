@@ -79,6 +79,7 @@ import {
   Users,
   ChevronRight,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { patientDocumentsApi } from "@/api/patient-documents"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
 import { PatientDocumentUploadDialog } from "../../_components/patient-document-upload-dialog"
@@ -480,83 +481,83 @@ export function ClinicalDataTabs({
   return (
     <>
       <Tabs
-        orientation="vertical"
         value={activeTab}
         onValueChange={(value) => setActiveTab(String(value))}
-        className="flex-col items-stretch gap-3 lg:flex-row"
+        className="min-w-0 gap-4"
       >
-        <TabsList className="border-border/60 bg-muted/40 h-fit w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-xl border p-1 lg:w-56 lg:flex-col lg:overflow-visible">
+        <TabsList
+          variant="line"
+          className="h-auto w-full max-w-full justify-start gap-0 overflow-x-auto overflow-y-hidden rounded-none border-b bg-transparent p-0"
+        >
           <TabsTrigger
             value="datos"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <UserRound className="size-4 text-sky-600" />
-            <span className="min-w-0 break-words">Datos clínicos</span>
+            <UserRound className="size-3.5 text-sky-600" />
+            Datos clínicos
             {drafts.details && <DraftDot />}
           </TabsTrigger>
           <TabsTrigger
             value="sintomas"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <Activity className="size-4 text-rose-600" />
-            <span className="min-w-0 break-words">Síntomas</span>
+            <Activity className="size-3.5 text-rose-600" />
+            Síntomas
             {drafts.symptomReport && <DraftDot />}
           </TabsTrigger>
           <TabsTrigger
             value="direcciones"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <MapPin className="size-4 text-emerald-600" />
-            <span className="min-w-0 break-words">Direcciones</span>
+            <MapPin className="size-3.5 text-emerald-600" />
+            Direcciones
             {drafts.address && <DraftDot />}
           </TabsTrigger>
           <TabsTrigger
             value="contacto"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <Phone className="size-4 text-cyan-600" />
-            <span className="min-w-0 break-words">Contacto</span>
+            <Phone className="size-3.5 text-cyan-600" />
+            Contacto
           </TabsTrigger>
           <TabsTrigger
             value="diagnostico"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <Stethoscope className="size-4 text-violet-600" />
-            <span className="min-w-0 break-words">Diagnóstico</span>
+            <Stethoscope className="size-3.5 text-violet-600" />
+            Diagnóstico
             {drafts.diagnoses?.length ? <DraftDot /> : null}
           </TabsTrigger>
           <TabsTrigger
             value="antecedentes"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <HeartPulse className="size-4 text-pink-600" />
-            <span className="min-w-0 break-words">
-              Antecedentes y comorbilidades
-            </span>
+            <HeartPulse className="size-3.5 text-pink-600" />
+            Antecedentes
             {drafts.healthBackground && <DraftDot />}
           </TabsTrigger>
           <TabsTrigger
             value="tratamiento"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <Pill className="size-4 text-amber-600" />
-            <span className="min-w-0 break-words">Tratamientos</span>
+            <Pill className="size-3.5 text-amber-600" />
+            Tratamientos
             {drafts.treatments?.length ? <DraftDot /> : null}
           </TabsTrigger>
           <TabsTrigger
             value="seguro"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <ShieldCheck className="size-4 text-teal-600" />
-            <span className="min-w-0 break-words">INFORMACIÓN DE SEGURO</span>
+            <ShieldCheck className="size-3.5 text-teal-600" />
+            Seguro
             {drafts.insurance && <DraftDot />}
           </TabsTrigger>
           <TabsTrigger
             value="social"
-            className="h-auto min-h-10 flex-none justify-start gap-2 text-left whitespace-normal"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
-            <Users className="size-4 text-orange-600" />
-            <span className="min-w-0 break-words">Seguimiento social</span>
+            <Users className="size-3.5 text-orange-600" />
+            Seguimiento social
             {(drafts.social || drafts.socialNotes?.length) && <DraftDot />}
           </TabsTrigger>
         </TabsList>
@@ -754,7 +755,7 @@ export function ClinicalDataTabs({
 function DraftDot() {
   return (
     <span
-      className="bg-primary ml-auto size-1.5 shrink-0 rounded-full"
+      className="bg-primary size-1.5 shrink-0 rounded-full"
       aria-label="Cambios pendientes"
     />
   )
@@ -2424,7 +2425,7 @@ function SintomasForm({
             </>
           )}
           <ClinicalTriSelect
-            label="¿Actualmente recibe el tratamiento que le informaron?"
+            label="¿Actualmente le han brindado algún tratamiento?"
             value={isReceivingReportedTreatment}
             onChange={(value) => {
               setValue("isReceivingReportedTreatment", value)
@@ -2597,6 +2598,12 @@ function DiagnosticoForm({
   const [editingDecisionIndex, setEditingDecisionIndex] = useState<
     number | null
   >(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [selectedDiagnosisId, setSelectedDiagnosisId] = useState<string | null>(
+    null,
+  )
+  const selectedId = selectedDiagnosisId ?? currentDiagnoses[0]?.id ?? null
+  const showForm = formOpen || editingDecisionIndex !== null
   const decisionModeItems = [
     { value: "PARALLEL", label: "Agregar diagnóstico activo" },
     { value: "REPLACE", label: "Reemplazar diagnóstico existente" },
@@ -2695,6 +2702,7 @@ function DiagnosticoForm({
     setDecisions(nextDecisions)
     onSave(nextDecisions)
     resetDiagnosisForm()
+    setFormOpen(false)
     toast.success("Diagnóstico guardado en el borrador")
   }
 
@@ -2716,9 +2724,19 @@ function DiagnosticoForm({
     setEditingDecisionIndex(null)
   }
 
+  function toggleDiagnosisForm() {
+    if (showForm) {
+      if (editingDecisionIndex !== null) resetDiagnosisForm()
+      setFormOpen(false)
+      return
+    }
+    setFormOpen(true)
+  }
+
   function editDecision(index: number) {
     const decision = decisions[index]
     if (!decision) return
+    setFormOpen(true)
     setEditingDecisionIndex(index)
     setMode(decision.mode)
     setReplacementDiagnosisId(decision.replacementDiagnosisId ?? "")
@@ -2744,57 +2762,74 @@ function DiagnosticoForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-blue-900">
-        <div>
-          <p className="font-semibold">
-            Diagnósticos activos ({currentDiagnoses.length})
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-blue-800">
-            Un paciente puede tener varios diagnósticos de cáncer activos al
-            mismo tiempo. Seleccioná uno para consultar todos sus datos.
-          </p>
-        </div>
-        {currentDiagnoses.length ? (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {currentDiagnoses.map((diagnosis) => (
+      <div className="space-y-3">
+        <p className="text-sm font-semibold">
+          Diagnósticos activos ({currentDiagnoses.length})
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {currentDiagnoses.map((diagnosis) => {
+            const selected = diagnosis.id === selectedId
+            return (
               <button
                 key={diagnosis.id}
                 type="button"
-                className="bg-background/80 hover:bg-background flex items-center gap-2 rounded-md border border-blue-200 p-2.5 text-left transition-colors"
-                onClick={() => onViewDiagnosis?.(diagnosis)}
-                disabled={!onViewDiagnosis}
+                className={cn(
+                  "min-w-44 max-w-64 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                  selected
+                    ? "border-blue-300 bg-blue-100 text-blue-950"
+                    : "border-border bg-background hover:bg-muted/40",
+                )}
+                onClick={() => {
+                  setSelectedDiagnosisId(diagnosis.id)
+                  onViewDiagnosis?.(diagnosis)
+                }}
               >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-semibold">
-                    {diagnosis.diagnosis ? (
-                      <CatalogValue
-                        kind="cancer_diagnosis"
-                        code={diagnosis.diagnosis}
-                      />
-                    ) : (
-                      diagnosis.diagnosis
-                    )}
-                  </span>
-                  <span className="text-muted-foreground mt-0.5 block text-[11px]">
-                    {diagnosis.cancerStage ? (
-                      <CatalogValue
-                        kind="cancer_stage"
-                        code={diagnosis.cancerStage}
-                      />
-                    ) : (
-                      "Etapa sin dato"
-                    )}
-                  </span>
+                <span className="block truncate text-sm font-medium">
+                  {diagnosis.diagnosis ? (
+                    <CatalogValue
+                      kind="cancer_diagnosis"
+                      code={diagnosis.diagnosis}
+                    />
+                  ) : (
+                    diagnosis.diagnosis
+                  )}
                 </span>
-                <ChevronRight className="size-3.5 shrink-0 text-blue-700" />
+                <span
+                  className={cn(
+                    "mt-0.5 block truncate text-[11px]",
+                    selected ? "text-blue-800/80" : "text-muted-foreground",
+                  )}
+                >
+                  {diagnosis.cancerStage ? (
+                    <CatalogValue
+                      kind="cancer_stage"
+                      code={diagnosis.cancerStage}
+                    />
+                  ) : (
+                    "Desconocido / no determinado"
+                  )}
+                </span>
               </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-blue-800">
-            Aún no hay diagnósticos activos.
-          </p>
-        )}
+            )
+          })}
+          <button
+            type="button"
+            aria-expanded={showForm}
+            className={cn(
+              "inline-flex min-h-[3.25rem] min-w-44 items-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-colors",
+              showForm && editingDecisionIndex === null
+                ? "border-primary/40 bg-primary/5 text-foreground"
+                : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/30 hover:text-foreground",
+            )}
+            onClick={toggleDiagnosisForm}
+          >
+            <Plus className="size-4 shrink-0" />
+            Agregar o reemplazar diagnóstico
+          </button>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Un paciente puede tener varios diagnósticos activos al mismo tiempo.
+        </p>
       </div>
       {decisions.length > 0 && (
         <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-3">
@@ -2861,19 +2896,21 @@ function DiagnosticoForm({
           })}
         </div>
       )}
-      <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">
-            {editingDecisionIndex === null
-              ? "Nueva decisión de diagnóstico"
-              : "Editar decisión de diagnóstico"}
-          </p>
-          <p className="text-muted-foreground text-xs">
-            Elegí si el diagnóstico se agrega o reemplaza uno activo.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label>Tipo de decisión</Label>
+      {showForm ? (
+        <>
+          <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">
+                {editingDecisionIndex === null
+                  ? "Nueva decisión de diagnóstico"
+                  : "Editar decisión de diagnóstico"}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Elegí si el diagnóstico se agrega o reemplaza uno activo.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de decisión</Label>
           <Select
             items={decisionModeItems}
             value={mode}
@@ -3091,18 +3128,21 @@ function DiagnosticoForm({
             ? "Guardar diagnóstico"
             : "Actualizar diagnóstico"}
         </Button>
-        {editingDecisionIndex !== null && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={resetDiagnosisForm}
-          >
-            Cancelar edición
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (editingDecisionIndex !== null) resetDiagnosisForm()
+            setFormOpen(false)
+          }}
+        >
+          {editingDecisionIndex === null ? "Cerrar" : "Cancelar edición"}
+        </Button>
         <DraftBadge saved={Boolean(decisions.length)} />
       </div>
+        </>
+      ) : null}
     </form>
   )
 }
@@ -3248,7 +3288,14 @@ function TratamientosForm({
   const [editingDecisionIndex, setEditingDecisionIndex] = useState<
     number | null
   >(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(
+    null,
+  )
   const currentTreatments = treatments.filter((item) => item.isCurrent)
+  const selectedChipId =
+    selectedTreatmentId ?? currentTreatments[0]?.id ?? null
+  const showForm = formOpen || editingDecisionIndex !== null
   const selectedTreatment = currentTreatments.find(
     (item) => item.seriesId === selectedSeriesId,
   )
@@ -3399,6 +3446,7 @@ function TratamientosForm({
   function editDecision(index: number) {
     const decision = decisions[index]
     if (!decision) return
+    setFormOpen(true)
     setEditingDecisionIndex(index)
     setMode(decision.mode)
     setSelectedSeriesId(decision.seriesId ?? "")
@@ -3699,60 +3747,92 @@ function TratamientosForm({
     setMode("PARALLEL")
     setSelectedSeriesId("")
     setEditingDecisionIndex(null)
+    setFormOpen(false)
     toast.success("Tratamiento guardado en el borrador")
+  }
+
+  function toggleTreatmentForm() {
+    if (showForm) {
+      setEditingDecisionIndex(null)
+      setFormOpen(false)
+      return
+    }
+    setFormOpen(true)
   }
 
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {currentTreatments.length > 0 && (
-          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-amber-950">
-            <div>
-              <p className="font-semibold">
-                Tratamientos activos ({currentTreatments.length})
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                Consultá el detalle de cada línea activa antes de registrar una
-                actualización o agregar otra en paralelo.
-              </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {currentTreatments.map((treatment) => (
+        <div className="space-y-3">
+          <p className="text-sm font-semibold">
+            Tratamientos activos ({currentTreatments.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {currentTreatments.map((treatment) => {
+              const selected = treatment.id === selectedChipId
+              return (
                 <button
                   key={treatment.id}
                   type="button"
-                  className="bg-background/80 hover:bg-background flex items-center gap-2 rounded-md border border-amber-200 p-2.5 text-left transition-colors"
-                  onClick={() => onViewTreatment?.(treatment)}
-                  disabled={!onViewTreatment}
+                  className={cn(
+                    "min-w-44 max-w-64 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                    selected
+                      ? "border-amber-300 bg-amber-100 text-amber-950"
+                      : "border-border bg-background hover:bg-muted/40",
+                  )}
+                  onClick={() => {
+                    setSelectedTreatmentId(treatment.id)
+                    onViewTreatment?.(treatment)
+                  }}
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs font-semibold">
-                      {treatment.treatmentType ? (
-                        <CatalogValue
-                          kind="treatment_type"
-                          code={treatment.treatmentType}
-                        />
-                      ) : (
-                        treatment.treatmentType
-                      )}
-                    </span>
-                    <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
-                      {treatment.diagnosisSummary?.diagnosis ? (
-                        <CatalogValue
-                          kind="cancer_diagnosis"
-                          code={treatment.diagnosisSummary.diagnosis}
-                        />
-                      ) : (
-                        "Sin diagnóstico asociado"
-                      )}
-                    </span>
+                  <span className="block truncate text-sm font-medium">
+                    {treatment.treatmentType ? (
+                      <CatalogValue
+                        kind="treatment_type"
+                        code={treatment.treatmentType}
+                      />
+                    ) : (
+                      treatment.treatmentType
+                    )}
                   </span>
-                  <ChevronRight className="size-3.5 shrink-0 text-amber-700" />
+                  <span
+                    className={cn(
+                      "mt-0.5 block truncate text-[11px]",
+                      selected ? "text-amber-800/80" : "text-muted-foreground",
+                    )}
+                  >
+                    {treatment.diagnosisSummary?.diagnosis ? (
+                      <CatalogValue
+                        kind="cancer_diagnosis"
+                        code={treatment.diagnosisSummary.diagnosis}
+                      />
+                    ) : (
+                      "Sin diagnóstico asociado"
+                    )}
+                  </span>
                 </button>
-              ))}
-            </div>
+              )
+            })}
+            <button
+              type="button"
+              aria-expanded={showForm}
+              className={cn(
+                "inline-flex min-h-[3.25rem] min-w-44 items-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-colors",
+                showForm && editingDecisionIndex === null
+                  ? "border-primary/40 bg-primary/5 text-foreground"
+                  : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/30 hover:text-foreground",
+              )}
+              onClick={toggleTreatmentForm}
+            >
+              <Plus className="size-4 shrink-0" />
+              Agregar o reemplazar tratamiento
+            </button>
           </div>
-        )}
+          <p className="text-muted-foreground text-xs">
+            Un paciente puede tener varias líneas de tratamiento activas al
+            mismo tiempo.
+          </p>
+        </div>
         {decisions.length > 0 && (
           <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -3802,6 +3882,8 @@ function TratamientosForm({
             ))}
           </div>
         )}
+        {showForm ? (
+          <>
         <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
           <div>
             <p className="text-sm font-medium">
@@ -4486,8 +4568,21 @@ function TratamientosForm({
           <Button type="submit" size="sm" disabled={!canPickDiagnosis}>
             Guardar tratamiento
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setEditingDecisionIndex(null)
+              setFormOpen(false)
+            }}
+          >
+            {editingDecisionIndex === null ? "Cerrar" : "Cancelar edición"}
+          </Button>
           <DraftBadge saved={Boolean(draft?.length)} />
         </div>
+          </>
+        ) : null}
       </form>
       <PatientDocumentUploadDialog
         open={prescriptionUploadOpen}

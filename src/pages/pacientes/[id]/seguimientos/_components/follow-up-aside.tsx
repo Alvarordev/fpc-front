@@ -1,6 +1,6 @@
-import { Brain, TriangleAlert, Bell, CalendarPlus, X } from "lucide-react"
+import { Bell, Brain, CalendarPlus, Check, TriangleAlert, X } from "lucide-react"
+import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 import type { ReminderKind } from "@/api/reminders"
@@ -58,100 +58,82 @@ export function FollowUpAside({
   onRemoveReminder,
   className,
 }: FollowUpAsideProps) {
+  const hasPending =
+    hasPsicoDraft ||
+    hasAlertDraft ||
+    hasNextContactDraft ||
+    reminderDrafts.length > 0
+
   return (
-    <Card
-      size="sm"
-      className={cn(
-        "border-border/60 self-start xl:sticky xl:top-4",
-        className,
-      )}
-    >
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Acciones</CardTitle>
-        <p className="text-muted-foreground text-xs">
-          Se registran al completar el seguimiento.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-10 w-full justify-start gap-2"
+    <div className={cn("space-y-2.5", className)}>
+      <div className="flex flex-wrap gap-2">
+        <ActionPill
+          icon={Brain}
+          iconClassName="text-violet-500"
+          active={hasPsicoDraft}
           onClick={onPsicoOpen}
         >
-          <Brain className="size-4 text-violet-500" />
           Derivar a psicooncología
-        </Button>
-        {hasPsicoDraft && (
-          <DraftChip
-            color="violet"
-            text="Psicosesión lista para guardar."
-            onClear={onClearPsico}
-          />
-        )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-10 w-full justify-start gap-2"
+        </ActionPill>
+        <ActionPill
+          icon={TriangleAlert}
+          iconClassName="text-amber-500"
+          active={hasAlertDraft}
           onClick={onAlertOpen}
         >
-          <TriangleAlert className="size-4 text-amber-500" />
           Reportar incidencia hospitalaria
-        </Button>
-        {hasAlertDraft && (
-          <DraftChip
-            color="amber"
-            text="Alerta lista para registrar."
-            onClear={onClearAlert}
-          />
-        )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-10 w-full justify-start gap-2"
+        </ActionPill>
+        <ActionPill
+          icon={CalendarPlus}
+          iconClassName="text-sky-500"
+          active={hasNextContactDraft}
           onClick={onNextContactOpen}
         >
-          <CalendarPlus className="size-4 text-sky-500" />
           Agendar siguiente seguimiento
-        </Button>
-        {hasNextContactDraft && (
-          <DraftChip
-            color="sky"
-            text="Siguiente seguimiento listo para guardar."
-            onClear={onClearNextContact}
-          />
-        )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-10 w-full justify-start gap-2"
+        </ActionPill>
+        <ActionPill
+          icon={Bell}
+          iconClassName="text-amber-500"
+          active={reminderDrafts.length > 0}
           onClick={onReminderOpen}
         >
-          <Bell className="size-4 text-amber-500" />
           Agregar recordatorio
-        </Button>
-
-        {reminderDrafts.length > 0 && (
-          <ul className="space-y-1.5 pt-1">
+        </ActionPill>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-muted-foreground text-xs">
+          {hasPending ? "Se registrará al completar:" : "Se registrará al completar."}
+        </p>
+        {hasPending ? (
+          <>
+            {hasPsicoDraft && (
+              <DraftChip
+                color="violet"
+                text="Psicosesión lista para guardar."
+                onClear={onClearPsico}
+              />
+            )}
+            {hasAlertDraft && (
+              <DraftChip
+                color="amber"
+                text="Alerta lista para registrar."
+                onClear={onClearAlert}
+              />
+            )}
+            {hasNextContactDraft && (
+              <DraftChip
+                color="sky"
+                text="Siguiente seguimiento listo para guardar."
+                onClear={onClearNextContact}
+              />
+            )}
             {reminderDrafts.map((reminder, index) => (
-              <li
+              <DraftChip
                 key={`${reminder.description}-${reminder.dueAt}-${index}`}
-                className="flex items-start justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
-              >
-                <div className="min-w-0">
-                  {reminder.kind === "MEDICAL_APPOINTMENT" && (
-                    <span className="mb-0.5 inline-block rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-red-700">
-                      Cita médica
-                    </span>
-                  )}
-                  <p className="text-xs text-amber-800">
+                color="amber"
+                text={
+                  <>
+                    Recordatorio:{" "}
                     {reminder.kind === "MEDICAL_APPOINTMENT" &&
                     reminder.medicalAppointment?.specialty ? (
                       <CatalogValue
@@ -161,24 +143,50 @@ export function FollowUpAside({
                     ) : (
                       reminder.description
                     )}
-                  </p>
-                  <p className="text-[10px] text-amber-700/80">
-                    {formatDraftDueAt(reminder.dueAt)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onRemoveReminder(index)}
-                  className="shrink-0 text-amber-500 hover:text-amber-700"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </li>
+                    , {formatDraftDueAt(reminder.dueAt)}
+                  </>
+                }
+                onClear={() => onRemoveReminder(index)}
+              />
             ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function ActionPill({
+  icon: Icon,
+  iconClassName,
+  active,
+  onClick,
+  children,
+}: {
+  icon: typeof Brain
+  iconClassName: string
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className={cn(
+        "h-8 gap-1.5 rounded-full px-3 text-xs",
+        active && "border-primary/30 bg-primary/5",
+      )}
+      onClick={onClick}
+    >
+      {active ? (
+        <Check className="size-3.5 text-primary" />
+      ) : (
+        <Icon className={cn("size-3.5", iconClassName)} />
+      )}
+      {children}
+    </Button>
   )
 }
 
@@ -188,27 +196,31 @@ function DraftChip({
   onClear,
 }: {
   color: "violet" | "amber" | "sky"
-  text: string
+  text: ReactNode
   onClear: () => void
 }) {
   const classes = {
-    violet: "border-violet-200 bg-violet-50 text-violet-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
-    sky: "border-sky-200 bg-sky-50 text-sky-700",
+    violet: "border-violet-200 bg-violet-50 text-violet-800",
+    amber: "border-amber-200 bg-amber-50 text-amber-800",
+    sky: "border-sky-200 bg-sky-50 text-sky-800",
   }[color]
 
   return (
-    <div
-      className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${classes}`}
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]",
+        classes,
+      )}
     >
-      <span className="text-xs">{text}</span>
+      <span className="min-w-0 truncate">{text}</span>
       <button
         type="button"
         onClick={onClear}
-        className="shrink-0 opacity-70 hover:opacity-100"
+        className="shrink-0 opacity-60 hover:opacity-100"
+        aria-label="Quitar"
       >
-        <X className="size-3.5" />
+        <X className="size-3" />
       </button>
-    </div>
+    </span>
   )
 }

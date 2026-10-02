@@ -11,7 +11,7 @@ export function DashboardLayout() {
         <AppSidebar />
         <SidebarInset>
           <AppTopbar />
-          <div className="flex-1 p-6">
+          <div className="min-w-0 flex-1 p-6">
             <div className="mx-auto max-w-7xl">
               <Outlet />
             </div>

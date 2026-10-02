@@ -378,10 +378,7 @@ export function buildEnrollmentPayload({
         throw new Error("Indica establecimiento y especialidad de la consulta")
       if (!value(symptom.firstConsultationDate))
         throw new Error("Indica la fecha de la primera consulta")
-      if (typeof symptom.isAwaitingDiagnosis !== "boolean")
-        throw new Error("Indica si está a la espera de un diagnóstico")
       if (
-        symptom.isAwaitingDiagnosis === true &&
         symptom.diagnosisSearchDuration?.valueMin !== undefined &&
         !duration(
           symptom.diagnosisSearchDuration,
@@ -390,6 +387,13 @@ export function buildEnrollmentPayload({
       )
         throw new Error(
           "Completa correctamente el tiempo de espera o búsqueda del diagnóstico",
+        )
+      if (
+        value(symptom.nextConsultationDate) &&
+        !value(symptom.nextConsultationSpecialty)
+      )
+        throw new Error(
+          "Indica la especialidad de la siguiente consulta médica",
         )
       if (symptom.hasReferral === undefined)
         throw new Error("Indica si le han brindado una hoja de referencia")
@@ -638,9 +642,7 @@ export function buildEnrollmentPayload({
                   healthCenterId: value(symptom.healthCenterId)!,
                   specialty: value(symptom.specialty)!,
                   firstConsultationDate: value(symptom.firstConsultationDate)!,
-                  isAwaitingDiagnosis: symptom.isAwaitingDiagnosis,
-                  ...(symptom.isAwaitingDiagnosis === true &&
-                  symptom.diagnosisSearchDuration?.valueMin !== undefined
+                  ...(symptom.diagnosisSearchDuration?.valueMin !== undefined
                     ? {
                         diagnosisSearchDuration: duration(
                           symptom.diagnosisSearchDuration,
@@ -671,6 +673,16 @@ export function buildEnrollmentPayload({
                         nextConsultationDate: value(
                           symptom.nextConsultationDate,
                         )!,
+                        nextConsultationSpecialty: value(
+                          symptom.nextConsultationSpecialty,
+                        )!,
+                        ...(value(symptom.nextConsultationNote)
+                          ? {
+                              nextConsultationNote: value(
+                                symptom.nextConsultationNote,
+                              )!,
+                            }
+                          : {}),
                       }
                     : {}),
                 }),

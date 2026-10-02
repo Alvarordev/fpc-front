@@ -643,6 +643,8 @@ export function Step7Atencion({
                           hasReceivedDiagnosis: null,
                           reportedDiagnosis: null,
                           nextConsultationDate: null,
+                          nextConsultationSpecialty: null,
+                          nextConsultationNote: null,
                         }
                       : hasMedicalConsultation === true
                         ? { noMedicalConsultationReason: null }
@@ -658,6 +660,8 @@ export function Step7Atencion({
                             hasReceivedDiagnosis: null,
                             reportedDiagnosis: null,
                             nextConsultationDate: null,
+                          nextConsultationSpecialty: null,
+                          nextConsultationNote: null,
                           }
                   updateSymptomReport({
                     hasMedicalConsultation,
@@ -755,41 +759,6 @@ export function Step7Atencion({
                     }
                     className="bg-card border"
                   />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>
-                    ¿Está a la espera de un diagnóstico?{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    items={YES_NO_OPTIONS}
-                    value={
-                      sr.isAwaitingDiagnosis === true
-                        ? "Sí"
-                        : sr.isAwaitingDiagnosis === false
-                          ? "No"
-                          : ""
-                    }
-                    onValueChange={(value) =>
-                      updateSymptomReport({
-                        isAwaitingDiagnosis: value === "Sí" ? true : false,
-                        ...(!historical && value !== "Sí"
-                          ? { diagnosisSearchDuration: undefined }
-                          : {}),
-                      })
-                    }
-                  >
-                    <SelectTrigger className={sc}>
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {YES_NO_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <DurationInput
                   label="¿Hace cuánto tiempo está esperando o está en búsqueda de un diagnóstico?"
@@ -1023,11 +992,46 @@ export function Step7Atencion({
                     className="bg-card border"
                   />
                 </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>
+                    Especialidad de la siguiente consulta
+                    {sr.nextConsultationDate ? (
+                      <>
+                        {" "}
+                        <span className="text-destructive">*</span>
+                      </>
+                    ) : null}
+                  </Label>
+                  <CatalogSelect
+                    kind="medical_specialty"
+                    value={sr.nextConsultationSpecialty ?? null}
+                    onValueChange={(code) =>
+                      updateSymptomReport({
+                        nextConsultationSpecialty: code,
+                      })
+                    }
+                    placeholder="Seleccionar especialidad..."
+                    triggerClassName={sc}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>Nota del recordatorio</Label>
+                  <Textarea
+                    value={sr.nextConsultationNote ?? ""}
+                    onChange={(e) =>
+                      updateSymptomReport({
+                        nextConsultationNote: e.target.value || null,
+                      })
+                    }
+                    placeholder="Indicaciones, preparación o contexto para el agente"
+                    className="bg-card min-h-20 border"
+                  />
+                </div>
               </>
             )}
             <div className="flex flex-col gap-2">
               <Label className={fl}>
-                ¿Actualmente recibe el tratamiento que le informaron?{" "}
+                ¿Actualmente le han brindado algún tratamiento?{" "}
                 <span className="text-destructive">*</span>
               </Label>
               <Select
@@ -1067,9 +1071,9 @@ export function Step7Atencion({
               </Select>
             </div>
             {sr.isReceivingReportedTreatment === true && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label className={fl}>
+                  <Label className={flGrid}>
                     Tratamiento informado{" "}
                     <span className="text-destructive">*</span>
                   </Label>
@@ -1087,6 +1091,7 @@ export function Step7Atencion({
                 </div>
                 <DurationInput
                   label="Frecuencia del tratamiento informado"
+                  labelClassName={flGrid}
                   units={["DAY", "WEEK", "MONTH", "YEAR"]}
                   defaultUnit="WEEK"
                   singleValue

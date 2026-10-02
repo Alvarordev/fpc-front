@@ -22,6 +22,7 @@ interface DurationInputProps {
   onChange: (value: DurationDraft | undefined) => void
   units?: readonly DurationUnit[]
   label?: string
+  labelClassName?: string
   className?: string
   /** Render an exact duration instead of a range. */
   singleValue?: boolean
@@ -46,6 +47,7 @@ export function DurationInput({
   units,
   label,
   className,
+  labelClassName,
   singleValue = false,
   defaultUnit,
 }: DurationInputProps) {
@@ -205,7 +207,9 @@ export function DurationInput({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {label && <p className="text-sm font-medium">{label}</p>}
+      {label && (
+        <p className={cn("text-sm font-medium", labelClassName)}>{label}</p>
+      )}
       <div
         className={cn(
           "grid items-center gap-2",

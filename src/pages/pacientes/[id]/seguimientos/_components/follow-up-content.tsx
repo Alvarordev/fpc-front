@@ -350,19 +350,22 @@ export function FollowUpContent() {
   )
   const patientSubcategory =
     patientQuery.data?.details?.healthSubcategory ?? null
-  const hasActiveDiagnosis = Boolean(
-    patientQuery.data?.diagnoses.some((diagnosis) => diagnosis.isCurrent),
+  const currentDiagnosis = patientQuery.data?.diagnoses.find(
+    (diagnosis) => diagnosis.isCurrent,
   )
+  const healthPhase = patientQuery.data?.details?.healthPhase ?? null
+  const hasActiveDiagnosis = Boolean(currentDiagnosis)
   const canEditSubcategory = canManage && patientQuery.data?.role === "PATIENT"
-  const healthSubcategoryControl = canEditSubcategory ? (
+  const healthSubcategoryControl = (
     <PatientHealthSubcategoryControl
       value={patientSubcategory}
-      healthPhase={patientQuery.data?.details?.healthPhase ?? null}
+      healthPhase={healthPhase}
       hasActiveDiagnosis={hasActiveDiagnosis}
       isPending={healthSubcategoryMutation.isPending}
+      disabled={!canEditSubcategory}
       onChange={(subcategory) => healthSubcategoryMutation.mutate(subcategory)}
     />
-  ) : null
+  )
 
   function resolveNextFollowUpAgentId(values: ScheduleFollowUpFormValues) {
     const ownAgent = agentsQuery.data?.find(
@@ -828,7 +831,7 @@ export function FollowUpContent() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-4">
+    <div className="mx-auto min-w-0 max-w-6xl space-y-5">
       <Button
         variant="ghost"
         size="sm"
@@ -839,175 +842,200 @@ export function FollowUpContent() {
         Volver al paciente
       </Button>
 
-      <Card size="sm" className="border-border/60">
-        <CardHeader className="border-border/60 border-b pb-4">
-          <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
-            <div className="flex flex-wrap items-center gap-2">
-              <span>
-                {isOpen ? "Registrar seguimiento" : "Detalle del seguimiento"}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="text-lg font-semibold tracking-tight">
+            {isOpen ? "Registrar seguimiento" : "Detalle del seguimiento"}
+          </h1>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {patientQuery.data?.fullName ? (
+              <span className="text-muted-foreground text-sm">
+                {patientQuery.data.fullName}
               </span>
-              {canEditClosed && !isEditing && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={startEditing}
-                >
-                  <Pencil className="size-3.5" />
-                  Editar seguimiento
-                </Button>
-              )}
-            </div>
+            ) : null}
             <span
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium ${followUpStatusClasses[followUp.status]}`}
+              className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${followUpStatusClasses[followUp.status]}`}
             >
               {followUpStatusLabels[followUp.status]}
             </span>
-          </CardTitle>
-          <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            <span>
-              <b className="text-foreground font-medium">Canal</b>{" "}
-              {followUpTypeLabels[followUp.type] ?? "Sin especificar"}
-            </span>
-            <span>
-              <b className="text-foreground font-medium">Propósito</b>{" "}
-              {followUpPurposeLabels[followUp.purpose] ?? "Sin especificar"}
-            </span>
+            {healthPhase ? (
+              <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800">
+                <CatalogValue kind="patient_health_phase" code={healthPhase} />
+              </span>
+            ) : null}
+            {currentDiagnosis?.diagnosis ? (
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+                <CatalogValue
+                  kind="cancer_diagnosis"
+                  code={currentDiagnosis.diagnosis}
+                />
+              </span>
+            ) : null}
           </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          {isEditing ? (
-            <div className="space-y-4 lg:col-span-2">
-              <div className="max-w-sm space-y-2">
-                <Label htmlFor="follow-up-edit-status">Estado</Label>
-                <Select
-                  items={EDITABLE_STATUS_OPTIONS}
-                  value={editStatus}
-                  onValueChange={(value) => {
-                    if (value) setEditStatus(value as EditableFollowUpStatus)
-                  }}
-                >
-                  <SelectTrigger id="follow-up-edit-status" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EDITABLE_STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
-                  {healthSubcategoryControl}
-                  {hasNotesDraft && notesKey && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      className="h-7 gap-1 text-xs"
-                      onClick={() => draftStore.clearNotes(notesKey)}
-                      disabled={editMutation.isPending}
-                    >
-                      <RotateCcw className="size-3" />
-                      Restablecer nota
-                    </Button>
-                  )}
-                </div>
-                <Textarea
-                  id="follow-up-notes"
-                  className="min-h-20 resize-y"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Registrá el resultado del seguimiento..."
-                  disabled={editMutation.isPending}
-                />
-              </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={cancelEditing}
-                  disabled={editMutation.isPending}
-                  className="gap-1.5"
-                >
-                  <X className="size-4" />
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  onClick={requestEditSave}
-                  disabled={editMutation.isPending}
-                  className="gap-1.5"
-                >
-                  <Save className="size-4" />
-                  {editMutation.isPending ? "Guardando..." : "Guardar cambios"}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
-                  {healthSubcategoryControl}
-                  {hasNotesDraft && notesKey && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      className="h-7 gap-1 text-xs"
-                      onClick={() => draftStore.clearNotes(notesKey)}
-                      disabled={isStatusPending}
-                    >
-                      <RotateCcw className="size-3" />
-                      Restablecer nota
-                    </Button>
-                  )}
-                </div>
-                <Textarea
-                  id="follow-up-notes"
-                  className="min-h-20 resize-y"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Registrá el resultado del seguimiento..."
-                  disabled={!canManage || !isOpen}
-                />
-              </div>
-              {canManage && isOpen && (
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <Button
-                    onClick={() => requestStatusChange("COMPLETED")}
-                    disabled={isStatusPending}
-                    className="gap-1.5"
-                  >
-                    <CheckCircle2 className="size-4" />
-                    {isStatusPending ? "Guardando..." : "Completar"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => requestStatusChange("NO_ANSWER")}
-                    disabled={isStatusPending}
-                  >
-                    No contestó
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => requestStatusChange("CANCELLED")}
-                    disabled={isStatusPending}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              )}
-            </>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {canEditClosed && !isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={startEditing}
+            >
+              <Pencil className="size-3.5" />
+              Editar seguimiento
+            </Button>
           )}
+          {isEditing ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={cancelEditing}
+                disabled={editMutation.isPending}
+                className="gap-1.5"
+              >
+                <X className="size-4" />
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={requestEditSave}
+                disabled={editMutation.isPending}
+                className="gap-1.5"
+              >
+                <Save className="size-4" />
+                {editMutation.isPending ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </>
+          ) : null}
+          {canManage && isOpen ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => requestStatusChange("CANCELLED")}
+                disabled={isStatusPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => requestStatusChange("NO_ANSWER")}
+                disabled={isStatusPending}
+              >
+                No contestó
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => requestStatusChange("COMPLETED")}
+                disabled={isStatusPending}
+                className="gap-1.5"
+              >
+                <CheckCircle2 className="size-4" />
+                {isStatusPending ? "Guardando..." : "Completar"}
+              </Button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <Card size="sm" className="min-w-0 border-border/60">
+        <CardContent className="space-y-5 pt-5">
+          {isEditing ? (
+            <div className="max-w-sm space-y-2">
+              <Label htmlFor="follow-up-edit-status">Estado</Label>
+              <Select
+                items={EDITABLE_STATUS_OPTIONS}
+                value={editStatus}
+                onValueChange={(value) => {
+                  if (value) setEditStatus(value as EditableFollowUpStatus)
+                }}
+              >
+                <SelectTrigger id="follow-up-edit-status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EDITABLE_STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <ReadOnlyField
+              label="Canal"
+              value={followUpTypeLabels[followUp.type] ?? "Sin especificar"}
+            />
+            <ReadOnlyField
+              label="Propósito"
+              value={
+                followUpPurposeLabels[followUp.purpose] ?? "Sin especificar"
+              }
+            />
+            {healthSubcategoryControl}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+              {hasNotesDraft && notesKey && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => draftStore.clearNotes(notesKey)}
+                  disabled={isEditing ? editMutation.isPending : isStatusPending}
+                >
+                  <RotateCcw className="size-3" />
+                  Restablecer nota
+                </Button>
+              )}
+            </div>
+            <Textarea
+              id="follow-up-notes"
+              className="min-h-24 resize-y"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Registrá el resultado del seguimiento..."
+              disabled={
+                isEditing
+                  ? editMutation.isPending
+                  : !canManage || !isOpen
+              }
+            />
+          </div>
+
+          {canManage && isOpen ? (
+            <FollowUpAside
+              onPsicoOpen={() => setPsychooncologyOpen(true)}
+              hasPsicoDraft={Boolean(psicoDraft)}
+              onClearPsico={() => draftStore.clearPsico()}
+              onAlertOpen={() => setAlertOpen(true)}
+              hasAlertDraft={Boolean(alertDraft)}
+              onClearAlert={() => draftStore.clearAlert()}
+              onNextContactOpen={() => setNextOpen(true)}
+              hasNextContactDraft={Boolean(nextFollowUpDraft)}
+              onClearNextContact={() => draftStore.clearNextFollowUp()}
+              onReminderOpen={() => setReminderDialogOpen(true)}
+              reminderDrafts={reminderDrafts}
+              onRemoveReminder={(index) => draftStore.removeReminder(index)}
+            />
+          ) : null}
+
           {(hasAnyClinicalDraft(clinicalDrafts) || hasNotesDraft) && isOpen && (
-            <p className="text-muted-foreground text-xs lg:col-span-2">
+            <p className="text-muted-foreground text-xs">
               La nota se conserva en esta sesión hasta que la guardes o la
               restablezcas. Los cambios de la ficha se guardan al completar el
               seguimiento; si lo cancelás o marcás «No contestó», se descartan.
@@ -1026,55 +1054,36 @@ export function FollowUpContent() {
                 setSelectedDiagnosis(null)
                 setSelectedTreatment(treatment)
               }}
-              className="lg:col-span-2"
             />
           ) : null}
         </CardContent>
       </Card>
 
       {canManage && isOpen ? (
-        <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <Card size="sm" className="border-border/60">
-            <CardHeader className="border-border/60 shrink-0 border-b pb-4">
-              <CardTitle className="text-base">Ficha clínica</CardTitle>
-              <p className="text-muted-foreground text-xs">
-                Seleccioná una sección. El contenido se conserva al cambiar de
-                sección.
-              </p>
-            </CardHeader>
-            <CardContent className="px-4 pt-4 pb-4">
-              <ClinicalDataTabs
-                patientId={patientId!}
-                followUpId={followUpId}
-                drafts={clinicalDrafts}
-                onDraftsChange={(updater) => draftStore.updateClinical(updater)}
-                onViewDiagnosis={(diagnosis) => {
-                  setSelectedTreatment(null)
-                  setSelectedDiagnosis(diagnosis)
-                }}
-                onViewTreatment={(treatment) => {
-                  setSelectedDiagnosis(null)
-                  setSelectedTreatment(treatment)
-                }}
-              />
-            </CardContent>
-          </Card>
-          <FollowUpAside
-            className="order-last xl:order-last"
-            onPsicoOpen={() => setPsychooncologyOpen(true)}
-            hasPsicoDraft={Boolean(psicoDraft)}
-            onClearPsico={() => draftStore.clearPsico()}
-            onAlertOpen={() => setAlertOpen(true)}
-            hasAlertDraft={Boolean(alertDraft)}
-            onClearAlert={() => draftStore.clearAlert()}
-            onNextContactOpen={() => setNextOpen(true)}
-            hasNextContactDraft={Boolean(nextFollowUpDraft)}
-            onClearNextContact={() => draftStore.clearNextFollowUp()}
-            onReminderOpen={() => setReminderDialogOpen(true)}
-            reminderDrafts={reminderDrafts}
-            onRemoveReminder={(index) => draftStore.removeReminder(index)}
-          />
-        </div>
+        <Card size="sm" className="min-w-0 border-border/60">
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 pb-3">
+            <CardTitle className="text-base">Ficha clínica</CardTitle>
+            <p className="text-muted-foreground max-w-[24rem] text-right text-xs">
+              Lo que escribas se conserva al cambiar de pestaña.
+            </p>
+          </CardHeader>
+          <CardContent className="min-w-0 pt-0 pb-5">
+            <ClinicalDataTabs
+              patientId={patientId!}
+              followUpId={followUpId}
+              drafts={clinicalDrafts}
+              onDraftsChange={(updater) => draftStore.updateClinical(updater)}
+              onViewDiagnosis={(diagnosis) => {
+                setSelectedTreatment(null)
+                setSelectedDiagnosis(diagnosis)
+              }}
+              onViewTreatment={(treatment) => {
+                setSelectedDiagnosis(null)
+                setSelectedTreatment(treatment)
+              }}
+            />
+          </CardContent>
+        </Card>
       ) : null}
 
       <ReminderFormDialog
@@ -1142,12 +1151,14 @@ function PatientHealthSubcategoryControl({
   healthPhase,
   hasActiveDiagnosis,
   isPending,
+  disabled = false,
   onChange,
 }: {
   value: PatientHealthSubcategory | null
   healthPhase: PatientHealthPhase | null
   hasActiveDiagnosis: boolean
   isPending: boolean
+  disabled?: boolean
   onChange: (value: PatientHealthSubcategory | null) => void
 }) {
   const { data: subcategoryItems = [] } = useCatalog(
@@ -1164,7 +1175,7 @@ function PatientHealthSubcategoryControl({
     : healthPhase
 
   return (
-    <div className="min-w-56 space-y-1.5">
+    <div className="space-y-1.5">
       <Label htmlFor="patient-follow-up-health-subcategory">Subcategoría</Label>
       <Select
         items={selectItems}
@@ -1176,12 +1187,12 @@ function PatientHealthSubcategoryControl({
           }
           onChange(nextValue as PatientHealthSubcategory)
         }}
-        disabled={isPending}
+        disabled={isPending || disabled}
       >
         <SelectTrigger
           id="patient-follow-up-health-subcategory"
           aria-label="Subcategoría del paciente"
-          className="h-8 w-full text-xs"
+          className="w-full"
         >
           <SelectValue placeholder="Seleccionar subcategoría" />
         </SelectTrigger>
@@ -1210,12 +1221,26 @@ function PatientHealthSubcategoryControl({
           "Sin clasificar"
         )}
       </p>
-      {!hasActiveDiagnosis && (
+      {!hasActiveDiagnosis && !disabled && (
         <p className="text-muted-foreground text-[11px]">
           Agrega un diagnóstico activo para habilitar las subcategorías
           oncológicas.
         </p>
       )}
+    </div>
+  )
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  const items = [{ value, label: value }]
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Select items={items} value={value} disabled>
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+      </Select>
     </div>
   )
 }

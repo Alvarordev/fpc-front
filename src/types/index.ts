@@ -337,6 +337,8 @@ export interface SymptomReportRequest {
   referredHealthCenterId?: string | null
   referralNotProvidedReason?: string | null
   nextConsultationDate?: string | null
+  nextConsultationSpecialty?: string | null
+  nextConsultationNote?: string | null
   hasSoughtMedicalConsultation?: boolean
   /** Legacy fields kept so persisted historical drafts can be read safely. */
   hasRequestedMedicalConsultation?: boolean | null
