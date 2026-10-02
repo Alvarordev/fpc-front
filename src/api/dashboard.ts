@@ -5,9 +5,17 @@ export type Dashboard = components["schemas"]["DashboardResponseDto"]
 export type DashboardQuery = NonNullable<
   operations["DashboardController_getDashboard"]["parameters"]["query"]
 >
+export type DashboardPopulation =
+  | "all_active"
+  | "active_in_period"
+  | "enrolled_in_period"
+
 export type DashboardIndicatorQuery = NonNullable<
   operations["DashboardController_getDemographics"]["parameters"]["query"]
->
+> & {
+  population?: DashboardPopulation
+  department?: string
+}
 export type DashboardDemographics =
   components["schemas"]["DashboardDemographicsResponseDto"]
 export type DashboardEpidemiology =

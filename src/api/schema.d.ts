@@ -1920,6 +1920,8 @@ export interface components {
             definition: string;
             population: string;
             populationCount: number;
+            /** @description Patients in the population whose first enrollment is before the period start. Zero when population is enrolled_in_period. */
+            enrolledBeforePeriod: number;
         };
         DashboardIndicatorItemDto: {
             /** @example 18-29 */
@@ -5417,6 +5419,13 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
+                /**
+                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
+                 * @default all_active
+                 */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                department?: string;
             };
             header?: never;
             path?: never;
@@ -5468,6 +5477,13 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
+                /**
+                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
+                 * @default all_active
+                 */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                department?: string;
             };
             header?: never;
             path?: never;
@@ -5519,6 +5535,13 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
+                /**
+                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
+                 * @default all_active
+                 */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                department?: string;
             };
             header?: never;
             path?: never;
@@ -5570,6 +5593,13 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
+                /**
+                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
+                 * @default all_active
+                 */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                department?: string;
             };
             header?: never;
             path?: never;
@@ -5621,6 +5651,13 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
+                /**
+                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
+                 * @default all_active
+                 */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                department?: string;
             };
             header?: never;
             path?: never;
@@ -5672,6 +5709,13 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
+                /**
+                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
+                 * @default all_active
+                 */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                department?: string;
             };
             header?: never;
             path?: never;

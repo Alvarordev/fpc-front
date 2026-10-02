@@ -160,4 +160,20 @@ describe("RegionalIndicatorsMap", () => {
     fireEvent.mouseLeave(limaMapRegion)
     expect(screen.queryByRole("tooltip")).toBeNull()
   })
+
+  it("reports the selected department catalog value", () => {
+    const onDepartmentChange = vi.fn()
+    render(
+      <RegionalIndicatorsMap
+        indicators={[indicator]}
+        onDepartmentChange={onDepartmentChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId("geography-15"))
+    expect(onDepartmentChange).toHaveBeenCalledWith("LIMA")
+
+    fireEvent.click(screen.getByTestId("geography-15"))
+    expect(onDepartmentChange).toHaveBeenCalledWith(null)
+  })
 })

@@ -7,9 +7,7 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   Select,
@@ -20,6 +18,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { PERU_DEPARTMENTS, type IndicatorMap } from "./regional-indicators"
+import { DashboardSectionTitle, ScopeBadge } from "./dashboard-shell"
 
 const GEO_URL = "/peru-departamentos.geojson"
 const numberFormat = new Intl.NumberFormat("es-PE")
@@ -104,10 +103,10 @@ export function PeruMap({
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-2xl">
+    <div className="relative mx-auto w-full max-w-3xl">
       <ComposableMap
         projection="geoMercator"
-        projectionConfig={{ center: [-75.5, -9.2], scale: 1500 }}
+        projectionConfig={{ center: [-75.5, -9.2], scale: 1680 }}
         aria-label="Mapa interactivo del Perú por departamento"
         className="h-auto w-full"
       >
@@ -213,8 +212,10 @@ export function PeruMap({
 
 export function RegionalIndicatorsMap({
   indicators,
+  onDepartmentChange,
 }: {
   indicators: RegionalIndicator[]
+  onDepartmentChange?: (department: string | null) => void
 }) {
   const [indicatorId, setIndicatorId] = useState(indicators[0]?.id ?? "")
   const [hoveredCode, setHoveredCode] = useState<string | null>(null)
@@ -246,28 +247,34 @@ export function RegionalIndicatorsMap({
   }))
 
   function toggleSelection(code: string) {
-    setSelectedCode((current) => (current === code ? null : code))
+    setSelectedCode((current) => {
+      const next = current === code ? null : code
+      const department = next
+        ? (PERU_DEPARTMENTS.find((item) => item.code === next)?.value ?? null)
+        : null
+      onDepartmentChange?.(department)
+      return next
+    })
   }
 
   return (
     <Card className="gap-0">
-      <CardHeader className="border-b pb-5">
-        <div>
-          <CardTitle>Distribución territorial</CardTitle>
-          <CardDescription className="mt-1 max-w-2xl">
-            Pacientes registrados por departamento de residencia. Los valores
-            absolutos no representan incidencia poblacional.
-          </CardDescription>
-        </div>
-        <CardAction>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 border-b pb-5">
+        <DashboardSectionTitle
+          hint="Pacientes por departamento de residencia. Seleccioná uno para ver el detalle y aplicarlo al perfil clínico y la demografía."
+          badge={<ScopeBadge kind="estado" />}
+        >
+          Territorio
+        </DashboardSectionTitle>
+        <CardAction className="static justify-self-end">
           <Badge variant="outline">
             Cobertura {percentageFormat.format(indicator.coveragePct)}%
           </Badge>
         </CardAction>
       </CardHeader>
 
-      <CardContent className="grid p-0 xl:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
-        <div className="bg-muted/20 flex min-h-[32rem] flex-col justify-between p-4 sm:p-6">
+      <CardContent className="grid p-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
+        <div className="bg-muted/20 flex min-h-[38rem] flex-col justify-between p-4 sm:p-6">
           <PeruMap
             data={indicator.data}
             colorRange={indicator.colorRange}
