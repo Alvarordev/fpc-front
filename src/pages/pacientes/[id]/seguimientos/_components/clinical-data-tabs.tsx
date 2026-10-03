@@ -12,6 +12,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -292,6 +293,8 @@ interface ClinicalDataTabsProps {
   onDraftsChange: (updater: (prev: ClinicalDrafts) => ClinicalDrafts) => void
   onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
   onViewTreatment?: (treatment: PatientTreatment) => void
+  viewingDiagnosisId?: string | null
+  viewingTreatmentId?: string | null
   /**
    * Historical mode keeps contact as a draft (interlocutorId) instead of
    * PATCHing the follow-up immediately.
@@ -306,6 +309,8 @@ export function ClinicalDataTabs({
   onDraftsChange,
   onViewDiagnosis,
   onViewTreatment,
+  viewingDiagnosisId,
+  viewingTreatmentId,
   variant = "operational",
 }: ClinicalDataTabsProps) {
   const isHistorical = variant === "historical"
@@ -689,6 +694,7 @@ export function ClinicalDataTabs({
             currentDiagnoses={currentDiagnoses}
             onOpenNewHospital={openNewHospital}
             onViewDiagnosis={onViewDiagnosis}
+            viewingDiagnosisId={viewingDiagnosisId}
             onSave={(diagnoses) =>
               onDraftsChange((prev) => ({ ...prev, diagnoses }))
             }
@@ -708,6 +714,7 @@ export function ClinicalDataTabs({
             diagnosisDrafts={drafts.diagnoses}
             onOpenNewHospital={openNewHospital}
             onViewTreatment={onViewTreatment}
+            viewingTreatmentId={viewingTreatmentId}
             onSave={(treatments) =>
               onDraftsChange((prev) => ({ ...prev, treatments }))
             }
@@ -2540,6 +2547,7 @@ function DiagnosticoForm({
   currentDiagnoses,
   onOpenNewHospital,
   onViewDiagnosis,
+  viewingDiagnosisId,
   onSave,
 }: {
   draft: DiagnosisDraft[] | undefined
@@ -2547,6 +2555,7 @@ function DiagnosticoForm({
   currentDiagnoses: PatientDiagnosis[]
   onOpenNewHospital: (apply: (id: string) => void) => void
   onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
+  viewingDiagnosisId?: string | null
   onSave: (diagnoses: DiagnosisDraft[]) => void
 }) {
   const initial = draft?.[0]
@@ -2599,10 +2608,7 @@ function DiagnosticoForm({
     number | null
   >(null)
   const [formOpen, setFormOpen] = useState(false)
-  const [selectedDiagnosisId, setSelectedDiagnosisId] = useState<string | null>(
-    null,
-  )
-  const selectedId = selectedDiagnosisId ?? currentDiagnoses[0]?.id ?? null
+  const selectedId = viewingDiagnosisId ?? null
   const showForm = formOpen || editingDecisionIndex !== null
   const decisionModeItems = [
     { value: "PARALLEL", label: "Agregar diagnóstico activo" },
@@ -2724,12 +2730,13 @@ function DiagnosticoForm({
     setEditingDecisionIndex(null)
   }
 
-  function toggleDiagnosisForm() {
-    if (showForm) {
-      if (editingDecisionIndex !== null) resetDiagnosisForm()
-      setFormOpen(false)
-      return
-    }
+  function closeDiagnosisForm() {
+    if (editingDecisionIndex !== null) resetDiagnosisForm()
+    setFormOpen(false)
+  }
+
+  function openDiagnosisForm() {
+    if (editingDecisionIndex !== null) resetDiagnosisForm()
     setFormOpen(true)
   }
 
@@ -2761,7 +2768,7 @@ function DiagnosticoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div className="space-y-3">
         <p className="text-sm font-semibold">
           Diagnósticos activos ({currentDiagnoses.length})
@@ -2780,7 +2787,6 @@ function DiagnosticoForm({
                     : "border-border bg-background hover:bg-muted/40",
                 )}
                 onClick={() => {
-                  setSelectedDiagnosisId(diagnosis.id)
                   onViewDiagnosis?.(diagnosis)
                 }}
               >
@@ -2814,14 +2820,14 @@ function DiagnosticoForm({
           })}
           <button
             type="button"
-            aria-expanded={showForm}
+            aria-expanded={showForm && editingDecisionIndex === null}
             className={cn(
               "inline-flex min-h-[3.25rem] min-w-44 items-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-colors",
               showForm && editingDecisionIndex === null
                 ? "border-primary/40 bg-primary/5 text-foreground"
                 : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/30 hover:text-foreground",
             )}
-            onClick={toggleDiagnosisForm}
+            onClick={openDiagnosisForm}
           >
             <Plus className="size-4 shrink-0" />
             Agregar o reemplazar diagnóstico
@@ -2896,8 +2902,27 @@ function DiagnosticoForm({
           })}
         </div>
       )}
-      {showForm ? (
-        <>
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) closeDiagnosisForm()
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-base font-semibold text-red-600">
+              <Stethoscope className="size-5" />
+              <DialogTitle className="text-lg">
+                {editingDecisionIndex === null
+                  ? "Nuevo diagnóstico"
+                  : "Editar diagnóstico"}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs">
+              Se guarda en el borrador hasta completar el seguimiento.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
           <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
             <div>
               <p className="text-sm font-medium">
@@ -3122,28 +3147,29 @@ function DiagnosticoForm({
           </Label>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <Button type="submit" size="sm">
-          {editingDecisionIndex === null
-            ? "Guardar diagnóstico"
-            : "Actualizar diagnóstico"}
-        </Button>
+      <DialogFooter className="gap-2 pt-2 sm:gap-0">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => {
-            if (editingDecisionIndex !== null) resetDiagnosisForm()
-            setFormOpen(false)
-          }}
+          onClick={closeDiagnosisForm}
         >
-          {editingDecisionIndex === null ? "Cerrar" : "Cancelar edición"}
+          Cancelar
         </Button>
-        <DraftBadge saved={Boolean(decisions.length)} />
-      </div>
-        </>
-      ) : null}
-    </form>
+        <Button
+          type="submit"
+          size="sm"
+          className="bg-red-600 text-white hover:bg-red-700"
+        >
+          {editingDecisionIndex === null
+            ? "Guardar en borrador"
+            : "Actualizar borrador"}
+        </Button>
+      </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
 
@@ -3197,6 +3223,7 @@ function TratamientosForm({
   diagnosisDrafts,
   onOpenNewHospital,
   onViewTreatment,
+  viewingTreatmentId,
   onSave,
 }: {
   patientId: string
@@ -3207,6 +3234,7 @@ function TratamientosForm({
   diagnosisDrafts: DiagnosisDraft[] | undefined
   onOpenNewHospital: (apply: (id: string) => void) => void
   onViewTreatment?: (treatment: PatientTreatment) => void
+  viewingTreatmentId?: string | null
   onSave: (treatments: TreatmentDraft[]) => void
 }) {
   const queryClient = useQueryClient()
@@ -3289,12 +3317,8 @@ function TratamientosForm({
     number | null
   >(null)
   const [formOpen, setFormOpen] = useState(false)
-  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(
-    null,
-  )
   const currentTreatments = treatments.filter((item) => item.isCurrent)
-  const selectedChipId =
-    selectedTreatmentId ?? currentTreatments[0]?.id ?? null
+  const selectedChipId = viewingTreatmentId ?? null
   const showForm = formOpen || editingDecisionIndex !== null
   const selectedTreatment = currentTreatments.find(
     (item) => item.seriesId === selectedSeriesId,
@@ -3751,18 +3775,51 @@ function TratamientosForm({
     toast.success("Tratamiento guardado en el borrador")
   }
 
-  function toggleTreatmentForm() {
-    if (showForm) {
-      setEditingDecisionIndex(null)
-      setFormOpen(false)
-      return
-    }
+  function closeTreatmentForm() {
+    setEditingDecisionIndex(null)
+    setFormOpen(false)
+  }
+
+  function openTreatmentForm() {
+    reset({
+      diagnosisId: undefined,
+      treatmentType: "",
+      treatmentFrequency: undefined,
+      treatmentSituation: undefined,
+      operationName: "",
+      chemotherapyRoute: "",
+      careProgram: undefined,
+      receivesTeleconsultation: undefined,
+      teleconsultationNote: "",
+      teleconsultationSpecialties: [],
+      treatmentAbandonmentReason: "",
+      treatmentViaSepa: undefined,
+      interruptionReason: undefined,
+      interruptionReasonOther: "",
+      scheduledSessions: "",
+      completedSessions: "",
+      hormonalTreatmentCompleted: undefined,
+      accessBarrierCode: undefined,
+      accessBarrierOther: "",
+      orientedRegardingBarriers: undefined,
+      isReferred: false,
+      sourceHealthCenterId: undefined,
+      receivingHealthCenterId: undefined,
+      startDate: "",
+      endDate: "",
+      notReceivingReason: "",
+      changeReason: "",
+      medications: [],
+    })
+    setMode("PARALLEL")
+    setSelectedSeriesId("")
+    setEditingDecisionIndex(null)
     setFormOpen(true)
   }
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-4">
         <div className="space-y-3">
           <p className="text-sm font-semibold">
             Tratamientos activos ({currentTreatments.length})
@@ -3781,7 +3838,6 @@ function TratamientosForm({
                       : "border-border bg-background hover:bg-muted/40",
                   )}
                   onClick={() => {
-                    setSelectedTreatmentId(treatment.id)
                     onViewTreatment?.(treatment)
                   }}
                 >
@@ -3815,14 +3871,14 @@ function TratamientosForm({
             })}
             <button
               type="button"
-              aria-expanded={showForm}
+              aria-expanded={showForm && editingDecisionIndex === null}
               className={cn(
                 "inline-flex min-h-[3.25rem] min-w-44 items-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-colors",
                 showForm && editingDecisionIndex === null
                   ? "border-primary/40 bg-primary/5 text-foreground"
                   : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/30 hover:text-foreground",
               )}
-              onClick={toggleTreatmentForm}
+              onClick={openTreatmentForm}
             >
               <Plus className="size-4 shrink-0" />
               Agregar o reemplazar tratamiento
@@ -3882,8 +3938,28 @@ function TratamientosForm({
             ))}
           </div>
         )}
-        {showForm ? (
-          <>
+      </div>
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) closeTreatmentForm()
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-base font-semibold text-red-600">
+              <Pill className="size-5" />
+              <DialogTitle className="text-lg">
+                {editingDecisionIndex === null
+                  ? "Nuevo tratamiento"
+                  : "Editar tratamiento"}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs">
+              Se guarda en el borrador hasta completar el seguimiento.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
         <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
           <div>
             <p className="text-sm font-medium">
@@ -4564,26 +4640,29 @@ function TratamientosForm({
             })}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button type="submit" size="sm" disabled={!canPickDiagnosis}>
-            Guardar tratamiento
-          </Button>
+        <DialogFooter className="gap-2 pt-2 sm:gap-0">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setEditingDecisionIndex(null)
-              setFormOpen(false)
-            }}
+            onClick={closeTreatmentForm}
           >
-            {editingDecisionIndex === null ? "Cerrar" : "Cancelar edición"}
+            Cancelar
           </Button>
-          <DraftBadge saved={Boolean(draft?.length)} />
-        </div>
-          </>
-        ) : null}
-      </form>
+          <Button
+            type="submit"
+            size="sm"
+            className="bg-red-600 text-white hover:bg-red-700"
+            disabled={!canPickDiagnosis}
+          >
+            {editingDecisionIndex === null
+              ? "Guardar en borrador"
+              : "Actualizar borrador"}
+          </Button>
+        </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <PatientDocumentUploadDialog
         open={prescriptionUploadOpen}
         onOpenChange={setPrescriptionUploadOpen}

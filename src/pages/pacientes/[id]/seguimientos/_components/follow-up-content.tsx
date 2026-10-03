@@ -50,7 +50,7 @@ import {
   isDraftDiagnosisOptionId,
 } from "./clinical-drafts"
 import { CreateAlertDialog } from "./create-alert-dialog"
-import { ClinicalRecordDetailSheet } from "./clinical-record-detail-sheet"
+import { ClinicalRecordDetailDialog } from "./clinical-record-detail-dialog"
 import { FollowUpAside } from "./follow-up-aside"
 import {
   ReminderFormDialog,
@@ -1081,6 +1081,8 @@ export function FollowUpContent() {
                 setSelectedDiagnosis(null)
                 setSelectedTreatment(treatment)
               }}
+              viewingDiagnosisId={selectedDiagnosis?.id}
+              viewingTreatmentId={selectedTreatment?.id}
             />
           </CardContent>
         </Card>
@@ -1121,7 +1123,7 @@ export function FollowUpContent() {
         isPending={false}
         onSubmit={async (values) => draftStore.setAlert(values)}
       />
-      <ClinicalRecordDetailSheet
+      <ClinicalRecordDetailDialog
         patientId={patientId!}
         diagnosis={selectedDiagnosis}
         treatment={selectedTreatment}
