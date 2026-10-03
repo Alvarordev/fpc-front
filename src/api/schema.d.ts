@@ -1972,7 +1972,7 @@ export interface components {
         };
         DashboardProductivityResponseDto: {
             meta: components["schemas"]["DashboardIndicatorMetaDto"];
-            /** @description Average days from enrollment to SIS affiliation (affiliated_via_sepa only). Null when unknown. */
+            /** @description Average days from enrollment to SIS affiliation for patients whose current insurance is SIS and whose affiliation date differs from enrollment. Null when unknown. */
             avgDaysEnrollmentToSis: number | null;
             avgDaysPrimaryCareToDiagnosis: number | null;
             avgDaysDiagnosisToTreatment: number | null;
@@ -2423,8 +2423,6 @@ export interface components {
             referralNotProvidedReason?: string;
             /** @deprecated */
             nextConsultationDate?: string;
-            nextConsultationSpecialty?: string;
-            nextConsultationNote?: string;
             /**
              * Format: uuid
              * @deprecated
@@ -2447,6 +2445,15 @@ export interface components {
             reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
             /** @deprecated */
             notReceivingTreatmentReason?: string;
+            /** @description Whether the patient was referred to a higher-complexity facility with SEPA support. */
+            referredViaSepa?: boolean | null;
+            /** @description Whether the patient attended a first primary-care consultation with SEPA support. */
+            attendedPrimaryCareViaSepa?: boolean | null;
+            /**
+             * Format: date
+             * @description Date of the first primary-care consultation attended with SEPA support.
+             */
+            firstPrimaryCareViaSepaAt?: string | null;
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean | null;
@@ -2463,6 +2470,8 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
+            nextConsultationSpecialty?: string;
+            nextConsultationNote?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
@@ -3486,6 +3495,10 @@ export interface components {
             reportedTreatmentFrequency: components["schemas"]["DurationResponseDto"] | null;
             /** @deprecated */
             notReceivingTreatmentReason: string | null;
+            referredViaSepa: boolean | null;
+            attendedPrimaryCareViaSepa: boolean | null;
+            /** Format: date */
+            firstPrimaryCareViaSepaAt: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3868,8 +3881,6 @@ export interface components {
             referralNotProvidedReason?: string;
             /** @deprecated */
             nextConsultationDate?: string;
-            nextConsultationSpecialty?: string;
-            nextConsultationNote?: string;
             /**
              * Format: uuid
              * @deprecated
@@ -3892,6 +3903,15 @@ export interface components {
             reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
             /** @deprecated */
             notReceivingTreatmentReason?: string;
+            /** @description Whether the patient was referred to a higher-complexity facility with SEPA support. */
+            referredViaSepa?: boolean | null;
+            /** @description Whether the patient attended a first primary-care consultation with SEPA support. */
+            attendedPrimaryCareViaSepa?: boolean | null;
+            /**
+             * Format: date
+             * @description Date of the first primary-care consultation attended with SEPA support.
+             */
+            firstPrimaryCareViaSepaAt?: string | null;
             /** Format: uuid */
             followUpId: string;
             /** Format: uuid */
@@ -3912,6 +3932,8 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
+            nextConsultationSpecialty?: string;
+            nextConsultationNote?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
@@ -4604,8 +4626,6 @@ export interface components {
             referralNotProvidedReason?: string;
             /** @deprecated */
             nextConsultationDate?: string;
-            nextConsultationSpecialty?: string;
-            nextConsultationNote?: string;
             /**
              * Format: uuid
              * @deprecated
@@ -4628,6 +4648,15 @@ export interface components {
             reportedTreatmentFrequency?: components["schemas"]["DurationDto"];
             /** @deprecated */
             notReceivingTreatmentReason?: string;
+            /** @description Whether the patient was referred to a higher-complexity facility with SEPA support. */
+            referredViaSepa?: boolean | null;
+            /** @description Whether the patient attended a first primary-care consultation with SEPA support. */
+            attendedPrimaryCareViaSepa?: boolean | null;
+            /**
+             * Format: date
+             * @description Date of the first primary-care consultation attended with SEPA support.
+             */
+            firstPrimaryCareViaSepaAt?: string | null;
             discomfortSeverity?: string;
             discomfortDescription?: string;
             hasDiscomfort?: boolean | null;
@@ -4644,6 +4673,8 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
+            nextConsultationSpecialty?: string;
+            nextConsultationNote?: string;
             /** @enum {string} */
             consultationStatus?: "NOT_OBTAINED" | "SCHEDULED" | "ATTENDED";
             consultationNotObtainedReason?: string;
@@ -5419,10 +5450,7 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /**
-                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
-                 * @default all_active
-                 */
+                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
                 /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
                 department?: string;
@@ -5477,10 +5505,7 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /**
-                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
-                 * @default all_active
-                 */
+                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
                 /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
                 department?: string;
@@ -5535,10 +5560,7 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /**
-                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
-                 * @default all_active
-                 */
+                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
                 /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
                 department?: string;
@@ -5593,10 +5615,7 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /**
-                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
-                 * @default all_active
-                 */
+                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
                 /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
                 department?: string;
@@ -5651,10 +5670,7 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /**
-                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
-                 * @default all_active
-                 */
+                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
                 /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
                 department?: string;
@@ -5709,10 +5725,7 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /**
-                 * @description Denominator for estado indicators. Flujo metrics stay period-scoped.
-                 * @default all_active
-                 */
+                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
                 /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
                 department?: string;

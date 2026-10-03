@@ -484,6 +484,17 @@ export function FollowUpContent() {
           treatmentDraft.treatmentSituation === "ABANDONED"
             ? treatmentDraft.treatmentAbandonmentReason
             : undefined,
+        interruptionReason: treatmentDraft.interruptionReason,
+        interruptionReasonOther: treatmentDraft.interruptionReasonOther,
+        treatmentViaSepa: treatmentDraft.treatmentViaSepa,
+        scheduledSessions: treatmentDraft.scheduledSessions,
+        completedSessions: treatmentDraft.completedSessions,
+        hormonalTreatmentCompleted: treatmentDraft.hormonalTreatmentCompleted,
+        accessBarrierCode: treatmentDraft.accessBarrierCode,
+        accessBarrierOther: treatmentDraft.accessBarrierOther,
+        orientedRegardingBarriers: treatmentDraft.orientedRegardingBarriers,
+        hasLatestPrescription: treatmentDraft.hasLatestPrescription,
+        latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
         treatmentFrequency: normalizedFrequency,
         ...(normalizedMedications?.length
           ? { medications: normalizedMedications }

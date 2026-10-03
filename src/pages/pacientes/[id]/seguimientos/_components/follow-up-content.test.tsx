@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   getPatient: vi.fn(),
   updateDetails: vi.fn(),
   transitionDiagnosticStatus: vi.fn(),
+  createTreatment: vi.fn(),
 }))
 
 vi.mock("react-router-dom", () => ({
@@ -43,6 +44,7 @@ vi.mock("@/api/patients", () => ({
     getById: mocks.getPatient,
     updateDetails: mocks.updateDetails,
     transitionDiagnosticStatus: mocks.transitionDiagnosticStatus,
+    createTreatment: mocks.createTreatment,
   },
 }))
 vi.mock("@/api/catalogs", async () => {
@@ -311,6 +313,53 @@ describe("FollowUpContent closed follow-up editing", () => {
           supportedBySepa: true,
           notes: "Resultado revisado",
         },
+      )
+    })
+  })
+
+  it("persists treatmentViaSepa when completing a follow-up with a treatment draft", async () => {
+    const user = userEvent.setup()
+    mocks.getById.mockResolvedValue(scheduledFollowUp)
+    mocks.update.mockResolvedValue({
+      ...scheduledFollowUp,
+      status: "COMPLETED",
+    })
+    mocks.createTreatment.mockResolvedValue({ id: "treatment-1" })
+    renderFollowUp()
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Completar" })).toBeTruthy(),
+    )
+    useFollowUpDraftStore.getState().updateClinical((previous) => ({
+      ...previous,
+      treatments: [
+        {
+          mode: "PARALLEL",
+          diagnosisId: "diagnosis-1",
+          treatmentType: "QUIMIOTERAPIA",
+          treatmentViaSepa: true,
+          scheduledSessions: 4,
+          completedSessions: 1,
+        },
+      ],
+    }))
+
+    await user.click(screen.getByRole("button", { name: "Completar" }))
+    await user.click(
+      screen.getByRole("button", { name: "Completar seguimiento" }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.createTreatment).toHaveBeenCalledWith(
+        "patient-1",
+        expect.objectContaining({
+          diagnosisId: "diagnosis-1",
+          treatmentType: "QUIMIOTERAPIA",
+          followUpId: "follow-up-1",
+          treatmentViaSepa: true,
+          scheduledSessions: 4,
+          completedSessions: 1,
+        }),
       )
     })
   })

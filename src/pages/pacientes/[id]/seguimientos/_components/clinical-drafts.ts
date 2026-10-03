@@ -85,6 +85,9 @@ export type SymptomReportDraft = Omit<
   hasReceivedDiagnosis?: boolean | null
   reportedDiagnosis?: string | null
   nextConsultationDate?: string | null
+  referredViaSepa?: boolean | null
+  attendedPrimaryCareViaSepa?: boolean | null
+  firstPrimaryCareViaSepaAt?: string | null
   symptomDuration?: DurationDraft
   symptomFrequency?: DurationDraft
   diagnosisSearchDuration?: DurationDraft

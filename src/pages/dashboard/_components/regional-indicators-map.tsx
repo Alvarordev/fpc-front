@@ -340,33 +340,33 @@ export function RegionalIndicatorsMap({
             </div>
           )}
 
-          <div className="bg-muted/25 mb-5 rounded-xl border p-4">
+          <div className="bg-muted/25 mb-5 grid h-28 shrink-0 grid-rows-[auto_1fr] overflow-hidden rounded-xl border p-4">
             {activeRow && activeRow.value !== undefined ? (
-              <div>
+              <>
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{activeRow.label}</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{activeRow.label}</p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       Puesto {activeRank} de {rows.length}
                     </p>
                   </div>
-                  <p className="text-xl font-semibold tabular-nums">
+                  <p className="shrink-0 text-xl font-semibold tabular-nums">
                     {formatValue(activeRow.value)}
                   </p>
                 </div>
-                <p className="text-muted-foreground mt-3 text-xs">
+                <p className="text-muted-foreground self-end text-xs">
                   {formatPercentage(activeRow.value, indicator.known)} del total
                   con residencia conocida
                 </p>
-              </div>
+              </>
             ) : (
-              <div>
+              <>
                 <p className="font-medium">Cobertura del indicador</p>
-                <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+                <p className="text-muted-foreground self-end text-xs leading-relaxed">
                   {numberFormat.format(indicator.known)} conocidos ·{" "}
                   {numberFormat.format(indicator.unknown)} sin información
                 </p>
-              </div>
+              </>
             )}
           </div>
 

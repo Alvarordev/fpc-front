@@ -50,6 +50,7 @@ import type {
   PatientDiagnosticStatusEvent,
 } from "@/api/patients"
 import { patientsApi } from "@/api/patients"
+import { enrollmentsApi } from "@/api/enrollments"
 import { followUpsApi } from "@/api/follow-ups"
 import {
   calculateDurationBetweenDates,
@@ -323,6 +324,18 @@ export function ClinicalDataTabs({
     setNewHospitalOpen(true)
   }
   const { data: patient } = usePatient(patientId)
+  const { data: enrollments } = useQuery({
+    queryKey: ["patient-enrollments", patientId],
+    queryFn: () => enrollmentsApi.listByPatient(patientId),
+    enabled: Boolean(patientId),
+    staleTime: 30_000,
+  })
+  const latestEnrollment = enrollments?.[0]
+  const showPrimaryCareViaSepaQuestions =
+    enrollments !== undefined &&
+    (latestEnrollment == null ||
+      (latestEnrollment.currentlyAttendingConsultations === false &&
+        latestEnrollment.currentlyReceivingTreatment === false))
   const { data: diagnosticStatus, isLoading: isDiagnosticStatusLoading } =
     useQuery({
       queryKey: ["patient-diagnostic-status-current", patientId],
@@ -586,6 +599,7 @@ export function ClinicalDataTabs({
             enrollmentSymptomReport={enrollmentSymptomReport}
             hospitals={hospitals}
             historical={isHistorical}
+            showPrimaryCareViaSepaQuestions={showPrimaryCareViaSepaQuestions}
             onOpenNewHospital={openNewHospital}
             diagnosticStatusSection={
               showDiagnosticStatus ? (
@@ -1979,6 +1993,7 @@ function SintomasForm({
   enrollmentSymptomReport,
   hospitals,
   historical,
+  showPrimaryCareViaSepaQuestions,
   onOpenNewHospital,
   diagnosticStatusSection,
   nonOncologicalFollowUpSection,
@@ -1988,6 +2003,7 @@ function SintomasForm({
   enrollmentSymptomReport: PatientSymptomReport | undefined
   hospitals: Array<{ id: string; name: string }>
   historical: boolean
+  showPrimaryCareViaSepaQuestions: boolean
   onOpenNewHospital: (apply: (id: string) => void) => void
   diagnosticStatusSection?: ReactNode
   nonOncologicalFollowUpSection?: ReactNode
@@ -2030,6 +2046,11 @@ function SintomasForm({
         painIntensity: initialDraft.painIntensity,
         painLocation: initialDraft.painLocation ?? "",
         painDescription: initialDraft.painDescription ?? "",
+        referredViaSepa: initialDraft.referredViaSepa ?? undefined,
+        attendedPrimaryCareViaSepa:
+          initialDraft.attendedPrimaryCareViaSepa ?? undefined,
+        firstPrimaryCareViaSepaAt:
+          initialDraft.firstPrimaryCareViaSepaAt ?? "",
       },
     })
 
@@ -2063,6 +2084,10 @@ function SintomasForm({
       painIntensity: undefined,
       painLocation: "",
       painDescription: "",
+      referredViaSepa: nextDraft.referredViaSepa ?? undefined,
+      attendedPrimaryCareViaSepa:
+        nextDraft.attendedPrimaryCareViaSepa ?? undefined,
+      firstPrimaryCareViaSepaAt: nextDraft.firstPrimaryCareViaSepaAt ?? "",
     })
   }, [draft, enrollmentSymptomReport, formState.isDirty, reset])
 
@@ -2076,6 +2101,7 @@ function SintomasForm({
   const reportedTreatmentFrequency = watch("reportedTreatmentFrequency")
   const isPainPresent = watch("isPainPresent")
   const healthCenterId = watch("healthCenterId")
+  const attendedPrimaryCareViaSepa = watch("attendedPrimaryCareViaSepa")
 
   function onSubmit(values: SymptomFormValues) {
     if (values.hasDiscomfort === false && !values.checkupMotivation?.trim()) {
@@ -2191,6 +2217,12 @@ function SintomasForm({
       painIntensity: Number.isFinite(values.painIntensity)
         ? values.painIntensity
         : undefined,
+      referredViaSepa: values.referredViaSepa,
+      attendedPrimaryCareViaSepa: values.attendedPrimaryCareViaSepa,
+      firstPrimaryCareViaSepaAt:
+        values.attendedPrimaryCareViaSepa === true
+          ? values.firstPrimaryCareViaSepaAt || undefined
+          : undefined,
       symptomDuration: draft?.symptomDuration,
       symptomFrequency: draft?.symptomFrequency,
     })
@@ -2429,6 +2461,35 @@ function SintomasForm({
                   {...register("nextConsultationDate")}
                 />
               </div>
+            </>
+          )}
+          <TriSelect
+            label="¿Logró ser referido a un establecimiento de salud de mayor complejidad a partir del soporte del programa?"
+            value={watch("referredViaSepa") ?? undefined}
+            onChange={(value) => setValue("referredViaSepa", value)}
+          />
+          {showPrimaryCareViaSepaQuestions && (
+            <>
+              <TriSelect
+                label="¿Asistió a su primera consulta médica en atención primaria a partir del soporte del programa?"
+                value={attendedPrimaryCareViaSepa ?? undefined}
+                onChange={(value) => {
+                  setValue("attendedPrimaryCareViaSepa", value)
+                  if (value !== true) setValue("firstPrimaryCareViaSepaAt", "")
+                }}
+              />
+              {attendedPrimaryCareViaSepa === true && (
+                <div className="space-y-2">
+                  <Label>
+                    ¿Cuándo fue su primera consulta médica en atención primaria
+                    a partir del soporte del programa?
+                  </Label>
+                  <Input
+                    type="date"
+                    {...register("firstPrimaryCareViaSepaAt")}
+                  />
+                </div>
+              )}
             </>
           )}
           <ClinicalTriSelect
@@ -5287,6 +5348,15 @@ function SeguimientoSocialForm({
                 placeholder="Seleccionar proveedor"
               />
             </div>
+            {watch("transportationSepaProvider") === "OTHER" && (
+              <div className="space-y-2">
+                <Label>Otro proveedor de traslado</Label>
+                <Input
+                  {...register("transportationSepaProviderOther")}
+                  placeholder="Nombre del proveedor"
+                />
+              </div>
+            )}
           </>
         )}
 
@@ -5318,6 +5388,15 @@ function SeguimientoSocialForm({
                 placeholder="Seleccionar albergue"
               />
             </div>
+            {watch("shelterSepaProvider") === "OTHER" && (
+              <div className="space-y-2">
+                <Label>Otro albergue</Label>
+                <Input
+                  {...register("shelterSepaProviderOther")}
+                  placeholder="Nombre del albergue"
+                />
+              </div>
+            )}
           </>
         )}
 

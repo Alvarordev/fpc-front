@@ -34,6 +34,9 @@ describe("enrollmentSymptomDraft", () => {
         label: null,
       },
       notReceivingTreatmentReason: null,
+      referredViaSepa: true,
+      attendedPrimaryCareViaSepa: true,
+      firstPrimaryCareViaSepaAt: "2026-09-12",
     } as PatientSymptomReport)
 
     expect(draft).toMatchObject({
@@ -43,9 +46,13 @@ describe("enrollmentSymptomDraft", () => {
       healthCenterId: "center-1",
       diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
       reportedTreatmentFrequency: { valueMin: 1, unit: "WEEK" },
+      referredViaSepa: true,
+      attendedPrimaryCareViaSepa: true,
+      firstPrimaryCareViaSepaAt: "2026-09-12",
     })
     expect(draft.isPainPresent).toBeUndefined()
     expect(draft.painDescription).toBeUndefined()
     expect(draft.indicationsReceived).toBeUndefined()
+    expect(draft.referredViaSepa).toBe(true)
   })
 })

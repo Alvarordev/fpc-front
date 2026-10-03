@@ -531,6 +531,9 @@ export function historicalClinicalDraftsFromPatient(
           symptomReport.isReceivingReportedTreatment,
         reportedTreatment: symptomReport.reportedTreatment,
         notReceivingTreatmentReason: symptomReport.notReceivingTreatmentReason,
+        referredViaSepa: symptomReport.referredViaSepa,
+        attendedPrimaryCareViaSepa: symptomReport.attendedPrimaryCareViaSepa,
+        firstPrimaryCareViaSepaAt: symptomReport.firstPrimaryCareViaSepaAt,
       }),
       ...(symptomReport.diagnosisSearchDuration
         ? {

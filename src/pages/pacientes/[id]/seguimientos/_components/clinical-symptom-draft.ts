@@ -30,5 +30,8 @@ export function enrollmentSymptomDraft(
     ),
     notReceivingTreatmentReason:
       report.notReceivingTreatmentReason ?? undefined,
+    referredViaSepa: report.referredViaSepa ?? undefined,
+    attendedPrimaryCareViaSepa: report.attendedPrimaryCareViaSepa ?? undefined,
+    firstPrimaryCareViaSepaAt: report.firstPrimaryCareViaSepaAt ?? undefined,
   }
 }
