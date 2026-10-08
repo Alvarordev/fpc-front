@@ -77,4 +77,4 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Los hooks de git (`pre-commit` y `pre-push`) corren los unitarios y el E2E de catálogo/enrolamiento. La primera vez instala Chromium con `pnpm exec playwright install chromium`.
+Los hooks de git (`pre-commit` y `pre-push`) corren los unitarios y el E2E de catálogo/enrolamiento y de seguimiento histórico. La primera vez instala Chromium con `pnpm exec playwright install chromium`.
