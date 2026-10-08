@@ -11,6 +11,7 @@ import {
   type TreatmentDraft,
 } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-drafts"
 import { normalizeDuration, toDurationInput } from "@/types/duration"
+import { toIsoDateOnly } from "./historical-record-options"
 
 /**
  * The historical create and update DTOs are identical except that the update
@@ -251,6 +252,9 @@ export function buildHistoricalClinicalPayload({
       symptomFrequency,
       diagnosisSearchDuration,
       reportedTreatmentFrequency,
+      firstConsultationDate,
+      nextConsultationDate,
+      firstPrimaryCareViaSepaAt,
       ...rest
     } = drafts.symptomReport
     const normalizedDuration = toDurationInput(symptomDuration)
@@ -276,8 +280,23 @@ export function buildHistoricalClinicalPayload({
     )
       throw new Error("Completa correctamente la frecuencia del tratamiento")
 
+    const isoFirstConsultationDate = toIsoDateOnly(firstConsultationDate)
+    const isoNextConsultationDate = toIsoDateOnly(nextConsultationDate)
+    const isoFirstPrimaryCareViaSepaAt = toIsoDateOnly(
+      firstPrimaryCareViaSepaAt,
+    )
+
     payload.symptomReport = {
       ...rest,
+      ...(isoFirstConsultationDate
+        ? { firstConsultationDate: isoFirstConsultationDate }
+        : {}),
+      ...(isoNextConsultationDate
+        ? { nextConsultationDate: isoNextConsultationDate }
+        : {}),
+      ...(isoFirstPrimaryCareViaSepaAt
+        ? { firstPrimaryCareViaSepaAt: isoFirstPrimaryCareViaSepaAt }
+        : {}),
       ...(normalizedDuration ? { symptomDuration: normalizedDuration } : {}),
       ...(normalizedFrequency ? { symptomFrequency: normalizedFrequency } : {}),
       ...(normalizedDiagnosisSearchDuration
@@ -517,12 +536,14 @@ export function historicalClinicalDraftsFromPatient(
           symptomReport.consultationNotObtainedReason,
         hasMedicalConsultation: symptomReport.hasMedicalConsultation,
         noMedicalConsultationReason: symptomReport.noMedicalConsultationReason,
-        firstConsultationDate: symptomReport.firstConsultationDate,
+        firstConsultationDate: toIsoDateOnly(
+          symptomReport.firstConsultationDate,
+        ),
         isAwaitingDiagnosis: symptomReport.isAwaitingDiagnosis,
         hasReferral: symptomReport.hasReferral,
         referredHealthCenterId: symptomReport.referredHealthCenterId,
         referralNotProvidedReason: symptomReport.referralNotProvidedReason,
-        nextConsultationDate: symptomReport.nextConsultationDate,
+        nextConsultationDate: toIsoDateOnly(symptomReport.nextConsultationDate),
         healthCenterId: symptomReport.healthCenterId,
         specialty: symptomReport.specialty,
         hasReceivedDiagnosis: symptomReport.hasReceivedDiagnosis,
@@ -533,7 +554,9 @@ export function historicalClinicalDraftsFromPatient(
         notReceivingTreatmentReason: symptomReport.notReceivingTreatmentReason,
         referredViaSepa: symptomReport.referredViaSepa,
         attendedPrimaryCareViaSepa: symptomReport.attendedPrimaryCareViaSepa,
-        firstPrimaryCareViaSepaAt: symptomReport.firstPrimaryCareViaSepaAt,
+        firstPrimaryCareViaSepaAt: toIsoDateOnly(
+          symptomReport.firstPrimaryCareViaSepaAt,
+        ),
       }),
       ...(symptomReport.diagnosisSearchDuration
         ? {

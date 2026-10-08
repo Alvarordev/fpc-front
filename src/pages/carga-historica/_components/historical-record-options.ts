@@ -79,8 +79,20 @@ export function formatHistoricalDateTime(value: string) {
   })
 }
 
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
 /** `2026-01-30T00:00:00.000Z` and `2026-01-30` both render as `2026-01-30`. */
 export function toDateInputValue(value: string | null | undefined) {
   if (!value) return ""
   return value.slice(0, 10)
+}
+
+/**
+ * Payload-safe calendar date. Empty values become `undefined`; datetimes
+ * collapse to `YYYY-MM-DD`. Invalid values are dropped.
+ */
+export function toIsoDateOnly(value: string | null | undefined) {
+  if (!value?.trim()) return undefined
+  const dateOnly = value.trim().slice(0, 10)
+  return DATE_ONLY_PATTERN.test(dateOnly) ? dateOnly : undefined
 }

@@ -2190,6 +2190,8 @@ function SintomasForm({
 
     onSave({
       ...values,
+      firstConsultationDate: values.firstConsultationDate || undefined,
+      nextConsultationDate: values.nextConsultationDate || undefined,
       checkupMotivation: values.checkupMotivation?.trim() || undefined,
       signsAndSymptoms: values.signsAndSymptoms?.trim() || undefined,
       indicationsReceived: values.indicationsReceived?.trim() || undefined,
