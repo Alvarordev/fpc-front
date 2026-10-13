@@ -22,13 +22,30 @@ describe("apiErrorFromBody", () => {
     expect(error.code).toBe("PATIENT_DNI_EXISTS")
   })
 
-  it("joins validation messages", () => {
+  it("joins validation messages in Spanish", () => {
     const error = apiErrorFromBody(
       { message: ["dni must be a string", "agentId is required"] },
       400,
       "fallback",
     )
-    expect(error.message).toBe("dni must be a string. agentId is required")
+    expect(error.message).toBe(
+      "El DNI no tiene un valor válido. Completá el agente responsable.",
+    )
+  })
+
+  it("translates class-validator interruption errors from the enrollment API", () => {
+    const error = apiErrorFromBody(
+      {
+        message:
+          "treatments.0.interruptionReason should not be empty. treatments.0.interruptionReason must be one of the following values: ADVERSE_REACTION, THERAPEUTIC_OPTION_EVAL, OTHER",
+      },
+      400,
+      "No se pudo completar el enrolamiento",
+    )
+    expect(error.message).toBe(
+      "Completá el motivo de interrupción del tratamiento 1.",
+    )
+    expect(error.message).not.toMatch(/should not be empty|must be one of/)
   })
 
   it("unwraps the previous nested message object", () => {

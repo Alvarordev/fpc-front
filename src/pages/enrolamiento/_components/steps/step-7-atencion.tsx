@@ -39,10 +39,15 @@ import {
 import { catalogLabel, catalogSelectItems, useCatalog } from "@/hooks/use-catalog"
 import { DurationInput } from "@/components/duration-input"
 import { calculateDurationBetweenDates } from "@/types/duration"
+import {
+  interruptionReasonLabels,
+  labelMapToSelectItems,
+} from "@/pages/pacientes/[id]/_lib/clinical-labels"
 import type {
   AddMedicalAppointmentRequest,
   AddTreatmentMedicationRequest,
   CancerStage,
+  InterruptionReason,
   MedicationDoseUnit,
   MedicationRoute,
   TreatmentSituation,
@@ -73,6 +78,10 @@ const DOSE_UNITS: Array<{ value: MedicationDoseUnit; label: string }> = [
   { value: "DROP", label: "Gota" },
   { value: "OTHER", label: "Otro" },
 ]
+
+const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(
+  interruptionReasonLabels,
+)
 
 const MEDICATION_ROUTES: Array<{ value: MedicationRoute; label: string }> = [
   { value: "ORAL", label: "Oral" },
@@ -2090,17 +2099,84 @@ export function Step7Atencion({
                           kind="treatment_situation"
                           allowCreate={false}
                           value={tx.treatmentSituation ?? null}
-                          onValueChange={(code) =>
+                          onValueChange={(code) => {
+                            const treatmentSituation = (code || undefined) as
+                              | TreatmentSituation
+                              | undefined
                             updateTreatment({
-                              treatmentSituation: (code || undefined) as
-                                | TreatmentSituation
-                                | undefined,
+                              treatmentSituation,
+                              ...(treatmentSituation !== "INTERRUMPIDO"
+                                ? {
+                                    interruptionReason: undefined,
+                                    interruptionReasonOther: undefined,
+                                  }
+                                : {}),
+                              ...(treatmentSituation !== "ABANDONED"
+                                ? { treatmentAbandonmentReason: null }
+                                : {}),
                             })
-                          }
+                          }}
                           placeholder="Seleccionar..."
                           triggerClassName={sc}
                         />
                       </div>
+                      {tx.treatmentSituation === "INTERRUMPIDO" && (
+                        <div className="flex flex-col gap-2">
+                          <Label className={flGrid}>
+                            Motivo de interrupción{" "}
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          <Select
+                            items={INTERRUPTION_REASON_ITEMS}
+                            value={tx.interruptionReason ?? ""}
+                            onValueChange={(value) =>
+                              updateTreatment({
+                                interruptionReason:
+                                  (value as InterruptionReason | null) ??
+                                  undefined,
+                                interruptionReasonOther:
+                                  value === "OTHER"
+                                    ? tx.interruptionReasonOther
+                                    : undefined,
+                              })
+                            }
+                          >
+                            <SelectTrigger className={sc}>
+                              <SelectValue placeholder="Seleccionar motivo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {INTERRUPTION_REASON_ITEMS.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {tx.treatmentSituation === "INTERRUMPIDO" &&
+                        tx.interruptionReason === "OTHER" && (
+                          <div className="flex flex-col gap-2 md:col-span-2">
+                            <Label className={flGrid}>
+                              Otro motivo de interrupción{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Textarea
+                              value={tx.interruptionReasonOther ?? ""}
+                              onChange={(e) =>
+                                updateTreatment({
+                                  interruptionReasonOther:
+                                    e.target.value || undefined,
+                                })
+                              }
+                              placeholder="Describe el motivo"
+                              className="bg-card min-h-16 border"
+                            />
+                          </div>
+                        )}
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="flex flex-col gap-2">

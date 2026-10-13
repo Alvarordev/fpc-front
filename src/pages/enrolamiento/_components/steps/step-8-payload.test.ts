@@ -414,6 +414,8 @@ describe("step 8 Nest enrollment payload", () => {
       treatmentSituation: "ABANDONED",
       treatmentAbandonmentReason: "Cambio de ciudad",
     })
+    expect(payload.treatments?.[0]).not.toHaveProperty("interruptionReason")
+    expect(payload.treatments?.[0]).not.toHaveProperty("interruptionReasonOther")
     expect(payload.treatments?.[0]).not.toHaveProperty("careProgram")
     expect(payload.treatments?.[0]).not.toHaveProperty(
       "receivesTeleconsultation",
@@ -428,6 +430,123 @@ describe("step 8 Nest enrollment payload", () => {
       notAttendingConsultationsNote: "No puede asistir",
       currentlyReceivingTreatment: true,
     })
+  })
+
+  it("maps interruption reason when the treatment is interrupted", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            treatmentSituation: "INTERRUMPIDO",
+            interruptionReason: "ADVERSE_REACTION",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.treatments?.[0]).toMatchObject({
+      treatmentSituation: "INTERRUMPIDO",
+      interruptionReason: "ADVERSE_REACTION",
+    })
+    expect(payload.treatments?.[0]).not.toHaveProperty("interruptionReasonOther")
+  })
+
+  it("requires an interruption reason when the treatment is interrupted", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "QUIMIOTERAPIA",
+              treatmentSituation: "INTERRUMPIDO",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("motivo de interrupción")
+  })
+
+  it("requires the other interruption detail when OTHER is selected", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            treatmentSituation: "INTERRUMPIDO",
+            interruptionReason: "OTHER",
+            interruptionReasonOther: "Cambio de protocolo",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.treatments?.[0]).toMatchObject({
+      interruptionReason: "OTHER",
+      interruptionReasonOther: "Cambio de protocolo",
+    })
+
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "QUIMIOTERAPIA",
+              treatmentSituation: "INTERRUMPIDO",
+              interruptionReason: "OTHER",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("Especificá el motivo de interrupción")
   })
 
   it("serializes the canonical signs consultation branch without appointments", () => {

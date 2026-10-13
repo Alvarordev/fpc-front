@@ -202,6 +202,11 @@ export type TreatmentSituation =
 
 export type CareProgram = "COPHOES" | "PADOMI"
 
+export type InterruptionReason =
+  | "ADVERSE_REACTION"
+  | "THERAPEUTIC_OPTION_EVAL"
+  | "OTHER"
+
 export type MedicationDoseUnit =
   | "MG"
   | "G"
@@ -251,6 +256,8 @@ export interface AddTreatmentRequest {
   teleconsultationNote?: string | null
   teleconsultationSpecialties?: string[] | null
   treatmentAbandonmentReason?: string | null
+  interruptionReason?: InterruptionReason | null
+  interruptionReasonOther?: string | null
   hasLatestPrescription?: boolean
   latestPrescriptionDate?: string | null
   medications?: AddTreatmentMedicationRequest[]

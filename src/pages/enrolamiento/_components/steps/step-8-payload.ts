@@ -217,6 +217,20 @@ export function buildEnrollmentPayload({
       throw new Error(
         `Indica el motivo de abandono del tratamiento ${index + 1}`,
       )
+    if (
+      treatment.treatmentSituation === "INTERRUMPIDO" &&
+      !treatment.interruptionReason
+    )
+      throw new Error(
+        `Indica el motivo de interrupción del tratamiento ${index + 1}`,
+      )
+    if (
+      treatment.interruptionReason === "OTHER" &&
+      !value(treatment.interruptionReasonOther)
+    )
+      throw new Error(
+        `Especificá el motivo de interrupción del tratamiento ${index + 1}`,
+      )
     if (isSurgery && !value(treatment.operationName))
       throw new Error(`Selecciona el procedimiento de la cirugía ${index + 1}`)
     if (
@@ -292,6 +306,18 @@ export function buildEnrollmentPayload({
             treatmentAbandonmentReason: value(
               treatment.treatmentAbandonmentReason,
             ),
+          }
+        : {}),
+      ...(treatment.treatmentSituation === "INTERRUMPIDO"
+        ? {
+            interruptionReason: treatment.interruptionReason,
+            ...(treatment.interruptionReason === "OTHER"
+              ? {
+                  interruptionReasonOther: value(
+                    treatment.interruptionReasonOther,
+                  ),
+                }
+              : {}),
           }
         : {}),
       hasLatestPrescription: treatment.hasLatestPrescription,
