@@ -3,12 +3,7 @@ import { createPortal } from "react-dom"
 import { scaleLinear } from "d3-scale"
 import { ComposableMap, Geographies, Geography } from "react-simple-maps"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -17,10 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { PERU_DEPARTMENTS_GEOJSON_URL } from "@/lib/peru-departments"
 import { PERU_DEPARTMENTS, type IndicatorMap } from "./regional-indicators"
 import { DashboardSectionTitle, ScopeBadge } from "./dashboard-shell"
 
-const GEO_URL = "/peru-departamentos.geojson"
+const GEO_URL = PERU_DEPARTMENTS_GEOJSON_URL
 const numberFormat = new Intl.NumberFormat("es-PE")
 const percentageFormat = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 1,

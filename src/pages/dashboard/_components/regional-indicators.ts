@@ -1,30 +1,6 @@
-export const PERU_DEPARTMENTS = [
-  { code: "01", value: "AMAZONAS", label: "Amazonas" },
-  { code: "02", value: "ANCASH", label: "Áncash" },
-  { code: "03", value: "APURIMAC", label: "Apurímac" },
-  { code: "04", value: "AREQUIPA", label: "Arequipa" },
-  { code: "05", value: "AYACUCHO", label: "Ayacucho" },
-  { code: "06", value: "CAJAMARCA", label: "Cajamarca" },
-  { code: "07", value: "CALLAO", label: "Callao" },
-  { code: "08", value: "CUSCO", label: "Cusco" },
-  { code: "09", value: "HUANCAVELICA", label: "Huancavelica" },
-  { code: "10", value: "HUANUCO", label: "Huánuco" },
-  { code: "11", value: "ICA", label: "Ica" },
-  { code: "12", value: "JUNIN", label: "Junín" },
-  { code: "13", value: "LA_LIBERTAD", label: "La Libertad" },
-  { code: "14", value: "LAMBAYEQUE", label: "Lambayeque" },
-  { code: "15", value: "LIMA", label: "Lima" },
-  { code: "16", value: "LORETO", label: "Loreto" },
-  { code: "17", value: "MADRE_DE_DIOS", label: "Madre de Dios" },
-  { code: "18", value: "MOQUEGUA", label: "Moquegua" },
-  { code: "19", value: "PASCO", label: "Pasco" },
-  { code: "20", value: "PIURA", label: "Piura" },
-  { code: "21", value: "PUNO", label: "Puno" },
-  { code: "22", value: "SAN_MARTIN", label: "San Martín" },
-  { code: "23", value: "TACNA", label: "Tacna" },
-  { code: "24", value: "TUMBES", label: "Tumbes" },
-  { code: "25", value: "UCAYALI", label: "Ucayali" },
-] as const
+import { PERU_DEPARTMENTS } from "@/lib/peru-departments"
+
+export { PERU_DEPARTMENTS }
 
 export type IndicatorMap = Record<string, number>
 
