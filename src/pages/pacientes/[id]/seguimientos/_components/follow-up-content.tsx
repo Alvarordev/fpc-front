@@ -84,6 +84,7 @@ import {
   followUpStatusLabels,
   followUpTypeLabels,
 } from "@/lib/follow-up-labels"
+import { fixedWaitTime } from "@/types/wait-time-recall"
 
 type EditableFollowUpStatus = Exclude<FollowUp["status"], "SCHEDULED">
 
@@ -398,11 +399,12 @@ export function FollowUpContent() {
         editedDiagnosisId,
         waitTimeForDiagnosisManuallyEdited,
         remembersWaitTimeForDiagnosis,
+        waitTimeRecall,
         changeReason,
         ...diagnosisDraft
       } = diagnosisDecision
       const waitTimeForDiagnosis = remembersWaitTimeForDiagnosis === false
-        ? null
+        ? fixedWaitTime(waitTimeRecall)
         : waitTimeForDiagnosisManuallyEdited
           ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
           : diagnosisDraft.firstSymptomsDate && diagnosisDraft.diagnosisDate

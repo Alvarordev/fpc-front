@@ -17,6 +17,7 @@ import type {
   PsychooncologySupportAssessmentRequest,
 } from "@/types"
 import { normalizeDuration } from "@/types/duration"
+import type { FixedWaitTimeRecall } from "@/types/wait-time-recall"
 
 export const TOTAL_STEPS = 8
 
@@ -91,6 +92,8 @@ export interface EnrollmentDraft {
   secondaryContactEnabled?: boolean
   secondaryContactSource?: EnrollmentContactSource
   secondaryContact: EnrollmentContactDraft
+  /** Further secondary contacts, always registered as new companions. */
+  additionalSecondaryContacts: EnrollmentContactDraft[]
   enrollmentMetadata: EnrollmentMetadataDraft
 }
 
@@ -120,8 +123,10 @@ export type EnrollmentDiagnosisDraft = AddDiagnosisRequest & {
   /** UI-only; when false the API receives no firstSymptomsDate. */
   remembersFirstSymptomsDate?: boolean
   waitTimeForDiagnosisManuallyEdited?: boolean
-  /** UI-only; when false the API receives waitTimeForDiagnosis null. */
+  /** UI-only; when false the API receives the `waitTimeRecall` answer. */
   remembersWaitTimeForDiagnosis?: boolean
+  /** UI-only; answer when the wait time isn't remembered as an amount. */
+  waitTimeRecall?: FixedWaitTimeRecall
 }
 
 export type EnrollmentTreatmentDraft = Omit<
@@ -182,6 +187,7 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   secondaryContactEnabled: false,
   secondaryContactSource: undefined,
   secondaryContact: { fullName: "", primaryPhone: "" },
+  additionalSecondaryContacts: [],
   enrollmentMetadata: {},
 }
 
@@ -460,6 +466,7 @@ function normalizeDraft(
       ...DEFAULT_DRAFT.secondaryContact,
       ...raw?.secondaryContact,
     },
+    additionalSecondaryContacts: raw?.additionalSecondaryContacts ?? [],
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
       ...restMeta,

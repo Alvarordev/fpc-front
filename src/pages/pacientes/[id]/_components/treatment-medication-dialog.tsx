@@ -48,7 +48,7 @@ export function TreatmentMedicationDialog({ open, onOpenChange, treatment, medic
       doseDescription: medication.doseDescription ?? "",
       route: medication.route ?? undefined,
       frequency: medication.frequency ? {
-        valueMin: medication.frequency.valueMin,
+        valueMin: medication.frequency.valueMin ?? undefined,
         ...(medication.frequency.valueMax !== null ? { valueMax: medication.frequency.valueMax } : {}),
         unit: medication.frequency.unit,
       } : undefined,

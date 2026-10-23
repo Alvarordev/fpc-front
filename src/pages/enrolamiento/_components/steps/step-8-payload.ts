@@ -9,6 +9,7 @@ import {
 import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import { getAge } from "../../_utils/patient-age"
 import { toDurationInput } from "@/types/duration"
+import { fixedWaitTime } from "@/types/wait-time-recall"
 import type { EnrollmentContactSource } from "@/types"
 
 interface BaseBuildEnrollmentPayloadOptions {
@@ -171,7 +172,7 @@ export function buildEnrollmentPayload({
       symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
       waitTimeForDiagnosis: (diagnosis.remembersWaitTimeForDiagnosis ?? true) ===
       false
-        ? null
+        ? fixedWaitTime(diagnosis.waitTimeRecall)
         : diagnosis.waitTimeForDiagnosisManuallyEdited
           ? duration(
               diagnosis.waitTimeForDiagnosis,
@@ -478,7 +479,7 @@ export function buildEnrollmentPayload({
     }))
   const psychooncologySupport = draft.psychooncologySupportAssessment
   const hasPsychooncologySupportResponse =
-    meta.affiliationType === "PATIENT" &&
+    (meta.affiliationType === "PATIENT" || historical) &&
     healthPhase === "CANCER_DIAGNOSIS" &&
     (typeof psychooncologySupport.excessiveWorry === "boolean" ||
       psychooncologySupport.emotionalDistressScore !== undefined ||
@@ -508,6 +509,11 @@ export function buildEnrollmentPayload({
               ? { person: contactPerson(draft.secondaryContact) }
               : {}),
           },
+          ...(draft.additionalSecondaryContacts ?? []).map((person) => ({
+            role: "SECONDARY" as const,
+            source: "NEW" as EnrollmentContactSource,
+            person: contactPerson(person),
+          })),
         ]
       : []),
   ]

@@ -29,7 +29,11 @@ export function groupCompanions(companions: CompanionPatient[]): CompanionGroup[
     groups.push({ title: "Contacto principal", companions: primary })
   }
   if (secondary.length > 0) {
-    groups.push({ title: "Contacto secundario", companions: secondary })
+    groups.push({
+      title:
+        secondary.length > 1 ? "Contactos secundarios" : "Contacto secundario",
+      companions: secondary,
+    })
   }
   if (others.length > 0) {
     groups.push({ title: "Otros roles", companions: others })

@@ -1013,6 +1013,103 @@ describe("step 8 Nest enrollment payload", () => {
     expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toBeNull()
   })
 
+  it.each([
+    ["IMMEDIATE", { valueMin: 0, unit: "DAY", label: "Inmediato" }],
+    ["UNSPECIFIED_MONTH", { unit: "MONTH", label: "No especifica (meses)" }],
+  ] as const)(
+    "sends the fixed wait time for the %s answer",
+    (waitTimeRecall, expected) => {
+      const payload = buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              firstSymptomsDate: "2026-01-01",
+              diagnosisDate: "2026-03-02",
+              remembersWaitTimeForDiagnosis: false,
+              waitTimeRecall,
+              isCurrent: true,
+            },
+          ],
+        }),
+      })
+
+      expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toEqual(expected)
+    },
+  )
+
+  it("sends every additional secondary contact as a new companion", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+        ],
+        primaryContactSource: "PATIENT",
+        secondaryContactEnabled: true,
+        secondaryContactSource: "NEW",
+        secondaryContact: {
+          fullName: "Primer Contacto",
+          primaryPhone: "999111222",
+          relationship: "SIBLING",
+        },
+        additionalSecondaryContacts: [
+          {
+            fullName: "Segundo Contacto",
+            primaryPhone: "999333444",
+            relationship: "CHILD",
+          },
+        ],
+      }),
+    })
+
+    expect(payload.contacts).toEqual([
+      { role: "PRIMARY", source: "PATIENT" },
+      expect.objectContaining({
+        role: "SECONDARY",
+        source: "NEW",
+        person: expect.objectContaining({ fullName: "Primer Contacto" }),
+      }),
+      expect.objectContaining({
+        role: "SECONDARY",
+        source: "NEW",
+        person: expect.objectContaining({
+          fullName: "Segundo Contacto",
+          primaryPhone: "999333444",
+        }),
+      }),
+    ])
+  })
+
+  it("rejects an incomplete additional secondary contact", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+          ],
+          primaryContactSource: "PATIENT",
+          secondaryContactEnabled: true,
+          secondaryContactSource: "NEW",
+          secondaryContact: {
+            fullName: "Primer Contacto",
+            primaryPhone: "999111222",
+            relationship: "SIBLING",
+          },
+          additionalSecondaryContacts: [
+            { fullName: "Sin teléfono", primaryPhone: "" },
+          ],
+        }),
+      }),
+    ).toThrow("Completa nombre, parentesco y teléfono del contacto")
+  })
+
   it("maps a foreign birth country without a peru department", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",
@@ -1164,6 +1261,55 @@ describe("step 8 Nest enrollment payload", () => {
       emotionalDistressScore: 6,
       preferredModality: "CALL",
     })
+  })
+
+  it("keeps psycho-oncology answers in historical enrollments made by a relative", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      historical: true,
+      historicalEnrollmentDate: "2024-04-12",
+      draft: draft({
+        diagnoses: [
+          { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+        ],
+        companion: {
+          fullName: "Ana Caller",
+          primaryPhone: "999000333",
+          relationship: "MOTHER",
+        },
+        primaryContactSource: "CALLER",
+        psychooncologySupportAssessment: { emotionalDistressScore: 7 },
+        enrollmentMetadata: { affiliationType: "FAMILY" },
+      }),
+    })
+
+    expect(payload.affiliationType).toBe("FAMILY_FRIEND")
+    expect(payload.psychooncologySupportAssessment).toEqual({
+      emotionalDistressScore: 7,
+    })
+  })
+
+  it("drops psycho-oncology answers in live enrollments made by a relative", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+        ],
+        companion: {
+          fullName: "Ana Caller",
+          primaryPhone: "999000333",
+          relationship: "MOTHER",
+        },
+        primaryContactSource: "CALLER",
+        psychooncologySupportAssessment: { emotionalDistressScore: 7 },
+        enrollmentMetadata: { affiliationType: "FAMILY" },
+      }),
+    })
+
+    expect(payload).not.toHaveProperty("psychooncologySupportAssessment")
   })
 
   it("requires answers and conditional notes for the cancer diagnosis branch", () => {

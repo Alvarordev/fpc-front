@@ -183,16 +183,15 @@ interface PatientCompanionDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-function contactRoleTaken(
+/** Only the primary contact is unique; secondary contacts may repeat. */
+function primaryContactTaken(
   companions: CompanionPatient[],
-  role: ContactRole,
   excludeLinkId?: string,
 ) {
   return companions.some(
     (link) =>
       link.id !== excludeLinkId &&
-      (link.contactRole === role ||
-        (role === "PRIMARY" && link.isPrimaryContact)),
+      (link.contactRole === "PRIMARY" || link.isPrimaryContact),
   )
 }
 
@@ -275,13 +274,7 @@ export function PatientCompanionDialog({
   const availableContactRoles = CONTACT_ROLE_OPTIONS.filter((option) => {
     if (
       option.value === "PRIMARY" &&
-      contactRoleTaken(existingCompanions, "PRIMARY", companion?.id)
-    ) {
-      return false
-    }
-    if (
-      option.value === "SECONDARY" &&
-      contactRoleTaken(existingCompanions, "SECONDARY", companion?.id)
+      primaryContactTaken(existingCompanions, companion?.id)
     ) {
       return false
     }
@@ -311,15 +304,9 @@ export function PatientCompanionDialog({
     mutationFn: async (values: CompanionFormValues) => {
       if (
         values.contactRole === "PRIMARY" &&
-        contactRoleTaken(existingCompanions, "PRIMARY")
+        primaryContactTaken(existingCompanions)
       ) {
         throw new Error("Ya existe un contacto principal para este paciente")
-      }
-      if (
-        values.contactRole === "SECONDARY" &&
-        contactRoleTaken(existingCompanions, "SECONDARY")
-      ) {
-        throw new Error("Ya existe un contacto secundario para este paciente")
       }
       await patientsApi.createCompanion(patientId, buildCompanionInput(values))
     },
@@ -341,15 +328,9 @@ export function PatientCompanionDialog({
       if (!companion) return
       if (
         values.contactRole === "PRIMARY" &&
-        contactRoleTaken(existingCompanions, "PRIMARY", companion.id)
+        primaryContactTaken(existingCompanions, companion.id)
       ) {
         throw new Error("Ya existe un contacto principal para este paciente")
-      }
-      if (
-        values.contactRole === "SECONDARY" &&
-        contactRoleTaken(existingCompanions, "SECONDARY", companion.id)
-      ) {
-        throw new Error("Ya existe un contacto secundario para este paciente")
       }
       const personInput: UpdatePatientInput = {
         fullName: values.fullName.trim(),

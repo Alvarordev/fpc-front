@@ -88,7 +88,7 @@ function date(value: string | null) {
 function durationLabel(
   value:
     | {
-        valueMin: number
+        valueMin: number | null
         valueMax: number | null
         unit: keyof typeof DURATION_UNIT_LABELS
         label: string | null
@@ -98,6 +98,7 @@ function durationLabel(
 ) {
   if (!value) return null
   if (value.label) return value.label
+  if (value.valueMin === null) return null
   const range =
     value.valueMax !== null && value.valueMax !== value.valueMin
       ? `${value.valueMin} a ${value.valueMax}`

@@ -122,6 +122,13 @@ import {
   type FollowUpContactValues,
 } from "./follow-up-contact-form"
 import { enrollmentSymptomDraft } from "./clinical-symptom-draft"
+import { WaitTimeRecallSelect } from "@/components/wait-time-recall-select"
+import {
+  fixedWaitTime,
+  fixedWaitTimeRecallFrom,
+  resolveWaitTimeRecall,
+  type FixedWaitTimeRecall,
+} from "@/types/wait-time-recall"
 
 // ── Tri-state Sí/No/sin dato select ──
 
@@ -1397,7 +1404,7 @@ function RepeatableSection({
 function asDurationDraft(
   value:
     | {
-        valueMin: number
+        valueMin?: number | null
         valueMax?: number | null
         unit: NonNullable<DurationDraft["unit"]>
       }
@@ -1406,7 +1413,7 @@ function asDurationDraft(
 ): DurationDraft | undefined {
   if (!value) return undefined
   return {
-    valueMin: value.valueMin,
+    valueMin: value.valueMin ?? undefined,
     ...(value.valueMax !== undefined && value.valueMax !== null
       ? { valueMax: value.valueMax }
       : {}),
@@ -2625,6 +2632,7 @@ interface DiagnosisFormValues {
   waitTimeForDiagnosis: DurationDraft | undefined
   waitTimeForDiagnosisManuallyEdited: boolean
   remembersWaitTimeForDiagnosis: boolean
+  waitTimeRecall: FixedWaitTimeRecall | undefined
   hasMedicalReport: boolean
 }
 
@@ -2665,6 +2673,7 @@ function DiagnosticoForm({
           initial?.waitTimeForDiagnosisManuallyEdited ?? false,
         remembersWaitTimeForDiagnosis:
           initial?.remembersWaitTimeForDiagnosis ?? true,
+        waitTimeRecall: initial?.waitTimeRecall,
         hasMedicalReport: initial?.hasMedicalReport ?? false,
       },
     })
@@ -2678,6 +2687,7 @@ function DiagnosticoForm({
     "waitTimeForDiagnosisManuallyEdited",
   )
   const remembersWaitTimeForDiagnosis = watch("remembersWaitTimeForDiagnosis")
+  const waitTimeRecall = watch("waitTimeRecall")
   const calculatedWaitTime = calculateDurationBetweenDates(
     firstSymptomsDate,
     diagnosisDate,
@@ -2777,7 +2787,7 @@ function DiagnosticoForm({
     }
 
     const normalizedWaitTime = values.remembersWaitTimeForDiagnosis === false
-      ? null
+      ? fixedWaitTime(values.waitTimeRecall)
       : values.waitTimeForDiagnosisManuallyEdited
         ? toDurationInput(values.waitTimeForDiagnosis)
         : values.firstSymptomsDate && values.diagnosisDate
@@ -2816,6 +2826,9 @@ function DiagnosticoForm({
       waitTimeForDiagnosisManuallyEdited:
         values.waitTimeForDiagnosisManuallyEdited,
       remembersWaitTimeForDiagnosis: values.remembersWaitTimeForDiagnosis,
+      waitTimeRecall: values.remembersWaitTimeForDiagnosis
+        ? undefined
+        : values.waitTimeRecall,
       hasMedicalReport: values.hasMedicalReport,
       ...(isCorrection
         ? {
@@ -2852,6 +2865,7 @@ function DiagnosticoForm({
     setValue("waitTimeForDiagnosis", undefined)
     setValue("waitTimeForDiagnosisManuallyEdited", false)
     setValue("remembersWaitTimeForDiagnosis", true)
+    setValue("waitTimeRecall", undefined)
     setValue("hasMedicalReport", false)
     setMode("")
     setReplacementDiagnosisId("")
@@ -2889,14 +2903,20 @@ function DiagnosticoForm({
     setValue("firstSymptomsDate", diagnosis.firstSymptomsDate ?? "")
     setValue("healthCenterId", diagnosis.healthCenterId ?? undefined)
     setValue("symptomLeadingToCheckup", diagnosis.symptomLeadingToCheckup ?? "")
-    setValue(
-      "waitTimeForDiagnosis",
-      normalizeDuration(diagnosis.waitTimeForDiagnosis),
-    )
-    setValue(
-      "waitTimeForDiagnosisManuallyEdited",
-      diagnosis.waitTimeSource === "REPORTED",
-    )
+    const recall = fixedWaitTimeRecallFrom(diagnosis.waitTimeForDiagnosis)
+    if (recall) {
+      setValue("remembersWaitTimeForDiagnosis", false)
+      setValue("waitTimeRecall", recall)
+    } else {
+      setValue(
+        "waitTimeForDiagnosis",
+        normalizeDuration(diagnosis.waitTimeForDiagnosis),
+      )
+      setValue(
+        "waitTimeForDiagnosisManuallyEdited",
+        diagnosis.waitTimeSource === "REPORTED",
+      )
+    }
     setValue("hasMedicalReport", diagnosis.hasMedicalReport ?? false)
     setFormOpen(true)
   }
@@ -2927,6 +2947,7 @@ function DiagnosticoForm({
       "remembersWaitTimeForDiagnosis",
       decision.remembersWaitTimeForDiagnosis ?? true,
     )
+    setValue("waitTimeRecall", decision.waitTimeRecall)
     setValue("hasMedicalReport", decision.hasMedicalReport ?? false)
   }
 
@@ -3318,29 +3339,21 @@ function DiagnosticoForm({
         )}
         <div className="space-y-2">
           <Label>¿Recuerda el tiempo de espera?</Label>
-          <Select
-            items={[
-              { value: "Sí", label: "Sí" },
-              { value: "No", label: "No" },
-            ]}
-            value={remembersWaitTimeForDiagnosis ? "Sí" : "No"}
-            onValueChange={(value) => {
-              const remembers = value === "Sí"
+          <WaitTimeRecallSelect
+            value={resolveWaitTimeRecall(
+              remembersWaitTimeForDiagnosis,
+              waitTimeRecall,
+            )}
+            onValueChange={(recall) => {
+              const remembers = recall === "REMEMBERS"
               setValue("remembersWaitTimeForDiagnosis", remembers)
+              setValue("waitTimeRecall", remembers ? undefined : recall)
               if (!remembers) {
                 setValue("waitTimeForDiagnosis", undefined)
                 setValue("waitTimeForDiagnosisManuallyEdited", false)
               }
             }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Sí">Sí</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
+          />
         </div>
         {remembersWaitTimeForDiagnosis && (
           <DurationInput
@@ -3602,7 +3615,7 @@ function TratamientosForm({
       treatmentType: treatment.treatmentType,
       treatmentFrequency: treatment.treatmentFrequency
         ? {
-            valueMin: treatment.treatmentFrequency.valueMin,
+            valueMin: treatment.treatmentFrequency.valueMin ?? undefined,
             ...(treatment.treatmentFrequency.valueMax !== null
               ? { valueMax: treatment.treatmentFrequency.valueMax }
               : {}),
@@ -3672,7 +3685,7 @@ function TratamientosForm({
         route: medication.route ?? undefined,
         frequency: medication.frequency
           ? {
-              valueMin: medication.frequency.valueMin,
+              valueMin: medication.frequency.valueMin ?? undefined,
               ...(medication.frequency.valueMax !== null
                 ? { valueMax: medication.frequency.valueMax }
                 : {}),

@@ -491,7 +491,7 @@ function formatDateTime(value: string | null | undefined) {
 function formatDuration(
   value:
     | {
-        valueMin: number | string
+        valueMin: number | string | null
         valueMax: number | string | null
         unit: keyof typeof DURATION_UNIT_LABELS
         label?: string | null
@@ -501,6 +501,7 @@ function formatDuration(
 ) {
   if (!value) return "Sin dato"
   if (value.label) return value.label
+  if (value.valueMin === null) return "Sin dato"
   const range =
     value.valueMax !== null && value.valueMax !== value.valueMin
       ? `${value.valueMin} a ${value.valueMax}`

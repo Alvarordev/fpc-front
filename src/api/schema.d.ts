@@ -2240,7 +2240,7 @@ export interface components {
             person?: components["schemas"]["EnrollmentContactPersonDto"];
         };
         DurationDto: {
-            valueMin: number;
+            valueMin?: number;
             valueMax?: number;
             /** @enum {string} */
             unit: "MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR";
@@ -3224,7 +3224,7 @@ export interface components {
             total: number;
         };
         DurationResponseDto: {
-            valueMin: number;
+            valueMin: number | null;
             valueMax: number | null;
             /** @enum {string} */
             unit: "MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR";

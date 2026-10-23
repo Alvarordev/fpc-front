@@ -42,6 +42,7 @@ import {
   useCatalog,
 } from "@/hooks/use-catalog"
 import { DurationInput } from "@/components/duration-input"
+import { WaitTimeRecallSelect } from "@/components/wait-time-recall-select"
 import { calculateDurationBetweenDates } from "@/types/duration"
 import {
   interruptionReasonLabels,
@@ -57,6 +58,10 @@ import type {
   TreatmentSituation,
 } from "@/types"
 import type { HealthCenter } from "@/api/health-centers"
+import {
+  resolveWaitTimeRecall,
+  type WaitTimeRecall,
+} from "@/types/wait-time-recall"
 
 const fl =
   "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
@@ -382,10 +387,11 @@ export function Step7Atencion({
     })
   }
 
-  function updateWaitTimeRemembered(value: string | null) {
-    const remembers = value === "Sí"
+  function updateWaitTimeRecall(recall: WaitTimeRecall) {
+    const remembers = recall === "REMEMBERS"
     updateDiagnosis({
       remembersWaitTimeForDiagnosis: remembers,
+      waitTimeRecall: remembers ? undefined : recall,
       waitTimeForDiagnosis: remembers ? dx.waitTimeForDiagnosis : undefined,
       waitTimeForDiagnosisManuallyEdited: remembers
         ? dx.waitTimeForDiagnosisManuallyEdited
@@ -1397,22 +1403,14 @@ export function Step7Atencion({
                 <Label className={flGrid}>
                   ¿Recuerda el tiempo de espera?
                 </Label>
-                <Select
-                  items={YES_NO_OPTIONS}
-                  value={remembersWaitTime ? "Sí" : "No"}
-                  onValueChange={updateWaitTimeRemembered}
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {YES_NO_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <WaitTimeRecallSelect
+                  value={resolveWaitTimeRecall(
+                    remembersWaitTime,
+                    dx.waitTimeRecall,
+                  )}
+                  onValueChange={updateWaitTimeRecall}
+                  triggerClassName={sc}
+                />
               </div>
               {remembersWaitTime && (
                 <DurationInput
@@ -2580,7 +2578,9 @@ export function Step7Atencion({
 
         <section className="flex flex-col gap-5">
           <SectionHeader icon={Users} title="Servicios de Apoyo" />
-          {esDx && meta.affiliationType === "PATIENT" && (
+          {/* A historical load may carry the patient's answers even when a
+              relative made the call. */}
+          {esDx && (meta.affiliationType === "PATIENT" || historical) && (
             <div className="border-border/60 bg-muted/20 flex flex-col gap-5 rounded-xl border p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">

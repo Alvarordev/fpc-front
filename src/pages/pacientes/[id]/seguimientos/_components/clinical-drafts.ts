@@ -10,6 +10,7 @@ import type {
   TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
 import type { DurationDraft } from "@/types/duration"
+import type { FixedWaitTimeRecall } from "@/types/wait-time-recall"
 
 /** Sentinel diagnosisId meaning "link to the diagnosis draft in this same batch". */
 export const DRAFT_DIAGNOSIS_ID = "__DRAFT_DIAGNOSIS__"
@@ -41,6 +42,8 @@ export type DiagnosisDraft = Omit<
   waitTimeForDiagnosis?: DurationDraft
   waitTimeForDiagnosisManuallyEdited?: boolean
   remembersWaitTimeForDiagnosis?: boolean
+  /** Answer when the wait time isn't remembered as an amount. */
+  waitTimeRecall?: FixedWaitTimeRecall
 }
 export type TreatmentDecisionMode = "REPLACE" | "PARALLEL"
 export type TreatmentDraft = Omit<

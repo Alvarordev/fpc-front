@@ -11,7 +11,7 @@ function durationDraft(
 ): DurationDraft | undefined {
   if (!value) return undefined
   return {
-    valueMin: value.valueMin,
+    valueMin: value.valueMin ?? undefined,
     ...(value.valueMax !== null ? { valueMax: value.valueMax } : {}),
     unit: value.unit,
   }

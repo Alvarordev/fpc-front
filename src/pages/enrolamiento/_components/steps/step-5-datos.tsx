@@ -5,8 +5,11 @@ import {
   LogIn,
   MapPin,
   Phone,
+  Plus,
   ShieldCheck,
+  Trash2,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { DurationInput } from "@/components/duration-input"
 import { CatalogSelect } from "@/components/catalog-select"
 import { Input } from "@/components/ui/input"
@@ -94,19 +97,35 @@ interface ContactPersonFieldsProps {
   person: CompanionDraft
   onChange: (partial: Partial<CompanionDraft>) => void
   title: string
+  onRemove?: () => void
 }
 
 function ContactPersonFields({
   person,
   onChange,
   title,
+  onRemove,
 }: ContactPersonFieldsProps) {
   const relationshipValue = relationshipSelectValue(person.relationship)
   const otherText = relationshipOtherText(person.relationship)
 
   return (
     <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
-      <p className="mb-4 text-sm font-semibold">{title}</p>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">{title}</p>
+        {onRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-destructive -my-1"
+            onClick={onRemove}
+          >
+            <Trash2 className="size-4" />
+            Quitar
+          </Button>
+        )}
+      </div>
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
@@ -283,6 +302,9 @@ export function Step5Datos({
     draft.primaryContactSource ??
     (patientIsMinor && callerIsComplete ? "CALLER" : "")
   const secondarySource = draft.secondaryContactSource ?? ""
+  // The patient's own number is kept even when someone else is the contact.
+  const patientPhoneRequired =
+    selectedPrimarySource === "PATIENT" || !historical
   const hasTemporaryAddress = draft.addresses.length > 1
   const address: EnrollmentAddressRequest = draft.addresses[0] ?? {
     type: "PERMANENT",
@@ -354,6 +376,29 @@ export function Step5Datos({
       secondaryContactEnabled: enabled,
       secondaryContactSource: enabled ? defaultSource : undefined,
       secondaryContact: enabled ? draft.secondaryContact : EMPTY_CONTACT,
+      additionalSecondaryContacts: enabled
+        ? draft.additionalSecondaryContacts
+        : [],
+    })
+  }
+
+  function updateAdditionalContact(
+    index: number,
+    partial: Partial<CompanionDraft>,
+  ) {
+    updateDraft({
+      additionalSecondaryContacts: draft.additionalSecondaryContacts.map(
+        (person, current) =>
+          current === index ? { ...person, ...partial } : person,
+      ),
+    })
+  }
+
+  function removeAdditionalContact(index: number) {
+    updateDraft({
+      additionalSecondaryContacts: draft.additionalSecondaryContacts.filter(
+        (_, current) => current !== index,
+      ),
     })
   }
 
@@ -430,6 +475,20 @@ export function Step5Datos({
       if (secondarySource === "PATIENT") {
         setError("El paciente solo puede ser contacto principal")
         return
+      }
+      for (const [
+        index,
+        person,
+      ] of draft.additionalSecondaryContacts.entries()) {
+        const additionalError = validateContact(
+          "NEW",
+          person,
+          `contacto secundario ${index + 2}`,
+        )
+        if (additionalError) {
+          setError(additionalError)
+          return
+        }
       }
     }
     setError(null)
@@ -616,26 +675,26 @@ export function Step5Datos({
           )}
           {(details.bornInPeru === false || Boolean(details.birthCountry)) &&
             details.bornInPeru !== true && (
-            <div className="flex flex-col gap-2">
-              <Label className={fl}>País de nacimiento</Label>
-              <CatalogSelect
-                kind="country"
-                value={details.birthCountry ?? null}
-                onValueChange={(code) =>
-                  updateDraft({
-                    details: {
-                      ...details,
-                      bornInPeru: false,
-                      birthDepartment: undefined,
-                      birthCountry: code ?? undefined,
-                    },
-                  })
-                }
-                placeholder="Seleccionar país..."
-                triggerClassName={sc}
-              />
-            </div>
-          )}
+              <div className="flex flex-col gap-2">
+                <Label className={fl}>País de nacimiento</Label>
+                <CatalogSelect
+                  kind="country"
+                  value={details.birthCountry ?? null}
+                  onValueChange={(code) =>
+                    updateDraft({
+                      details: {
+                        ...details,
+                        bornInPeru: false,
+                        birthDepartment: undefined,
+                        birthCountry: code ?? undefined,
+                      },
+                    })
+                  }
+                  placeholder="Seleccionar país..."
+                  triggerClassName={sc}
+                />
+              </div>
+            )}
           <div className="flex flex-col gap-2">
             <Label className={fl}>Zonificación de residencia</Label>
             <CatalogSelect
@@ -909,6 +968,73 @@ export function Step5Datos({
 
       <section className="flex flex-col gap-5">
         <SectionHeader icon={Phone} title="Contacto para seguimiento" />
+        <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
+          <p className="text-sm font-semibold">Teléfonos del paciente</p>
+          <p className="text-muted-foreground mt-1 mb-4 text-xs">
+            {patientPhoneRequired
+              ? "Se guardan en la ficha del paciente."
+              : "Opcional. Se guardan en la ficha del paciente aunque el contacto principal sea otra persona."}
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Teléfono principal{" "}
+                {patientPhoneRequired && (
+                  <span className="text-destructive">*</span>
+                )}
+              </Label>
+              <Input
+                placeholder="987654321"
+                className={ic}
+                value={pd.primaryPhone}
+                onChange={(event) =>
+                  updateDraft({
+                    patientData: { ...pd, primaryPhone: event.target.value },
+                  })
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>Teléfono adicional o fijo</Label>
+              <Input
+                placeholder="01 555 1234"
+                className={ic}
+                value={pd.secondaryPhone ?? ""}
+                onChange={(event) =>
+                  updateDraft({
+                    patientData: {
+                      ...pd,
+                      secondaryPhone: event.target.value || null,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-2">
+            <Label className={fl}>¿Tiene WhatsApp?</Label>
+            <Select
+              items={YES_NO_OPTIONS}
+              value={pd.hasWhatsapp ? "Sí" : "No"}
+              onValueChange={(value) =>
+                updateDraft({
+                  patientData: { ...pd, hasWhatsapp: value === "Sí" },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {YES_NO_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="flex flex-col gap-2">
           <Label className={fl}>
             ¿Quién será el contacto principal?{" "}
@@ -947,67 +1073,6 @@ export function Step5Datos({
             </SelectContent>
           </Select>
         </div>
-        {selectedPrimarySource === "PATIENT" && (
-          <div className="border-border/70 bg-muted/20 rounded-xl border p-4">
-            <p className="mb-4 text-sm font-semibold">Datos del paciente</p>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>
-                  Teléfono principal <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  placeholder="987654321"
-                  className={ic}
-                  value={pd.primaryPhone}
-                  onChange={(event) =>
-                    updateDraft({
-                      patientData: { ...pd, primaryPhone: event.target.value },
-                    })
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>Teléfono adicional o fijo</Label>
-                <Input
-                  placeholder="01 555 1234"
-                  className={ic}
-                  value={pd.secondaryPhone ?? ""}
-                  onChange={(event) =>
-                    updateDraft({
-                      patientData: {
-                        ...pd,
-                        secondaryPhone: event.target.value || null,
-                      },
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex flex-col gap-2">
-              <Label className={fl}>¿Tiene WhatsApp?</Label>
-              <Select
-                items={YES_NO_OPTIONS}
-                value={pd.hasWhatsapp ? "Sí" : "No"}
-                onValueChange={(value) =>
-                  updateDraft({
-                    patientData: { ...pd, hasWhatsapp: value === "Sí" },
-                  })
-                }
-              >
-                <SelectTrigger className={sc}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {YES_NO_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
         {selectedPrimarySource === "CALLER" && (
           <div className="border-border/70 bg-muted/20 rounded-xl border p-4 text-sm">
             <p className="font-semibold">
@@ -1101,6 +1166,32 @@ export function Step5Datos({
                 }
               />
             )}
+            {draft.additionalSecondaryContacts.map((person, index) => (
+              <ContactPersonFields
+                key={index}
+                person={person}
+                title={`Contacto secundario ${index + 2}`}
+                onChange={(partial) => updateAdditionalContact(index, partial)}
+                onRemove={() => removeAdditionalContact(index)}
+              />
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() =>
+                updateDraft({
+                  additionalSecondaryContacts: [
+                    ...draft.additionalSecondaryContacts,
+                    EMPTY_CONTACT,
+                  ],
+                })
+              }
+            >
+              <Plus className="size-4" />
+              Agregar otro contacto
+            </Button>
           </>
         )}
       </section>
