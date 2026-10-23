@@ -905,37 +905,6 @@ export function OverviewSection({
             ))}
           </Records>
           <Records
-            title="Citas médicas"
-            count={patient.medicalAppointments.length}
-            icon={Calendar}
-          >
-            {patient.medicalAppointments.map((item) => (
-              <div key={item.id} className="rounded-md border p-3 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <b>
-                    <CatalogValue
-                      kind="medical_specialty"
-                      code={item.specialty}
-                    />
-                  </b>
-                  <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase">
-                    {item.status === "SCHEDULED"
-                      ? "Programada"
-                      : item.status === "COMPLETED"
-                        ? "Asistió"
-                        : item.status === "CANCELLED"
-                          ? "Cancelada"
-                          : "No asistió"}
-                  </span>
-                </div>
-                <p className="text-muted-foreground mt-1">
-                  {date(item.appointmentDate)} ·{" "}
-                  {item.healthCenterName ?? "Centro no registrado"}
-                </p>
-              </div>
-            ))}
-          </Records>
-          <Records
             title="Síntomas"
             count={patient.symptomReports.length}
             icon={HeartPulse}
