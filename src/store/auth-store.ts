@@ -1,64 +1,98 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { authApi } from "@/lib/api/auth";
-import { clearTokens, registerAuthExpiredHandler } from "@/lib/api-client";
-import { AUTH_USER_KEY } from "@/lib/constants";
-import type { User, LoginRequest } from "@/types";
+import { create } from "zustand"
+import { authApi } from "@/api/auth"
+import {
+  clearAccessToken,
+  refreshAccessToken,
+  registerAuthExpiredHandler,
+} from "@/lib/auth-session"
+import type { LoginRequest, User } from "@/types"
 
 interface AuthState {
-  user: User | null;
-  isLoading: boolean;
+  user: User | null
+  isLoading: boolean
 
-  // Actions
-  login: (credentials: LoginRequest) => Promise<User>;
-  logout: () => void;
-  setUser: (user: User) => void;
+  login: (credentials: LoginRequest) => Promise<User>
+  restoreSession: () => Promise<void>
+  logout: () => Promise<void>
+  clearSession: () => void
+  setUser: (user: User) => void
 
-  // Computed
-  isAuthenticated: () => boolean;
-  isAdmin: () => boolean;
-  isAgent: () => boolean;
-  isVolunteer: () => boolean;
+  isAuthenticated: () => boolean
+  isAdmin: () => boolean
+  isAgent: () => boolean
+  isVolunteer: () => boolean
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      isLoading: false,
+let restoreSessionPromise: Promise<void> | null = null
 
-      login: async (credentials) => {
-        set({ isLoading: true });
-        try {
-          const res = await authApi.login(credentials);
-          // tokens are already stored by authApi.login → setTokens()
-          set({ user: res.user, isLoading: false });
-          return res.user;
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  isLoading: true,
 
-      logout: () => {
-        clearTokens();
-        set({ user: null });
-      },
+  login: async (credentials) => {
+    set({ isLoading: true })
+    try {
+      const user = await authApi.login(credentials)
+      set({ user, isLoading: false })
+      return user
+    } catch (error) {
+      set({ isLoading: false })
+      throw error
+    }
+  },
 
-      setUser: (user) => set({ user }),
+  restoreSession: () => {
+    if (restoreSessionPromise) {
+      return restoreSessionPromise
+    }
 
-      isAuthenticated: () => get().user !== null,
-      isAdmin: () => get().user?.role === "ADMIN",
-      isAgent: () => get().user?.role === "AGENT",
-      isVolunteer: () => get().user?.role === "VOLUNTEER",
-    }),
-    {
-      name: AUTH_USER_KEY,
-      partialize: (state) => ({ user: state.user }),
-    },
-  ),
-);
+    const hasUser = get().user !== null
+
+    if (!hasUser) {
+      set({ isLoading: true })
+    }
+
+    restoreSessionPromise = (
+      hasUser
+        ? refreshAccessToken().then(() => undefined)
+        : authApi.restoreSession().then((user) => {
+            set({ user })
+          })
+    )
+      .catch(() => {
+        get().clearSession()
+      })
+      .finally(() => {
+        set({ isLoading: false })
+        restoreSessionPromise = null
+      })
+
+    return restoreSessionPromise
+  },
+
+  logout: async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Clear local state even if the server is unreachable.
+    } finally {
+      get().clearSession()
+    }
+  },
+
+  clearSession: () => {
+    clearAccessToken()
+    set({ user: null, isLoading: false })
+  },
+
+  setUser: (user) => set({ user }),
+
+  isAuthenticated: () => get().user !== null,
+  isAdmin: () => get().user?.role === "ADMIN",
+  isAgent: () => get().user?.role === "AGENT",
+  isVolunteer: () => get().user?.role === "VOLUNTEER",
+}))
 
 registerAuthExpiredHandler(() => {
-  useAuthStore.getState().logout();
-});
+  useAuthStore.getState().clearSession()
+})

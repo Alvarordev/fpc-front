@@ -27,7 +27,7 @@ const hospitals = JSON.parse(
   readFileSync(resolve(__dirname, "hospitales.json"), "utf-8")
 );
 
-console.log(`\n🏥 Seeding ${hospitals.length} hospitals to ${API_URL}/api/health-centers\n`);
+console.log(`\n🏥 Seeding ${hospitals.length} hospitals to ${API_URL}/health-centers\n`);
 
 let created = 0;
 let skipped = 0;
@@ -38,7 +38,7 @@ for (let i = 0; i < hospitals.length; i++) {
   const label = `[${i + 1}/${hospitals.length}]`;
 
   try {
-    const res = await fetch(`${API_URL}/api/health-centers`, {
+    const res = await fetch(`${API_URL}/health-centers`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -1,0 +1,65 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/alvarordev/fpc-front
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate production API URL
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL_PRODUCTION }}
+        run: |
+          test -n "$VITE_API_URL" || {
+            echo "VITE_API_URL_PRODUCTION is required"
+            exit 1
+          }
+
+          case "$VITE_API_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "VITE_API_URL_PRODUCTION must be an http:// or https:// URL"
+              exit 1
+              ;;
+          esac
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL_PRODUCTION }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:prod-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Dokploy deployment
+        run: curl -X POST "${{ secrets.DOKPLOY_WEBHOOK_PRODUCTION }}"

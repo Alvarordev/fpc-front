@@ -1,96 +1,797 @@
-import type { Agent, FullEnrollmentRequest, User } from "@/types";
-import type { EnrollmentDraft } from "../../_store/enrollment-store";
+import type { CreateEnrollmentInput } from "@/api/enrollments"
+import type { CreateHistoricalEnrollmentInput } from "@/api/historical-records"
+import {
+  getEnrollmentComments,
+  type CompanionDraft,
+  type CategoriaClinica,
+  type EnrollmentDraft,
+} from "../../_store/enrollment-store"
+import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
+import { getAge } from "../../_utils/patient-age"
+import { toDurationInput } from "@/types/duration"
+import type { EnrollmentContactSource } from "@/types"
 
-interface BuildEnrollmentPayloadOptions {
-  draft: EnrollmentDraft;
-  agentId?: string;
-  today?: string;
+interface BaseBuildEnrollmentPayloadOptions {
+  draft: EnrollmentDraft
+  agentId: string
+  categoriaClinica: CategoriaClinica
+  today?: string
 }
 
-export function resolveEnrollmentAgentId(user: User | null, agents: Agent[]): string | undefined {
-  if (user?.role === "AGENT") {
-    return agents.find((agent) => agent.userId === user.id)?.id;
-  }
-
-  if (user?.role === "ADMIN") {
-    return agents[0]?.id;
-  }
-
-  return undefined;
+interface OperationalBuildEnrollmentPayloadOptions extends BaseBuildEnrollmentPayloadOptions {
+  historical?: false
 }
 
+interface HistoricalBuildEnrollmentPayloadOptions extends BaseBuildEnrollmentPayloadOptions {
+  historical: true
+  historicalEnrollmentDate: string
+  historicalFollowUpStatus?: CreateHistoricalEnrollmentInput["followUp"]["status"]
+}
+
+interface BuildEnrollmentPayloadOptions extends BaseBuildEnrollmentPayloadOptions {
+  historical?: boolean
+  historicalEnrollmentDate?: string
+  historicalFollowUpStatus?: CreateHistoricalEnrollmentInput["followUp"]["status"]
+}
+
+function value(value: string | null | undefined) {
+  return value?.trim() || undefined
+}
+
+function localDateTime(
+  date: string,
+  time: string | undefined,
+  historical = false,
+) {
+  if (!time) return undefined
+  const normalizedTime = time.length === 5 ? `${time}:00` : time
+  return new Date(
+    historical
+      ? `${date}T${normalizedTime}-05:00`
+      : `${date}T${normalizedTime}`,
+  ).toISOString()
+}
+
+function duration(value: Parameters<typeof toDurationInput>[0], field: string) {
+  if (!value || Object.keys(value).length === 0 || value.valueMin === undefined)
+    return undefined
+  const result = toDurationInput(value)
+  if (!result) throw new Error(`Completa correctamente: ${field}`)
+  return result
+}
+
+function contactPerson(person: CompanionDraft) {
+  const fullName = value(person.fullName)
+  const primaryPhone = value(person.primaryPhone)
+  const relationship = value(person.relationship)
+  if (!fullName || !primaryPhone || !relationship)
+    throw new Error("Completa nombre, parentesco y teléfono del contacto")
+  return {
+    fullName,
+    primaryPhone,
+    secondaryPhone: value(person.secondaryPhone),
+    dni: value(person.dni),
+    birthDate: value(person.birthDate),
+    gender: value(person.gender),
+    hasWhatsapp: person.hasWhatsapp,
+    relationship,
+  }
+}
+
+export function buildEnrollmentPayload(
+  options: HistoricalBuildEnrollmentPayloadOptions,
+): CreateHistoricalEnrollmentInput
+export function buildEnrollmentPayload(
+  options: OperationalBuildEnrollmentPayloadOptions,
+): CreateEnrollmentInput
 export function buildEnrollmentPayload({
   draft,
   agentId,
+  categoriaClinica,
   today = new Date().toISOString().slice(0, 10),
-}: BuildEnrollmentPayloadOptions): FullEnrollmentRequest {
-  const meta = draft.enrollmentMetadata;
+  historical = false,
+  historicalEnrollmentDate,
+  historicalFollowUpStatus,
+}: BuildEnrollmentPayloadOptions):
+  | CreateEnrollmentInput
+  | CreateHistoricalEnrollmentInput {
+  const meta = draft.enrollmentMetadata
+  const comments = getEnrollmentComments(meta)
+  const healthPhase = categoriaClinica
+  if (!healthPhase) {
+    throw new Error("Selecciona una categoría clínica")
+  }
+  const effectiveHistoricalDate = historical
+    ? historicalEnrollmentDate
+    : undefined
+  if (historical && !effectiveHistoricalDate) {
+    throw new Error("Indica la fecha del enrolamiento histórico")
+  }
+  const effectiveEventDate = effectiveHistoricalDate ?? today
+  const isFamily = meta.affiliationType === "FAMILY"
+  const patientAge = getAge(
+    draft.patientData.birthDate,
+    new Date(`${today}T12:00:00`),
+  )
+  const isMinorPatient = patientAge !== null && patientAge < 18
+  const callerIsComplete = Boolean(
+    value(draft.companion.fullName) &&
+    value(draft.companion.primaryPhone) &&
+    value(draft.companion.relationship),
+  )
+  const primaryContactSource =
+    draft.primaryContactSource ??
+    (isMinorPatient
+      ? callerIsComplete
+        ? "CALLER"
+        : undefined
+      : isFamily && callerIsComplete
+        ? "CALLER"
+        : "PATIENT")
+  if (!primaryContactSource) {
+    throw new Error("Selecciona un contacto principal")
+  }
+  if (
+    primaryContactSource === "PATIENT" &&
+    !value(draft.patientData.primaryPhone)
+  ) {
+    throw new Error("Completa el teléfono principal del paciente")
+  }
+  if (
+    !historical &&
+    !draft.patientId &&
+    !value(draft.patientData.primaryPhone)
+  ) {
+    throw new Error("Completa el teléfono principal del paciente")
+  }
+  if (isMinorPatient && primaryContactSource === "PATIENT") {
+    throw new Error(
+      "Un paciente menor debe tener un acompañante como contacto principal",
+    )
+  }
+  if (primaryContactSource === "CALLER" && !callerIsComplete) {
+    throw new Error("Completa los datos de quien llama")
+  }
+  const diagnosisDrafts =
+    healthPhase === "CANCER_DIAGNOSIS" ? draft.diagnoses : []
+  const diagnosisPayloads = diagnosisDrafts.map((diagnosis, index) => {
+    if (!value(diagnosis.diagnosis))
+      throw new Error(`Completa el diagnóstico ${index + 1}`)
+    return {
+      clientRef: diagnosis.draftId,
+      mode: "PARALLEL" as const,
+      diagnosis: diagnosis.diagnosis.trim(),
+      cancerStage: diagnosis.cancerStage ?? undefined,
+      diagnosisDate: value(diagnosis.diagnosisDate),
+      firstSymptomsDate: value(diagnosis.firstSymptomsDate),
+      healthCenterId: value(diagnosis.healthCenterId),
+      referredHealthCenterId: value(diagnosis.referredHealthCenterId),
+      hasReferral: diagnosis.hasReferral ?? undefined,
+      diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
+      symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
+      waitTimeForDiagnosis: (diagnosis.remembersWaitTimeForDiagnosis ?? true) ===
+      false
+        ? null
+        : diagnosis.waitTimeForDiagnosisManuallyEdited
+          ? duration(
+              diagnosis.waitTimeForDiagnosis,
+              `tiempo de espera para el diagnóstico ${index + 1}`,
+            )
+          : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
+            ? undefined
+            : duration(
+                diagnosis.waitTimeForDiagnosis,
+                `tiempo de espera para el diagnóstico ${index + 1}`,
+              ),
+      hasMedicalReport: diagnosis.hasMedicalReport ?? undefined,
+    }
+  })
+  if (healthPhase === "CANCER_DIAGNOSIS" && diagnosisPayloads.length === 0)
+    throw new Error("Completa al menos un diagnóstico oncológico")
 
-  const shouldSendTreatment =
-    !!draft.treatment.treatmentType ||
-    !!draft.treatment.treatmentFrequency ||
-    !!draft.treatment.healthCenterId ||
-    !!draft.treatment.treatmentSituation ||
-    !!draft.treatment.notReceivingReason ||
-    meta.currentlyReceivingTreatment === false;
-
-  const treatment = shouldSendTreatment
-    ? {
-        ...draft.treatment,
-        treatmentType:
-          draft.treatment.treatmentType ||
-          (meta.currentlyReceivingTreatment === false ? "No recibe tratamiento" : draft.treatment.treatmentType),
-      }
-    : undefined;
-
-  const medicalAppointments = (draft.medicalAppointments ?? []).filter(
-    (appointment) =>
-      !!appointment.healthCenterId ||
-      !!appointment.specialty ||
-      !!appointment.appointmentDate ||
-      !!appointment.nextAppointmentDate ||
-      !!appointment.difficulties ||
-      !!appointment.referredTo,
-  );
-
-  const familyPreventionTalkInterests = (draft.familyPreventionTalkInterests ?? []).filter(
-    (interest) =>
-      !!interest.talkName ||
-      !!interest.familyMemberName ||
-      !!interest.familyMemberPhone ||
-      !!interest.familyMemberEmail,
-  );
-
-  return {
-    patientId: draft.patientId,
-    patientData: draft.patientData.fullName ? draft.patientData : undefined,
-    details: { ...draft.details },
-    insurance:
-      draft.insurance.insuranceType && draft.insurance.insuranceType !== "NONE"
-        ? { ...draft.insurance }
-        : undefined,
-    symptomReport: draft.symptomReport.hasDiscomfort !== undefined ? { ...draft.symptomReport } : null,
-    diagnosis: draft.diagnosis.diagnosis ? { ...draft.diagnosis } : undefined,
-    treatment,
-    sisAffiliation: draft.insurance.insuranceType === "NONE" ? { ...draft.sisAffiliation } : null,
-    medicalAppointments: medicalAppointments.length > 0 ? medicalAppointments : null,
-    familyPreventionTalkInterests:
-      familyPreventionTalkInterests.length > 0 ? familyPreventionTalkInterests : null,
-    companions: null,
-    enrollmentMetadata: {
-      caseComments: meta.comments || null,
-      startTime: meta.startTime ? `${today}T${meta.startTime}:00Z` : null,
-      endTime: meta.endTime ? `${today}T${meta.endTime}:00Z` : null,
-      dataPolicyAccepted: meta.dataPolicyAccepted,
-      informedConsentAccepted: meta.informedConsentAccepted,
-      isOncologicalPatient: meta.isOncologicalPatient,
-      programEntryPoint: meta.programEntryPoint || null,
-      currentlyAttendingConsultations: meta.currentlyAttendingConsultations ?? null,
-      currentlyReceivingTreatment: meta.currentlyReceivingTreatment ?? null,
-      surveyAccepted: meta.surveyAccepted,
-      surveyRating: meta.surveyRating ?? null,
-      agentId,
-      affiliationType: (meta.affiliationType as "PATIENT" | "FAMILY" | undefined) || "PATIENT",
+  const diagnosisRefs = new Set(
+    diagnosisPayloads.map((diagnosis) => diagnosis.clientRef),
+  )
+  const treatmentDrafts =
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyReceivingTreatment !== false
+      ? draft.treatments
+      : []
+  const treatmentPayloads = treatmentDrafts.map((treatment, index) => {
+    const treatmentType = value(treatment.treatmentType)
+    if (!treatmentType)
+      throw new Error(`Completa el tipo del tratamiento ${index + 1}`)
+    if (!diagnosisRefs.has(treatment.diagnosisRef))
+      throw new Error(
+        `Asocia el tratamiento ${index + 1} a un diagnóstico válido`,
+      )
+    const isSurgery = treatmentType === "CIRUGIA"
+    const isChemotherapy = treatmentType === "QUIMIOTERAPIA"
+    const treatmentStartDate = value(treatment.startDate)
+    const treatmentEndDate = value(treatment.endDate)
+    const isReferred = treatment.isReferred ?? false
+    if (
+      treatment.treatmentSituation === "ABANDONED" &&
+      !value(treatment.treatmentAbandonmentReason)
+    )
+      throw new Error(
+        `Indica el motivo de abandono del tratamiento ${index + 1}`,
+      )
+    if (
+      treatment.treatmentSituation === "INTERRUMPIDO" &&
+      !treatment.interruptionReason
+    )
+      throw new Error(
+        `Indica el motivo de interrupción del tratamiento ${index + 1}`,
+      )
+    if (
+      treatment.interruptionReason === "OTHER" &&
+      !value(treatment.interruptionReasonOther)
+    )
+      throw new Error(
+        `Especificá el motivo de interrupción del tratamiento ${index + 1}`,
+      )
+    if (isSurgery && !value(treatment.operationName))
+      throw new Error(`Selecciona el procedimiento de la cirugía ${index + 1}`)
+    if (
+      treatmentStartDate &&
+      treatmentEndDate &&
+      treatmentEndDate < treatmentStartDate
+    )
+      throw new Error(
+        `La fecha de fin del tratamiento ${index + 1} debe ser posterior o igual a la fecha de inicio`,
+      )
+    if (
+      isReferred &&
+      (!treatment.sourceHealthCenterId || !treatment.receivingHealthCenterId)
+    )
+      throw new Error(
+        `Completa el hospital de origen y el hospital receptor del tratamiento ${index + 1}`,
+      )
+    if (
+      isReferred &&
+      treatment.sourceHealthCenterId === treatment.receivingHealthCenterId
+    )
+      throw new Error(
+        "El hospital de origen y el receptor deben ser diferentes",
+      )
+    if (!isReferred && treatment.sourceHealthCenterId)
+      throw new Error(
+        `El hospital de origen solo aplica a tratamientos derivados (tratamiento ${index + 1})`,
+      )
+    const medications = (treatment.medications ?? []).map(
+      (medication, medicationIndex) => {
+        const name = value(medication.name)
+        if (!name)
+          throw new Error(
+            `Completa el nombre del medicamento ${medicationIndex + 1} del tratamiento ${index + 1}`,
+          )
+        return {
+          name,
+          doseAmount: medication.doseAmount,
+          doseUnit: medication.doseUnit,
+          doseDescription: value(medication.doseDescription),
+          route: medication.route,
+          frequency: duration(
+            medication.frequency,
+            `frecuencia del medicamento ${medicationIndex + 1} del tratamiento ${index + 1}`,
+          ),
+          startDate: value(medication.startDate),
+          endDate: value(medication.endDate),
+          isActive: medication.isActive,
+          notes: value(medication.notes),
+        }
+      },
+    )
+    return {
+      diagnosisRef: treatment.diagnosisRef,
+      treatmentType,
+      treatmentFrequency: duration(
+        treatment.treatmentFrequency,
+        `frecuencia del tratamiento ${index + 1}`,
+      ),
+      isReferred,
+      sourceHealthCenterId: treatment.sourceHealthCenterId,
+      receivingHealthCenterId: treatment.receivingHealthCenterId,
+      startDate: treatmentStartDate,
+      endDate: treatmentEndDate,
+      notReceivingReason: value(treatment.notReceivingReason),
+      ...(isSurgery ? { operationName: value(treatment.operationName) } : {}),
+      ...(isChemotherapy
+        ? { chemotherapyRoute: value(treatment.chemotherapyRoute) }
+        : {}),
+      treatmentSituation: treatment.treatmentSituation ?? undefined,
+      ...(treatment.treatmentSituation === "ABANDONED"
+        ? {
+            treatmentAbandonmentReason: value(
+              treatment.treatmentAbandonmentReason,
+            ),
+          }
+        : {}),
+      ...(treatment.treatmentSituation === "INTERRUMPIDO"
+        ? {
+            interruptionReason: treatment.interruptionReason,
+            ...(treatment.interruptionReason === "OTHER"
+              ? {
+                  interruptionReasonOther: value(
+                    treatment.interruptionReasonOther,
+                  ),
+                }
+              : {}),
+          }
+        : {}),
+      hasLatestPrescription: treatment.hasLatestPrescription,
+      latestPrescriptionDate: value(treatment.latestPrescriptionDate),
+      ...(medications.length ? { medications } : {}),
+    }
+  })
+  const hasDiagnosis = diagnosisPayloads.length > 0
+  const hasTreatment = treatmentPayloads.length > 0
+  const consultationStatus = draft.symptomReport.consultationStatus ?? undefined
+  const symptom = draft.symptomReport
+  const usesAppointment =
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === true
+  const appointment = usesAppointment
+    ? draft.medicalAppointments.find(
+        (item) =>
+          value(item.specialty) ||
+          value(item.difficulties) ||
+          value(item.appointmentDate) ||
+          value(item.nextAppointmentDate) ||
+          value(item.nextAppointmentSpecialty) ||
+          value(item.healthCenterId) ||
+          item.hasReferralSheet !== undefined,
+      )
+    : undefined
+  if (healthPhase === "CANCER_DIAGNOSIS") {
+    if (typeof meta.currentlyAttendingConsultations !== "boolean")
+      throw new Error("Indica si actualmente asiste a sus consultas médicas")
+    if (typeof meta.currentlyReceivingTreatment !== "boolean")
+      throw new Error("Indica si actualmente recibe tratamiento médico")
+    if (
+      meta.currentlyAttendingConsultations === true &&
+      draft.medicalAppointments.length !== 1
+    ) {
+      throw new Error("Completa los datos de las consultas médicas")
+    }
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === true &&
+    !value(appointment?.healthCenterId)
+  ) {
+    throw new Error("Indica el establecimiento de las consultas médicas")
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === false &&
+    !value(meta.notAttendingConsultationsNote)
+  ) {
+    throw new Error(
+      "Indica las notas sobre la no asistencia a consultas médicas",
+    )
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyReceivingTreatment === false &&
+    !value(meta.notReceivingTreatmentReason)
+  ) {
+    throw new Error("Indica el motivo por el que no recibe tratamiento")
+  }
+  if (
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    appointment &&
+    !value(appointment.specialty)
+  )
+    throw new Error("Indica la especialidad de la consulta")
+  if (healthPhase === "SIGNS_AND_SYMPTOMS") {
+    if (symptom.hasDiscomfort === undefined)
+      throw new Error("Indica si presenta algún malestar o dolor")
+    if (symptom.hasDiscomfort === false && !value(symptom.checkupMotivation))
+      throw new Error("Indica qué motivó el examen médico")
+    if (typeof symptom.hasMedicalConsultation !== "boolean")
+      throw new Error(
+        "Indica si actualmente ha solicitado o asistió a una consulta médica",
+      )
+    if (symptom.hasMedicalConsultation === false) {
+      if (!value(symptom.noMedicalConsultationReason))
+        throw new Error(
+          "Indica por qué no ha solicitado ni asistido a una consulta médica",
+        )
+    } else {
+      if (!value(symptom.healthCenterId) || !value(symptom.specialty))
+        throw new Error("Indica establecimiento y especialidad de la consulta")
+      if (!value(symptom.firstConsultationDate))
+        throw new Error("Indica la fecha de la primera consulta")
+      if (
+        symptom.diagnosisSearchDuration?.valueMin !== undefined &&
+        !duration(
+          symptom.diagnosisSearchDuration,
+          "tiempo de espera o búsqueda del diagnóstico",
+        )
+      )
+        throw new Error(
+          "Completa correctamente el tiempo de espera o búsqueda del diagnóstico",
+        )
+      if (
+        value(symptom.nextConsultationDate) &&
+        !value(symptom.nextConsultationSpecialty)
+      )
+        throw new Error(
+          "Indica la especialidad de la siguiente consulta médica",
+        )
+      if (symptom.hasReferral === undefined)
+        throw new Error("Indica si le han brindado una hoja de referencia")
+      if (
+        symptom.hasReferral === true &&
+        !value(symptom.referredHealthCenterId)
+      )
+        throw new Error("Indica a dónde lo han referido")
+      if (
+        symptom.hasReferral === false &&
+        !value(symptom.referralNotProvidedReason)
+      )
+        throw new Error(
+          "Indica por qué o el motivo de no haberle brindado la hoja de referencia",
+        )
+      if (typeof symptom.hasReceivedDiagnosis !== "boolean")
+        throw new Error("Indica si le han brindado algún diagnóstico")
+      if (
+        symptom.hasReceivedDiagnosis === true &&
+        !value(symptom.reportedDiagnosis)
+      )
+        throw new Error("Indica cuál diagnóstico le han brindado")
+    }
+  }
+  const appointmentToSend =
+    healthPhase === "CANCER_DIAGNOSIS" ? appointment : undefined
+  const addresses = draft.addresses
+    .filter(
+      (address) =>
+        address.address ||
+        address.district ||
+        address.province ||
+        address.department ||
+        address.locationUrl ||
+        address.dniMatchesAddress !== undefined,
+    )
+    .map((address) => ({
+      type: address.type,
+      isPrimary: address.isPrimary ?? true,
+      address: value(address.address),
+      district: value(address.district),
+      province: value(address.province),
+      department: address.department,
+      locationUrl: value(address.locationUrl),
+      dniMatchesAddress: address.dniMatchesAddress,
+      validFrom: value(address.validFrom),
+      validTo: value(address.validTo),
+    }))
+  const talks = draft.familyPreventionTalkInterests
+    .filter((item) => value(item.talkName) && value(item.familyMemberName))
+    .map((item) => ({
+      talkName: item.talkName.trim(),
+      familyMemberName: item.familyMemberName.trim(),
+      familyMemberPhone: value(item.familyMemberPhone),
+      familyMemberEmail: value(item.familyMemberEmail),
+    }))
+  const psychooncologySupport = draft.psychooncologySupportAssessment
+  const hasPsychooncologySupportResponse =
+    meta.affiliationType === "PATIENT" &&
+    healthPhase === "CANCER_DIAGNOSIS" &&
+    (typeof psychooncologySupport.excessiveWorry === "boolean" ||
+      psychooncologySupport.emotionalDistressScore !== undefined ||
+      psychooncologySupport.preferredModality !== undefined)
+  const secondaryContactSource = draft.secondaryContactEnabled
+    ? (draft.secondaryContactSource ??
+      (callerIsComplete && primaryContactSource !== "CALLER"
+        ? "CALLER"
+        : "NEW"))
+    : undefined
+  if (secondaryContactSource === "CALLER" && !callerIsComplete)
+    throw new Error("Completa los datos de quien llama")
+  const contacts = [
+    {
+      role: "PRIMARY" as const,
+      source: primaryContactSource as EnrollmentContactSource,
+      ...(primaryContactSource === "NEW"
+        ? { person: contactPerson(draft.primaryContact) }
+        : {}),
     },
-  };
+    ...(draft.secondaryContactEnabled
+      ? [
+          {
+            role: "SECONDARY" as const,
+            source: secondaryContactSource as EnrollmentContactSource,
+            ...(secondaryContactSource === "NEW"
+              ? { person: contactPerson(draft.secondaryContact) }
+              : {}),
+          },
+        ]
+      : []),
+  ]
+  const hasCaller =
+    isFamily ||
+    primaryContactSource === "CALLER" ||
+    secondaryContactSource === "CALLER"
+  if (hasCaller && !callerIsComplete)
+    throw new Error("Completa los datos de quien llama")
+
+  const payload = {
+    ...(draft.patientId
+      ? { patientId: draft.patientId }
+      : {
+          patient: {
+            fullName: draft.patientData.fullName.trim(),
+            ...(value(draft.patientData.primaryPhone)
+              ? { primaryPhone: value(draft.patientData.primaryPhone) }
+              : {}),
+            secondaryPhone: value(draft.patientData.secondaryPhone),
+            dni: value(draft.patientData.dni),
+            birthDate: value(draft.patientData.birthDate),
+            gender: value(draft.patientData.gender),
+            hasWhatsapp: draft.patientData.hasWhatsapp,
+          },
+        }),
+    followUp: {
+      type: "CALL",
+      agentId,
+      notes: comments,
+      completedAt: localDateTime(effectiveEventDate, meta.endTime, historical),
+      ...(historical
+        ? {
+            status: historicalFollowUpStatus ?? "COMPLETED",
+            scheduledOn: effectiveHistoricalDate,
+            completedOn: effectiveHistoricalDate,
+          }
+        : {}),
+    },
+    affiliationType: isFamily ? "FAMILY_FRIEND" : "SELF",
+    healthPhase,
+    ...(hasCaller
+      ? {
+          companion: {
+            fullName: draft.companion.fullName.trim(),
+            primaryPhone: draft.companion.primaryPhone.trim(),
+            secondaryPhone: value(draft.companion.secondaryPhone),
+            dni: value(draft.companion.dni),
+            birthDate: value(draft.companion.birthDate),
+            gender: value(draft.companion.gender),
+            hasWhatsapp: draft.companion.hasWhatsapp,
+            relationship: value(draft.companion.relationship),
+            isPrimaryInformant: isFamily,
+            isPrimaryContact: false,
+            isCaregiver: false,
+          },
+        }
+      : {}),
+    contacts,
+    details: {
+      birthDepartment:
+        draft.details.birthCountry ||
+        draft.details.birthDepartment === UNKNOWN_BIRTH_DEPARTMENT
+          ? undefined
+          : value(draft.details.birthDepartment),
+      birthCountry: value(draft.details.birthCountry),
+      primaryHealthCenterId: value(draft.details.primaryHealthCenterId),
+      travelTimeToHospital: duration(
+        draft.details.travelTimeToHospital,
+        "tiempo de viaje al hospital",
+      ),
+      zoneType: value(draft.details.zoneType),
+      educationLevel: draft.details.educationLevel ?? undefined,
+      nativeLanguage: value(draft.details.nativeLanguage),
+      requiresTranslation: draft.details.requiresTranslation ?? undefined,
+      isWorking: draft.details.isWorking ?? undefined,
+    },
+    ...(draft.insurance.insuranceType &&
+    draft.insurance.insuranceType !== "NONE"
+      ? {
+          insurance: {
+            insuranceType: draft.insurance.insuranceType,
+            epsProvider: draft.insurance.epsProvider ?? undefined,
+          },
+        }
+      : {}),
+    ...(draft.insurance.insuranceType === "NONE" &&
+    draft.sisAffiliation.canAffiliate !== undefined
+      ? {
+          sisAffiliation: {
+            canAffiliate: draft.sisAffiliation.canAffiliate,
+            expectedDate: value(draft.sisAffiliation.expectedDate),
+            cantAffiliateReason: value(
+              draft.sisAffiliation.cantAffiliateReason,
+            ),
+          },
+        }
+      : {}),
+    ...(hasDiagnosis ? { diagnoses: diagnosisPayloads } : {}),
+    ...(hasTreatment ? { treatments: treatmentPayloads } : {}),
+    ...(addresses.length ? { addresses } : {}),
+    ...(appointmentToSend
+      ? {
+          medicalAppointments: [
+            {
+              specialty: value(appointmentToSend.specialty)!,
+              healthCenterId: value(appointmentToSend.healthCenterId),
+              appointmentDate: value(appointmentToSend.appointmentDate),
+              nextAppointmentDate: value(appointmentToSend.nextAppointmentDate),
+              nextAppointmentSpecialty: value(
+                appointmentToSend.nextAppointmentSpecialty,
+              ),
+              ...(consultationStatus === "ATTENDED"
+                ? {
+                    hasReferralSheet:
+                      appointmentToSend.hasReferralSheet ?? undefined,
+                    referredTo: value(appointmentToSend.referredTo),
+                    referralNotProvidedReason: value(
+                      appointmentToSend.referralNotProvidedReason,
+                    ),
+                  }
+                : {}),
+              difficulties: value(appointmentToSend.difficulties),
+              isFirstConsultation:
+                consultationStatus === "ATTENDED"
+                  ? true
+                  : consultationStatus === "SCHEDULED"
+                    ? false
+                    : (appointmentToSend.isFirstConsultation ?? undefined),
+            },
+          ],
+        }
+      : {}),
+    ...(healthPhase === "SIGNS_AND_SYMPTOMS" &&
+    draft.symptomReport.hasDiscomfort !== undefined
+      ? {
+          symptomReport: {
+            hasDiscomfort: symptom.hasDiscomfort,
+            ...(symptom.hasDiscomfort === false
+              ? {
+                  checkupMotivation: value(symptom.checkupMotivation)!,
+                }
+              : {}),
+            ...(symptom.hasDiscomfort === true &&
+            value(symptom.signsAndSymptoms)
+              ? {
+                  signsAndSymptoms: value(symptom.signsAndSymptoms)!,
+                }
+              : {}),
+            hasMedicalConsultation: symptom.hasMedicalConsultation,
+            ...(symptom.hasMedicalConsultation === false
+              ? {
+                  noMedicalConsultationReason: value(
+                    symptom.noMedicalConsultationReason,
+                  )!,
+                }
+              : {
+                  healthCenterId: value(symptom.healthCenterId)!,
+                  specialty: value(symptom.specialty)!,
+                  firstConsultationDate: value(symptom.firstConsultationDate)!,
+                  ...(symptom.diagnosisSearchDuration?.valueMin !== undefined
+                    ? {
+                        diagnosisSearchDuration: duration(
+                          symptom.diagnosisSearchDuration,
+                          "tiempo de espera o búsqueda del diagnóstico",
+                        ),
+                      }
+                    : {}),
+                  hasReferral: symptom.hasReferral,
+                  ...(symptom.hasReferral === true
+                    ? {
+                        referredHealthCenterId: value(
+                          symptom.referredHealthCenterId,
+                        )!,
+                      }
+                    : symptom.hasReferral === false
+                      ? {
+                          referralNotProvidedReason: value(
+                            symptom.referralNotProvidedReason,
+                          )!,
+                        }
+                      : {}),
+                  hasReceivedDiagnosis: symptom.hasReceivedDiagnosis,
+                  ...(symptom.hasReceivedDiagnosis === true
+                    ? { reportedDiagnosis: value(symptom.reportedDiagnosis)! }
+                    : {}),
+                  ...(value(symptom.nextConsultationDate)
+                    ? {
+                        nextConsultationDate: value(
+                          symptom.nextConsultationDate,
+                        )!,
+                        nextConsultationSpecialty: value(
+                          symptom.nextConsultationSpecialty,
+                        )!,
+                        ...(value(symptom.nextConsultationNote)
+                          ? {
+                              nextConsultationNote: value(
+                                symptom.nextConsultationNote,
+                              )!,
+                            }
+                          : {}),
+                      }
+                    : {}),
+                }),
+            ...(typeof symptom.isReceivingReportedTreatment === "boolean"
+              ? {
+                  isReceivingReportedTreatment:
+                    symptom.isReceivingReportedTreatment,
+                  ...(symptom.isReceivingReportedTreatment === true
+                    ? {
+                        reportedTreatment: value(symptom.reportedTreatment)!,
+                        reportedTreatmentFrequency: duration(
+                          symptom.reportedTreatmentFrequency,
+                          "frecuencia del tratamiento informado",
+                        ),
+                      }
+                    : {
+                        notReceivingTreatmentReason: value(
+                          symptom.notReceivingTreatmentReason,
+                        ),
+                      }),
+                }
+              : {}),
+          },
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    typeof meta.currentlyAttendingConsultations === "boolean"
+      ? {
+          currentlyAttendingConsultations: meta.currentlyAttendingConsultations,
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyAttendingConsultations === false
+      ? {
+          notAttendingConsultationsNote: value(
+            meta.notAttendingConsultationsNote,
+          ),
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    typeof meta.currentlyReceivingTreatment === "boolean"
+      ? {
+          currentlyReceivingTreatment: meta.currentlyReceivingTreatment,
+        }
+      : {}),
+    ...(healthPhase === "CANCER_DIAGNOSIS" &&
+    meta.currentlyReceivingTreatment === false
+      ? {
+          notReceivingTreatmentReason: value(meta.notReceivingTreatmentReason),
+        }
+      : {}),
+    entrySource: value(meta.programEntryPoint),
+    entrySubSource: value(meta.programEntrySubSource),
+    consentToContact: meta.informedConsentAccepted ?? undefined,
+    consentToShareData: meta.dataPolicyAccepted ?? undefined,
+    isOncologicalPatient: meta.isOncologicalPatient ?? undefined,
+    surveyAccepted: meta.surveyAccepted ?? undefined,
+    caseComments: comments,
+    callStartedAt: localDateTime(
+      effectiveEventDate,
+      meta.startTime,
+      historical,
+    ),
+    callEndedAt: localDateTime(effectiveEventDate, meta.endTime, historical),
+    ...(hasPsychooncologySupportResponse
+      ? {
+          psychooncologySupportAssessment: {
+            excessiveWorry: psychooncologySupport.excessiveWorry,
+            emotionalDistressScore:
+              psychooncologySupport.emotionalDistressScore,
+            preferredModality: psychooncologySupport.preferredModality,
+          },
+        }
+      : {}),
+    ...(talks.length ? { familyPreventionTalkInterests: talks } : {}),
+  }
+
+  if (historical) {
+    return {
+      ...payload,
+      enrolledOn: effectiveHistoricalDate!,
+    } as CreateHistoricalEnrollmentInput
+  }
+
+  return payload as CreateEnrollmentInput
 }

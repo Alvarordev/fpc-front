@@ -1,279 +1,1247 @@
-import { describe, expect, it } from "vitest";
-import type { Agent, User } from "@/types";
-import { DEFAULT_DRAFT, type EnrollmentDraft } from "../../_store/enrollment-store";
-import { buildEnrollmentPayload, resolveEnrollmentAgentId } from "./step-8-payload";
+import { describe, expect, it } from "vitest"
+import {
+  DEFAULT_DRAFT,
+  type EnrollmentDraft,
+} from "../../_store/enrollment-store"
+import { buildEnrollmentPayload } from "./step-8-payload"
 
-function cloneDraft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
+function draft(overrides: Partial<EnrollmentDraft> = {}): EnrollmentDraft {
   return {
     ...structuredClone(DEFAULT_DRAFT),
     ...overrides,
     patientData: {
       ...DEFAULT_DRAFT.patientData,
+      primaryPhone: "999000000",
       ...overrides.patientData,
     },
-    details: {
-      ...DEFAULT_DRAFT.details,
-      ...overrides.details,
-    },
-    insurance: {
-      ...DEFAULT_DRAFT.insurance,
-      ...overrides.insurance,
-    },
+    details: { ...DEFAULT_DRAFT.details, ...overrides.details },
+    insurance: { ...DEFAULT_DRAFT.insurance, ...overrides.insurance },
     symptomReport: {
       ...DEFAULT_DRAFT.symptomReport,
       ...overrides.symptomReport,
     },
-    diagnosis: {
-      ...DEFAULT_DRAFT.diagnosis,
-      ...overrides.diagnosis,
-    },
-    treatment: {
-      ...DEFAULT_DRAFT.treatment,
-      ...overrides.treatment,
-    },
+    diagnoses: overrides.diagnoses ?? structuredClone(DEFAULT_DRAFT.diagnoses),
+    treatments:
+      overrides.treatments ?? structuredClone(DEFAULT_DRAFT.treatments),
     sisAffiliation: {
       ...DEFAULT_DRAFT.sisAffiliation,
       ...overrides.sisAffiliation,
     },
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
+      currentlyAttendingConsultations: false,
+      notAttendingConsultationsNote: "No puede asistir",
+      currentlyReceivingTreatment: true,
       ...overrides.enrollmentMetadata,
     },
     medicalAppointments: overrides.medicalAppointments ?? [],
-    familyPreventionTalkInterests: overrides.familyPreventionTalkInterests ?? [],
-    companions: [],
-  };
+    familyPreventionTalkInterests:
+      overrides.familyPreventionTalkInterests ?? [],
+    psychooncologySupportAssessment: {
+      ...DEFAULT_DRAFT.psychooncologySupportAssessment,
+      ...overrides.psychooncologySupportAssessment,
+    },
+    companion: { ...DEFAULT_DRAFT.companion, ...overrides.companion },
+  }
 }
 
-describe("step 8 enrollment payload builder", () => {
-  it("resolves the enrollment agent for admins and agents", () => {
-    const agents: Agent[] = [
-      {
-        id: "agent-1",
-        userId: "user-agent",
-        fullName: "Agent One",
-        phone: "999000111",
-        createdAt: "2026-06-25T00:00:00Z",
-      },
-    ];
-
-    const admin: User = {
-      id: "admin-user",
-      email: "admin@example.com",
-      role: "ADMIN",
-      isActive: true,
-      createdAt: "2026-06-25T00:00:00Z",
-      updatedAt: "2026-06-25T00:00:00Z",
-    };
-
-    const agentUser: User = {
-      ...admin,
-      id: "user-agent",
-      role: "AGENT",
-    };
-
-    expect(resolveEnrollmentAgentId(admin, agents)).toBe("agent-1");
-    expect(resolveEnrollmentAgentId(agentUser, agents)).toBe("agent-1");
-    expect(resolveEnrollmentAgentId({ ...admin, role: "VOLUNTEER" }, agents)).toBeUndefined();
-  });
-
-  it("builds a complete diagnosis enrollment payload from step 8 draft state", () => {
-    const draft = cloneDraft({
-      patientData: {
-        fullName: "Paciente Diagnóstico Test",
-        dni: "97000000",
-        birthDate: "1980-03-15",
-        primaryPhone: "988111222",
-        secondaryPhone: "977333444",
-        hasWhatsapp: true,
-        role: "PATIENT",
-      },
-      details: {
-        currentAddress: "Av. Test 123",
-        currentDistrict: "Miraflores",
-        currentDepartment: "Lima",
-        referredToSocialWorker: true,
-      },
-      insurance: {
-        insuranceType: "EPS",
-        epsProvider: "RIMAC",
-        isCurrent: true,
-        startDate: "2025-01-10",
-      },
-      diagnosis: {
-        diagnosis: "Cáncer de mama",
-        cancerStage: "STAGE_2",
-        diagnosisDate: "2025-08-20",
-        healthCenterId: "health-center-1",
-        diagnosisSpecialty: "Oncología médica",
-        symptomLeadingToCheckup: "Masa palpable",
-        waitTimeForDiagnosis: "6 semanas",
-        hasMedicalReport: true,
-        isCurrent: true,
-      },
-      treatment: {
-        diagnosisId: "00000000-0000-0000-0000-000000000000",
-        treatmentType: "Quimioterapia",
-        treatmentFrequency: "Cada 21 días",
-        healthCenterId: "health-center-1",
-        isCurrent: true,
-        treatmentSituation: "En curso",
-      },
-      medicalAppointments: [
-        {
-          healthCenterId: "health-center-1",
-          specialty: "Oncología",
-          appointmentDate: "2026-06-01",
-          nextAppointmentDate: "2026-07-01",
-          hasReferralSheet: true,
-          isFirstConsultation: false,
-          difficulties: "Demora en citas",
-        },
-      ],
-      familyPreventionTalkInterests: [
-        {
-          talkName: "Prevención del cáncer de mama",
-          familyMemberName: "Rosa Test",
-          familyMemberPhone: "999000111",
-          familyMemberEmail: "rosa.test@example.com",
-        },
-        {
-          talkName: "",
-          familyMemberName: "",
-          familyMemberPhone: "",
-          familyMemberEmail: "",
-        },
-      ],
-      enrollmentMetadata: {
-        comments: "Caso diagnóstico",
-        startTime: "09:00",
-        endTime: "09:45",
-        dataPolicyAccepted: true,
-        informedConsentAccepted: true,
-        isOncologicalPatient: true,
-        programEntryPoint: "Campaña prevención",
-        currentlyAttendingConsultations: true,
-        currentlyReceivingTreatment: true,
-        surveyAccepted: true,
-        surveyRating: 5,
-        affiliationType: "PATIENT",
-      },
-    });
-
-    const payload = buildEnrollmentPayload({ draft, agentId: "agent-1", today: "2026-06-25" });
-
-    expect(payload.patientData?.dni).toBe("97000000");
-    expect(payload.insurance?.insuranceType).toBe("EPS");
-    expect(payload.symptomReport).toBeNull();
-    expect(payload.diagnosis?.diagnosis).toBe("Cáncer de mama");
-    expect(payload.treatment?.treatmentType).toBe("Quimioterapia");
-    expect(payload.sisAffiliation).toBeNull();
-    expect(payload.medicalAppointments).toHaveLength(1);
-    expect(payload.familyPreventionTalkInterests).toHaveLength(1);
-    expect(payload.enrollmentMetadata).toMatchObject({
-      caseComments: "Caso diagnóstico",
-      startTime: "2026-06-25T09:00:00Z",
-      endTime: "2026-06-25T09:45:00Z",
+describe("step 8 Nest enrollment payload", () => {
+  it("maps diagnosis, address, and structured durations to CreateEnrollmentDto", () => {
+    const payload = buildEnrollmentPayload({
       agentId: "agent-1",
-      affiliationType: "PATIENT",
-    });
-  });
-
-  it("builds a signs enrollment payload with SIS affiliation and preserves frontend symptom field names", () => {
-    const draft = cloneDraft({
-      patientData: {
-        fullName: "Paciente Signos Test",
-        dni: "98000000",
-        birthDate: "1975-11-02",
-        primaryPhone: "988555666",
-        hasWhatsapp: false,
-        role: "PATIENT",
-      },
-      insurance: {
-        insuranceType: "NONE",
-        isCurrent: true,
-      },
-      symptomReport: {
-        hasDiscomfort: true,
-        signsAndSymptoms: "Sangrado persistente, pérdida de peso y dolor abdominal",
-        hasSoughtMedicalConsultation: false,
-        specialty: "Medicina",
-        indicationsReceived: "Control",
-      },
-      diagnosis: {
-        diagnosis: "",
-        isCurrent: true,
-      },
-      treatment: {
-        diagnosisId: "00000000-0000-0000-0000-000000000000",
-        treatmentType: "",
-        isCurrent: true,
-      },
-      sisAffiliation: {
-        canAffiliate: false,
-        cantAffiliateReason: "Documento pendiente",
-        comments: "Pendiente",
-      },
-      familyPreventionTalkInterests: [
-        {
-          talkName: "Prevención general del cáncer",
-          familyMemberName: "Ana Test",
-          familyMemberPhone: "988000333",
-          familyMemberEmail: "ana.test@example.com",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      today: "2026-06-25",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Test",
+          primaryPhone: "988111222",
+          dni: "97000000",
         },
-      ],
-      enrollmentMetadata: {
-        comments: "Caso signos",
-        startTime: "10:00",
-        endTime: "10:30",
-        dataPolicyAccepted: true,
-        informedConsentAccepted: true,
-        isOncologicalPatient: false,
-        programEntryPoint: "Redes FPC",
-        surveyAccepted: true,
-        surveyRating: 4,
-      },
-    });
+        details: {
+          birthDepartment: "AREQUIPA",
+          travelTimeToHospital: { valueMin: 45, unit: "MINUTE" },
+          zoneType: "RURAL",
+        },
+        addresses: [
+          {
+            type: "PERMANENT",
+            isPrimary: true,
+            address: "Av. Test 123",
+            district: "Lima",
+            province: "Lima",
+            department: "LIMA",
+            locationUrl: "https://maps.google.com/?q=Av+Test+123",
+            dniMatchesAddress: false,
+          },
+          {
+            type: "TEMPORARY",
+            isPrimary: false,
+            address: "Jr. Temporal 456",
+            district: "Miraflores",
+            province: "Lima",
+            department: "LIMA",
+          },
+        ],
+        insurance: {
+          insuranceType: "EPS",
+          epsProvider: "RIMAC",
+          isCurrent: true,
+        },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            cancerStage: "STAGE_2",
+            firstSymptomsDate: "2026-01-01",
+            diagnosisDate: "2026-02-15",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            treatmentFrequency: { valueMin: 3, unit: "WEEK" },
+            treatmentSituation: "EN_CURSO",
+            isReferred: true,
+            sourceHealthCenterId: "center-1",
+            receivingHealthCenterId: "center-2",
+            startDate: "2026-02-20",
+            endDate: "2026-08-20",
+            medications: [
+              {
+                name: "Tamoxifeno",
+                frequency: { valueMin: 1, unit: "DAY" },
+              },
+            ],
+            isCurrent: true,
+          },
+        ],
+        medicalAppointments: [
+          {
+            specialty: "ONCOLOGIA_MEDICA",
+            healthCenterId: "center-1",
+            appointmentDate: null,
+            nextAppointmentDate: "2026-07-15",
+            nextAppointmentSpecialty: "Radioterapia",
+            difficulties: null,
+            hasReferralSheet: false,
+            isFirstConsultation: false,
+          },
+        ],
+        familyPreventionTalkInterests: [
+          {
+            talkName: "Prevención",
+            familyMemberName: "Rosa Test",
+            familyMemberPhone: "999000111",
+            familyMemberEmail: "rosa@example.com",
+          },
+        ],
+        psychooncologySupportAssessment: {
+          excessiveWorry: true,
+          emotionalDistressScore: 7,
+          preferredModality: "VIDEO_CALL",
+        },
+        enrollmentMetadata: {
+          affiliationType: "PATIENT",
+          currentlyAttendingConsultations: true,
+          currentlyReceivingTreatment: true,
+          comments: "Caso diagnóstico",
+          startTime: "09:00",
+          endTime: "09:45",
+          dataPolicyAccepted: true,
+          informedConsentAccepted: true,
+          surveyAccepted: true,
+          programEntryPoint: "LINEA_TELEFONICA",
+          programEntrySubSource: "WHATSAPP",
+        },
+      }),
+    })
 
-    const payload = buildEnrollmentPayload({ draft, agentId: "agent-1", today: "2026-06-25" });
+    expect(payload.followUp).toMatchObject({
+      type: "CALL",
+      agentId: "agent-1",
+      notes: "Caso diagnóstico",
+    })
+    expect(payload.affiliationType).toBe("SELF")
+    expect(payload.healthPhase).toBe("CANCER_DIAGNOSIS")
+    expect(payload.entrySource).toBe("LINEA_TELEFONICA")
+    expect(payload.entrySubSource).toBe("WHATSAPP")
+    expect(payload.insurance?.insuranceType).toBe("EPS")
+    expect(payload.diagnoses?.[0]?.diagnosis).toBe("MAMA_DUCTAL")
+    expect(payload.diagnoses?.[0]?.mode).toBe("PARALLEL")
+    expect(payload.treatments?.[0]?.treatmentType).toBe("QUIMIOTERAPIA")
+    expect(payload.treatments?.[0]?.treatmentFrequency).toEqual({
+      valueMin: 3,
+      unit: "WEEK",
+    })
+    expect(payload.treatments?.[0]).toMatchObject({
+      isReferred: true,
+      sourceHealthCenterId: "center-1",
+      receivingHealthCenterId: "center-2",
+    })
+    expect(payload.treatments?.[0]).toMatchObject({
+      startDate: "2026-02-20",
+      endDate: "2026-08-20",
+    })
+    expect(payload.treatments?.[0]?.medications?.[0]?.frequency).toEqual({
+      valueMin: 1,
+      unit: "DAY",
+    })
+    expect(payload.details?.travelTimeToHospital).toEqual({
+      valueMin: 45,
+      unit: "MINUTE",
+    })
+    expect(payload.addresses?.[0]).toMatchObject({
+      type: "PERMANENT",
+      department: "LIMA",
+      locationUrl: "https://maps.google.com/?q=Av+Test+123",
+      dniMatchesAddress: false,
+    })
+    expect(payload.addresses?.[0]).not.toHaveProperty("reference")
+    expect(payload.details).toMatchObject({
+      birthDepartment: "AREQUIPA",
+      zoneType: "RURAL",
+    })
+    expect(payload.addresses).toHaveLength(2)
+    expect(payload.addresses?.[1]).toMatchObject({
+      type: "TEMPORARY",
+      isPrimary: false,
+      address: "Jr. Temporal 456",
+    })
+    expect(payload.details).not.toHaveProperty("referredToSocialWorker")
+    expect(payload.familyPreventionTalkInterests).toHaveLength(1)
+    expect(payload.psychooncologySupportAssessment).toEqual({
+      excessiveWorry: true,
+      emotionalDistressScore: 7,
+      preferredModality: "VIDEO_CALL",
+    })
+    expect(payload.medicalAppointments?.[0]).toMatchObject({
+      nextAppointmentDate: "2026-07-15",
+      nextAppointmentSpecialty: "Radioterapia",
+    })
+    expect(payload.callStartedAt).toMatch(/^2026-06-25T/)
+    expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toBeUndefined()
+    expect(payload.surveyAccepted).toBe(true)
+    expect("followUpQualityRating" in payload).toBe(false)
+  })
 
-    expect(payload.insurance).toBeUndefined();
-    expect(payload.diagnosis).toBeUndefined();
-    expect(payload.treatment).toBeUndefined();
+  it("maps multiple diagnoses and keeps treatments attached to their diagnosis", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-breast",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+          {
+            draftId: "diagnosis-thyroid",
+            diagnosis: "Cáncer de tiroides",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-chemotherapy",
+            diagnosisRef: "diagnosis-breast",
+            treatmentType: "QUIMIOTERAPIA",
+            isCurrent: true,
+          },
+          {
+            draftId: "treatment-surgery",
+            diagnosisRef: "diagnosis-thyroid",
+            treatmentType: "CIRUGIA",
+            operationName: "MASTECTOMIA",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.diagnoses).toHaveLength(2)
+    expect(payload.diagnoses?.map(({ clientRef }) => clientRef)).toEqual([
+      "diagnosis-breast",
+      "diagnosis-thyroid",
+    ])
+    expect(payload.treatments).toEqual([
+      expect.objectContaining({
+        diagnosisRef: "diagnosis-breast",
+        treatmentType: "QUIMIOTERAPIA",
+      }),
+      expect.objectContaining({
+        diagnosisRef: "diagnosis-thyroid",
+        treatmentType: "CIRUGIA",
+        operationName: "MASTECTOMIA",
+      }),
+    ])
+  })
+
+  it("allows a diagnosis without a treatment", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-only",
+            diagnosis: "Cáncer en evaluación",
+            isCurrent: true,
+          },
+        ],
+        treatments: [],
+      }),
+    })
+
+    expect(payload.diagnoses).toHaveLength(1)
+    expect(payload.treatments).toBeUndefined()
+  })
+
+  it("maps the signs branch with an explicit null answer", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      today: "2026-06-25",
+      draft: draft({
+        patientData: { fullName: "Paciente Signos", primaryPhone: "988555666" },
+        insurance: { insuranceType: "NONE", isCurrent: true },
+        symptomReport: {
+          hasDiscomfort: null,
+          signsAndSymptoms: "Dato legacy que no aplica",
+          hasMedicalConsultation: false,
+          noMedicalConsultationReason: "No pudo acudir",
+          hasRequestedMedicalConsultation: true,
+          consultationStatus: "ATTENDED",
+          symptomDuration: { valueMin: 2, valueMax: 4, unit: "MONTH" },
+          symptomFrequency: { valueMin: 1, unit: "WEEK" },
+        },
+        medicalAppointments: [
+          {
+            healthCenterId: "center-legacy",
+            specialty: "Medicina general",
+            appointmentDate: "2026-06-20",
+          },
+        ],
+        sisAffiliation: {
+          canAffiliate: false,
+          cantAffiliateReason: "Documento pendiente",
+        },
+        enrollmentMetadata: { affiliationType: "FAMILY" },
+        psychooncologySupportAssessment: {
+          excessiveWorry: true,
+          emotionalDistressScore: 9,
+          preferredModality: "CALL",
+        },
+        companion: {
+          fullName: "Ana Test",
+          primaryPhone: "999000333",
+          relationship: "MOTHER",
+        },
+      }),
+    })
+
+    expect(payload.affiliationType).toBe("FAMILY_FRIEND")
+    expect(payload.healthPhase).toBe("SIGNS_AND_SYMPTOMS")
+    expect(payload.companion).toMatchObject({
+      fullName: "Ana Test",
+      primaryPhone: "999000333",
+      relationship: "MOTHER",
+      isPrimaryInformant: true,
+    })
+    expect(payload.contacts).toEqual([{ role: "PRIMARY", source: "CALLER" }])
+    expect(payload.insurance).toBeUndefined()
     expect(payload.sisAffiliation).toMatchObject({
       canAffiliate: false,
       cantAffiliateReason: "Documento pendiente",
-      comments: "Pendiente",
-    });
+    })
+    expect(payload.symptomReport).toEqual({
+      hasDiscomfort: null,
+      hasMedicalConsultation: false,
+      noMedicalConsultationReason: "No pudo acudir",
+    })
+    expect(payload.symptomReport).not.toHaveProperty("symptomDuration")
+    expect(payload.symptomReport).not.toHaveProperty("symptomFrequency")
+    expect(payload.symptomReport).not.toHaveProperty(
+      "hasRequestedMedicalConsultation",
+    )
+    expect(payload.symptomReport).not.toHaveProperty("consultationStatus")
+    expect(payload.medicalAppointments).toBeUndefined()
+    expect(payload.psychooncologySupportAssessment).toBeUndefined()
+  })
+
+  it("maps the cancer treatment and consultation status metadata", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            diagnosisSpecialty: "ONCOLOGIA_MEDICA",
+            isSepaActiveReferral: true,
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "CIRUGIA",
+            operationName: "Mastectomía",
+            treatmentSituation: "ABANDONED",
+            treatmentAbandonmentReason: "Cambio de ciudad",
+            isCurrent: true,
+          },
+        ],
+        enrollmentMetadata: {
+          currentlyAttendingConsultations: false,
+          notAttendingConsultationsNote: "No puede asistir",
+          currentlyReceivingTreatment: true,
+        },
+      }),
+    })
+
+    expect(payload.diagnoses?.[0]).toMatchObject({
+      diagnosisSpecialty: "ONCOLOGIA_MEDICA",
+    })
+    expect(payload.diagnoses?.[0]).not.toHaveProperty("isSepaActiveReferral")
+    expect(payload.treatments?.[0]).toMatchObject({
+      operationName: "Mastectomía",
+      treatmentSituation: "ABANDONED",
+      treatmentAbandonmentReason: "Cambio de ciudad",
+    })
+    expect(payload.treatments?.[0]).not.toHaveProperty("interruptionReason")
+    expect(payload.treatments?.[0]).not.toHaveProperty("interruptionReasonOther")
+    expect(payload.treatments?.[0]).not.toHaveProperty("careProgram")
+    expect(payload.treatments?.[0]).not.toHaveProperty(
+      "receivesTeleconsultation",
+    )
+    expect(payload.treatments?.[0]).not.toHaveProperty("teleconsultationNote")
+    expect(payload.treatments?.[0]).not.toHaveProperty(
+      "teleconsultationSpecialties",
+    )
+    expect(payload.healthBackgroundAssessment).toBeUndefined()
+    expect(payload).toMatchObject({
+      currentlyAttendingConsultations: false,
+      notAttendingConsultationsNote: "No puede asistir",
+      currentlyReceivingTreatment: true,
+    })
+  })
+
+  it("maps interruption reason when the treatment is interrupted", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            treatmentSituation: "INTERRUMPIDO",
+            interruptionReason: "ADVERSE_REACTION",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.treatments?.[0]).toMatchObject({
+      treatmentSituation: "INTERRUMPIDO",
+      interruptionReason: "ADVERSE_REACTION",
+    })
+    expect(payload.treatments?.[0]).not.toHaveProperty("interruptionReasonOther")
+  })
+
+  it("requires an interruption reason when the treatment is interrupted", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "QUIMIOTERAPIA",
+              treatmentSituation: "INTERRUMPIDO",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("motivo de interrupción")
+  })
+
+  it("requires the other interruption detail when OTHER is selected", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            treatmentSituation: "INTERRUMPIDO",
+            interruptionReason: "OTHER",
+            interruptionReasonOther: "Cambio de protocolo",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.treatments?.[0]).toMatchObject({
+      interruptionReason: "OTHER",
+      interruptionReasonOther: "Cambio de protocolo",
+    })
+
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "QUIMIOTERAPIA",
+              treatmentSituation: "INTERRUMPIDO",
+              interruptionReason: "OTHER",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("Especificá el motivo de interrupción")
+  })
+
+  it("serializes the canonical signs consultation branch without appointments", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      today: "2026-06-25",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Signos",
+          primaryPhone: "988555666",
+          birthDate: "1980-04-10",
+        },
+        primaryContactSource: "CALLER",
+        primaryContact: { fullName: "No usado", primaryPhone: "000" },
+        secondaryContactEnabled: true,
+        secondaryContactSource: "NEW",
+        secondaryContact: {
+          fullName: "Contacto Secundario",
+          primaryPhone: "999444555",
+          relationship: "SIBLING",
+        },
+        companion: {
+          fullName: "Ana Caller",
+          primaryPhone: "999000333",
+          relationship: "MOTHER",
+        },
+        symptomReport: {
+          hasDiscomfort: false,
+          checkupMotivation: "Control preventivo",
+          signsAndSymptoms: "Cansancio",
+          symptomDuration: { valueMin: 3, unit: "MONTH" },
+          symptomFrequency: { valueMin: 1, unit: "WEEK" },
+          hasMedicalConsultation: true,
+          firstConsultationDate: "2026-06-20",
+          hasReferral: true,
+          referredHealthCenterId: "center-2",
+          hasReceivedDiagnosis: true,
+          reportedDiagnosis: "Lesión por estudiar",
+          nextConsultationDate: "2026-07-20",
+          nextConsultationSpecialty: "ONCOLOGIA_MEDICA",
+          nextConsultationNote: "Llevar resultados de laboratorio",
+          hasRequestedMedicalConsultation: true,
+          consultationStatus: "ATTENDED",
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+        },
+        medicalAppointments: [
+          {
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            appointmentDate: "2026-06-20",
+            nextAppointmentDate: "2026-07-20",
+            nextAppointmentSpecialty: "ONCOLOGIA_MEDICA",
+            hasReferralSheet: false,
+            referralNotProvidedReason: "No fue necesario referir",
+          },
+        ],
+        enrollmentMetadata: { affiliationType: "FAMILY" },
+      }),
+    })
+
+    expect(payload.contacts).toEqual([
+      { role: "PRIMARY", source: "CALLER" },
+      {
+        role: "SECONDARY",
+        source: "NEW",
+        person: expect.objectContaining({
+          fullName: "Contacto Secundario",
+          primaryPhone: "999444555",
+          relationship: "SIBLING",
+        }),
+      },
+    ])
+    expect(payload.symptomReport).toMatchObject({
+      hasDiscomfort: false,
+      checkupMotivation: "Control preventivo",
+      hasMedicalConsultation: true,
+      healthCenterId: "center-1",
+      specialty: "Medicina general",
+      firstConsultationDate: "2026-06-20",
+      hasReferral: true,
+      referredHealthCenterId: "center-2",
+      hasReceivedDiagnosis: true,
+      reportedDiagnosis: "Lesión por estudiar",
+      nextConsultationDate: "2026-07-20",
+      nextConsultationSpecialty: "ONCOLOGIA_MEDICA",
+      nextConsultationNote: "Llevar resultados de laboratorio",
+    })
+    expect(payload.symptomReport).not.toHaveProperty("signsAndSymptoms")
+    expect(payload.symptomReport).not.toHaveProperty("symptomDuration")
+    expect(payload.symptomReport).not.toHaveProperty("symptomFrequency")
+    expect(payload.symptomReport).not.toHaveProperty("indicationsReceived")
+    expect(payload.symptomReport).not.toHaveProperty("consultationStatus")
+    expect(payload.medicalAppointments).toBeUndefined()
+    expect(payload.diagnoses).toBeUndefined()
+    expect(payload.treatments).toBeUndefined()
+  })
+
+  it("requires the next consultation specialty when a next date is set", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "SIGNS_AND_SYMPTOMS",
+        draft: draft({
+          symptomReport: {
+            hasDiscomfort: true,
+            hasMedicalConsultation: true,
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            firstConsultationDate: "2026-06-20",
+            nextConsultationDate: "2026-07-20",
+            hasReferral: null,
+            hasReceivedDiagnosis: false,
+          },
+        }),
+      }),
+    ).toThrow("especialidad de la siguiente consulta")
+  })
+
+  it("serializes the structured diagnosis search duration", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+          hasReferral: null,
+          hasReceivedDiagnosis: false,
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+    })
+    expect(payload.symptomReport).not.toHaveProperty("isAwaitingDiagnosis")
+  })
+
+  it("rejects an incomplete structured diagnosis search duration", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "SIGNS_AND_SYMPTOMS",
+        draft: draft({
+          symptomReport: {
+            hasDiscomfort: true,
+            hasMedicalConsultation: true,
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            firstConsultationDate: "2026-06-20",
+            diagnosisSearchDuration: { valueMin: 3 },
+            hasReferral: null,
+            hasReceivedDiagnosis: false,
+          },
+        }),
+      }),
+    ).toThrow("tiempo de espera o búsqueda del diagnóstico")
+  })
+
+  it("sends the diagnosis search duration without the awaiting-diagnosis flag", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+          hasReferral: null,
+          hasReceivedDiagnosis: false,
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      diagnosisSearchDuration: { valueMin: 3, unit: "MONTH" },
+    })
+    expect(payload.symptomReport).not.toHaveProperty("isAwaitingDiagnosis")
+  })
+
+  it("serializes the reported treatment branch when it is present", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          hasReferral: null,
+          hasReceivedDiagnosis: false,
+          isReceivingReportedTreatment: true,
+          reportedTreatment: "QUIMIOTERAPIA",
+          reportedTreatmentFrequency: { valueMin: 3, unit: "WEEK" },
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      isReceivingReportedTreatment: true,
+      reportedTreatment: "QUIMIOTERAPIA",
+      reportedTreatmentFrequency: { valueMin: 3, unit: "WEEK" },
+    })
+    expect(payload.symptomReport).not.toHaveProperty(
+      "notReceivingTreatmentReason",
+    )
+  })
+
+  it("serializes the reason when the reported treatment is not received", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: false,
+          noMedicalConsultationReason: "No pudo acudir",
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "Aún no inicia el tratamiento",
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      isReceivingReportedTreatment: false,
+      notReceivingTreatmentReason: "Aún no inicia el tratamiento",
+    })
+    expect(payload.symptomReport).not.toHaveProperty("reportedTreatment")
+    expect(payload.symptomReport).not.toHaveProperty(
+      "reportedTreatmentFrequency",
+    )
+  })
+
+  it("clears hidden signs branch fields when the answers change", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Signos",
+          primaryPhone: "988555666",
+        },
+        symptomReport: {
+          hasDiscomfort: true,
+          checkupMotivation: "Texto antiguo",
+          hasMedicalConsultation: false,
+          noMedicalConsultationReason: "Motivo nuevo",
+          hasRequestedMedicalConsultation: false,
+          consultationStatus: "NOT_OBTAINED",
+          consultationNotObtainedReason: "Texto antiguo",
+          healthCenterId: "center-1",
+          specialty: "ONCOLOGIA_MEDICA",
+          indicationsReceived: "Indicaciones antiguas",
+          hasReceivedDiagnosis: false,
+          reportedDiagnosis: "Diagnóstico antiguo",
+          isReceivingReportedTreatment: false,
+          notReceivingTreatmentReason: "No corresponde",
+        },
+        medicalAppointments: [
+          {
+            specialty: "ONCOLOGIA_MEDICA",
+            appointmentDate: "2026-06-20",
+            hasReferralSheet: false,
+          },
+        ],
+      }),
+    })
+
     expect(payload.symptomReport).toMatchObject({
       hasDiscomfort: true,
-      signsAndSymptoms: "Sangrado persistente, pérdida de peso y dolor abdominal",
-      hasSoughtMedicalConsultation: false,
-      specialty: "Medicina",
-      indicationsReceived: "Control",
-    });
-    expect(payload.familyPreventionTalkInterests).toHaveLength(1);
-    expect(payload.enrollmentMetadata?.startTime).toBe("2026-06-25T10:00:00Z");
-  });
+      hasMedicalConsultation: false,
+      noMedicalConsultationReason: "Motivo nuevo",
+    })
+    expect(payload.symptomReport).not.toHaveProperty("checkupMotivation")
+    expect(payload.symptomReport).not.toHaveProperty("signsAndSymptoms")
+    expect(payload.symptomReport).not.toHaveProperty("reportedDiagnosis")
+    expect(payload.symptomReport).not.toHaveProperty("healthCenterId")
+    expect(payload.symptomReport).not.toHaveProperty("specialty")
+    expect(payload.symptomReport).not.toHaveProperty("firstConsultationDate")
+    expect(payload.symptomReport).not.toHaveProperty("hasReferral")
+    expect(payload.medicalAppointments).toBeUndefined()
+  })
 
-  it("sends a fallback treatment when patient explicitly does not receive treatment", () => {
-    const draft = cloneDraft({
-      enrollmentMetadata: {
-        currentlyReceivingTreatment: false,
-      },
-      treatment: {
-        diagnosisId: "00000000-0000-0000-0000-000000000000",
-        treatmentType: "",
-        isCurrent: false,
-        notReceivingReason: "Está en evaluación",
-      },
-    });
+  it("requires the new consultation answer instead of the legacy answer", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "SIGNS_AND_SYMPTOMS",
+        draft: draft({
+          patientData: {
+            fullName: "Paciente Signos",
+            primaryPhone: "988555666",
+          },
+          symptomReport: {
+            hasDiscomfort: true,
+            hasSoughtMedicalConsultation: false,
+          },
+        }),
+      }),
+    ).toThrow(
+      "Indica si actualmente ha solicitado o asistió a una consulta médica",
+    )
+  })
 
-    const payload = buildEnrollmentPayload({ draft, today: "2026-06-25" });
+  it("serializes a false referral answer with only its conditional reason", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Signos",
+          primaryPhone: "988555666",
+        },
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          hasReferral: false,
+          referralNotProvidedReason: "No fue necesario referir",
+          hasReceivedDiagnosis: false,
+          nextConsultationDate: null,
+        },
+        medicalAppointments: [
+          {
+            healthCenterId: "center-1",
+            specialty: "Medicina general",
+            appointmentDate: "2026-06-20",
+            hasReferralSheet: false,
+            referredTo: "Destino antiguo",
+            referralNotProvidedReason: "Motivo antiguo",
+          },
+        ],
+      }),
+    })
 
-    expect(payload.treatment).toMatchObject({
-      treatmentType: "No recibe tratamiento",
-      notReceivingReason: "Está en evaluación",
-    });
-  });
-});
+    expect(payload.symptomReport).toMatchObject({
+      hasMedicalConsultation: true,
+      hasReferral: false,
+      referralNotProvidedReason: "No fue necesario referir",
+      hasReceivedDiagnosis: false,
+    })
+    expect(payload.symptomReport).not.toHaveProperty("referredHealthCenterId")
+    expect(payload.symptomReport).not.toHaveProperty("nextConsultationDate")
+    expect(payload.medicalAppointments).toBeUndefined()
+  })
+
+  it("keeps a null referral answer without sending conditional fields", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "SIGNS_AND_SYMPTOMS",
+      draft: draft({
+        symptomReport: {
+          hasDiscomfort: true,
+          hasMedicalConsultation: true,
+          healthCenterId: "center-1",
+          specialty: "Medicina general",
+          firstConsultationDate: "2026-06-20",
+          hasReferral: null,
+          referredHealthCenterId: "legacy-center",
+          referralNotProvidedReason: "legacy reason",
+          hasReceivedDiagnosis: false,
+        },
+      }),
+    })
+
+    expect(payload.symptomReport).toMatchObject({
+      hasReferral: null,
+      hasReceivedDiagnosis: false,
+    })
+    expect(payload.symptomReport).not.toHaveProperty("referredHealthCenterId")
+    expect(payload.symptomReport).not.toHaveProperty(
+      "referralNotProvidedReason",
+    )
+  })
+
+  it("serializes accumulated enrollment notes into both comment destinations", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      today: "2026-06-25",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        enrollmentMetadata: {
+          enrollmentNotes: [
+            { text: "Primera observación" },
+            { text: "Pendiente validar aseguradora" },
+          ],
+        },
+      }),
+    })
+
+    expect(payload.caseComments).toContain("Primera observación")
+    expect(payload.caseComments).toContain("Pendiente validar aseguradora")
+    expect(payload.caseComments).toBe(
+      "Primera observación\n\nPendiente validar aseguradora",
+    )
+    expect(payload.followUp.notes).toBe(payload.caseComments)
+  })
+
+  it("keeps a manually adjusted diagnosis wait time when dates are present", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        patientData: { fullName: "Paciente Test", primaryPhone: "988111222" },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            firstSymptomsDate: "2026-01-01",
+            diagnosisDate: "2026-03-02",
+            waitTimeForDiagnosis: { valueMin: 1.5, unit: "MONTH" },
+            waitTimeForDiagnosisManuallyEdited: true,
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toEqual({
+      valueMin: 1.5,
+      unit: "MONTH",
+    })
+  })
+
+  it("sends null wait time when the patient does not remember it", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        patientData: { fullName: "Paciente Test", primaryPhone: "988111222" },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            firstSymptomsDate: "2026-01-01",
+            diagnosisDate: "2026-03-02",
+            remembersWaitTimeForDiagnosis: false,
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.diagnoses?.[0]?.waitTimeForDiagnosis).toBeNull()
+  })
+
+  it("maps a foreign birth country without a peru department", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        details: { birthCountry: "VENEZUELA", birthDepartment: "LIMA" },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.details?.birthCountry).toBe("VENEZUELA")
+    expect(payload.details?.birthDepartment).toBeUndefined()
+  })
+
+  it("requires a surgical procedure when the treatment type is surgery", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "CIRUGIA",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("Selecciona el procedimiento de la cirugía 1")
+  })
+
+  it("includes chemotherapy route for chemotherapy treatments", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        treatments: [
+          {
+            draftId: "treatment-1",
+            diagnosisRef: "diagnosis-1",
+            treatmentType: "QUIMIOTERAPIA",
+            chemotherapyRoute: "INTRAVENOSA",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.treatments?.[0]).toMatchObject({
+      treatmentType: "QUIMIOTERAPIA",
+      chemotherapyRoute: "INTRAVENOSA",
+    })
+    expect(payload.treatments?.[0]).not.toHaveProperty("operationName")
+  })
+
+  it("maps referral answers and unknown historical values without sending sentinels", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      historical: true,
+      historicalEnrollmentDate: "2024-04-12",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Histórico",
+          primaryPhone: "",
+          birthDate: "1980-04-10",
+        },
+        details: { birthDepartment: "__NO_MENCIONA__" },
+        primaryContactSource: "CALLER",
+        companion: {
+          fullName: "Informante Histórico",
+          primaryPhone: "999111222",
+          relationship: "HERMANA",
+        },
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            remembersFirstSymptomsDate: false,
+            waitTimeForDiagnosis: { valueMin: 2, unit: "MONTH" },
+            waitTimeForDiagnosisManuallyEdited: true,
+            referredHealthCenterId: "center-referred",
+            hasReferral: true,
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.patient).not.toHaveProperty("primaryPhone")
+    expect(payload.details?.birthDepartment).toBeUndefined()
+    expect(payload.diagnoses?.[0]).toMatchObject({
+      firstSymptomsDate: undefined,
+      referredHealthCenterId: "center-referred",
+      hasReferral: true,
+      waitTimeForDiagnosis: { valueMin: 2, unit: "MONTH" },
+    })
+    expect(payload.enrolledOn).toBe("2024-04-12")
+  })
+
+  it("keeps psycho-oncology support answers in historical enrollments", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      historical: true,
+      historicalEnrollmentDate: "2024-04-12",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            isCurrent: true,
+          },
+        ],
+        psychooncologySupportAssessment: {
+          excessiveWorry: false,
+          emotionalDistressScore: 6,
+          preferredModality: "CALL",
+        },
+        enrollmentMetadata: { affiliationType: "PATIENT" },
+      }),
+    })
+
+    expect(payload.enrolledOn).toBe("2024-04-12")
+    expect(payload.psychooncologySupportAssessment).toEqual({
+      excessiveWorry: false,
+      emotionalDistressScore: 6,
+      preferredModality: "CALL",
+    })
+  })
+
+  it("requires answers and conditional notes for the cancer diagnosis branch", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "Cáncer", isCurrent: true },
+          ],
+          enrollmentMetadata: {
+            currentlyAttendingConsultations: undefined,
+            currentlyReceivingTreatment: undefined,
+          },
+        }),
+      }),
+    ).toThrow("Indica si actualmente asiste a sus consultas médicas")
+
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "Cáncer", isCurrent: true },
+          ],
+          enrollmentMetadata: {
+            currentlyAttendingConsultations: false,
+            notAttendingConsultationsNote: "",
+          },
+        }),
+      }),
+    ).toThrow("Indica las notas sobre la no asistencia a consultas médicas")
+
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "Cáncer", isCurrent: true },
+          ],
+          enrollmentMetadata: {
+            currentlyReceivingTreatment: false,
+            notReceivingTreatmentReason: "",
+          },
+        }),
+      }),
+    ).toThrow("Indica el motivo por el que no recibe tratamiento")
+  })
+
+  it("rejects an inverted treatment date range", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          patientData: { fullName: "Paciente Test", primaryPhone: "988111222" },
+          diagnoses: [
+            {
+              draftId: "diagnosis-1",
+              diagnosis: "MAMA_DUCTAL",
+              isCurrent: true,
+            },
+          ],
+          treatments: [
+            {
+              draftId: "treatment-1",
+              diagnosisRef: "diagnosis-1",
+              treatmentType: "QUIMIOTERAPIA",
+              startDate: "2026-08-20",
+              endDate: "2026-02-20",
+              isCurrent: true,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("La fecha de fin del tratamiento")
+  })
+})

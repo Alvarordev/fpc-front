@@ -11,14 +11,14 @@ import {
   RefreshCw,
   UserRound,
 } from "lucide-react"
-import {
-  agentsApi,
-  contactsApi,
-  patientsApi,
-  recordatoriosApi,
-} from "@/lib/api"
+import { callCenterApi, type CallCenterWorkload } from "@/api/call-center"
+import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  followUpPurposeLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
 import {
   Card,
   CardContent,
@@ -26,45 +26,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type {
-  Contact,
-  ContactPurpose,
-  ContactType,
-  Patient,
-  Reminder,
-  ReminderType,
-} from "@/types"
-
-const contactTypeLabels: Record<ContactType, string> = {
-  CALL: "Llamada",
-  WHATSAPP: "WhatsApp",
-  VIDEO_CALL: "Videollamada",
-  EMAIL: "Email",
-  IN_PERSON: "Presencial",
-}
-
-const contactPurposeLabels: Record<ContactPurpose, string> = {
-  FIRST_CONTACT: "Primer contacto",
-  ENROLLMENT: "Enrolamiento",
-  FOLLOW_UP: "Seguimiento",
-  PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
-  OTHER: "Otro",
-}
-
-const reminderTypeLabels: Record<ReminderType, string> = {
-  LABORATORIO: "Laboratorio",
-  IMAGEN: "Imagen",
-  CONSULTA: "Consulta",
-  PROCEDIMIENTO: "Procedimiento",
-  MEDICACION: "Medicación",
-  OTRO: "Otro",
-}
 
 type WorkloadGroup = {
   id: string
   name: string
-  contacts: Contact[]
-  reminders: Reminder[]
+  followUps: CallCenterWorkload["scheduledFollowUps"]
+  reminders: CallCenterWorkload["pendingReminders"]
 }
 
 function formatDate(date: string | null): string {
@@ -77,46 +44,29 @@ function formatDate(date: string | null): string {
 }
 
 function formatTime(datetime: string | null): string {
-  return datetime?.slice(11, 16) ?? "Sin hora"
+  return datetime
+    ? new Date(datetime).toLocaleTimeString("es-PE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Sin hora"
 }
 
 export default function CallcenterPage() {
   const navigate = useNavigate()
   const workloadQuery = useQuery({
     queryKey: ["callcenter-workload"],
-    queryFn: async () => {
-      const [agents, contacts, patients] = await Promise.all([
-        agentsApi.list(),
-        contactsApi.list(),
-        patientsApi.list(),
-      ])
-      const remindersByPatient = await Promise.all(
-        patients.map(async (patient) => ({
-          patientId: patient.id,
-          reminders: await recordatoriosApi.list(patient.id),
-        })),
-      )
-
-      return {
-        agents,
-        contacts,
-        patients,
-        reminders: remindersByPatient.flatMap(({ reminders }) => reminders),
-      }
-    },
-    staleTime: 30 * 1000,
+    queryFn: callCenterApi.workload,
+    staleTime: 30_000,
   })
 
   if (workloadQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-muted-foreground text-sm">
-          Cargando la carga del call center...
-        </p>
+      <div className="text-muted-foreground flex h-64 items-center justify-center text-sm">
+        Cargando la carga del call center...
       </div>
     )
   }
-
   if (workloadQuery.isError || !workloadQuery.data) {
     return (
       <Card>
@@ -138,115 +88,70 @@ export default function CallcenterPage() {
     )
   }
 
-  const { agents, contacts, patients, reminders } = workloadQuery.data
-  const patientMap = new Map<string, Patient>(
-    patients.map((patient) => [patient.id, patient]),
-  )
-  const contactMap = new Map<string, Contact>(
-    contacts.map((contact) => [contact.id, contact]),
-  )
+  const { agents, scheduledFollowUps, pendingReminders } = workloadQuery.data
   const groups = new Map<string, WorkloadGroup>(
     agents.map((agent) => [
       agent.id,
-      { id: agent.id, name: agent.fullName, contacts: [], reminders: [] },
+      { id: agent.id, name: agent.fullName, followUps: [], reminders: [] },
     ]),
   )
   const unassigned: WorkloadGroup = {
     id: "unassigned",
     name: "Sin agente asignado",
-    contacts: [],
+    followUps: [],
     reminders: [],
   }
-
-  contacts
-    .filter((contact) => contact.status === "SCHEDULED")
-    .forEach((contact) => {
-      const group = contact.agentId ? groups.get(contact.agentId) : undefined
-      ;(group ?? unassigned).contacts.push(contact)
-    })
-
-  reminders
-    .filter((reminder) => reminder.status === "PENDIENTE")
-    .forEach((reminder) => {
-      const agentId = contactMap.get(reminder.contactId)?.agentId
-      const group = agentId ? groups.get(agentId) : undefined
-      ;(group ?? unassigned).reminders.push(reminder)
-    })
-
+  scheduledFollowUps.forEach((followUp) =>
+    (groups.get(followUp.agentId) ?? unassigned).followUps.push(followUp),
+  )
+  pendingReminders.forEach((reminder) =>
+    (groups.get(reminder.assignedAgentId) ?? unassigned).reminders.push(
+      reminder,
+    ),
+  )
   const workloadGroups = [
     ...groups.values(),
-    ...(unassigned.contacts.length || unassigned.reminders.length
+    ...(unassigned.followUps.length || unassigned.reminders.length
       ? [unassigned]
       : []),
   ]
-  const pendingContacts = workloadGroups.reduce(
-    (total, group) => total + group.contacts.length,
-    0,
-  )
-  const pendingReminders = workloadGroups.reduce(
-    (total, group) => total + group.reminders.length,
-    0,
-  )
   const assignedAgents = workloadGroups.filter(
     (group) =>
       group.id !== "unassigned" &&
-      (group.contacts.length || group.reminders.length),
+      (group.followUps.length || group.reminders.length),
   ).length
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-foreground text-xl font-semibold tracking-tight">
-          Call center
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight">Call center</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Carga de trabajo pendiente, organizada por agente.
         </p>
       </div>
-
       <section className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-              <Phone className="size-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">{pendingContacts}</p>
-              <p className="text-muted-foreground text-sm">
-                Contactos pendientes
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-              <CalendarClock className="size-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">{pendingReminders}</p>
-              <p className="text-muted-foreground text-sm">
-                Recordatorios pendientes
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 items-center justify-center rounded-full bg-violet-50 text-violet-600">
-              <Headset className="size-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">{assignedAgents}</p>
-              <p className="text-muted-foreground text-sm">Agentes con carga</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Metric
+          icon={Phone}
+          color="bg-amber-50 text-amber-600"
+          value={scheduledFollowUps.length}
+          label="Seguimientos pendientes"
+        />
+        <Metric
+          icon={CalendarClock}
+          color="bg-blue-50 text-blue-600"
+          value={pendingReminders.length}
+          label="Recordatorios pendientes"
+        />
+        <Metric
+          icon={Headset}
+          color="bg-violet-50 text-violet-600"
+          value={assignedAgents}
+          label="Agentes con carga"
+        />
       </section>
-
       <section className="space-y-4">
         {workloadGroups.map((group) => {
-          const items = group.contacts.length + group.reminders.length
+          const items = group.followUps.length + group.reminders.length
           return (
             <Card key={group.id} className="overflow-hidden">
               <CardHeader className="bg-muted/20 border-b pb-4">
@@ -270,7 +175,7 @@ export default function CallcenterPage() {
                   </div>
                   <div className="flex gap-2">
                     <Badge variant="secondary">
-                      {group.contacts.length} contactos
+                      {group.followUps.length} seguimientos
                     </Badge>
                     <Badge variant="secondary">
                       {group.reminders.length} recordatorios
@@ -280,123 +185,148 @@ export default function CallcenterPage() {
               </CardHeader>
               {items > 0 && (
                 <CardContent className="grid p-0 xl:grid-cols-2">
-                  <div className="border-b xl:border-r xl:border-b-0">
-                    <div className="flex items-center justify-between border-b px-5 py-3">
-                      <p className="text-sm font-medium">
-                        Contactos programados
-                      </p>
-                      <Badge variant="outline">{group.contacts.length}</Badge>
-                    </div>
-                    {group.contacts.length === 0 ? (
-                      <p className="text-muted-foreground px-5 py-6 text-sm">
-                        No hay contactos pendientes.
-                      </p>
-                    ) : (
-                      <div className="divide-y">
-                        {group.contacts
-                          .sort((a, b) =>
-                            (a.scheduledAt ?? "").localeCompare(
-                              b.scheduledAt ?? "",
-                            ),
-                          )
-                          .map((contact) => {
-                            const patient = patientMap.get(contact.patientId)
-                            return (
-                              <button
-                                key={contact.id}
-                                className="hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3 text-left transition-colors"
-                                onClick={() =>
-                                  navigate(
-                                    `/pacientes/${contact.patientId}/contacto?contactId=${contact.id}`,
-                                  )
-                                }
-                              >
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                                  <Phone className="size-4" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-medium">
-                                    {patient?.fullName ??
-                                      "Paciente desconocido"}
-                                  </p>
-                                  <p className="text-muted-foreground mt-0.5 text-xs">
-                                    {contactTypeLabels[contact.type]} ·{" "}
-                                    {contactPurposeLabels[contact.purpose]}
-                                  </p>
-                                  <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-                                    <Calendar className="size-3" />{" "}
-                                    {formatDate(contact.scheduledAt)}
-                                    <Clock className="ml-1 size-3" />{" "}
-                                    {formatTime(contact.scheduledAt)}
-                                  </p>
-                                </div>
-                                <ArrowRight className="text-muted-foreground size-4 shrink-0" />
-                              </button>
+                  <TaskColumn
+                    title="Seguimientos programados"
+                    count={group.followUps.length}
+                    empty="No hay seguimientos pendientes."
+                  >
+                    {group.followUps
+                      .sort((a, b) =>
+                        (a.scheduledAt ?? "").localeCompare(
+                          b.scheduledAt ?? "",
+                        ),
+                      )
+                      .map((followUp) => (
+                        <button
+                          key={followUp.id}
+                          className="hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3 text-left transition-colors"
+                          onClick={() =>
+                            navigate(
+                              `/pacientes/${followUp.subjectPatientId}/seguimientos/${followUp.id}`,
                             )
-                          })}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between border-b px-5 py-3">
-                      <p className="text-sm font-medium">Recordatorios</p>
-                      <Badge variant="outline">{group.reminders.length}</Badge>
-                    </div>
-                    {group.reminders.length === 0 ? (
-                      <p className="text-muted-foreground px-5 py-6 text-sm">
-                        No hay recordatorios pendientes.
-                      </p>
-                    ) : (
-                      <div className="divide-y">
-                        {group.reminders
-                          .sort((a, b) =>
-                            a.scheduledDate.localeCompare(b.scheduledDate),
-                          )
-                          .map((reminder) => {
-                            const patient = patientMap.get(reminder.patientId)
-                            return (
-                              <button
-                                key={reminder.id}
-                                className="hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3 text-left transition-colors"
-                                onClick={() =>
-                                  navigate(`/pacientes/${reminder.patientId}`)
-                                }
-                              >
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                                  <CalendarClock className="size-4" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-medium">
-                                    {patient?.fullName ??
-                                      "Paciente desconocido"}
-                                  </p>
-                                  <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                                    {reminder.description}
-                                  </p>
-                                  <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-                                    <Badge
-                                      variant="outline"
-                                      className="h-5 px-1.5 text-[10px]"
-                                    >
-                                      {reminderTypeLabels[reminder.type]}
-                                    </Badge>
-                                    <Calendar className="ml-1 size-3" />{" "}
-                                    {formatDate(reminder.scheduledDate)}
-                                  </p>
-                                </div>
-                                <ArrowRight className="text-muted-foreground size-4 shrink-0" />
-                              </button>
+                          }
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                            <Phone className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {followUp.subjectPatientName}
+                            </p>
+                            <p className="text-muted-foreground mt-0.5 text-xs">
+                              {followUpTypeLabels[followUp.type]} ·{" "}
+                              {followUpPurposeLabels[followUp.purpose]}
+                            </p>
+                            <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                              <Calendar className="size-3" />
+                              {formatDate(followUp.scheduledAt)}
+                              <Clock className="ml-1 size-3" />
+                              {formatTime(followUp.scheduledAt)}
+                            </p>
+                          </div>
+                          <ArrowRight className="text-muted-foreground size-4 shrink-0" />
+                        </button>
+                      ))}
+                  </TaskColumn>
+                  <TaskColumn
+                    title="Recordatorios"
+                    count={group.reminders.length}
+                    empty="No hay recordatorios pendientes."
+                  >
+                    {group.reminders
+                      .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+                      .map((reminder) => (
+                        <button
+                          key={reminder.id}
+                          className="hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3 text-left transition-colors"
+                          onClick={() =>
+                            navigate(
+                              patientTabUrl(
+                                reminder.subjectPatientId,
+                                "recordatorios",
+                              ),
                             )
-                          })}
-                      </div>
-                    )}
-                  </div>
+                          }
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                            <CalendarClock className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {reminder.subjectPatientName}
+                            </p>
+                            <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                              {reminder.description}
+                            </p>
+                            <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                              <Calendar className="size-3" />
+                              {formatDate(reminder.dueAt)}
+                            </p>
+                          </div>
+                          <ArrowRight className="text-muted-foreground size-4 shrink-0" />
+                        </button>
+                      ))}
+                  </TaskColumn>
                 </CardContent>
               )}
             </Card>
           )
         })}
       </section>
+    </div>
+  )
+}
+
+function Metric({
+  icon: Icon,
+  color,
+  value,
+  label,
+}: {
+  icon: typeof Phone
+  color: string
+  value: number
+  label: string
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-4 p-5">
+        <div
+          className={`flex size-10 items-center justify-center rounded-full ${color}`}
+        >
+          <Icon className="size-5" />
+        </div>
+        <div>
+          <p className="text-2xl font-semibold">{value}</p>
+          <p className="text-muted-foreground text-sm">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function TaskColumn({
+  title,
+  count,
+  empty,
+  children,
+}: {
+  title: string
+  count: number
+  empty: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="border-b last:border-b-0 xl:border-r xl:last:border-r-0">
+      <div className="flex items-center justify-between border-b px-5 py-3">
+        <p className="text-sm font-medium">{title}</p>
+        <Badge variant="outline">{count}</Badge>
+      </div>
+      {count ? (
+        <div className="divide-y">{children}</div>
+      ) : (
+        <p className="text-muted-foreground px-5 py-6 text-sm">{empty}</p>
+      )}
     </div>
   )
 }

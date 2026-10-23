@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { availabilityApi } from "@/lib/api";
+import { volunteersApi } from "@/api/volunteers";
 import { toast } from "sonner";
-import type { AvailabilitySlot, CreateAvailabilitySlotRequest } from "@/types";
+import type { CreateAvailabilityInput, VolunteerAvailability } from "@/api/volunteers";
 
 /**
  * Fetches the current volunteer's availability slots.
@@ -14,7 +14,7 @@ import type { AvailabilitySlot, CreateAvailabilitySlotRequest } from "@/types";
 export function useMySlots(volunteerId: string | undefined) {
   return useQuery({
     queryKey: ["myAvailability", volunteerId],
-    queryFn: () => availabilityApi.list(volunteerId!),
+    queryFn: () => volunteersApi.listAvailability(volunteerId!),
     enabled: Boolean(volunteerId),
     staleTime: 30 * 1000,
   });
@@ -24,11 +24,7 @@ export function useCreateSlot(volunteerId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Omit<CreateAvailabilitySlotRequest, "volunteerId">) =>
-      availabilityApi.create(volunteerId, {
-        volunteerId,
-        ...data,
-      }),
+    mutationFn: (data: CreateAvailabilityInput) => volunteersApi.createAvailability(volunteerId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["myAvailability", volunteerId],
@@ -50,14 +46,9 @@ export function useCreateBulkSlots(volunteerId: string) {
 
   return useMutation({
     mutationFn: async (slots: BulkSlotPayload[]) => {
-      const results: AvailabilitySlot[] = [];
+      const results: VolunteerAvailability[] = [];
       for (const slot of slots) {
-        const created = await availabilityApi.create(volunteerId, {
-          volunteerId,
-          date: slot.date,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        });
+        const created = await volunteersApi.createAvailability(volunteerId, slot);
         results.push(created);
       }
       return results;
@@ -85,7 +76,7 @@ export function useDeleteSlot(volunteerId: string) {
 
   return useMutation({
     mutationFn: (slotId: string) =>
-      availabilityApi.delete(volunteerId, slotId),
+      volunteersApi.deleteAvailability(volunteerId, slotId),
     onSuccess: () => {
       toast.success("Disponibilidad eliminada");
       queryClient.invalidateQueries({

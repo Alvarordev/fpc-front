@@ -1,88 +1,139 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useCreateUser } from "../_hooks/use-users";
-import { volunteersApi } from "@/lib/api";
-import type { UserRole } from "@/types";
+} from "@/components/ui/select"
+import { useCreateUser } from "../_hooks/use-users"
+import { agentsApi } from "@/api/agents"
+import { foundationsApi } from "@/api/foundations"
+import { volunteersApi } from "@/api/volunteers"
+import type { UserRole } from "@/types"
 
 const schema = z
   .object({
     email: z.string().email("Email inválido"),
-    password: z.string().min(6, "Mínimo 6 caracteres"),
-    role: z.enum(["ADMIN", "AGENT", "VOLUNTEER"] as const),
+    password: z.string().min(8, "Mínimo 8 caracteres"),
+    role: z.enum(["ADMIN", "FOUNDATION", "AGENT", "VOLUNTEER"] as const),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     specialty: z.string().optional(),
     phone: z.string().optional(),
+    birthDate: z.string().optional(),
+    commitmentStartAt: z.string().optional(),
+    commitmentEndAt: z.string().optional(),
+    hasVolunteerCertificate: z.boolean(),
+    additionalComments: z.string().optional(),
+    completedSustainabilityModule: z.boolean(),
+    completedDesignThinkingModule: z.boolean(),
   })
   .superRefine((data, ctx) => {
-    if (data.role !== "VOLUNTEER") return;
+    if (data.role !== "VOLUNTEER" && data.role !== "AGENT" && data.role !== "FOUNDATION") return
 
     if (!data.firstName || data.firstName.trim().length < 2) {
       ctx.addIssue({
         code: "custom",
         path: ["firstName"],
         message: "Nombre requerido (mín. 2 caracteres)",
-      });
+      })
     }
     if (!data.lastName || data.lastName.trim().length < 2) {
       ctx.addIssue({
         code: "custom",
         path: ["lastName"],
         message: "Apellido requerido (mín. 2 caracteres)",
-      });
+      })
     }
-    if (!data.specialty || data.specialty.trim().length < 2) {
+    if (
+      data.role === "VOLUNTEER" &&
+      (!data.specialty || data.specialty.trim().length < 2)
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["specialty"],
         message: "Especialidad requerida",
-      });
+      })
     }
     if (!data.phone || data.phone.trim().length < 9) {
       ctx.addIssue({
         code: "custom",
         path: ["phone"],
         message: "Teléfono inválido (mín. 9 dígitos)",
-      });
+      })
     }
-  });
+    if (
+      data.commitmentStartAt &&
+      data.commitmentEndAt &&
+      data.commitmentEndAt < data.commitmentStartAt
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["commitmentEndAt"],
+        message: "La fecha de fin debe ser posterior al inicio",
+      })
+    }
+  })
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>
 
 interface CreateUserDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
+  FOUNDATION: "Fundación",
   AGENT: "Agente",
   VOLUNTEER: "Voluntario",
-};
+}
 
-export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) {
-  const createUser = useCreateUser();
-  const [stepError, setStepError] = useState<string | null>(null);
-  const [isCreatingVolunteer, setIsCreatingVolunteer] = useState(false);
-
+export function CreateUserDialog({
+  open,
+  onOpenChange,
+}: CreateUserDialogProps) {
+  const createUser = useCreateUser()
+  const [stepError, setStepError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const createAgent = useMutation({
+    mutationFn: agentsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["agents"] })
+    },
+  })
+  const createFoundation = useMutation({
+    mutationFn: foundationsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["foundations"] })
+      queryClient.invalidateQueries({ queryKey: ["users", "foundation-team"] })
+    },
+  })
+  const createVolunteer = useMutation({
+    mutationFn: volunteersApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["volunteers"] })
+    },
+  })
   const {
     register,
     handleSubmit,
@@ -100,51 +151,78 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
       lastName: "",
       specialty: "",
       phone: "",
+      birthDate: "",
+      commitmentStartAt: "",
+      commitmentEndAt: "",
+      hasVolunteerCertificate: false,
+      additionalComments: "",
+      completedSustainabilityModule: false,
+      completedDesignThinkingModule: false,
     },
-  });
+  })
 
-  const selectedRole = watch("role");
-  const isPending = createUser.isPending || isCreatingVolunteer;
+  const selectedRole = watch("role")
+  const isPending =
+    createUser.isPending ||
+    createAgent.isPending ||
+    createFoundation.isPending ||
+    createVolunteer.isPending
 
   function handleClose() {
-    onOpenChange(false);
-    reset();
-    setStepError(null);
-    setIsCreatingVolunteer(false);
+    onOpenChange(false)
+    reset()
+    setStepError(null)
   }
 
   async function onSubmit(values: FormValues) {
-    setStepError(null);
+    setStepError(null)
 
-    const createdUser = await createUser.mutateAsync({
-      email: values.email,
-      password: values.password,
-      role: values.role,
-    });
-
-    if (values.role !== "VOLUNTEER") {
-      handleClose();
-      return;
+    if (values.role === "AGENT") {
+      await createAgent.mutateAsync({
+        email: values.email,
+        password: values.password,
+        fullName: `${values.firstName ?? ""} ${values.lastName ?? ""}`.trim(),
+        phone: values.phone ?? "",
+      })
+      handleClose()
+      return
     }
-
-    setIsCreatingVolunteer(true);
-    try {
-      await volunteersApi.create({
-        userId: createdUser.id,
+    if (values.role === "VOLUNTEER") {
+      await createVolunteer.mutateAsync({
+        email: values.email,
+        password: values.password,
         firstName: values.firstName!,
         lastName: values.lastName!,
         specialty: values.specialty!,
-        email: values.email,
         phone: values.phone!,
-      });
-      handleClose();
-    } catch (err) {
-      setStepError(
-        (err as Error)?.message ?? "Error al crear el voluntario",
-      );
-    } finally {
-      setIsCreatingVolunteer(false);
+        birthDate: values.birthDate || undefined,
+        commitmentStartAt: values.commitmentStartAt || undefined,
+        commitmentEndAt: values.commitmentEndAt || undefined,
+        hasVolunteerCertificate: values.hasVolunteerCertificate,
+        additionalComments: values.additionalComments?.trim() || undefined,
+        completedSustainabilityModule: values.completedSustainabilityModule,
+        completedDesignThinkingModule: values.completedDesignThinkingModule,
+      })
+      handleClose()
+      return
     }
+    if (values.role === "FOUNDATION") {
+      await createFoundation.mutateAsync({
+        email: values.email,
+        password: values.password,
+        firstName: values.firstName!,
+        lastName: values.lastName!,
+        phone: values.phone!,
+      })
+      handleClose()
+      return
+    }
+    await createUser.mutateAsync({
+      email: values.email,
+      password: values.password,
+      role: values.role,
+    })
+    handleClose()
   }
 
   return (
@@ -154,10 +232,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
           <DialogTitle>Crear nuevo usuario</DialogTitle>
         </DialogHeader>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4 mt-2"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
             <Select
@@ -165,17 +240,19 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 AGENT: "Agente",
                 VOLUNTEER: "Voluntario",
                 ADMIN: "Administrador",
+                FOUNDATION: "Fundación",
               }}
               value={selectedRole}
               onValueChange={(v) => setValue("role", v as UserRole)}
             >
-              <SelectTrigger className="h-9 text-sm w-full">
+              <SelectTrigger className="h-9 w-full text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AGENT">Agente</SelectItem>
                 <SelectItem value="VOLUNTEER">Voluntario</SelectItem>
                 <SelectItem value="ADMIN">Administrador</SelectItem>
+                <SelectItem value="FOUNDATION">Fundación</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -188,9 +265,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               className="h-9 text-sm"
             />
             {errors.email && (
-              <p className="text-xs text-destructive">
-                {errors.email.message}
-              </p>
+              <p className="text-destructive text-xs">{errors.email.message}</p>
             )}
           </div>
 
@@ -202,17 +277,19 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               className="h-9 text-sm"
             />
             {errors.password && (
-              <p className="text-xs text-destructive">
+              <p className="text-destructive text-xs">
                 {errors.password.message}
               </p>
             )}
           </div>
 
-          {selectedRole === "VOLUNTEER" && (
+          {(selectedRole === "VOLUNTEER" ||
+            selectedRole === "AGENT" ||
+            selectedRole === "FOUNDATION") && (
             <>
-              <div className="border-t pt-4 mt-4">
-                <p className="text-xs font-medium text-muted-foreground mb-3">
-                  Datos del voluntario
+              <div className="mt-4 border-t pt-4">
+                <p className="text-muted-foreground mb-3 text-xs font-medium">
+                  Datos del perfil
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -224,7 +301,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Juan"
                     />
                     {errors.firstName && (
-                      <p className="text-xs text-destructive">
+                      <p className="text-destructive text-xs">
                         {errors.firstName.message}
                       </p>
                     )}
@@ -238,28 +315,30 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Pérez"
                     />
                     {errors.lastName && (
-                      <p className="text-xs text-destructive">
+                      <p className="text-destructive text-xs">
                         {errors.lastName.message}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2 mt-3">
-                  <Label className="text-xs">Especialidad</Label>
-                  <Input
-                    {...register("specialty")}
-                    className="h-9 text-sm"
-                    placeholder="Psicooncología, Psicología clínica, etc."
-                  />
-                  {errors.specialty && (
-                    <p className="text-xs text-destructive">
-                      {errors.specialty.message}
-                    </p>
-                  )}
-                </div>
+                {selectedRole === "VOLUNTEER" && (
+                  <div className="mt-3 space-y-2">
+                    <Label className="text-xs">Especialidad</Label>
+                    <Input
+                      {...register("specialty")}
+                      className="h-9 text-sm"
+                      placeholder="Psicooncología, Psicología clínica, etc."
+                    />
+                    {errors.specialty && (
+                      <p className="text-destructive text-xs">
+                        {errors.specialty.message}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-                <div className="space-y-2 mt-3">
+                <div className="mt-3 space-y-2">
                   <Label className="text-xs">Teléfono</Label>
                   <Input
                     {...register("phone")}
@@ -267,11 +346,93 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     placeholder="987654321"
                   />
                   {errors.phone && (
-                    <p className="text-xs text-destructive">
+                    <p className="text-destructive text-xs">
                       {errors.phone.message}
                     </p>
                   )}
                 </div>
+
+                {selectedRole === "VOLUNTEER" && (
+                  <div className="mt-4 space-y-4 border-t pt-4">
+                    <p className="text-muted-foreground text-xs font-medium">
+                      Datos adicionales del voluntariado
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Fecha de nacimiento</Label>
+                        <Input
+                          type="date"
+                          {...register("birthDate")}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Inicio del compromiso</Label>
+                        <Input
+                          type="date"
+                          {...register("commitmentStartAt")}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Fin del compromiso</Label>
+                        <Input
+                          type="date"
+                          {...register("commitmentEndAt")}
+                          className="h-9 text-sm"
+                        />
+                        {errors.commitmentEndAt && (
+                          <p className="text-destructive text-xs">
+                            {errors.commitmentEndAt.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={watch("hasVolunteerCertificate")}
+                        onCheckedChange={(checked) =>
+                          setValue("hasVolunteerCertificate", checked === true)
+                        }
+                      />
+                      Tiene certificado de voluntariado
+                    </label>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Comentarios adicionales</Label>
+                      <Textarea
+                        {...register("additionalComments")}
+                        placeholder="Observaciones del perfil..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={watch("completedSustainabilityModule")}
+                          onCheckedChange={(checked) =>
+                            setValue(
+                              "completedSustainabilityModule",
+                              checked === true,
+                            )
+                          }
+                        />
+                        Módulo de sostenibilidad completado
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={watch("completedDesignThinkingModule")}
+                          onCheckedChange={(checked) =>
+                            setValue(
+                              "completedDesignThinkingModule",
+                              checked === true,
+                            )
+                          }
+                        />
+                        Módulo de design thinking completado
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -285,30 +446,31 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              className="flex-1"
-              disabled={isPending}
-            >
+            <Button type="submit" className="flex-1" disabled={isPending}>
               {isPending
-                ? isCreatingVolunteer
-                  ? "Creando voluntario..."
-                  : "Creando..."
+                ? "Creando..."
                 : `Crear ${roleLabels[selectedRole].toLowerCase()}`}
             </Button>
           </div>
         </form>
 
-        {(createUser.isError || stepError) && (
-          <div className="border-destructive/20 bg-destructive/5 rounded-xl border p-4 mt-2">
+        {(createUser.isError ||
+          createAgent.isError ||
+          createFoundation.isError ||
+          createVolunteer.isError ||
+          stepError) && (
+          <div className="border-destructive/20 bg-destructive/5 mt-2 rounded-xl border p-4">
             <p className="text-destructive text-sm">
               {stepError ??
                 (createUser.error as Error)?.message ??
+                (createAgent.error as Error)?.message ??
+                (createFoundation.error as Error)?.message ??
+                (createVolunteer.error as Error)?.message ??
                 "Error al crear usuario"}
             </p>
           </div>
         )}
       </DialogContent>
     </Dialog>
-  );
+  )
 }

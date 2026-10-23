@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth-store";
-import { volunteersApi } from "@/lib/api";
-import type { Volunteer } from "@/types";
+import { volunteersApi, type Volunteer } from "@/api/volunteers";
 
 /**
  * Resolves the Volunteer profile for the currently authenticated user.

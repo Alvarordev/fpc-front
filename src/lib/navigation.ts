@@ -8,17 +8,23 @@ import {
   Building2,
   Headset,
   ShieldUser,
-} from "lucide-react";
-import type { NavGroup } from "@/types/navigation";
-import type { UserRole } from "@/types";
+  Calendar,
+  UserRound,
+  GraduationCap,
+  Archive,
+  BookMarked,
+} from "lucide-react"
+import type { NavGroup } from "@/types/navigation"
+import type { UserRole } from "@/types"
 
 export const navConfig: Record<UserRole, NavGroup[]> = {
   AGENT: [
     {
       label: "Gestión",
       items: [
-        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Mi agenda", url: "/", icon: LayoutDashboard },
         { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
       ],
     },
@@ -26,6 +32,12 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Seguimiento",
       items: [
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Citas Médicas", url: "/citas", icon: Calendar },
+        {
+          title: "Charlas de prevención",
+          url: "/charlas",
+          icon: GraduationCap,
+        },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
       ],
     },
@@ -37,6 +49,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Mi Agenda", url: "/agenda", icon: CalendarDays },
         { title: "Mis Pacientes", url: "/pacientes", icon: Users },
         { title: "Disponibilidad", url: "/disponibilidad", icon: Clock },
+        { title: "Equipo SEPA", url: "/equipo-sepa", icon: Building2 },
       ],
     },
   ],
@@ -46,8 +59,10 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
         { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
         { title: "Usuarios", url: "/usuarios", icon: ShieldUser },
+        { title: "Carga histórica", url: "/carga-historica", icon: Archive },
       ],
     },
     {
@@ -55,22 +70,51 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       items: [
         { title: "Call center", url: "/callcenter", icon: Headset },
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Citas Médicas", url: "/citas", icon: Calendar },
+        {
+          title: "Charlas de prevención",
+          url: "/charlas",
+          icon: GraduationCap,
+        },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
+        { title: "Catálogos", url: "/catalogos", icon: BookMarked },
       ],
     },
   ],
-};
+  FOUNDATION: [
+    {
+      label: "Gestión",
+      items: [
+        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Pacientes", url: "/pacientes", icon: Users },
+        { title: "Prospectos", url: "/prospectos", icon: UserRound },
+        { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
+        {
+          title: "Charlas de prevención",
+          url: "/charlas",
+          icon: GraduationCap,
+        },
+      ],
+    },
+  ],
+}
 
 export const pathTitles: Record<string, string> = {
   "/": "Dashboard",
   "/pacientes": "Pacientes",
+  "/prospectos": "Prospectos",
   "/inscripcion": "Inscripción",
   "/enrolamiento": "Enrolamiento",
+  "/carga-historica": "Carga histórica",
   "/agenda": "Mi Agenda",
   "/disponibilidad": "Disponibilidad",
+  "/equipo-sepa": "Equipo SEPA",
   "/voluntarios": "Voluntarios",
   "/alertas": "Alertas",
+  "/citas": "Citas Médicas",
+  "/charlas": "Charlas de prevención",
   "/hospitales": "Hospitales",
+  "/catalogos": "Catálogos",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",
-};
+}

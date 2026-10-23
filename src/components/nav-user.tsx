@@ -1,52 +1,53 @@
-import { useNavigate } from "react-router-dom";
-import { ChevronsUpDown, LogOut } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom"
+import { ChevronsUpDown, LogOut } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar";
-import { useAuthStore } from "@/store/auth-store";
-import type { User, UserRole } from "@/types";
+} from "@/components/ui/sidebar"
+import { useAuthStore } from "@/store/auth-store"
+import type { User, UserRole } from "@/types"
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
+  FOUNDATION: "Fundación",
   AGENT: "Agente",
   VOLUNTEER: "Voluntario",
-};
+}
 
 function getInitials(email: string): string {
-  const localPart = email.split("@")[0];
+  const localPart = email.split("@")[0]
   return localPart
     .split(/[._-]/)
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase()
 }
 
 interface NavUserProps {
-  user: User;
+  user: User
 }
 
 export function NavUser({ user }: NavUserProps) {
-  const { isMobile } = useSidebar();
-  const navigate = useNavigate();
-  const logout = useAuthStore((s) => s.logout);
+  const { isMobile } = useSidebar()
+  const navigate = useNavigate()
+  const logout = useAuthStore((s) => s.logout)
 
-  const initials = getInitials(user.email);
+  const initials = getInitials(user.email)
 
-  function handleLogout() {
-    logout();
-    navigate("/login");
+  async function handleLogout() {
+    await logout()
+    navigate("/login")
   }
 
   return (
@@ -106,5 +107,5 @@ export function NavUser({ user }: NavUserProps) {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  );
+  )
 }

@@ -9,7 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Building2, MapPin, MoreHorizontal, Pencil, Power, PowerOff } from "lucide-react";
-import type { HealthCenter } from "@/types";
+import type { HealthCenter } from "@/api/health-centers";
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog";
 
 const departmentLabels: Record<string, string> = {
   AMAZONAS: "Amazonas",
@@ -40,13 +41,23 @@ const departmentLabels: Record<string, string> = {
 };
 
 interface HealthCenterColumnsOptions {
-  patientCounts: Map<string, number>;
   onEdit: (center: HealthCenter) => void;
   onToggleActive: (center: HealthCenter) => void;
 }
 
+function HealthCenterCategoryCell({ code }: { code: string | null }) {
+  const { data: items = [] } = useCatalog("health_center_category");
+  if (!code) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="text-sm text-muted-foreground">
+      {catalogLabel(items, code)}
+    </span>
+  );
+}
+
 export function healthCenterColumns({
-  patientCounts,
   onEdit,
   onToggleActive,
 }: HealthCenterColumnsOptions): ColumnDef<HealthCenter>[] {
@@ -81,6 +92,14 @@ export function healthCenterColumns({
       },
     },
     {
+      accessorKey: "category",
+      header: "Categoría",
+      cell: ({ getValue }) => {
+        const category = getValue() as HealthCenter["category"];
+        return <HealthCenterCategoryCell code={category} />;
+      },
+    },
+    {
       accessorKey: "isActive",
       header: "Estado",
       cell: ({ getValue }) => {
@@ -103,7 +122,7 @@ export function healthCenterColumns({
       id: "patientCount",
       header: "Pacientes",
       cell: ({ row }) => {
-        const count = patientCounts.get(row.original.id) ?? 0;
+        const count = row.original.patientCount ?? 0;
         return (
           <span className="text-sm font-medium text-foreground tabular-nums">
             {count}

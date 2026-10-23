@@ -2,20 +2,28 @@ import { useEnrollmentStore } from "../../_store/enrollment-store"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldCheck, Users } from "lucide-react"
-import { StepHeader, SectionHeader, StepNav } from "../shared"
+import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
-export function Step2Consent() {
+export function Step2Consent({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep, setRejection } = useEnrollmentStore()
   const meta = draft.enrollmentMetadata
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); nextStep() }} className="flex flex-col gap-8">
+    <StepContainer
+      embedded={embedded}
+      onSubmit={(e) => { e.preventDefault(); nextStep() }}
+      className="flex flex-col gap-8"
+    >
       <StepHeader step={2} title="Consentimiento de Datos" description="Verifique el acuerdo del paciente con la política de datos." />
       <div className="flex flex-col gap-6">
         <SectionHeader icon={ShieldCheck} title="Autorización de Datos" />
         <div className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">Acuerdo con la política de datos <span className="text-destructive">*</span></Label>
           <Select
+            items={[
+              { value: "Sí", label: "Sí, está de acuerdo" },
+              { value: "No", label: "No, no está de acuerdo" },
+            ]}
             value={meta.dataPolicyAccepted === true ? "Sí" : meta.dataPolicyAccepted === false ? "No" : ""}
             onValueChange={(v) => {
               if (v === "No") { updateDraft({ enrollmentMetadata: { ...meta, dataPolicyAccepted: false } }); setRejection("q3_no"); return }
@@ -33,15 +41,19 @@ export function Step2Consent() {
         <div className="flex flex-col gap-2">
           <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70">¿Afiliación para usted o para un familiar? <span className="text-destructive">*</span></Label>
           <Select
-            value={meta.affiliationType ?? "" as any}
-            onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, affiliationType: v }, patientData: { ...draft.patientData, role: v === "PATIENT" ? "PATIENT" : "COMPANION" } })}
+            items={[
+              { value: "PATIENT", label: "Para mí — soy el paciente" },
+              { value: "FAMILY", label: "Para un tercero — familiar o amigo" },
+            ]}
+            value={meta.affiliationType ?? ""}
+            onValueChange={(v) => updateDraft({ enrollmentMetadata: { ...meta, affiliationType: v as "PATIENT" | "FAMILY" | undefined }, patientData: { ...draft.patientData, role: v === "PATIENT" ? "PATIENT" : "COMPANION" } })}
           >
             <SelectTrigger className="w-full bg-card border"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
             <SelectContent><SelectItem value="PATIENT">Para mí — soy el paciente</SelectItem><SelectItem value="FAMILY">Para un tercero — familiar o amigo</SelectItem></SelectContent>
           </Select>
         </div>
       </div>
-      <StepNav currentStep={2} onPrev={prevStep} />
-    </form>
+      {!embedded && <StepNav currentStep={2} onPrev={prevStep} />}
+    </StepContainer>
   )
 }

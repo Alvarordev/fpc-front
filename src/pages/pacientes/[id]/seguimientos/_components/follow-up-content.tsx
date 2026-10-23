@@ -1,0 +1,1282 @@
+import { useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  Pencil,
+  RotateCcw,
+  Save,
+  X,
+} from "lucide-react"
+import { toast } from "sonner"
+import { agentsApi } from "@/api/agents"
+import { alertsApi } from "@/api/alerts"
+import { followUpsApi, type FollowUp } from "@/api/follow-ups"
+import {
+  patientTimelineApi,
+  type PatientTimelineEvent,
+} from "@/api/patient-timeline"
+import {
+  patientsApi,
+  type PatientDetailsInput,
+  type PatientDiagnosis,
+  type PatientHealthPhase,
+  type PatientHealthSubcategory,
+  type PatientTreatment,
+} from "@/api/patients"
+import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
+import { nonOncologicalFollowUpsApi } from "@/api/non-oncological-follow-ups"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { useAuthStore } from "@/store/auth-store"
+import { ScheduleFollowUpDialog } from "../../_components/schedule-follow-up-dialog"
+import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
+import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
+import { ClinicalDataTabs } from "./clinical-data-tabs"
+import {
+  draftDiagnosisIdFromOption,
+  hasAnyClinicalDraft,
+  isDraftDiagnosisOptionId,
+} from "./clinical-drafts"
+import { CreateAlertDialog } from "./create-alert-dialog"
+import { ClinicalRecordDetailDialog } from "./clinical-record-detail-dialog"
+import { FollowUpAside } from "./follow-up-aside"
+import {
+  ReminderFormDialog,
+  type ReminderFormValues,
+} from "../../_components/reminder-form-dialog"
+import {
+  resolveSpecialty,
+  resolveSpecialtyLabel,
+} from "@/components/medical-appointment-fields"
+import { CatalogValue } from "@/components/catalog-select"
+import { catalogSelectItems, useCatalog } from "@/hooks/use-catalog"
+import { usePatient } from "../../_hooks/use-patient"
+import { normalizeDuration, toDurationInput } from "@/types/duration"
+import {
+  FollowUpStatusConfirmationDialog,
+  type FollowUpStatusAction,
+} from "./follow-up-status-confirmation-dialog"
+import { FollowUpOutcomes } from "../../_components/follow-up-outcomes"
+import {
+  followUpNotesKey,
+  useFollowUpDraftStore,
+} from "../_store/follow-up-draft-store"
+import {
+  patientHealthSubcategoryPhase,
+  requiresActiveDiagnosis,
+} from "@/lib/patient-health-subcategory"
+import { patientTabUrl } from "../../_lib/patient-tabs"
+import {
+  followUpPurposeLabels,
+  followUpStatusClasses,
+  followUpStatusLabels,
+  followUpTypeLabels,
+} from "@/lib/follow-up-labels"
+
+type EditableFollowUpStatus = Exclude<FollowUp["status"], "SCHEDULED">
+
+const EDITABLE_STATUS_OPTIONS = [
+  { value: "COMPLETED", label: "Completado" },
+  { value: "NO_ANSWER", label: "No contestó" },
+  { value: "CANCELLED", label: "Cancelado" },
+] as const
+
+const NO_SUBCATEGORY_VALUE = "UNASSIGNED"
+
+function isClosedFollowUpStatus(
+  status: FollowUp["status"],
+): status is EditableFollowUpStatus {
+  return status !== "SCHEDULED"
+}
+
+export function FollowUpContent() {
+  const { id: patientId, followUpId } = useParams<{
+    id: string
+    followUpId: string
+  }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const [editingFollowUpId, setEditingFollowUpId] = useState<string | null>(
+    null,
+  )
+  const [editStatusDraft, setEditStatusDraft] = useState<{
+    followUpId: string
+    value: EditableFollowUpStatus
+  } | null>(null)
+  const [nextOpen, setNextOpen] = useState(false)
+  const [psychooncologyOpen, setPsychooncologyOpen] = useState(false)
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
+  const [statusConfirmation, setStatusConfirmation] = useState<{
+    action: FollowUpStatusAction
+    source: "open" | "edit"
+  } | null>(null)
+  const [selectedDiagnosis, setSelectedDiagnosis] =
+    useState<PatientDiagnosis | null>(null)
+  const [selectedTreatment, setSelectedTreatment] =
+    useState<PatientTreatment | null>(null)
+
+  const draftStore = useFollowUpDraftStore()
+  const {
+    notesDrafts,
+    clinical: clinicalDrafts,
+    psico: psicoDraft,
+    alert: alertDraft,
+    nextFollowUp: nextFollowUpDraft,
+    reminders: reminderDrafts,
+  } = draftStore
+
+  useEffect(() => {
+    if (followUpId) useFollowUpDraftStore.getState().ensureFollowUp(followUpId)
+  }, [followUpId])
+
+  const canManage =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT"
+  const requiresAgentSelection =
+    user?.role === "ADMIN" || user?.role === "FOUNDATION"
+
+  const followUpQuery = useQuery({
+    queryKey: ["follow-up", followUpId],
+    queryFn: () => followUpsApi.getById(followUpId!),
+    enabled: Boolean(followUpId),
+  })
+  const patientTimelineQuery = useQuery({
+    queryKey: ["patient-timeline", patientId],
+    queryFn: () => patientTimelineApi.list(patientId!),
+    enabled: Boolean(patientId),
+  })
+  const agentsQuery = useQuery({
+    queryKey: ["agents"],
+    queryFn: agentsApi.list,
+    enabled: canManage,
+    staleTime: 60_000,
+  })
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
+  const patientQuery = usePatient(patientId ?? "")
+  useEffect(() => {
+    const records = patientQuery.data?.nonOncologicalFollowUps ?? []
+    const record =
+      records.find((item) => item.followUpId === followUpId) ??
+      records.find((item) => item.status === "ACTIVE")
+    if (!record) return
+    const current =
+      useFollowUpDraftStore.getState().clinical.nonOncologicalFollowUp
+    if (current?.id === record.id) return
+    useFollowUpDraftStore.getState().updateClinical((previous) => ({
+      ...previous,
+      nonOncologicalFollowUp: {
+        id: record.id,
+        diagnosticStatusEventId: record.diagnosticStatusEventId,
+        diagnosis: record.diagnosis,
+        occurredOn: record.occurredOn,
+        receivesTreatment: record.receivesTreatment,
+        treatmentName: record.treatmentName,
+        medication: record.medication,
+        treatmentFrequency: normalizeDuration(record.treatmentFrequency),
+        hasControls: record.hasControls,
+        controlSpecialty: record.controlSpecialty,
+        controlPeriodicity: normalizeDuration(record.controlPeriodicity),
+        status: record.status,
+        dischargedOn: record.dischargedOn,
+        dischargeReason: record.dischargeReason,
+      },
+    }))
+  }, [followUpId, patientQuery.data?.nonOncologicalFollowUps])
+  const healthSubcategoryMutation = useMutation({
+    mutationFn: (subcategory: PatientHealthSubcategory | null) =>
+      patientsApi.updateDetails(patientId!, {
+        healthSubcategory: subcategory,
+        healthPhase:
+          subcategory !== null
+            ? patientHealthSubcategoryPhase[subcategory]
+            : (patientQuery.data?.details?.healthPhase ?? undefined),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["patient-profile", patientId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["patients"] }),
+        queryClient.invalidateQueries({ queryKey: ["agenda-patients"] }),
+      ])
+      toast.success("Subcategoría del paciente actualizada")
+    },
+    onError: (error: Error) => {
+      toast.error("No se pudo actualizar la subcategoría", {
+        description: error.message,
+      })
+    },
+  })
+  const notesKey = followUpId ? followUpNotesKey(user?.id, followUpId) : null
+  const hasNotesDraft = notesKey
+    ? Object.prototype.hasOwnProperty.call(notesDrafts, notesKey)
+    : false
+  const notes =
+    hasNotesDraft && notesKey
+      ? notesDrafts[notesKey]
+      : (followUpQuery.data?.notes ?? "")
+  const editStatus: EditableFollowUpStatus =
+    editStatusDraft && editStatusDraft.followUpId === followUpId
+      ? editStatusDraft.value
+      : followUpQuery.data?.status && followUpQuery.data.status !== "SCHEDULED"
+        ? followUpQuery.data.status
+        : "COMPLETED"
+  const isEditing = editingFollowUpId === followUpId
+
+  function setNotes(value: string) {
+    if (!notesKey) return
+    draftStore.setNotes(notesKey, value)
+  }
+
+  function setEditStatus(value: EditableFollowUpStatus) {
+    if (!followUpId) return
+    setEditStatusDraft({ followUpId, value })
+  }
+  const updateMutation = useMutation({
+    mutationFn: ({
+      status,
+      completedAt,
+    }: {
+      status: "COMPLETED" | "CANCELLED" | "NO_ANSWER"
+      completedAt?: string
+    }) =>
+      followUpsApi.update(followUpId!, {
+        status,
+        notes: notes.trim(),
+        completedAt,
+      }),
+  })
+  const editMutation = useMutation({
+    mutationFn: () =>
+      followUpsApi.update(followUpId!, {
+        status: editStatus,
+        notes: notes.trim(),
+        ...(editStatus !== followUpQuery.data?.status
+          ? {
+              completedAt:
+                editStatus === "COMPLETED"
+                  ? new Date().toISOString()
+                  : undefined,
+            }
+          : {}),
+      }),
+  })
+  const isStatusPending =
+    isCompleting || updateMutation.isPending || editMutation.isPending
+
+  async function refreshAfterFollowUpUpdate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["follow-up", followUpId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-timeline", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-follow-ups", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-profile", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-diagnostic-status-current", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-summary", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-addresses", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-social-notes", patientId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-appointments"],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["agent-follow-ups"] }),
+    ])
+  }
+
+  if (!followUpId) {
+    return (
+      <MissingFollowUp
+        onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      />
+    )
+  }
+
+  if (followUpQuery.isLoading) {
+    return (
+      <div className="text-muted-foreground flex h-64 items-center justify-center text-sm">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        Cargando seguimiento...
+      </div>
+    )
+  }
+
+  if (followUpQuery.isError || !followUpQuery.data) {
+    return (
+      <MissingFollowUp
+        onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      />
+    )
+  }
+
+  const followUp = followUpQuery.data
+  if (followUp.subjectPatientId !== patientId)
+    return (
+      <MissingFollowUp
+        onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      />
+    )
+  const isOpen = followUp.status === "SCHEDULED"
+  const canEditClosed = canManage && !isOpen
+  const followUpTimelineEvent = patientTimelineQuery.data?.data.find(
+    (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
+      event.kind === "FOLLOW_UP" && event.followUpId === followUp.id,
+  )
+  const patientSubcategory =
+    patientQuery.data?.details?.healthSubcategory ?? null
+  const currentDiagnosis = patientQuery.data?.diagnoses.find(
+    (diagnosis) => diagnosis.isCurrent,
+  )
+  const healthPhase = patientQuery.data?.details?.healthPhase ?? null
+  const hasActiveDiagnosis = Boolean(currentDiagnosis)
+  const canEditSubcategory = canManage && patientQuery.data?.role === "PATIENT"
+  const healthSubcategoryControl = (
+    <PatientHealthSubcategoryControl
+      value={patientSubcategory}
+      healthPhase={healthPhase}
+      hasActiveDiagnosis={hasActiveDiagnosis}
+      isPending={healthSubcategoryMutation.isPending}
+      disabled={!canEditSubcategory}
+      onChange={(subcategory) => healthSubcategoryMutation.mutate(subcategory)}
+    />
+  )
+
+  function resolveNextFollowUpAgentId(values: ScheduleFollowUpFormValues) {
+    const ownAgent = agentsQuery.data?.find(
+      (agent) => agent.userId === user?.id,
+    )
+    return requiresAgentSelection ? values.agentId : ownAgent?.id
+  }
+
+  /** Persist every drafted change, in order, when the follow-up is completed. */
+  async function commitDrafts() {
+    const details: PatientDetailsInput = {
+      ...clinicalDrafts.details,
+      ...clinicalDrafts.social,
+    }
+    if (Object.keys(details).length > 0) {
+      await patientsApi.updateDetails(patientId!, details)
+    }
+
+    const newDiagnosisIds = new Map<string, string>()
+    for (const diagnosisDecision of clinicalDrafts.diagnoses ?? []) {
+      const {
+        draftId,
+        mode,
+        replacementDiagnosisId,
+        waitTimeForDiagnosisManuallyEdited,
+        remembersWaitTimeForDiagnosis,
+        changeReason,
+        ...diagnosisDraft
+      } = diagnosisDecision
+      const waitTimeForDiagnosis = remembersWaitTimeForDiagnosis === false
+        ? null
+        : waitTimeForDiagnosisManuallyEdited
+          ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
+          : diagnosisDraft.firstSymptomsDate && diagnosisDraft.diagnosisDate
+            ? undefined
+            : toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
+      if (
+        remembersWaitTimeForDiagnosis !== false &&
+        diagnosisDraft.waitTimeForDiagnosis?.valueMin !== undefined &&
+        !waitTimeForDiagnosis
+      )
+        throw new Error(
+          "Completa correctamente el tiempo de espera para el diagnóstico",
+        )
+
+      const created = await patientsApi.createDiagnosis(patientId!, {
+        ...diagnosisDraft,
+        mode,
+        ...(mode === "REPLACE" ? { replacementDiagnosisId } : {}),
+        changeReason,
+        waitTimeForDiagnosis,
+        followUpId: followUpId!,
+      })
+      newDiagnosisIds.set(draftId, created.id)
+    }
+
+    for (const treatmentDraft of clinicalDrafts.treatments ?? []) {
+      const diagnosisId = isDraftDiagnosisOptionId(treatmentDraft.diagnosisId)
+        ? newDiagnosisIds.get(
+            draftDiagnosisIdFromOption(treatmentDraft.diagnosisId),
+          )
+        : treatmentDraft.diagnosisId
+
+      if (!diagnosisId) continue
+      if (treatmentDraft.mode === "REPLACE" && !treatmentDraft.seriesId) {
+        throw new Error("Selecciona el tratamiento que deseas actualizar")
+      }
+
+      const normalizedFrequency = toDurationInput(
+        treatmentDraft.treatmentFrequency,
+      )
+      if (treatmentDraft.treatmentFrequency && !normalizedFrequency) {
+        throw new Error("Completa correctamente la frecuencia del tratamiento")
+      }
+
+      const normalizedMedications = treatmentDraft.medications?.map(
+        (medication) => ({
+          ...medication,
+          frequency: toDurationInput(medication.frequency),
+        }),
+      )
+
+      await patientsApi.createTreatment(patientId!, {
+        diagnosisId,
+        treatmentType: treatmentDraft.treatmentType,
+        followUpId: followUpId!,
+        seriesId:
+          treatmentDraft.mode === "REPLACE"
+            ? treatmentDraft.seriesId
+            : undefined,
+        isReferred: treatmentDraft.isReferred,
+        sourceHealthCenterId: treatmentDraft.sourceHealthCenterId,
+        receivingHealthCenterId: treatmentDraft.receivingHealthCenterId,
+        startDate: treatmentDraft.startDate,
+        endDate: treatmentDraft.endDate,
+        changeReason: treatmentDraft.changeReason,
+        notReceivingReason: treatmentDraft.notReceivingReason,
+        ...(treatmentDraft.treatmentType === "CIRUGIA"
+          ? { operationName: treatmentDraft.operationName }
+          : {}),
+        ...(treatmentDraft.treatmentType === "QUIMIOTERAPIA"
+          ? { chemotherapyRoute: treatmentDraft.chemotherapyRoute }
+          : {}),
+        careProgram: treatmentDraft.careProgram,
+        receivesTeleconsultation: treatmentDraft.receivesTeleconsultation,
+        teleconsultationNote:
+          treatmentDraft.receivesTeleconsultation === true
+            ? treatmentDraft.teleconsultationNote
+            : undefined,
+        teleconsultationSpecialties:
+          treatmentDraft.receivesTeleconsultation === true
+            ? treatmentDraft.teleconsultationSpecialties
+            : undefined,
+        treatmentSituation: treatmentDraft.treatmentSituation,
+        treatmentAbandonmentReason:
+          treatmentDraft.treatmentSituation === "ABANDONED"
+            ? treatmentDraft.treatmentAbandonmentReason
+            : undefined,
+        interruptionReason: treatmentDraft.interruptionReason,
+        interruptionReasonOther: treatmentDraft.interruptionReasonOther,
+        treatmentViaSepa: treatmentDraft.treatmentViaSepa,
+        scheduledSessions: treatmentDraft.scheduledSessions,
+        completedSessions: treatmentDraft.completedSessions,
+        hormonalTreatmentCompleted: treatmentDraft.hormonalTreatmentCompleted,
+        accessBarrierCode: treatmentDraft.accessBarrierCode,
+        accessBarrierOther: treatmentDraft.accessBarrierOther,
+        orientedRegardingBarriers: treatmentDraft.orientedRegardingBarriers,
+        hasLatestPrescription: treatmentDraft.hasLatestPrescription,
+        latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
+        treatmentFrequency: normalizedFrequency,
+        ...(normalizedMedications?.length
+          ? { medications: normalizedMedications }
+          : {}),
+      })
+    }
+
+    for (const note of clinicalDrafts.socialNotes ?? []) {
+      await patientsApi.createSocialNote(patientId!, {
+        followUpId: followUpId!,
+        type: note.type,
+        note: note.note,
+      })
+    }
+
+    if (clinicalDrafts.symptomReport) {
+      const {
+        symptomDuration,
+        symptomFrequency,
+        diagnosisSearchDuration,
+        reportedTreatmentFrequency,
+        ...symptomReportDraft
+      } = clinicalDrafts.symptomReport
+      const normalizedDuration = toDurationInput(symptomDuration)
+      const normalizedFrequency = toDurationInput(symptomFrequency)
+      const normalizedDiagnosisSearchDuration = toDurationInput(
+        diagnosisSearchDuration,
+      )
+      const normalizedReportedTreatmentFrequency = toDurationInput(
+        reportedTreatmentFrequency,
+      )
+      if (symptomDuration?.valueMin !== undefined && !normalizedDuration)
+        throw new Error("Completa correctamente la duración de los síntomas")
+      if (symptomFrequency?.valueMin !== undefined && !normalizedFrequency)
+        throw new Error("Completa correctamente la frecuencia de los síntomas")
+      if (
+        diagnosisSearchDuration?.valueMin !== undefined &&
+        !normalizedDiagnosisSearchDuration
+      )
+        throw new Error("Completa correctamente el tiempo de búsqueda")
+      if (
+        reportedTreatmentFrequency?.valueMin !== undefined &&
+        !normalizedReportedTreatmentFrequency
+      )
+        throw new Error("Completa correctamente la frecuencia del tratamiento")
+
+      await patientsApi.createSymptomReport(patientId!, {
+        ...symptomReportDraft,
+        symptomDuration: normalizedDuration,
+        symptomFrequency: normalizedFrequency,
+        diagnosisSearchDuration: normalizedDiagnosisSearchDuration,
+        reportedTreatmentFrequency: normalizedReportedTreatmentFrequency,
+        followUpId: followUpId!,
+      })
+    }
+
+    let diagnosticStatusEventId =
+      clinicalDrafts.nonOncologicalFollowUp?.diagnosticStatusEventId
+    const diagnosticStatusDraft = clinicalDrafts.diagnosticStatus
+    if (diagnosticStatusDraft) {
+      if (diagnosticStatusDraft.eventId) {
+        diagnosticStatusEventId = diagnosticStatusDraft.eventId
+      } else {
+        if (
+          diagnosticStatusDraft.status === "CONFIRMED" &&
+          !diagnosticStatusDraft.diagnosis?.trim()
+        )
+          throw new Error("Indica el diagnóstico formal")
+
+        const event = await patientsApi.transitionDiagnosticStatus(patientId!, {
+          status: diagnosticStatusDraft.status,
+          followUpId: followUpId!,
+          ...(diagnosticStatusDraft.status === "CONFIRMED"
+            ? {
+                diagnosis: {
+                  diagnosis: diagnosticStatusDraft.diagnosis!.trim(),
+                  mode: "PARALLEL",
+                },
+                healthSubcategory:
+                  diagnosticStatusDraft.healthSubcategory ??
+                  "ACTIVE_TREATMENT",
+              }
+            : {}),
+          supportedBySepa: diagnosticStatusDraft.supportedBySepa,
+          notes: diagnosticStatusDraft.notes?.trim() || undefined,
+        })
+        diagnosticStatusEventId = event.id
+        useFollowUpDraftStore.getState().updateClinical((previous) =>
+          previous.diagnosticStatus?.status === diagnosticStatusDraft.status
+            ? {
+                ...previous,
+                diagnosticStatus: {
+                  ...previous.diagnosticStatus,
+                  eventId: event.id,
+                },
+              }
+            : previous,
+        )
+      }
+    }
+
+    if (
+      clinicalDrafts.nonOncologicalFollowUp &&
+      (!diagnosticStatusDraft || diagnosticStatusDraft.status === "RULED_OUT")
+    ) {
+      const record = clinicalDrafts.nonOncologicalFollowUp
+      const treatmentFrequency = toDurationInput(record.treatmentFrequency)
+      const controlPeriodicity = toDurationInput(record.controlPeriodicity)
+      if (
+        record.treatmentFrequency?.valueMin !== undefined &&
+        !treatmentFrequency
+      )
+        throw new Error("Completa correctamente la frecuencia del tratamiento")
+      if (
+        record.controlPeriodicity?.valueMin !== undefined &&
+        !controlPeriodicity
+      )
+        throw new Error("Completa correctamente la periodicidad de controles")
+      const input = {
+        diagnosis: record.diagnosis.trim(),
+        followUpId,
+        diagnosticStatusEventId,
+        occurredOn: record.occurredOn || undefined,
+        receivesTreatment: record.receivesTreatment,
+        treatmentName:
+          record.receivesTreatment === false ? undefined : record.treatmentName,
+        medication:
+          record.receivesTreatment === false ? undefined : record.medication,
+        treatmentFrequency,
+        hasControls: record.hasControls,
+        controlSpecialty:
+          record.hasControls === true ? record.controlSpecialty : undefined,
+        controlPeriodicity,
+        status: record.status,
+        dischargedOn: record.dischargedOn,
+        dischargeReason: record.dischargeReason,
+      }
+      if (record.id)
+        await nonOncologicalFollowUpsApi.update(patientId!, record.id, input)
+      else await nonOncologicalFollowUpsApi.create(patientId!, input)
+    }
+
+    if (clinicalDrafts.insurance) {
+      await patientsApi.createInsurance(patientId!, {
+        ...clinicalDrafts.insurance,
+        followUpId: followUpId!,
+      })
+    }
+    if (clinicalDrafts.sisAffiliation) {
+      await patientsApi.createSisAffiliation(patientId!, {
+        ...clinicalDrafts.sisAffiliation,
+        followUpId: followUpId!,
+      })
+    }
+    if (clinicalDrafts.healthBackground) {
+      await patientsApi.createHealthBackgroundAssessment(patientId!, {
+        ...clinicalDrafts.healthBackground,
+        followUpId: followUpId!,
+      })
+    }
+    if (clinicalDrafts.address) {
+      await patientsApi.createAddress(patientId!, {
+        ...clinicalDrafts.address,
+        followUpId: followUpId!,
+      })
+    }
+
+    if (alertDraft) {
+      await alertsApi.create({
+        healthCenterId: alertDraft.healthCenterId,
+        followUpId: followUpId!,
+        subjectPatientId: followUp.subjectPatientId,
+        interlocutorId: followUp.interlocutorId,
+        title: alertDraft.title,
+        description: alertDraft.description,
+        severity: alertDraft.severity,
+        category: alertDraft.category,
+      })
+    }
+
+    if (psicoDraft) {
+      try {
+        await psychooncologyAppointmentsApi.create(psicoDraft)
+      } catch (error) {
+        toast.error("No se pudo agendar la cita de psicooncología", {
+          description: (error as Error).message,
+        })
+      }
+    }
+
+    if (nextFollowUpDraft) {
+      const agentId = resolveNextFollowUpAgentId(nextFollowUpDraft)
+      if (agentId) {
+        await followUpsApi.scheduleNext(followUpId!, {
+          subjectPatientId: followUp.subjectPatientId,
+          interlocutorId: followUp.interlocutorId,
+          agentId,
+          type: nextFollowUpDraft.type,
+          purpose: nextFollowUpDraft.purpose,
+          scheduledAt: `${nextFollowUpDraft.date}T${nextFollowUpDraft.time}:00`,
+          notes: nextFollowUpDraft.notes || undefined,
+        })
+      }
+    }
+
+    for (const reminder of reminderDrafts) {
+      try {
+        await followUpsApi.createReminder(followUpId!, {
+          subjectPatientId: followUp.subjectPatientId,
+          dueAt: new Date(reminder.dueAt).toISOString(),
+          description: reminder.description,
+          assignedAgentId: followUp.agentId,
+          createdFromFollowUpId: followUpId,
+          kind: reminder.kind,
+          medicalAppointment:
+            reminder.kind === "MEDICAL_APPOINTMENT"
+              ? reminder.medicalAppointment
+              : undefined,
+        })
+      } catch (error) {
+        toast.error("No se pudo crear un recordatorio", {
+          description: (error as Error).message,
+        })
+      }
+    }
+  }
+
+  async function handleComplete() {
+    setIsCompleting(true)
+    try {
+      await commitDrafts()
+      await updateMutation.mutateAsync({
+        status: "COMPLETED",
+        completedAt: new Date().toISOString(),
+      })
+      draftStore.reset(notesKey ?? undefined)
+      await refreshAfterFollowUpUpdate()
+      toast.success("Seguimiento completado")
+    } catch (error) {
+      toast.error("No se pudo completar el seguimiento", {
+        description: (error as Error).message,
+      })
+    } finally {
+      setIsCompleting(false)
+      setStatusConfirmation(null)
+    }
+  }
+
+  async function handleDiscardStatus(status: "CANCELLED" | "NO_ANSWER") {
+    setIsCompleting(true)
+    try {
+      await updateMutation.mutateAsync({ status })
+      draftStore.reset(notesKey ?? undefined)
+      await refreshAfterFollowUpUpdate()
+      toast.success("Seguimiento actualizado")
+    } catch (error) {
+      toast.error("No se pudo actualizar el seguimiento", {
+        description: (error as Error).message,
+      })
+    } finally {
+      setIsCompleting(false)
+      setStatusConfirmation(null)
+    }
+  }
+
+  function requestStatusChange(status: FollowUpStatusAction) {
+    if (isCompleting || updateMutation.isPending) return
+    setStatusConfirmation({ action: status, source: "open" })
+  }
+
+  async function confirmStatusChange() {
+    if (!statusConfirmation) return
+    if (statusConfirmation.source === "edit") {
+      await handleEditSave()
+    } else if (statusConfirmation.action === "COMPLETED") {
+      await handleComplete()
+    } else {
+      await handleDiscardStatus(statusConfirmation.action)
+    }
+  }
+
+  function startEditing() {
+    if (!canEditClosed || !isClosedFollowUpStatus(followUp.status)) return
+
+    setEditStatus(followUp.status)
+    setEditingFollowUpId(followUp.id)
+  }
+
+  function cancelEditing() {
+    if (!isClosedFollowUpStatus(followUp.status)) return
+
+    if (notesKey) draftStore.clearNotes(notesKey)
+    setEditStatus(followUp.status)
+    setEditingFollowUpId(null)
+  }
+
+  async function handleEditSave() {
+    try {
+      const updated = await editMutation.mutateAsync()
+      if (notesKey) draftStore.clearNotes(notesKey)
+      if (isClosedFollowUpStatus(updated.status)) setEditStatus(updated.status)
+      await refreshAfterFollowUpUpdate()
+      setEditingFollowUpId(null)
+      toast.success("Seguimiento actualizado")
+    } catch (error) {
+      toast.error("No se pudo guardar el seguimiento", {
+        description: (error as Error).message,
+      })
+    } finally {
+      setStatusConfirmation(null)
+    }
+  }
+
+  function requestEditSave() {
+    if (editMutation.isPending) return
+    if (editStatus !== followUp.status) {
+      setStatusConfirmation({ action: editStatus, source: "edit" })
+      return
+    }
+    void handleEditSave()
+  }
+
+  function addReminderDraft(values: ReminderFormValues) {
+    const specialty = resolveSpecialty(values.medicalAppointment)
+    const specialtyLabel = resolveSpecialtyLabel(
+      specialtyItems,
+      values.medicalAppointment,
+    )
+    draftStore.addReminder({
+      kind: values.kind,
+      description:
+        values.kind === "MEDICAL_APPOINTMENT"
+          ? values.description.trim() || `Cita: ${specialtyLabel}`
+          : values.description,
+      dueAt: values.dueAt,
+      medicalAppointment:
+        values.kind === "MEDICAL_APPOINTMENT"
+          ? {
+              specialty,
+              healthCenterId:
+                values.medicalAppointment.healthCenterId || undefined,
+              isFirstConsultation:
+                values.medicalAppointment.isFirstConsultation,
+            }
+          : undefined,
+    })
+    setReminderDialogOpen(false)
+  }
+
+  return (
+    <div className="mx-auto min-w-0 max-w-6xl space-y-5">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2 gap-1.5 text-xs"
+        onClick={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver al paciente
+      </Button>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="text-lg font-semibold tracking-tight">
+            {isOpen ? "Registrar seguimiento" : "Detalle del seguimiento"}
+          </h1>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {patientQuery.data?.fullName ? (
+              <span className="text-muted-foreground text-sm">
+                {patientQuery.data.fullName}
+              </span>
+            ) : null}
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${followUpStatusClasses[followUp.status]}`}
+            >
+              {followUpStatusLabels[followUp.status]}
+            </span>
+            {healthPhase ? (
+              <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800">
+                <CatalogValue kind="patient_health_phase" code={healthPhase} />
+              </span>
+            ) : null}
+            {currentDiagnosis?.diagnosis ? (
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+                <CatalogValue
+                  kind="cancer_diagnosis"
+                  code={currentDiagnosis.diagnosis}
+                />
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {canEditClosed && !isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={startEditing}
+            >
+              <Pencil className="size-3.5" />
+              Editar seguimiento
+            </Button>
+          )}
+          {isEditing ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={cancelEditing}
+                disabled={editMutation.isPending}
+                className="gap-1.5"
+              >
+                <X className="size-4" />
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={requestEditSave}
+                disabled={editMutation.isPending}
+                className="gap-1.5"
+              >
+                <Save className="size-4" />
+                {editMutation.isPending ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </>
+          ) : null}
+          {canManage && isOpen ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => requestStatusChange("CANCELLED")}
+                disabled={isStatusPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => requestStatusChange("NO_ANSWER")}
+                disabled={isStatusPending}
+              >
+                No contestó
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => requestStatusChange("COMPLETED")}
+                disabled={isStatusPending}
+                className="gap-1.5"
+              >
+                <CheckCircle2 className="size-4" />
+                {isStatusPending ? "Guardando..." : "Completar"}
+              </Button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <Card size="sm" className="min-w-0 border-border/60">
+        <CardContent className="space-y-5 pt-5">
+          {isEditing ? (
+            <div className="max-w-sm space-y-2">
+              <Label htmlFor="follow-up-edit-status">Estado</Label>
+              <Select
+                items={EDITABLE_STATUS_OPTIONS}
+                value={editStatus}
+                onValueChange={(value) => {
+                  if (value) setEditStatus(value as EditableFollowUpStatus)
+                }}
+              >
+                <SelectTrigger id="follow-up-edit-status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EDITABLE_STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <ReadOnlyField
+              label="Canal"
+              value={followUpTypeLabels[followUp.type] ?? "Sin especificar"}
+            />
+            <ReadOnlyField
+              label="Propósito"
+              value={
+                followUpPurposeLabels[followUp.purpose] ?? "Sin especificar"
+              }
+            />
+            {healthSubcategoryControl}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="follow-up-notes">Notas del seguimiento</Label>
+              {hasNotesDraft && notesKey && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => draftStore.clearNotes(notesKey)}
+                  disabled={isEditing ? editMutation.isPending : isStatusPending}
+                >
+                  <RotateCcw className="size-3" />
+                  Restablecer nota
+                </Button>
+              )}
+            </div>
+            <Textarea
+              id="follow-up-notes"
+              className="min-h-24 resize-y"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Registrá el resultado del seguimiento..."
+              disabled={
+                isEditing
+                  ? editMutation.isPending
+                  : !canManage || !isOpen
+              }
+            />
+          </div>
+
+          {canManage && isOpen ? (
+            <FollowUpAside
+              onPsicoOpen={() => setPsychooncologyOpen(true)}
+              hasPsicoDraft={Boolean(psicoDraft)}
+              onClearPsico={() => draftStore.clearPsico()}
+              onAlertOpen={() => setAlertOpen(true)}
+              hasAlertDraft={Boolean(alertDraft)}
+              onClearAlert={() => draftStore.clearAlert()}
+              onNextContactOpen={() => setNextOpen(true)}
+              hasNextContactDraft={Boolean(nextFollowUpDraft)}
+              onClearNextContact={() => draftStore.clearNextFollowUp()}
+              onReminderOpen={() => setReminderDialogOpen(true)}
+              reminderDrafts={reminderDrafts}
+              onRemoveReminder={(index) => draftStore.removeReminder(index)}
+            />
+          ) : null}
+
+          {(hasAnyClinicalDraft(clinicalDrafts) || hasNotesDraft) && isOpen && (
+            <p className="text-muted-foreground text-xs">
+              La nota se conserva en esta sesión hasta que la guardes o la
+              restablezcas. Los cambios de la ficha se guardan al completar el
+              seguimiento; si lo cancelás o marcás «No contestó», se descartan.
+            </p>
+          )}
+          {followUpTimelineEvent?.outcomes.length ? (
+            <FollowUpOutcomes
+              outcomes={followUpTimelineEvent.outcomes}
+              diagnoses={patientQuery.data?.diagnoses}
+              treatments={patientQuery.data?.treatments}
+              onViewDiagnosis={(diagnosis) => {
+                setSelectedTreatment(null)
+                setSelectedDiagnosis(diagnosis)
+              }}
+              onViewTreatment={(treatment) => {
+                setSelectedDiagnosis(null)
+                setSelectedTreatment(treatment)
+              }}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {canManage && isOpen ? (
+        <Card size="sm" className="min-w-0 border-border/60">
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 pb-3">
+            <CardTitle className="text-base">Ficha clínica</CardTitle>
+            <p className="text-muted-foreground max-w-[24rem] text-right text-xs">
+              Lo que escribas se conserva al cambiar de pestaña.
+            </p>
+          </CardHeader>
+          <CardContent className="min-w-0 pt-0 pb-5">
+            <ClinicalDataTabs
+              patientId={patientId!}
+              followUpId={followUpId}
+              drafts={clinicalDrafts}
+              onDraftsChange={(updater) => draftStore.updateClinical(updater)}
+              onViewDiagnosis={(diagnosis) => {
+                setSelectedTreatment(null)
+                setSelectedDiagnosis(diagnosis)
+              }}
+              onViewTreatment={(treatment) => {
+                setSelectedDiagnosis(null)
+                setSelectedTreatment(treatment)
+              }}
+              viewingDiagnosisId={selectedDiagnosis?.id}
+              viewingTreatmentId={selectedTreatment?.id}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <ReminderFormDialog
+        open={reminderDialogOpen}
+        onOpenChange={setReminderDialogOpen}
+        hideAgentSelection
+        draftMode
+        isPending={false}
+        onSave={addReminderDraft}
+      />
+
+      <ScheduleFollowUpDialog
+        open={nextOpen}
+        onOpenChange={setNextOpen}
+        onSubmit={async (values) => draftStore.setNextFollowUp(values)}
+        isPending={false}
+        agents={agentsQuery.data}
+        requiresAgentSelection={requiresAgentSelection}
+      />
+      <SchedulePsychooncologyDialog
+        open={psychooncologyOpen}
+        onOpenChange={setPsychooncologyOpen}
+        patientId={followUp.subjectPatientId}
+        followUpId={followUp.id}
+        isPending={false}
+        onSubmit={async (payload) => {
+          if (payload.mode === "create") {
+            draftStore.setPsico(payload.input)
+          }
+        }}
+      />
+      <CreateAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        isPending={false}
+        onSubmit={async (values) => draftStore.setAlert(values)}
+      />
+      <ClinicalRecordDetailDialog
+        patientId={patientId!}
+        diagnosis={selectedDiagnosis}
+        treatment={selectedTreatment}
+        open={Boolean(selectedDiagnosis || selectedTreatment)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedDiagnosis(null)
+            setSelectedTreatment(null)
+          }
+        }}
+      />
+      <FollowUpStatusConfirmationDialog
+        action={statusConfirmation?.action ?? null}
+        open={Boolean(statusConfirmation)}
+        isPending={isStatusPending}
+        onOpenChange={(open) => {
+          if (!open && !isStatusPending) setStatusConfirmation(null)
+        }}
+        onConfirm={confirmStatusChange}
+      />
+    </div>
+  )
+}
+
+function PatientHealthSubcategoryControl({
+  value,
+  healthPhase,
+  hasActiveDiagnosis,
+  isPending,
+  disabled = false,
+  onChange,
+}: {
+  value: PatientHealthSubcategory | null
+  healthPhase: PatientHealthPhase | null
+  hasActiveDiagnosis: boolean
+  isPending: boolean
+  disabled?: boolean
+  onChange: (value: PatientHealthSubcategory | null) => void
+}) {
+  const { data: subcategoryItems = [] } = useCatalog(
+    "patient_health_subcategory",
+  )
+  const catalogItems = catalogSelectItems(subcategoryItems)
+  const selectItems = [
+    { value: NO_SUBCATEGORY_VALUE, label: "Sin subcategoría" },
+    ...catalogItems,
+  ]
+  const selectedValue = value ?? NO_SUBCATEGORY_VALUE
+  const selectedPhase = value
+    ? patientHealthSubcategoryPhase[value]
+    : healthPhase
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor="patient-follow-up-health-subcategory">Subcategoría</Label>
+      <Select
+        items={selectItems}
+        value={selectedValue}
+        onValueChange={(nextValue) => {
+          if (!nextValue || nextValue === NO_SUBCATEGORY_VALUE) {
+            onChange(null)
+            return
+          }
+          onChange(nextValue as PatientHealthSubcategory)
+        }}
+        disabled={isPending || disabled}
+      >
+        <SelectTrigger
+          id="patient-follow-up-health-subcategory"
+          aria-label="Subcategoría del paciente"
+          className="w-full"
+        >
+          <SelectValue placeholder="Seleccionar subcategoría" />
+        </SelectTrigger>
+        <SelectContent className="max-h-72">
+          <SelectItem value={NO_SUBCATEGORY_VALUE}>Sin subcategoría</SelectItem>
+          {catalogItems.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              disabled={
+                requiresActiveDiagnosis(
+                  option.value as PatientHealthSubcategory,
+                ) && !hasActiveDiagnosis
+              }
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-muted-foreground text-[11px]">
+        Fase de salud:{" "}
+        {selectedPhase ? (
+          <CatalogValue kind="patient_health_phase" code={selectedPhase} />
+        ) : (
+          "Sin clasificar"
+        )}
+      </p>
+      {!hasActiveDiagnosis && !disabled && (
+        <p className="text-muted-foreground text-[11px]">
+          Agrega un diagnóstico activo para habilitar las subcategorías
+          oncológicas.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  const items = [{ value, label: value }]
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Select items={items} value={value} disabled>
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+      </Select>
+    </div>
+  )
+}
+
+function MissingFollowUp({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="space-y-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-xs"
+        onClick={onBack}
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver al paciente
+      </Button>
+      <p className="text-muted-foreground text-sm">
+        No se encontró el seguimiento solicitado.
+      </p>
+    </div>
+  )
+}

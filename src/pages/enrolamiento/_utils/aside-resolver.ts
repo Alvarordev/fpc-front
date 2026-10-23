@@ -1,70 +1,93 @@
-import type { AsideContent } from "../_components/enrollment-aside";
-import type { EnrollmentDraft } from "../_store/enrollment-store";
+import type { AsideContent } from "../_components/enrollment-aside"
+import type { EnrollmentDraft } from "../_store/enrollment-store"
+import type { CategoriaClinica } from "../_store/enrollment-store"
 
 function step5Conditionals(draft: EnrollmentDraft): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  if (draft.details.dniMatchesAddress === false) {
+  if (draft.addresses[0]?.dniMatchesAddress === false) {
     parts.push(
       "Información adicional si no coincide con su domicilio: Le recomendamos acercarse a RENIEC para actualizar la dirección registrada en su DNI, ya que en caso requiera ser referido a un establecimiento de salud de mayor complejidad, podría ser derivado a uno que no se encuentre cercano a su domicilio actual. Para ello deberá presentar su DNI vigente y un recibo de servicios (agua o luz) con una antigüedad no mayor a seis meses. En RENIEC le indicarán los procedimientos correspondientes. Asimismo, puede comunicarse a la línea 113, opción 4, para obtener mayor información.",
-    );
+    )
   }
 
   if (draft.insurance.insuranceType === "NONE") {
     parts.push(
       'Estimada(o), dentro de los próximos minutos le compartiremos un enlace para que pueda verificar qué tipo de seguro tiene: https://app1.susalud.gob.pe/registro/ Para ello deberá seguir los siguientes pasos:\n1. Hacer clic en "Nuevo usuario".\n2. Registrarse utilizando su DNI o CE.\n3. Hacer clic en "Grabar".\n4. Validar sus datos y revisar su correo electrónico.\n5. Volver a la página e iniciar sesión.',
-    );
+    )
   }
 
-  return parts.join("\n\n");
+  return parts.join("\n\n")
 }
 
-function step7Script(draft: EnrollmentDraft, categoriaClinica: "signos" | "diagnostico" | null): string {
-  const hasInsurance = draft.insurance.insuranceType !== "NONE";
-  const hasMedicalReport = draft.diagnosis.hasMedicalReport;
-  const hasSoughtConsultation = draft.symptomReport.hasSoughtMedicalConsultation;
+function step7Script(
+  draft: EnrollmentDraft,
+  categoriaClinica: CategoriaClinica,
+): string {
+  const hasInsurance = draft.insurance.insuranceType !== "NONE"
+  const hasMedicalReport = draft.diagnoses.some(
+    (diagnosis) => diagnosis.hasMedicalReport,
+  )
+  const hasMedicalConsultation =
+    draft.symptomReport.hasMedicalConsultation !== undefined
+      ? draft.symptomReport.hasMedicalConsultation
+      : draft.symptomReport.hasSoughtMedicalConsultation
 
   const baseScript = (() => {
     if (hasInsurance) {
-      if (categoriaClinica === "signos") {
-        return "Entiendo su situación. Dado que cuenta con seguro y presenta signos o síntomas, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+      if (categoriaClinica === "SIGNS_AND_SYMPTOMS") {
+        return "Entiendo su situación. Dado que cuenta con seguro y presenta signos o síntomas, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro."
       }
-      return "Entiendo su situación. Dado que cuenta con seguro y ya cuenta con un diagnóstico, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro.";
+      return "Entiendo su situación. Dado que cuenta con seguro y ya cuenta con un diagnóstico, nuestro equipo le brindará orientación para acceder a la atención médica correspondiente a través de su seguro."
     }
 
-    return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas.";
-  })();
+    return "Entiendo su situación. Dado que no cuenta con un seguro de salud, el personal del programa lo ayudará con el proceso de afiliación al SIS para que pueda acceder a sus atenciones médicas."
+  })()
 
   // Medical appointment guidance when patient hasn't sought consultation (signos only)
-  let medAppointmentGuidance = "";
-  if (categoriaClinica === "signos" && hasSoughtConsultation === false) {
-    const insuranceType = draft.insurance.insuranceType;
+  let medAppointmentGuidance = ""
+  if (
+    categoriaClinica === "SIGNS_AND_SYMPTOMS" &&
+    hasMedicalConsultation === false
+  ) {
+    const insuranceType = draft.insurance.insuranceType
     if (insuranceType === "ESSALUD") {
-      medAppointmentGuidance = "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — ESSALUD</strong>\n\nEstimado(a), al finalizar esta llamada le compartiremos un enlace donde podrá verificar dónde se atiende:\nhttps://dondemeatiendo.essalud.gob.pe/#/consulta\n\nPara la consulta deberá tener a la mano su DNI, CE o Permiso Temporal de Permanencia.";
+      medAppointmentGuidance =
+        "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — ESSALUD</strong>\n\nEstimado(a), al finalizar esta llamada le compartiremos un enlace donde podrá verificar dónde se atiende:\nhttps://dondemeatiendo.essalud.gob.pe/#/consulta\n\nPara la consulta deberá tener a la mano su DNI, CE o Permiso Temporal de Permanencia."
     } else if (insuranceType === "SIS") {
-      medAppointmentGuidance = "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — SIS</strong>\n\nConsultar el número de DNI y verificar el establecimiento a través del siguiente enlace:\nhttps://cel.sis.gob.pe/SisConsultaEnLinea\n\nPosteriormente enviar al paciente una captura de pantalla de su establecimiento de atención.";
+      medAppointmentGuidance =
+        "<strong>ORIENTACIÓN DE CONSULTA MÉDICA — SIS</strong>\n\nConsultar el número de DNI y verificar el establecimiento a través del siguiente enlace:\nhttps://cel.sis.gob.pe/SisConsultaEnLinea\n\nPosteriormente enviar al paciente una captura de pantalla de su establecimiento de atención."
     }
   }
 
-  const parts: string[] = [baseScript];
-  if (medAppointmentGuidance) parts.push(medAppointmentGuidance);
+  const parts: string[] = [baseScript]
+  if (medAppointmentGuidance) parts.push(medAppointmentGuidance)
+
+  if (categoriaClinica === "CANCER_DIAGNOSIS") {
+    const isPatientEnrollment =
+      draft.enrollmentMetadata.affiliationType === "PATIENT"
+    const psychooncologyScript = isPatientEnrollment
+      ? "<strong>PSICOONCOLOGÍA</strong>\n\nComéntele al paciente que la Fundación Peruana de Cáncer ofrece cuatro sesiones individuales de soporte emocional. Cada consulta tiene una duración de entre 30 y 45 minutos. Si requiere sesiones adicionales, se continuará según la indicación del profesional de psicooncología y la autorización de la Fundación; el costo social se encuentra en evaluación.\n\nTambién puede participar de forma ilimitada en las sesiones grupales de la alianza Desde el Jardín de los Cerezos. El asesor confirmará la fecha y hora de la consulta en un plazo máximo de 48 horas, según la solicitud y necesidad del paciente. Lo óptimo es que transcurran de 5 a 7 días calendario entre las sesiones individuales.\n\nSi el paciente es pediátrico, los padres decidirán quién lo acompañará a las consultas. También podrá atenderse individualmente con un psicooncólogo pediátrico, según la indicación del profesional."
+      : "<strong>PSICOONCOLOGÍA</strong>\n\nEl soporte emocional individual está dirigido al paciente. Para la familia se ofrece la participación en grupos de acompañamiento mutuo; el Grupo Fortaleza se encuentra pendiente de reapertura.\n\nEl asesor confirmará la fecha y hora de la consulta de psicooncología en un plazo máximo de 48 horas, según la solicitud y necesidad del paciente. Si el paciente es pediátrico, los padres decidirán quién lo acompañará a las consultas y el profesional determinará si corresponde una atención individual con un psicooncólogo pediátrico."
+    parts.push(psychooncologyScript)
+  }
 
   if (hasMedicalReport !== undefined && hasMedicalReport !== null) {
     const informeMedico = hasMedicalReport
       ? "<strong>INFORME MÉDICO</strong>\n\nSI TIENE INFORME MÉDICO: De acuerdo, le pedimos que por favor nos pueda enviar su informe médico a nuestro número de WhatsApp 923514021.\n\nNO TIENE INFORME MÉDICO: Le recomendamos que pueda acercarse al establecimiento de salud en donde se atiende para que pueda solicitar su informe médico. En cuanto lo tenga disponible, por favor nos lo hace llegar vía WhatsApp o correo electrónico sepa@fpc.pe"
-      : "";
-    if (informeMedico) parts.push(informeMedico);
+      : ""
+    if (informeMedico) parts.push(informeMedico)
   }
 
-  return parts.join("\n\n");
+  return parts.join("\n\n")
 }
 
 export function resolveAsideContent(
   step: number,
   draft?: EnrollmentDraft,
-  categoriaClinica?: "signos" | "diagnostico" | null,
+  categoriaClinica?: CategoriaClinica,
 ): AsideContent {
-  const d = draft;
+  const d = draft
 
   switch (step) {
     case 1:
@@ -72,7 +95,7 @@ export function resolveAsideContent(
         script:
           "Buenos días / Buenas Tardes. Bienvenido/a al Programa SEPA de la Fundación Peruana de Cáncer. Le saluda [Nombre], ejecutiva del programa SEPA. ¿Me brinda su nombre por favor?\n\nEstimado(a) _____ Le comentamos que el programa SEPA es un programa que brinda Servicios gratuitos de Educación en Prevención del Cáncer y Acompañamiento al Paciente con cáncer. ¿Cuál es el motivo de su llamada?",
         reference: "SEPA Protocol — Apertura de Sesión v4.2",
-      };
+      }
 
     case 2:
       return {
@@ -81,33 +104,34 @@ export function resolveAsideContent(
         complianceNote:
           "Sin el acuerdo explícito, la inscripción debe detenerse inmediatamente.",
         reference: "SEPA Protocol — Autorización de Datos v4.2",
-      };
+      }
 
     case 3:
       return {
         script:
           "¿Me podría indicar si usted es el paciente oncológico, o si está realizando esta afiliación en nombre de un familiar o amigo?",
         reference: "SEPA Protocol — Identificación del Llamante v4.2",
-      };
+      }
 
     case 4:
       return {
         script:
-          'Por otro lado, Le solicitamos que autorice oficialmente su inscripción al Programa SEPA y el uso de sus datos personales al brindarnos su consentimiento verbal. Para ello, le leeremos el consentimiento informado y al final de este, usted nos debe comentar si acepta o no acepta.\n\n"Por este medio, usted deja constancia:\n- Ha sido informado sobre el funcionamiento del Programa SEPA de la Fundación Peruana de Cáncer.\n- Acepta y tiene conocimiento que este programa lo/a acompañará a lo largo de la duración de este.\n- Acepta que la Fundación Peruana de Cáncer recolecte, almacene, transfiera, administre y utilice sus datos personales y de salud recogidos.\n- Entiende que puede solicitar que sus datos sean actualizados, rectificados o solicitar que no sean utilizados en el futuro y/o eliminarlos de la base de datos del Programa SEPA.\n- Tiene conocimiento de que el Programa SEPA es un programa de acceso libre, gratuito y voluntario patrocinado por la Fundación Peruana de Cáncer y que esta se reserva el derecho de suspenderlo y/o terminarlo y/o modificarlo.\n- Acepta ser contactado y recibir los materiales correspondientes al Programa SEPA a través de su teléfono o el de un familiar y su correo, si lo tuviese.\n- Tiene conocimiento de que puede solicitar a la Fundación Peruana de Cáncer en cualquier momento activar o desactivar cualquiera de dichos canales de comunicación con usted."\n\nPor favor me confirma si acepta y confirma tener conocimiento todo lo detallado en el texto leído:',
+          'Por otro lado, Le solicitamos que autorice oficialmente su inscripción al Programa SEPA y el uso de sus datos personales al brindarnos su consentimiento verbal. Para ello, le leeremos el consentimiento informado y al final de este, usted nos debe comentar si acepta o no acepta.\n\n"Por este medio, usted deja constancia:\n- Ha sido informado sobre el funcionamiento del Programa SEPA de la Fundación Peruana de Cáncer.\n- Acepta y tiene conocimiento que este programa lo/a acompañará a lo largo de la duración de este.\n- Acepta que la Fundación Peruana de Cáncer recolecte, almacene, transfiera, administre y utilice sus datos personales y de salud recogidos.\n- Acepta que la Fundación Peruana de Cáncer utilice sus datos, resguardando su confidencialidad, para fines de investigación y generación de evidencia que contribuya a mejorar la atención y el abordaje del cáncer.\n- Entiende que puede solicitar que sus datos sean actualizados, rectificados o solicitar que no sean utilizados en el futuro y/o eliminarlos de la base de datos del Programa SEPA.\n- Tiene conocimiento de que el Programa SEPA es un programa de acceso libre, gratuito y voluntario patrocinado por la Fundación Peruana de Cáncer y que esta se reserva el derecho de suspenderlo y/o terminarlo y/o modificarlo.\n- Acepta ser contactado y recibir los materiales correspondientes al Programa SEPA a través de su teléfono o el de un familiar y su correo, si lo tuviese.\n- Tiene conocimiento de que puede solicitar a la Fundación Peruana de Cáncer en cualquier momento activar o desactivar cualquiera de dichos canales de comunicación con usted."\n\nPor favor me confirma si acepta y confirma tener conocimiento todo lo detallado en el texto leído:',
         complianceNote:
           "El consentimiento verbal es jurídicamente válido. No continúe si el paciente no acepta.",
         reference: "SEPA Protocol — Consentimiento Informado v4.2",
-      };
+      }
 
     case 5: {
-      const base = "Para proceder con su registro, ¿podría indicarme el nombre completo del paciente y su número de DNI, por favor?";
-      const extra = d ? step5Conditionals(d) : "";
+      const base =
+        "Para proceder con su registro, ¿podría indicarme el nombre completo del paciente y su número de DNI, por favor?"
+      const extra = d ? step5Conditionals(d) : ""
       return {
         script: extra ? `${base}\n\n${extra}` : base,
         complianceNote:
           "Asegúrese de que el paciente comprende que sus datos serán tratados bajo las regulaciones de privacidad.",
         reference: "SEPA Protocol — Verificación de Identidad v4.2",
-      };
+      }
     }
 
     case 6:
@@ -115,7 +139,7 @@ export function resolveAsideContent(
         script:
           "Con base en la información brindada, vamos a identificar la categoría que mejor describe su situación, para conectarle con la atención más adecuada dentro del programa.",
         reference: "SEPA Protocol — Categorización Clínica v4.2",
-      };
+      }
 
     case 7:
       return {
@@ -123,19 +147,19 @@ export function resolveAsideContent(
           ? step7Script(d, categoriaClinica ?? null)
           : "Complete los datos clínicos según la categoría seleccionada y la situación de seguro del paciente.",
         reference: "SEPA Protocol — Atención Especializada v4.2",
-      };
+      }
 
     case 8:
       return {
         script:
-          "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos por WhatsApp una breve encuesta de satisfacción sobre la presente llamada, en la que usted deberá marcar una calificación del 1 al 5.\n\nRecuerde que para cualquier duda o consulta puede comunicarse con nuestro Programa SEPA de lunes a viernes de 8:30 a.m. a 5:30 p.m. y los sábados de 8:30 a.m. a 12:00 p.m. al 0800 74012.",
+          "Muchas gracias por su tiempo. Finalmente, le informo que le enviaremos por WhatsApp una breve encuesta de satisfacción sobre la presente llamada. La calificación podrá registrarse posteriormente desde el perfil del paciente.\n\nRecuerde que para cualquier duda o consulta puede comunicarse con nuestro Programa SEPA de lunes a viernes de 8:30 a.m. a 5:30 p.m. y los sábados de 8:30 a.m. a 12:00 p.m. al 0800 74012.",
         reference: "SEPA Protocol — Cierre de Sesión v4.2",
-      };
+      }
 
     default:
       return {
         script: "Complete los campos de este paso para continuar.",
         reference: "SEPA Protocol v4.2",
-      };
+      }
   }
 }

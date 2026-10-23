@@ -1,129 +1,162 @@
-import { cn } from "@/lib/utils";
-import {
-  FlaskConical,
-  Scan,
-  Stethoscope,
-  Syringe,
-  Pill,
-  Ellipsis,
-  CheckCircle2,
-  XCircle,
-  Pencil,
-  Calendar,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { Reminder, ReminderType } from "@/types";
+import { Calendar, CheckCircle2, Pencil, Stethoscope, XCircle } from "lucide-react"
+import { CatalogValue } from "@/components/catalog-select"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import type { Reminder } from "@/api/reminders"
 
-const TYPE_CONFIG: Record<ReminderType, { icon: typeof FlaskConical; label: string; color: string }> = {
-  LABORATORIO: { icon: FlaskConical, label: "Laboratorio", color: "bg-purple-500" },
-  IMAGEN: { icon: Scan, label: "Imagen", color: "bg-blue-500" },
-  CONSULTA: { icon: Stethoscope, label: "Consulta", color: "bg-emerald-500" },
-  PROCEDIMIENTO: { icon: Syringe, label: "Procedimiento", color: "bg-amber-500" },
-  MEDICACION: { icon: Pill, label: "Medicación", color: "bg-rose-500" },
-  OTRO: { icon: Ellipsis, label: "Otro", color: "bg-gray-500" },
-};
+const STATUS_CONFIG: Record<
+  Reminder["status"],
+  { label: string; className: string }
+> = {
+  PENDING: {
+    label: "Pendiente",
+    className: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  },
+  DONE: {
+    label: "Completado",
+    className: "bg-green-100 text-green-800 border-green-300",
+  },
+  DISMISSED: {
+    label: "Descartado",
+    className: "bg-red-100 text-red-800 border-red-300",
+  },
+}
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  PENDIENTE: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
-  COMPLETADO: { label: "Completado", className: "bg-green-100 text-green-800 border-green-300" },
-  CANCELADO: { label: "Cancelado", className: "bg-red-100 text-red-800 border-red-300" },
-};
+const APPOINTMENT_STATUS_LABELS: Record<
+  NonNullable<Reminder["medicalAppointment"]>["status"],
+  string
+> = {
+  SCHEDULED: "Programada",
+  COMPLETED: "Asistió",
+  CANCELLED: "Cancelada",
+  NO_ANSWER: "No asistió",
+}
 
-function formatDate(fecha: string): string {
-  return new Date(fecha + "T12:00:00").toLocaleDateString("es-PE", {
+function formatDate(value: string | null) {
+  if (!value) return "Sin fecha"
+  return new Date(value).toLocaleDateString("es-PE", {
     weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
+  })
 }
 
 interface ReminderCardProps {
-  reminder: Reminder;
-  canManage: boolean;
-  onEdit: (r: Reminder) => void;
-  onComplete: (r: Reminder) => void;
-  onCancel: (r: Reminder) => void;
+  reminder: Reminder
+  canManage: boolean
+  onEdit: (reminder: Reminder) => void
+  onComplete: (reminder: Reminder) => void
+  onDismiss: (reminder: Reminder) => void
 }
 
-export function ReminderCard({ reminder, canManage, onEdit, onComplete, onCancel }: ReminderCardProps) {
-  const config = TYPE_CONFIG[reminder.type] ?? TYPE_CONFIG.OTRO;
-  const statusCfg = STATUS_CONFIG[reminder.status] ?? STATUS_CONFIG.PENDIENTE;
-  const Icon = config.icon;
-  const isPending = reminder.status === "PENDIENTE";
+export function ReminderCard({
+  reminder,
+  canManage,
+  onEdit,
+  onComplete,
+  onDismiss,
+}: ReminderCardProps) {
+  const statusCfg = STATUS_CONFIG[reminder.status]
+  const isPending = reminder.status === "PENDING"
+  const isMedical = reminder.kind === "MEDICAL_APPOINTMENT"
+  const appointment = reminder.medicalAppointment
 
   return (
     <div
       className={cn(
-        "relative rounded-xl border border-border/60 bg-card overflow-hidden",
-        reminder.status === "COMPLETADO" && "opacity-70",
-        reminder.status === "CANCELADO" && "opacity-50",
+        "relative overflow-hidden rounded-xl border border-border/60 bg-card",
+        reminder.status === "DONE" && "opacity-70",
+        reminder.status === "DISMISSED" && "opacity-50",
       )}
     >
-      {/* Left color bar */}
-      <div className={cn("absolute left-0 top-0 bottom-0 w-1", config.color)} />
+      <div
+        className={cn(
+          "absolute inset-y-0 left-0 w-1",
+          isMedical ? "bg-red-500" : "bg-purple-500",
+        )}
+      />
 
-      <div className="pl-5 pr-4 py-3.5">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className={cn("shrink-0 size-7 rounded-md flex items-center justify-center", config.color, "bg-opacity-15")}>
-              <Icon className="size-3.5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{reminder.description}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
-                  <Calendar className="size-3" />
-                  {formatDate(reminder.scheduledDate)}
+      <div className="py-3.5 pl-5 pr-4">
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              {isMedical && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase text-red-700">
+                  <Stethoscope className="size-3" />
+                  Cita médica
                 </span>
-                <span className="text-[10px] text-muted-foreground/50">{config.label}</span>
-              </div>
+              )}
+              {appointment && (
+                <span className="rounded-full border border-border px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                  {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                </span>
+              )}
             </div>
+            <p className="truncate text-sm font-semibold text-foreground">
+              {reminder.description}
+            </p>
+            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
+              <Calendar className="size-3" />
+              {formatDate(reminder.dueOn ?? reminder.dueAt)}
+            </span>
+            {appointment && (
+              <p className="text-muted-foreground mt-1 text-[11px]">
+                <CatalogValue
+                  kind="medical_specialty"
+                  code={appointment.specialty}
+                />
+                {appointment.healthCenterName
+                  ? ` · ${appointment.healthCenterName}`
+                  : ""}
+              </p>
+            )}
           </div>
-          <span className={cn("shrink-0 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border", statusCfg.className)}>
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
+              statusCfg.className,
+            )}
+          >
             {statusCfg.label}
           </span>
         </div>
 
-        {/* Notes */}
-        {reminder.notes && (
-          <p className="text-xs text-muted-foreground/70 mt-2 line-clamp-2">{reminder.notes}</p>
-        )}
-
-        {/* Actions */}
         {canManage && isPending && (
-          <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-border/40">
+          <div className="mt-3 flex items-center gap-1.5 border-t border-border/40 pt-2.5">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+              className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => onEdit(reminder)}
             >
-              <Pencil className="size-3" />Editar
+              <Pencil className="size-3" />
+              Editar
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+              className="h-7 gap-1 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
               onClick={() => onComplete(reminder)}
             >
-              <CheckCircle2 className="size-3" />Completar
+              <CheckCircle2 className="size-3" />
+              Completar
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
-              onClick={() => onCancel(reminder)}
+              className="h-7 gap-1 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+              onClick={() => onDismiss(reminder)}
             >
-              <XCircle className="size-3" />Cancelar
+              <XCircle className="size-3" />
+              Cancelar
             </Button>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

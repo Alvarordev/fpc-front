@@ -5,12 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { appointmentsApi, patientsApi } from "@/lib/api";
+import { psychooncologyAppointmentsApi, type PsychooncologyAppointment } from "@/api/psychooncology-appointments";
+import { patientsApi, type PatientDetailsResponse } from "@/api/patients";
 import { useVolunteerProfile } from "@/hooks/use-volunteer-profile";
-import type {
-  Patient,
-  AppointmentStatus,
-} from "@/types";
+type AppointmentStatus = PsychooncologyAppointment["status"];
+type DatedPsychooncologyAppointment = PsychooncologyAppointment & {
+  scheduledAt: string;
+};
 
 // --- Status styling ---
 
@@ -76,7 +77,7 @@ export function VolunteerPatientsContent() {
   } = useQuery({
     queryKey: ["volunteerAppointments", volunteerId],
     queryFn: () =>
-      appointmentsApi.list({ volunteerId: volunteerId! }),
+      psychooncologyAppointmentsApi.list({ volunteerId: volunteerId! }),
     enabled: Boolean(volunteerId),
   });
 
@@ -92,16 +93,16 @@ export function VolunteerPatientsContent() {
 
   // Fetch patients by ID
   const {
-    data: patientsMap = new Map<string, Patient>(),
+    data: patientsMap = new Map<string, PatientDetailsResponse>(),
     isLoading: loadingPatients,
   } = useQuery({
     queryKey: ["volunteerPatients", patientIds],
-    queryFn: async (): Promise<Map<string, Patient>> => {
+    queryFn: async (): Promise<Map<string, PatientDetailsResponse>> => {
       if (patientIds.length === 0) return new Map();
       const results = await Promise.all(
         patientIds.map((id) => patientsApi.getById(id)),
       );
-      const map = new Map<string, Patient>();
+      const map = new Map<string, PatientDetailsResponse>();
       for (const p of results) {
         map.set(p.id, p);
       }
@@ -115,7 +116,8 @@ export function VolunteerPatientsContent() {
   // Upcoming scheduled sessions
   const upcomingSessions = appointments
     .filter(
-      (a) =>
+      (a): a is DatedPsychooncologyAppointment =>
+        a.scheduledAt !== null &&
         a.scheduledAt.slice(0, 10) >= TODAY &&
         a.status === "SCHEDULED",
     )
@@ -239,9 +241,10 @@ export function VolunteerPatientsContent() {
               const completedCount = patientSessions.filter(
                 (a) => a.status === "COMPLETED",
               ).length;
-              const nextSession = patientSessions
+                const nextSession = patientSessions
                 .filter(
-                  (a) =>
+                  (a): a is DatedPsychooncologyAppointment =>
+                    a.scheduledAt !== null &&
                     a.scheduledAt.slice(0, 10) >= TODAY &&
                     a.status === "SCHEDULED",
                 )

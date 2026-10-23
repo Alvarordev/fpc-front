@@ -8,17 +8,17 @@ import {
   useDeleteHealthCenter,
   useReactivateHealthCenter,
 } from "../_hooks/use-health-centers";
-import { usePatientCountByHealthCenter } from "../_hooks/use-patient-count-by-health-center";
 import { healthCenterColumns } from "./health-centers-columns";
 import { HealthCentersToolbar } from "./health-centers-toolbar";
 import { CreateHealthCenterDialog } from "./create-health-center-dialog";
 import { EditHealthCenterDialog } from "./edit-health-center-dialog";
 import { DEPARTMENTS } from "../_utils/departments";
-import type { HealthCenter } from "@/types";
+import type { HealthCenter } from "@/api/health-centers";
 
 export function HealthCentersContent() {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
+  const [category, setCategory] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Edit dialog state
@@ -26,7 +26,6 @@ export function HealthCentersContent() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { data: centers = [], isLoading } = useHealthCenters();
-  const { data: patientCounts = new Map() } = usePatientCountByHealthCenter();
 
   const deleteMutation = useDeleteHealthCenter();
   const reactivateMutation = useReactivateHealthCenter();
@@ -41,13 +40,17 @@ export function HealthCentersContent() {
       }
     }
 
+    if (category !== "all") {
+      result = result.filter((c) => c.category === category);
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((c) => c.name.toLowerCase().includes(q));
     }
 
     return result;
-  }, [centers, search, department]);
+  }, [centers, search, department, category]);
 
   const handleEdit = useCallback((center: HealthCenter) => {
     setEditingCenter(center);
@@ -80,11 +83,10 @@ export function HealthCentersContent() {
   const columns = useMemo(
     () =>
       healthCenterColumns({
-        patientCounts,
         onEdit: handleEdit,
         onToggleActive: handleToggleActive,
       }),
-    [patientCounts, handleEdit, handleToggleActive],
+    [handleEdit, handleToggleActive],
   );
 
   return (
@@ -113,6 +115,8 @@ export function HealthCentersContent() {
         onSearchChange={setSearch}
         department={department}
         onDepartmentChange={setDepartment}
+        category={category}
+        onCategoryChange={setCategory}
       />
 
       <DataTable

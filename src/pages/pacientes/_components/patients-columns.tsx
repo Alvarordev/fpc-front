@@ -1,142 +1,148 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import type { Patient, PatientStatus } from "@/types";
+import type { ColumnDef } from "@tanstack/react-table"
+import { Badge } from "@/components/ui/badge"
+import { CatalogValue } from "@/components/catalog-select"
+import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { formatCatalogValue, useCatalog } from "@/hooks/use-catalog"
+import { cn } from "@/lib/utils"
+import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
+import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
 
-const statusLabels: Record<PatientStatus, string> = {
-  PROSPECT: "Prospecto",
-  ENROLLED: "Enrolado",
-  ACTIVE: "Activo",
-  INACTIVE: "Inactivo",
-};
-
-const statusStyles: Record<PatientStatus, string> = {
-  PROSPECT: "bg-violet-50 text-violet-700 border-violet-200",
-  ENROLLED: "bg-blue-50 text-blue-700 border-blue-200",
-  ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  INACTIVE: "bg-zinc-100 text-zinc-600 border-zinc-200",
-};
-
-function shortDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString("es-PE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function primaryDiagnosis(p: Patient): string {
+function TruncatedDiagnosis({ code }: { code: string }) {
+  const { data: items = [] } = useCatalog("cancer_diagnosis")
+  const label = formatCatalogValue(items, code)
   return (
-    p.diagnoses?.find((d) => d.isCurrent)?.diagnosis ??
-    p.diagnoses?.[0]?.diagnosis ??
-    "—"
-  );
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            tabIndex={0}
+            className="text-muted-foreground block max-w-64 cursor-default truncate text-sm"
+          >
+            {label}
+          </span>
+        }
+      />
+      <TooltipContent
+        side="top"
+        align="start"
+        className="max-w-sm text-left leading-snug"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
-function formatearDepartamento(value?: string | null): string {
-  if (!value) return "—";
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(" ");
+const healthPhaseStyles: Record<PatientHealthPhase, string> = {
+  CANCER_DIAGNOSIS: "bg-rose-50 text-rose-700 border-rose-200",
+  ANNUAL_CHECKUP: "bg-sky-50 text-sky-700 border-sky-200",
+  SIGNS_AND_SYMPTOMS: "bg-amber-50 text-amber-700 border-amber-200",
 }
 
-function ultimoContacto(p: Patient): string | null {
-  if (!p.contacts?.length) return null;
-  const sorted = [...p.contacts].sort((a, b) => {
-    const dateA = a.completedAt ?? a.scheduledAt ?? a.createdAt ?? "";
-    const dateB = b.completedAt ?? b.scheduledAt ?? b.createdAt ?? "";
-    return dateB.localeCompare(dateA);
-  });
-  const last = sorted[0];
-  return last.completedAt ?? last.scheduledAt ?? null;
-}
-
-export const patientColumns: ColumnDef<Patient>[] = [
+export const patientColumns: ColumnDef<PatientListItem>[] = [
   {
     accessorKey: "fullName",
     header: "Paciente",
     cell: ({ row }) => {
-      const p = row.original;
-      const initials = p.fullName
+      const patient = row.original
+      const initials = patient.fullName
         .split(" ")
         .slice(0, 2)
-        .map((w) => w[0])
-        .join("");
+        .map((word) => word[0])
+        .join("")
       return (
         <div className="flex items-center gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+          <div className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-full text-xs font-semibold">
             {initials}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground leading-none truncate max-w-[180px]">
-              {p.fullName}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {p.dni ? `DNI ${p.dni}` : "Sin DNI"}
+          <div>
+            <p className="text-sm font-medium">{patient.fullName}</p>
+            <p className="text-muted-foreground text-xs">
+              {patient.dni ? `DNI ${patient.dni}` : "Sin DNI"}
             </p>
           </div>
         </div>
-      );
+      )
     },
   },
   {
-    accessorKey: "diagnoses",
+    accessorKey: "currentDiagnosis",
     header: "Diagnóstico",
+    size: 256,
     cell: ({ row }) => {
-      const dx = primaryDiagnosis(row.original);
-      return (
-        <span className="text-sm text-muted-foreground truncate max-w-[200px]" title={dx}>
-          {dx}
-        </span>
-      );
+      const diagnosis = row.original.currentDiagnosis?.diagnosis
+      if (!diagnosis) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      return <TruncatedDiagnosis code={diagnosis} />
     },
   },
   {
-    accessorKey: "details",
+    id: "currentDepartment",
     header: "Departamento",
     cell: ({ row }) => {
-      const dept = formatearDepartamento(row.original.details?.currentDepartment);
+      const department = row.original.currentDepartment
+      if (!department) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
       return (
-        <span className="text-sm text-muted-foreground">{dept}</span>
-      );
+        <span className="text-muted-foreground text-sm">
+          {DEPARTMENT_LABELS[department] ?? department}
+        </span>
+      )
     },
   },
   {
-    accessorKey: "primaryPhone",
-    header: "Teléfono",
-    cell: ({ getValue }) => (
-      <span className="text-sm text-muted-foreground whitespace-nowrap">
-        {getValue() as string}
-      </span>
+    id: "healthPhase",
+    header: "Fase de salud",
+    cell: ({ row }) => {
+      const phase = row.original.healthPhase
+      if (!phase) {
+        return (
+          <span className="text-muted-foreground text-sm">Sin clasificar</span>
+        )
+      }
+      return (
+        <Badge className={cn("border font-medium", healthPhaseStyles[phase])}>
+          <CatalogValue kind="patient_health_phase" code={phase} />
+        </Badge>
+      )
+    },
+  },
+  {
+    id: "healthSubcategory",
+    header: "Subcategoría",
+    cell: ({ row }) => (
+      <PatientHealthSubcategoryBadge
+        subcategory={row.original.healthSubcategory}
+      />
     ),
   },
   {
-    accessorKey: "contacts",
-    header: "Último contacto",
-    cell: ({ row }) => {
-      const lastDate = ultimoContacto(row.original);
-      if (!lastDate) {
-        return <span className="text-sm text-muted-foreground">—</span>;
-      }
-      return (
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {shortDate(lastDate)}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: "status",
+    id: "status",
     header: "Estado",
-    cell: ({ getValue }) => {
-      const status = getValue() as PatientStatus;
+    cell: ({ row }) => {
+      const patient = row.original
+      const activityClass =
+        patient.activityStatus === "ACTIVE"
+          ? "bg-emerald-50 text-emerald-700"
+          : patient.activityStatus === "INACTIVE"
+            ? "bg-zinc-100 text-zinc-600"
+            : "bg-orange-50 text-orange-700"
+      const activityLabel =
+        patient.activityStatus === "ACTIVE"
+          ? "Activo"
+          : patient.activityStatus === "INACTIVE"
+            ? "Inactivo"
+            : "Reactivo"
       return (
-        <Badge className={cn("border font-medium", statusStyles[status])}>
-          {statusLabels[status]}
-        </Badge>
-      );
+        <Badge className={cn("border", activityClass)}>{activityLabel}</Badge>
+      )
     },
   },
-];
+]

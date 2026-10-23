@@ -1,119 +1,265 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { BellPlus, ClipboardList } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/auth-store";
-import { useRecordatorios } from "../_hooks/use-recordatorios";
-import { recordatoriosApi } from "@/lib/api";
-import { ReminderCard } from "./reminder-card";
-import { CreateReminderDialog } from "./create-reminder-dialog";
-import { toast } from "sonner";
-import type { Reminder, CreateReminderRequest, UpdateReminderRequest } from "@/types";
+import { useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { BellPlus, ClipboardList } from "lucide-react"
+import { toast } from "sonner"
+import { agentsApi } from "@/api/agents"
+import {
+  remindersApi,
+  type CompleteReminderInput,
+  type Reminder,
+} from "@/api/reminders"
+import {
+  resolveSpecialty,
+  resolveSpecialtyLabel,
+} from "@/components/medical-appointment-fields"
+import { useCatalog } from "@/hooks/use-catalog"
+import { Button } from "@/components/ui/button"
+import { useAuthStore } from "@/store/auth-store"
+import { CompleteMedicalReminderDialog } from "./complete-medical-reminder-dialog"
+import { ReminderCard } from "./reminder-card"
+import {
+  ReminderFormDialog,
+  type ReminderFormValues,
+} from "./reminder-form-dialog"
 
 interface RecordatoriosTabProps {
-  pacienteId: string;
+  pacienteId: string
 }
 
 export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
-  const user = useAuthStore((s) => s.user);
-  const queryClient = useQueryClient();
-  const canManage = user?.role === "ADMIN" || user?.role === "AGENT";
+  const user = useAuthStore((state) => state.user)
+  const queryClient = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [completingReminder, setCompletingReminder] = useState<Reminder | null>(
+    null,
+  )
+  const canManage =
+    user?.role === "ADMIN" ||
+    user?.role === "FOUNDATION" ||
+    user?.role === "AGENT"
+  const requiresAgentSelection =
+    user?.role === "ADMIN" || user?.role === "FOUNDATION"
+  const remindersQuery = useQuery({
+    queryKey: ["reminders", pacienteId],
+    queryFn: () => remindersApi.list({ patientId: pacienteId }),
+  })
+  const agentsQuery = useQuery({
+    queryKey: ["agents"],
+    queryFn: agentsApi.list,
+    enabled: canManage,
+    staleTime: 60_000,
+  })
+  const { data: specialtyItems = [] } = useCatalog("medical_specialty")
 
-  const { data: reminders = [], isLoading } = useRecordatorios(pacienteId);
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
-
-  const sorted = [...reminders].sort(
-    (a, b) => a.scheduledDate.localeCompare(b.scheduledDate)
-  );
-
-  const pendientes = sorted.filter((r) => r.status === "PENDIENTE");
-  const completados = sorted.filter((r) => r.status !== "PENDIENTE");
-
-  function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ["recordatorios", pacienteId] });
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["reminders"] }),
+      queryClient.invalidateQueries({ queryKey: ["medical-appointments"] }),
+      queryClient.invalidateQueries({ queryKey: ["patient", pacienteId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["patient-timeline", pacienteId],
+      }),
+    ])
   }
 
+  const createMutation = useMutation({
+    mutationFn: remindersApi.create,
+    onSuccess: async () => {
+      await invalidate()
+      setDialogOpen(false)
+      toast.success("Recordatorio creado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo crear el recordatorio", {
+        description: error.message,
+      }),
+  })
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input: Parameters<typeof remindersApi.update>[1]
+    }) => remindersApi.update(id, input),
+    onSuccess: async () => {
+      await invalidate()
+      setDialogOpen(false)
+      toast.success("Recordatorio actualizado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo actualizar el recordatorio", {
+        description: error.message,
+      }),
+  })
+  const completeMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input?: CompleteReminderInput
+    }) => remindersApi.complete(id, input),
+    onSuccess: async () => {
+      await invalidate()
+      setCompletingReminder(null)
+      toast.success("Recordatorio completado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo completar el recordatorio", {
+        description: error.message,
+      }),
+  })
+  const dismissMutation = useMutation({
+    mutationFn: remindersApi.dismiss,
+    onSuccess: async () => {
+      await invalidate()
+      toast.success("Recordatorio descartado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo descartar el recordatorio", {
+        description: error.message,
+      }),
+  })
+
+  const reminders = (remindersQuery.data ?? []).sort((a, b) =>
+    (a.dueOn ?? a.dueAt ?? "").localeCompare(b.dueOn ?? b.dueAt ?? ""),
+  )
+  const pendientes = reminders.filter(
+    (reminder) => reminder.status === "PENDING",
+  )
+  const completados = reminders.filter(
+    (reminder) => reminder.status !== "PENDING",
+  )
+
   function openCreate() {
-    setEditingReminder(null);
-    setDialogOpen(true);
+    setEditingReminder(null)
+    setDialogOpen(true)
   }
 
   function openEdit(reminder: Reminder) {
-    setEditingReminder(reminder);
-    setDialogOpen(true);
+    setEditingReminder(reminder)
+    setDialogOpen(true)
   }
 
-  async function handleSave(data: CreateReminderRequest | UpdateReminderRequest) {
+  function handleComplete(reminder: Reminder) {
+    if (reminder.kind === "MEDICAL_APPOINTMENT") {
+      setCompletingReminder(reminder)
+      return
+    }
+    completeMutation.mutate({ id: reminder.id })
+  }
+
+  function handleSave(values: ReminderFormValues) {
+    const ownAgentId = agentsQuery.data?.find(
+      (agent) => agent.userId === user?.id,
+    )?.id
+    const assignedAgentId = requiresAgentSelection
+      ? values.assignedAgentId
+      : ownAgentId
+
+    if (!assignedAgentId) {
+      toast.error("Seleccioná un agente responsable")
+      return
+    }
+
+    const specialty = resolveSpecialty(values.medicalAppointment)
+    const specialtyLabel =
+      values.kind === "MEDICAL_APPOINTMENT"
+        ? resolveSpecialtyLabel(specialtyItems, values.medicalAppointment)
+        : ""
+    const dueAt = new Date(values.dueAt).toISOString()
+
     if (editingReminder) {
-      await recordatoriosApi.update(editingReminder.id, data as UpdateReminderRequest);
-      toast.success("Recordatorio actualizado");
-    } else {
-      await recordatoriosApi.create(data as CreateReminderRequest);
-      toast.success("Recordatorio creado");
+      updateMutation.mutate({
+        id: editingReminder.id,
+        input: {
+          description:
+            values.kind === "MEDICAL_APPOINTMENT"
+              ? values.description.trim() || `Cita: ${specialtyLabel}`
+              : values.description,
+          dueAt,
+          assignedAgentId,
+          healthCenterId:
+            values.kind === "MEDICAL_APPOINTMENT"
+              ? values.medicalAppointment.healthCenterId || undefined
+              : undefined,
+        },
+      })
+      return
     }
-    invalidate();
-  }
 
-  async function handleComplete(reminder: Reminder) {
-    try {
-      await recordatoriosApi.complete(reminder.id);
-      toast.success("Recordatorio marcado como completado");
-      invalidate();
-    } catch {
-      toast.error("No se pudo completar el recordatorio");
+    if (values.kind === "MEDICAL_APPOINTMENT") {
+      createMutation.mutate({
+        subjectPatientId: pacienteId,
+        description: values.description.trim() || `Cita: ${specialtyLabel}`,
+        dueAt,
+        assignedAgentId,
+        kind: "MEDICAL_APPOINTMENT",
+        medicalAppointment: {
+          specialty,
+          healthCenterId:
+            values.medicalAppointment.healthCenterId || undefined,
+          isFirstConsultation: values.medicalAppointment.isFirstConsultation,
+        },
+      })
+      return
     }
-  }
 
-  async function handleCancel(reminder: Reminder) {
-    try {
-      await recordatoriosApi.cancel(reminder.id);
-      toast.success("Recordatorio cancelado");
-      invalidate();
-    } catch {
-      toast.error("No se pudo cancelar el recordatorio");
-    }
+    createMutation.mutate({
+      subjectPatientId: pacienteId,
+      description: values.description,
+      dueAt,
+      assignedAgentId,
+      kind: "GENERIC",
+    })
   }
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Recordatorios</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <h2 className="text-foreground text-sm font-semibold">
+            Recordatorios
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs">
             {pendientes.length} pendiente{pendientes.length !== 1 ? "s" : ""}
-            {completados.length > 0 && ` · ${completados.length} completado${completados.length !== 1 ? "s" : ""}`}
+            {completados.length > 0 &&
+              ` · ${completados.length} completado${completados.length !== 1 ? "s" : ""}`}
           </p>
-          {sorted.length > 0 && (
-            <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-              Los recordatorios se ordenan por fecha programada
-            </p>
-          )}
         </div>
         {canManage && (
-          <Button type="button" size="sm" className="gap-1.5" onClick={openCreate}>
-            <BellPlus className="size-3.5" />Agregar
+          <Button size="sm" className="gap-1.5" onClick={openCreate}>
+            <BellPlus className="size-4" />
+            Agregar
           </Button>
         )}
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-48">
-          <p className="text-sm text-muted-foreground">Cargando recordatorios...</p>
+      {remindersQuery.isLoading ? (
+        <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
+          Cargando recordatorios...
         </div>
-      ) : sorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-2">
-          <ClipboardList className="size-10 text-muted-foreground/30" />
-          <p className="text-sm font-medium text-foreground">Sin recordatorios</p>
-          <p className="text-xs text-muted-foreground text-center max-w-xs">
-            Registrá citas, procedimientos o medicaciones para hacer seguimiento.
+      ) : reminders.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2">
+          <ClipboardList className="text-muted-foreground/30 size-10" />
+          <p className="text-foreground text-sm font-medium">
+            Sin recordatorios
+          </p>
+          <p className="text-muted-foreground max-w-xs text-center text-xs">
+            Registrá citas médicas, procedimientos o medicaciones.
           </p>
           {canManage && (
-            <Button type="button" variant="outline" size="sm" className="gap-1.5 mt-3" onClick={openCreate}>
-              <BellPlus className="size-3.5" />Crear recordatorio
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1.5"
+              onClick={openCreate}
+            >
+              <BellPlus className="size-3.5" />
+              Crear recordatorio
             </Button>
           )}
         </div>
@@ -121,14 +267,14 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         <div className="flex flex-col gap-3">
           {pendientes.length > 0 && (
             <div className="space-y-2">
-              {pendientes.map((r) => (
+              {pendientes.map((reminder) => (
                 <ReminderCard
-                  key={r.id}
-                  reminder={r}
+                  key={reminder.id}
+                  reminder={reminder}
                   canManage={canManage}
                   onEdit={openEdit}
                   onComplete={handleComplete}
-                  onCancel={handleCancel}
+                  onDismiss={(r) => dismissMutation.mutate(r.id)}
                 />
               ))}
             </div>
@@ -136,18 +282,18 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
 
           {completados.length > 0 && (
             <details className="group">
-              <summary className="cursor-pointer text-xs font-semibold text-muted-foreground/80 hover:text-muted-foreground py-1 select-none">
-                Completados / Cancelados ({completados.length})
+              <summary className="text-muted-foreground/80 hover:text-muted-foreground cursor-pointer py-1 text-xs font-semibold select-none">
+                Completados / Descartados ({completados.length})
               </summary>
-              <div className="space-y-2 mt-2">
-                {completados.map((r) => (
+              <div className="mt-2 space-y-2">
+                {completados.map((reminder) => (
                   <ReminderCard
-                    key={r.id}
-                    reminder={r}
+                    key={reminder.id}
+                    reminder={reminder}
                     canManage={false}
                     onEdit={() => {}}
                     onComplete={() => {}}
-                    onCancel={() => {}}
+                    onDismiss={() => {}}
                   />
                 ))}
               </div>
@@ -156,16 +302,31 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         </div>
       )}
 
-      <CreateReminderDialog
+      <ReminderFormDialog
         open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setEditingReminder(null);
-        }}
-        patientId={pacienteId}
+        onOpenChange={setDialogOpen}
         reminder={editingReminder}
+        agents={agentsQuery.data ?? []}
+        requiresAgentSelection={requiresAgentSelection}
+        isPending={createMutation.isPending || updateMutation.isPending}
         onSave={handleSave}
       />
+
+      <CompleteMedicalReminderDialog
+        open={Boolean(completingReminder)}
+        onOpenChange={(open) => {
+          if (!open) setCompletingReminder(null)
+        }}
+        reminder={completingReminder}
+        isPending={completeMutation.isPending}
+        onConfirm={(input) => {
+          if (!completingReminder) return
+          completeMutation.mutate({
+            id: completingReminder.id,
+            input,
+          })
+        }}
+      />
     </div>
-  );
+  )
 }
