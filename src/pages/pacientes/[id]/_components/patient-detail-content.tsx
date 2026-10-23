@@ -1,4 +1,7 @@
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { enrollmentsApi } from "@/api/enrollments"
+import { formatHistoricalDate } from "@/pages/carga-historica/_components/historical-record-options"
 import { ArrowLeft, Clock, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -53,6 +56,16 @@ export function PatientDetailContent() {
   const activeTab = getPatientTab(searchParams.get("tab"))
   const { data: patient, isLoading, isError } = usePatient(id!)
   const { alerts } = usePatientAlerts(patient)
+  // Same query as the overview tab, so it is fetched once. `enrolledOn` is the
+  // real enrollment date; `patient.createdAt` is when the record was loaded,
+  // which for historical uploads is much later.
+  const enrollmentQuery = useQuery({
+    queryKey: ["patient-enrollments", id],
+    queryFn: () => enrollmentsApi.listByPatient(id!),
+    enabled: Boolean(patient) && patient?.role !== "COMPANION",
+    staleTime: 30_000,
+  })
+  const enrolledOn = enrollmentQuery.data?.[0]?.enrolledOn
   const { resetEnrollment, updateDraft, setCategoria } = useEnrollmentStore()
   const user = useAuthStore((state) => state.user)
 
@@ -162,11 +175,9 @@ export function PatientDetailContent() {
             <span>{patient.dni ? `DNI ${patient.dni}` : "Sin DNI"}</span>
             <span className="flex items-center gap-1">
               <Clock className="size-3" />
-              {new Date(patient.createdAt).toLocaleDateString("es-PE", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+              {enrolledOn
+                ? `Enrolado el ${formatHistoricalDate(enrolledOn)}`
+                : `Registrado el ${formatHistoricalDate(patient.createdAt)}`}
             </span>
           </div>
         </div>
