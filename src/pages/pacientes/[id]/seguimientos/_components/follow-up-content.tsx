@@ -433,6 +433,7 @@ export function FollowUpContent() {
           diagnosisSpecialty: diagnosisDraft.diagnosisSpecialty ?? null,
           symptomLeadingToCheckup:
             diagnosisDraft.symptomLeadingToCheckup ?? null,
+          diseaseEvolution: diagnosisDraft.diseaseEvolution ?? null,
           isSepaActiveReferral: diagnosisDraft.isSepaActiveReferral ?? null,
           hasMedicalReport: diagnosisDraft.hasMedicalReport,
           waitTimeForDiagnosis,

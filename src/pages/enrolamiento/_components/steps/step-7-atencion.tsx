@@ -1306,6 +1306,19 @@ export function Step7Atencion({
                 </div>
               </div>
               <div className="flex flex-col gap-2">
+                <Label className={fl}>Evolución de la enfermedad</Label>
+                <Textarea
+                  value={dx.diseaseEvolution ?? ""}
+                  onChange={(e) =>
+                    updateDiagnosis({
+                      diseaseEvolution: e.target.value || undefined,
+                    })
+                  }
+                  placeholder="Ej: Metástasis ósea; otros órganos comprometidos"
+                  className="bg-card min-h-16 border"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
                 <Label className={fl}>
                   ¿Qué síntoma lo llevó a realizarse su chequeo médico?
                 </Label>

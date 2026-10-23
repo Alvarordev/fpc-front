@@ -1213,6 +1213,25 @@ describe("step 8 Nest enrollment payload", () => {
     })
   })
 
+  it("sends the disease evolution of each diagnosis", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          {
+            draftId: "diagnosis-1",
+            diagnosis: "MAMA_DUCTAL",
+            diseaseEvolution: "  Metástasis hepática ",
+            isCurrent: true,
+          },
+        ],
+      }),
+    })
+
+    expect(payload.diagnoses?.[0]?.diseaseEvolution).toBe("Metástasis hepática")
+  })
+
   it("sends the identity document type with its number", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",

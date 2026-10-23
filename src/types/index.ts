@@ -186,6 +186,8 @@ export interface AddDiagnosisRequest {
   hasReferral?: boolean | null
   diagnosisSpecialty?: string | null
   symptomLeadingToCheckup?: string | null
+  /** How the disease progressed, e.g. metastasis to other organs. */
+  diseaseEvolution?: string | null
   waitTimeForDiagnosis?: DurationDraft | null
   hasMedicalReport?: boolean
   isSepaActiveReferral?: boolean | null

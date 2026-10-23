@@ -98,13 +98,15 @@ async function openTab(page: Page, name: string) {
   await followUpDialog(page).getByRole("tab", { name }).click()
 }
 
-async function addDiagnosisDraft(page: Page) {
+async function addDiagnosisDraft(page: Page, diseaseEvolution?: string) {
   const dialog = followUpDialog(page)
   await openTab(page, "Diagnóstico")
   await dialog.getByText("Agregar diagnóstico", { exact: true }).click()
   const form = page.getByRole("dialog", { name: "Nuevo diagnóstico" })
   await expect(form).toBeVisible()
   await chooseLabeled(page, form, /^Diagnóstico$/, "Cáncer de mama")
+  if (diseaseEvolution)
+    await form.getByLabel("Evolución de la enfermedad").fill(diseaseEvolution)
   await form.getByRole("button", { name: "Guardar en borrador" }).click()
   await expect(form).toHaveCount(0)
   await expect(dialog.getByText("Cáncer de mama")).toBeVisible()
@@ -391,7 +393,7 @@ test.describe("seguimiento histórico", () => {
     await openHistoricalPatient(page)
     await openFollowUpDialog(page)
     await fillMetadata(page)
-    await addDiagnosisDraft(page)
+    await addDiagnosisDraft(page, "Metástasis ósea")
     await saveFollowUp(page)
     await expectSaved(page)
 
@@ -402,6 +404,7 @@ test.describe("seguimiento histórico", () => {
         expect.objectContaining({
           diagnosis: "CANCER_MAMA",
           mode: "PARALLEL",
+          diseaseEvolution: "Metástasis ósea",
         }),
       ]),
     )

@@ -727,6 +727,13 @@ export function OverviewSection({
                         label="Tiene informe médico"
                         value={item.hasMedicalReport ? "Sí" : "No"}
                       />
+                      {item.diseaseEvolution && (
+                        <Field
+                          label="Evolución de la enfermedad"
+                          value={item.diseaseEvolution}
+                          icon={Activity}
+                        />
+                      )}
                       {item.symptomLeadingToCheckup && (
                         <Field
                           label="Síntoma que llevó al chequeo"

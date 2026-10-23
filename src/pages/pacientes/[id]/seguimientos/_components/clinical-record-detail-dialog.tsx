@@ -200,6 +200,11 @@ function DiagnosisDetails({ diagnosis }: { diagnosis: PatientDiagnosis }) {
           value={booleanLabel(diagnosis.hasReferral)}
         />
         <Fact label="Creado" value={formatDateTime(diagnosis.createdAt)} />
+        <Fact
+          label="Evolución de la enfermedad"
+          value={diagnosis.diseaseEvolution}
+          className="col-span-2"
+        />
       </div>
     </div>
   )

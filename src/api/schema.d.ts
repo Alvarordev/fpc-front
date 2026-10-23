@@ -2326,6 +2326,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            diseaseEvolution?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
             cancerStage?: string;
@@ -3325,6 +3326,7 @@ export interface components {
             hasReferral: boolean | null;
             diagnosisSpecialty: string | null;
             symptomLeadingToCheckup: string | null;
+            diseaseEvolution: string | null;
             /** @enum {string|null} */
             waitTimeSource: "COMPUTED" | "REPORTED" | null;
             waitTimeForDiagnosis: components["schemas"]["DurationResponseDto"] | null;
@@ -3708,6 +3710,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            diseaseEvolution?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             /** Format: uuid */
             followUpId: string;
@@ -3747,6 +3750,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string | null;
+            diseaseEvolution?: string | null;
             /** @description Omit to recompute from the dates when both are set; null clears it. */
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             isSepaActiveReferral?: boolean | null;
@@ -4114,6 +4118,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            diseaseEvolution?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
             cancerStage?: string;
@@ -4657,6 +4662,7 @@ export interface components {
              * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
              */
             symptomLeadingToCheckup?: string;
+            diseaseEvolution?: string;
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             diagnosis: string;
             cancerStage?: string;

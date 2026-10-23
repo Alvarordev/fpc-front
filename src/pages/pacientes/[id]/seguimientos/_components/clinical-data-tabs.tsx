@@ -2723,6 +2723,7 @@ interface DiagnosisFormValues {
   firstSymptomsDate: string
   healthCenterId: string | undefined
   symptomLeadingToCheckup: string
+  diseaseEvolution: string
   waitTimeForDiagnosis: DurationDraft | undefined
   waitTimeForDiagnosisManuallyEdited: boolean
   remembersWaitTimeForDiagnosis: boolean
@@ -2762,6 +2763,7 @@ function DiagnosticoForm({
         firstSymptomsDate: initial?.firstSymptomsDate ?? "",
         healthCenterId: initial?.healthCenterId,
         symptomLeadingToCheckup: initial?.symptomLeadingToCheckup ?? "",
+        diseaseEvolution: initial?.diseaseEvolution ?? "",
         waitTimeForDiagnosis: initial?.waitTimeForDiagnosis,
         waitTimeForDiagnosisManuallyEdited:
           initial?.waitTimeForDiagnosisManuallyEdited ?? false,
@@ -2916,6 +2918,7 @@ function DiagnosticoForm({
       firstSymptomsDate: values.firstSymptomsDate || undefined,
       healthCenterId: values.healthCenterId,
       symptomLeadingToCheckup: values.symptomLeadingToCheckup || undefined,
+      diseaseEvolution: values.diseaseEvolution.trim() || undefined,
       waitTimeForDiagnosis: normalizedWaitTime ?? undefined,
       waitTimeForDiagnosisManuallyEdited:
         values.waitTimeForDiagnosisManuallyEdited,
@@ -2956,6 +2959,7 @@ function DiagnosticoForm({
     setValue("firstSymptomsDate", "")
     setValue("healthCenterId", undefined)
     setValue("symptomLeadingToCheckup", "")
+    setValue("diseaseEvolution", "")
     setValue("waitTimeForDiagnosis", undefined)
     setValue("waitTimeForDiagnosisManuallyEdited", false)
     setValue("remembersWaitTimeForDiagnosis", true)
@@ -2997,6 +3001,7 @@ function DiagnosticoForm({
     setValue("firstSymptomsDate", diagnosis.firstSymptomsDate ?? "")
     setValue("healthCenterId", diagnosis.healthCenterId ?? undefined)
     setValue("symptomLeadingToCheckup", diagnosis.symptomLeadingToCheckup ?? "")
+    setValue("diseaseEvolution", diagnosis.diseaseEvolution ?? "")
     const recall = fixedWaitTimeRecallFrom(diagnosis.waitTimeForDiagnosis)
     if (recall) {
       setValue("remembersWaitTimeForDiagnosis", false)
@@ -3032,6 +3037,7 @@ function DiagnosticoForm({
     setValue("firstSymptomsDate", decision.firstSymptomsDate ?? "")
     setValue("healthCenterId", decision.healthCenterId)
     setValue("symptomLeadingToCheckup", decision.symptomLeadingToCheckup ?? "")
+    setValue("diseaseEvolution", decision.diseaseEvolution ?? "")
     setValue("waitTimeForDiagnosis", decision.waitTimeForDiagnosis)
     setValue(
       "waitTimeForDiagnosisManuallyEdited",
@@ -3366,6 +3372,21 @@ function DiagnosticoForm({
               updateDiagnosisDate("diagnosisDate", event.target.value)
             }
           />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="diagnosis-disease-evolution">
+            Evolución de la enfermedad
+          </Label>
+          <Textarea
+            id="diagnosis-disease-evolution"
+            rows={2}
+            {...register("diseaseEvolution")}
+            placeholder="Ej: Metástasis ósea detectada en tomografía de control"
+          />
+          <p className="text-muted-foreground text-xs">
+            Cómo avanzó desde el diagnóstico: cambios de etapa, metástasis u
+            otros órganos comprometidos.
+          </p>
         </div>
         <div className="space-y-2">
           <Label>Primeros síntomas</Label>
