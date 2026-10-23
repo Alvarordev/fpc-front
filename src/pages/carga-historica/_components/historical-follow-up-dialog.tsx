@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { followUpsApi } from "@/api/follow-ups"
@@ -28,6 +28,7 @@ import {
   buildHistoricalClinicalPayload,
   historicalClinicalDraftsFromPatient,
 } from "./build-historical-clinical-payload"
+import { useDeleteHistoricalFollowUp } from "./historical-follow-up-delete-dialog"
 import { Field, SelectField } from "./historical-form-fields"
 import {
   FOLLOW_UP_PURPOSE_OPTIONS,
@@ -172,6 +173,8 @@ function HistoricalFollowUpForm({
   const [drafts, setDrafts] = useState<ClinicalDrafts>(prefill.drafts)
   const recordIds = prefill.recordIds
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const deleteMutation = useDeleteHistoricalFollowUp(patientId)
 
   const agentsQuery = useQuery({
     queryKey: ["agents"],
@@ -336,26 +339,77 @@ function HistoricalFollowUpForm({
         {error && <p className="text-destructive text-sm">{error}</p>}
       </div>
 
-      <DialogFooter className="shrink-0">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          disabled={saveMutation.isPending}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-          className="gap-1.5"
-        >
-          {saveMutation.isPending && (
-            <Loader2 className="size-3.5 animate-spin" />
-          )}
-          {followUpId ? "Guardar cambios" : "Guardar seguimiento"}
-        </Button>
+      <DialogFooter
+        className={followUpId ? "shrink-0 sm:justify-between" : "shrink-0"}
+      >
+        {followUpId && confirmingDelete ? (
+          <>
+            <p className="text-destructive text-sm sm:max-w-xs">
+              ¿Eliminar este seguimiento? Se borra también su ficha clínica. No
+              se puede deshacer.
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Conservar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() =>
+                  deleteMutation.mutate(followUpId, { onSuccess: onClose })
+                }
+                disabled={deleteMutation.isPending}
+                className="gap-1.5"
+              >
+                {deleteMutation.isPending && (
+                  <Loader2 className="size-3.5 animate-spin" />
+                )}
+                Eliminar seguimiento
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            {followUpId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={saveMutation.isPending}
+              >
+                <Trash2 className="size-3.5" />
+                Eliminar
+              </Button>
+            ) : null}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={saveMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+                className="gap-1.5"
+              >
+                {saveMutation.isPending && (
+                  <Loader2 className="size-3.5 animate-spin" />
+                )}
+                {followUpId ? "Guardar cambios" : "Guardar seguimiento"}
+              </Button>
+            </div>
+          </>
+        )}
       </DialogFooter>
     </>
   )

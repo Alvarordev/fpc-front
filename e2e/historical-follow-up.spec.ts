@@ -122,7 +122,107 @@ async function addTreatmentDraft(page: Page) {
   await expect(form).toHaveCount(0)
 }
 
+const DELETE_NOTES = "Prueba de eliminación histórica"
+
+async function openPatientWithDeletableFollowUp(page: Page) {
+  const capture = await mockHistoricalApi(page, {
+    seedFollowUps: [
+      { id: "enrollment-1", purpose: "ENROLLMENT", type: "CALL" },
+      {
+        id: "follow-up-1",
+        purpose: "FOLLOW_UP",
+        type: "CALL",
+        notes: DELETE_NOTES,
+      },
+    ],
+  })
+  await openHistoricalPatient(page)
+  return capture
+}
+
+function timelineCard(page: Page, title: string) {
+  return page.locator("div.rounded-xl").filter({
+    has: page.getByText(title, { exact: true }),
+  })
+}
+
+test.describe("eliminar seguimiento histórico", () => {
+  test("no muestra eliminar en el enrolamiento", async ({ page }) => {
+    await openPatientWithDeletableFollowUp(page)
+
+    const enrollment = timelineCard(page, "Enrolamiento")
+    await expect(enrollment).toBeVisible()
+    await expect(enrollment.getByRole("button", { name: "Eliminar" })).toHaveCount(
+      0,
+    )
+    await expect(enrollment.getByRole("button", { name: "Editar" })).toHaveCount(0)
+
+    const followUp = timelineCard(page, "Seguimiento · Llamada")
+    await expect(followUp.getByText(DELETE_NOTES)).toBeVisible()
+    await expect(followUp.getByRole("button", { name: "Eliminar" })).toBeVisible()
+  })
+
+  test("cancela y confirma la eliminación en la línea de tiempo", async ({
+    page,
+  }) => {
+    const capture = await openPatientWithDeletableFollowUp(page)
+    const followUp = timelineCard(page, "Seguimiento · Llamada")
+    const enrollment = timelineCard(page, "Enrolamiento")
+
+    await followUp.getByRole("button", { name: "Eliminar" }).click()
+    const confirm = page.getByRole("dialog", {
+      name: "¿Eliminar este seguimiento?",
+    })
+    await expect(confirm).toBeVisible()
+    await expect(
+      confirm.getByText(/Se borrará el seguimiento y los datos clínicos/),
+    ).toBeVisible()
+    await confirm.getByRole("button", { name: "Conservar" }).click()
+    await expect(confirm).toHaveCount(0)
+    await expect(followUp).toBeVisible()
+    expect(capture.deletedFollowUpIds).toEqual([])
+
+    await followUp.getByRole("button", { name: "Eliminar" }).click()
+    await expect(confirm).toBeVisible()
+    await confirm.getByRole("button", { name: "Eliminar seguimiento" }).click()
+    await expect(page.getByText("Seguimiento histórico eliminado")).toBeVisible()
+    await expect(followUp).toHaveCount(0)
+    await expect(enrollment).toBeVisible()
+    expect(capture.deletedFollowUpIds).toEqual(["follow-up-1"])
+  })
+
+  test("elimina desde el diálogo de edición", async ({ page }) => {
+    const capture = await openPatientWithDeletableFollowUp(page)
+    const followUp = timelineCard(page, "Seguimiento · Llamada")
+
+    await followUp.getByRole("button", { name: "Editar" }).click()
+    const edit = page.getByRole("dialog", {
+      name: "Editar seguimiento histórico",
+    })
+    await expect(edit).toBeVisible()
+
+    await edit.getByRole("button", { name: "Eliminar", exact: true }).click()
+    await expect(
+      edit.getByText(/¿Eliminar este seguimiento\? Se borra también/),
+    ).toBeVisible()
+    await edit.getByRole("button", { name: "Conservar" }).click()
+    await expect(
+      edit.getByRole("button", { name: "Eliminar", exact: true }),
+    ).toBeVisible()
+    expect(capture.deletedFollowUpIds).toEqual([])
+
+    await edit.getByRole("button", { name: "Eliminar", exact: true }).click()
+    await edit.getByRole("button", { name: "Eliminar seguimiento" }).click()
+    await expect(page.getByText("Seguimiento histórico eliminado")).toBeVisible()
+    await expect(edit).toHaveCount(0)
+    await expect(followUp).toHaveCount(0)
+    await expect(timelineCard(page, "Enrolamiento")).toBeVisible()
+    expect(capture.deletedFollowUpIds).toEqual(["follow-up-1"])
+  })
+})
+
 test.describe("seguimiento histórico", () => {
+
   test("guarda metadatos sin bloques clínicos", async ({ page }) => {
     const capture = await mockHistoricalApi(page)
     await openHistoricalPatient(page)

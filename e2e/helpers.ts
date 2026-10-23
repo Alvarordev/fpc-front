@@ -312,12 +312,14 @@ function timelineEvent(followUp: ReturnType<typeof followUpResponse>) {
 
 export type HistoricalApiCapture = {
   followUps: Record<string, unknown>[]
+  deletedFollowUpIds: string[]
   patientPatches: Record<string, unknown>[]
 }
 
 export type HistoricalApiOptions = {
   followUpError?: { status: number; message: string }
   diagnosticStatus?: Record<string, unknown> | null
+  seedFollowUps?: Record<string, unknown>[]
 }
 
 export async function mockHistoricalApi(
@@ -325,8 +327,17 @@ export async function mockHistoricalApi(
   options: HistoricalApiOptions = {},
 ): Promise<HistoricalApiCapture> {
   const token = fakeAccessToken()
-  const capture: HistoricalApiCapture = { followUps: [], patientPatches: [] }
+  const capture: HistoricalApiCapture = {
+    followUps: [],
+    deletedFollowUpIds: [],
+    patientPatches: [],
+  }
   const created: ReturnType<typeof followUpResponse>[] = []
+  for (const [index, body] of (options.seedFollowUps ?? []).entries()) {
+    const id =
+      typeof body.id === "string" ? body.id : `seed-follow-up-${index + 1}`
+    created.push(followUpResponse(id, body))
+  }
   const patient = historicalPatient()
 
   await page.route(
@@ -440,6 +451,30 @@ export async function mockHistoricalApi(
         )
         created.push(createdFollowUp)
         await json(route, 201, createdFollowUp)
+        return
+      }
+      const followUpGet = path.match(/^\/follow-ups\/([^/]+)$/)
+      if (followUpGet && method === "GET") {
+        const item = created.find((entry) => entry.id === followUpGet[1])
+        if (!item) {
+          await json(route, 404, {
+            statusCode: 404,
+            message: "Not found",
+          })
+          return
+        }
+        await json(route, 200, item)
+        return
+      }
+      const historicalFollowUpMatch = path.match(
+        /^\/historical-records\/follow-ups\/([^/]+)$/,
+      )
+      if (historicalFollowUpMatch && method === "DELETE") {
+        const id = historicalFollowUpMatch[1]
+        const index = created.findIndex((item) => item.id === id)
+        if (index >= 0) created.splice(index, 1)
+        capture.deletedFollowUpIds.push(id)
+        await route.fulfill({ status: 204, headers: CORS, body: "" })
         return
       }
 

@@ -78,6 +78,21 @@ export const historicalRecordsApi = {
     return requireData(data, response.status, error)
   },
 
+  async deleteFollowUp(id: string): Promise<void> {
+    const { error, response } = await api.DELETE(
+      "/historical-records/follow-ups/{id}",
+      {
+        params: { path: { id } },
+      },
+    )
+    if (!response.ok)
+      throw apiErrorFromBody(
+        error,
+        response.status,
+        "No se pudo eliminar el seguimiento histórico",
+      )
+  },
+
   async createReminder(
     input: CreateHistoricalReminderInput,
   ): Promise<HistoricalReminder> {

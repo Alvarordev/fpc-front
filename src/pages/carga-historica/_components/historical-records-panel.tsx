@@ -9,6 +9,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Trash2,
   UserRound,
 } from "lucide-react"
 import { enrollmentsApi } from "@/api/enrollments"
@@ -29,6 +30,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  HistoricalFollowUpDeleteDialog,
+  useDeleteHistoricalFollowUp,
+} from "./historical-follow-up-delete-dialog"
 import { HistoricalFollowUpDialog } from "./historical-follow-up-dialog"
 import { HistoricalPsychooncologyDialog } from "./historical-psychooncology-dialog"
 import { HistoricalReminderDialog } from "./historical-reminder-dialog"
@@ -111,6 +116,8 @@ export function HistoricalRecordsPanel({
     open: boolean
     token: number
   } | null>(null)
+  const [deleteFollowUpId, setDeleteFollowUpId] = useState<string | null>(null)
+  const deleteFollowUp = useDeleteHistoricalFollowUp(patientId)
 
   function openDialog(target: DialogTarget) {
     setDialog((current) => ({
@@ -392,6 +399,20 @@ export function HistoricalRecordsPanel({
                                 Editar
                               </Button>
                             )}
+                            {event.kind === "FOLLOW_UP" && !isEnrollment && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-7 gap-1 text-xs"
+                                onClick={() =>
+                                  setDeleteFollowUpId(event.followUpId)
+                                }
+                              >
+                                <Trash2 className="size-3.5" />
+                                Eliminar
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <p className="text-muted-foreground mt-1 text-sm">
@@ -459,6 +480,19 @@ export function HistoricalRecordsPanel({
           followUpId={followUpTarget.followUpId ?? null}
         />
       )}
+      <HistoricalFollowUpDeleteDialog
+        open={Boolean(deleteFollowUpId)}
+        isPending={deleteFollowUp.isPending}
+        onOpenChange={(open) => {
+          if (!open) setDeleteFollowUpId(null)
+        }}
+        onConfirm={() => {
+          if (!deleteFollowUpId) return
+          deleteFollowUp.mutate(deleteFollowUpId, {
+            onSuccess: () => setDeleteFollowUpId(null),
+          })
+        }}
+      />
       {reminderTarget && (
         <HistoricalReminderDialog
           key={`reminder-${dialog?.token}`}

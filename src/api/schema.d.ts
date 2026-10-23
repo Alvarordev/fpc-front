@@ -1637,7 +1637,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete a historical follow-up and its clinical data */
+        delete: operations["HistoricalRecordsController_deleteFollowUp"];
         options?: never;
         head?: never;
         /** Update a historical follow-up and its clinical data */
@@ -4034,6 +4035,11 @@ export interface components {
             diagnosis?: components["schemas"]["DiagnosticStatusDiagnosisDto"];
             supportedBySepa?: boolean;
             notes?: string;
+            /**
+             * @description Required only for CONFIRMED. Defaults to ACTIVE_TREATMENT. Ignored for RULED_OUT.
+             * @enum {string}
+             */
+            healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
         };
         PatientDocumentResponseDto: {
             /** Format: uuid */
@@ -10611,6 +10617,53 @@ export interface operations {
                 content?: never;
             };
             /** @description A referenced record was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HistoricalRecordsController_deleteFollowUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The follow-up is not historical or belongs to an enrollment */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only administrators may load history */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Follow-up not found */
             404: {
                 headers: {
                     [name: string]: unknown;
