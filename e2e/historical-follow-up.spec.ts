@@ -320,6 +320,49 @@ test.describe("seguimiento histórico", () => {
     )
   })
 
+  test("guarda una vivienda provisional en alojamiento", async ({ page }) => {
+    const capture = await mockHistoricalApi(page)
+    await openHistoricalPatient(page)
+    await openFollowUpDialog(page)
+    await fillMetadata(page)
+    await openTab(page, "Direcciones")
+    const dialog = followUpDialog(page)
+    await chooseLabeled(page, dialog, /^Tipo$/, "Temporal")
+    await chooseLabeled(
+      page,
+      dialog,
+      "Esta vivienda provisional es",
+      "Alojamiento / hotel",
+    )
+    await expect(dialog.getByPlaceholder("Av. Principal 123")).toHaveCount(0)
+    await dialog
+      .getByLabel("Tiempo de llegada al hospital, cantidad")
+      .fill("30")
+    await dialog.getByLabel("Gasto promedio en soles").fill("45.5")
+    await dialog.getByRole("button", { name: "Guardar dirección" }).click()
+    await expect(
+      page.getByText(
+        "Indique si el gasto promedio del alojamiento es por noche o por mes",
+      ),
+    ).toBeVisible()
+    await dialog.getByLabel("Período del gasto").click()
+    await page.getByRole("option", { name: "Por noche" }).click()
+    await dialog.getByRole("button", { name: "Guardar dirección" }).click()
+    await expect(page.getByText("Dirección guardada en el borrador")).toBeVisible()
+    await saveFollowUp(page)
+    await expectSaved(page)
+
+    expect(lastFollowUp(capture).addresses).toEqual([
+      expect.objectContaining({
+        type: "TEMPORARY",
+        housingType: "LODGING",
+        travelTimeToHospital: { valueMin: 30, unit: "MINUTE" },
+        averageLodgingCost: 45.5,
+        averageLodgingCostPeriod: "NIGHT",
+      }),
+    ])
+  })
+
   test("guarda el contacto del paciente y lo usa como interlocutor", async ({
     page,
   }) => {

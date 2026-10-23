@@ -2189,6 +2189,8 @@ export interface components {
             fullName: string;
             primaryPhone: string;
             secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
             dni?: string;
             birthDate?: string;
             gender?: string;
@@ -2209,6 +2211,8 @@ export interface components {
             fullName: string;
             primaryPhone: string;
             secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
             dni?: string;
             birthDate?: string;
             gender?: string;
@@ -2226,6 +2230,8 @@ export interface components {
             fullName: string;
             primaryPhone: string;
             secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
             dni?: string;
             birthDate?: string;
             gender?: string;
@@ -2415,6 +2421,9 @@ export interface components {
         EnrollmentAddressDto: {
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            travelTimeToHospital?: components["schemas"]["DurationDto"];
+            /** @enum {string} */
+            averageLodgingCostPeriod?: "NIGHT" | "MONTH";
             /** @enum {string} */
             type: "PERMANENT" | "TEMPORARY";
             isPrimary?: boolean;
@@ -2424,6 +2433,12 @@ export interface components {
             reference?: string;
             /** Format: uri */
             locationUrl?: string;
+            locationShareStatus?: string;
+            locationShareStatusOther?: string;
+            housingType?: string;
+            housingTypeOther?: string;
+            shelterName?: string;
+            averageLodgingCost?: number;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -2865,7 +2880,7 @@ export interface components {
         };
         CreateCatalogItemDto: {
             /** @enum {string} */
-            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure";
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type";
             code: string;
             label: string;
             parentCode?: string | null;
@@ -3084,6 +3099,8 @@ export interface components {
             /** Format: email */
             email: string | null;
             dni: string | null;
+            /** @enum {string|null} */
+            documentType: "DNI" | "CE" | "CPP" | null;
             /** Format: date */
             birthDate: string | null;
             gender: string | null;
@@ -3176,6 +3193,8 @@ export interface components {
             /** Format: email */
             email: string | null;
             dni: string | null;
+            /** @enum {string|null} */
+            documentType: "DNI" | "CE" | "CPP" | null;
             /** Format: date */
             birthDate: string | null;
             gender: string | null;
@@ -3610,6 +3629,8 @@ export interface components {
             /** Format: email */
             email: string | null;
             dni: string | null;
+            /** @enum {string|null} */
+            documentType: "DNI" | "CE" | "CPP" | null;
             /** Format: date */
             birthDate: string | null;
             gender: string | null;
@@ -3650,6 +3671,8 @@ export interface components {
             fullName?: string;
             primaryPhone?: string;
             secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
             dni?: string;
             birthDate?: string;
             gender?: string;
@@ -3858,6 +3881,9 @@ export interface components {
         CreatePatientAddressDto: {
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            travelTimeToHospital?: components["schemas"]["DurationDto"];
+            /** @enum {string} */
+            averageLodgingCostPeriod?: "NIGHT" | "MONTH";
             /** Format: uuid */
             followUpId?: string;
             /** @enum {string} */
@@ -3869,6 +3895,12 @@ export interface components {
             reference?: string;
             /** Format: uri */
             locationUrl?: string;
+            locationShareStatus?: string;
+            locationShareStatusOther?: string;
+            housingType?: string;
+            housingTypeOther?: string;
+            shelterName?: string;
+            averageLodgingCost?: number;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -3890,6 +3922,15 @@ export interface components {
             reference: string | null;
             /** Format: uri */
             locationUrl: string | null;
+            locationShareStatus: string | null;
+            locationShareStatusOther: string | null;
+            housingType: string | null;
+            housingTypeOther: string | null;
+            shelterName: string | null;
+            travelTimeToHospital: components["schemas"]["DurationResponseDto"] | null;
+            averageLodgingCost: number | null;
+            /** @enum {string|null} */
+            averageLodgingCostPeriod: "NIGHT" | "MONTH" | null;
             dniMatchesAddress: boolean | null;
             /** Format: date */
             validFrom: string | null;
@@ -3902,6 +3943,9 @@ export interface components {
         UpdatePatientAddressDto: {
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            travelTimeToHospital?: components["schemas"]["DurationDto"];
+            /** @enum {string} */
+            averageLodgingCostPeriod?: "NIGHT" | "MONTH";
             /** Format: uuid */
             followUpId?: string;
             /** @enum {string} */
@@ -3913,6 +3957,12 @@ export interface components {
             reference?: string;
             /** Format: uri */
             locationUrl?: string;
+            locationShareStatus?: string;
+            locationShareStatusOther?: string;
+            housingType?: string;
+            housingTypeOther?: string;
+            shelterName?: string;
+            averageLodgingCost?: number;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -4412,6 +4462,8 @@ export interface components {
         CreateHistoricalPatientDto: {
             fullName: string;
             secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
             dni?: string;
             birthDate?: string;
             gender?: string;
@@ -4770,6 +4822,9 @@ export interface components {
         UpdateHistoricalAddressDto: {
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
+            travelTimeToHospital?: components["schemas"]["DurationDto"];
+            /** @enum {string} */
+            averageLodgingCostPeriod?: "NIGHT" | "MONTH";
             /** @enum {string} */
             type: "PERMANENT" | "TEMPORARY";
             isPrimary?: boolean;
@@ -4779,6 +4834,12 @@ export interface components {
             reference?: string;
             /** Format: uri */
             locationUrl?: string;
+            locationShareStatus?: string;
+            locationShareStatusOther?: string;
+            housingType?: string;
+            housingTypeOther?: string;
+            shelterName?: string;
+            averageLodgingCost?: number;
             dniMatchesAddress?: boolean;
             validFrom?: string;
             validTo?: string;
@@ -6958,7 +7019,7 @@ export interface operations {
         parameters: {
             query?: {
                 includeInactive?: boolean;
-                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure";
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type";
             };
             header?: never;
             path?: never;

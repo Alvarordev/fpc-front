@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
+  Activity,
   AlertTriangle,
   Briefcase,
   Building2,
@@ -55,6 +56,7 @@ import { PatientProfileDialog } from "./patient-profile-dialog"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { useAuthStore } from "@/store/auth-store"
 import { patientTabUrl } from "../_lib/patient-tabs"
+import { collectActiveComorbidities } from "../_lib/active-comorbidities"
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -297,6 +299,9 @@ export function OverviewSection({
     enabled: patient.role !== "COMPANION",
   })
   const diagnosticStatus = diagnosticStatusQuery.data
+  const activeComorbidities = collectActiveComorbidities(
+    patient.healthBackgroundAssessments ?? [],
+  )
   const age = getAge(patient.birthDate)
   return (
     <div className="space-y-4">
@@ -363,7 +368,10 @@ export function OverviewSection({
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
             <Field label="Nombre completo" value={patient.fullName} />
-            <Field label="DNI" value={patient.dni} />
+            <Field
+              label={patient.documentType ?? "Documento"}
+              value={patient.dni}
+            />
             <Field
               label="Fecha de nacimiento"
               value={date(patient.birthDate)}
@@ -902,6 +910,25 @@ export function OverviewSection({
                 {item.canAffiliate
                   ? "Puede afiliarse"
                   : (item.cantAffiliateReason ?? "No puede afiliarse")}
+              </div>
+            ))}
+          </Records>
+          <Records
+            title="Comorbilidades"
+            count={activeComorbidities.length}
+            icon={Activity}
+          >
+            {activeComorbidities.map((item) => (
+              <div key={item.id} className="rounded-md border p-3 text-sm">
+                <b>{item.conditionName}</b>
+                {(item.treatmentDescription || item.followUpSpecialty) && (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {item.treatmentDescription}
+                    {item.treatmentDescription && item.followUpSpecialty && " · "}
+                    {item.followUpSpecialty &&
+                      `Control en ${item.followUpSpecialty}`}
+                  </p>
+                )}
               </div>
             ))}
           </Records>

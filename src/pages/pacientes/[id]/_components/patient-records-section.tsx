@@ -13,6 +13,8 @@ import { usePatientAddresses } from "../_hooks/use-patient-records"
 import { PatientAddressDialog } from "./patient-address-dialog"
 import { useAuthStore } from "@/store/auth-store"
 import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
+import { CatalogValue } from "@/components/catalog-select"
+import { formatLodgingCost } from "@/pages/enrolamiento/_utils/address-housing"
 
 function RecordStatus({ active }: { active: boolean }) {
   return (
@@ -38,8 +40,33 @@ function AddressLocation({ address }: { address: PatientAddress }) {
     .filter(Boolean)
     .join(", ")
 
+  const lodgingDetails = [
+    address.travelTimeToHospital?.label &&
+      `${address.travelTimeToHospital.label} al hospital`,
+    address.averageLodgingCost != null &&
+      `gasto promedio ${formatLodgingCost(
+        address.averageLodgingCost,
+        address.averageLodgingCostPeriod,
+      )}`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
   return (
     <>
+      {address.housingType && (
+        <p className="text-muted-foreground mb-1 text-xs font-medium">
+          <CatalogValue
+            kind="temporary_housing_type"
+            code={address.housingType}
+            other={address.housingTypeOther}
+          />
+          {address.shelterName && ` · ${address.shelterName}`}
+        </p>
+      )}
+      {lodgingDetails && (
+        <p className="text-muted-foreground mb-1 text-xs">{lodgingDetails}</p>
+      )}
       <p className="text-sm font-semibold">
         {address.address ?? "Sin dirección registrada"}
       </p>
@@ -51,6 +78,17 @@ function AddressLocation({ address }: { address: PatientAddress }) {
           Referencia: {address.reference}
         </p>
       )}
+      {address.locationShareStatus &&
+        address.locationShareStatus !== "SHARES" && (
+          <p className="text-muted-foreground mt-1 text-xs">
+            Ubicación web:{" "}
+            <CatalogValue
+              kind="location_share_status"
+              code={address.locationShareStatus}
+              other={address.locationShareStatusOther}
+            />
+          </p>
+        )}
       {address.locationUrl && isHttpUrl(address.locationUrl) && (
         <a
           href={address.locationUrl}

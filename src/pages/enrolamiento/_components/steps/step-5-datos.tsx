@@ -11,6 +11,8 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DurationInput } from "@/components/duration-input"
+import { IdentityDocumentInput } from "@/components/identity-document-input"
+import { documentNumberError } from "@/types/identity-document"
 import { CatalogSelect } from "@/components/catalog-select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,6 +43,19 @@ import {
   useEnrollmentStore,
 } from "../../_store/enrollment-store"
 import { isMinor } from "../../_utils/patient-age"
+import {
+  asksLocationUrl,
+  HOUSING_LODGING_CODE,
+  HOUSING_SHELTER_CODE,
+  housingAsksAddress,
+  lodgingCostError,
+} from "../../_utils/address-housing"
+import {
+  HousingTypeQuestion,
+  LocationShareQuestion,
+  LodgingFields,
+  ShelterNameField,
+} from "@/components/address-housing-fields"
 
 const fl =
   "text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/70"
@@ -91,6 +106,153 @@ function relationshipOtherText(relationship?: string) {
     return ""
   }
   return relationship
+}
+
+type AddressFieldsProps = {
+  address: EnrollmentAddressRequest
+  onChange: (partial: Partial<EnrollmentAddressRequest>) => void
+}
+
+function LocationShareFields({ address, onChange }: AddressFieldsProps) {
+  return (
+    <>
+      <LocationShareQuestion
+        address={address}
+        onChange={onChange}
+        labelClassName={fl}
+        fieldClassName={sc}
+      />
+      {asksLocationUrl(address) && (
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Ubicación web de la residencia</Label>
+          <Input
+            type="url"
+            placeholder="https://maps.google.com/..."
+            className={ic}
+            value={address.locationUrl ?? ""}
+            onChange={(event) =>
+              onChange({ locationUrl: event.target.value || undefined })
+            }
+          />
+          {address.locationUrl && isValidLocationUrl(address.locationUrl) && (
+            <a
+              href={address.locationUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary text-xs underline underline-offset-4"
+            >
+              Abrir ubicación
+            </a>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Pegue un enlace de Google Maps u otro mapa con protocolo http o
+            https.
+          </p>
+        </div>
+      )}
+    </>
+  )
+}
+
+function StreetAddressFields({ address, onChange }: AddressFieldsProps) {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label className={fl}>Dirección</Label>
+        <Input
+          placeholder="Av. Principal 123"
+          className={ic}
+          value={address.address ?? ""}
+          onChange={(event) =>
+            onChange({ address: event.target.value || undefined })
+          }
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Distrito</Label>
+          <Input
+            placeholder="Miraflores"
+            className={ic}
+            value={address.district ?? ""}
+            onChange={(event) =>
+              onChange({ district: event.target.value || undefined })
+            }
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className={fl}>Provincia</Label>
+          <Input
+            placeholder="Lima"
+            className={ic}
+            value={address.province ?? ""}
+            onChange={(event) =>
+              onChange({ province: event.target.value || undefined })
+            }
+          />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label className={fl}>Departamento</Label>
+        <Select
+          items={DEPARTMENTS}
+          value={address.department ?? ""}
+          onValueChange={(value) =>
+            onChange({
+              department: (value || undefined) as PeruDepartment | undefined,
+            })
+          }
+        >
+          <SelectTrigger className={sc}>
+            <SelectValue placeholder="Seleccionar departamento..." />
+          </SelectTrigger>
+          <SelectContent>
+            {DEPARTMENTS.map((department) => (
+              <SelectItem key={department.value} value={department.value}>
+                {department.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  )
+}
+
+function TemporaryHousingFields({ address, onChange }: AddressFieldsProps) {
+  const housingType = address.housingType
+  return (
+    <div className="flex flex-col gap-4">
+      <HousingTypeQuestion
+        address={address}
+        onChange={onChange}
+        labelClassName={fl}
+        fieldClassName={sc}
+      />
+      {housingType === HOUSING_SHELTER_CODE && (
+        <ShelterNameField
+          address={address}
+          onChange={onChange}
+          labelClassName={fl}
+          fieldClassName={ic}
+        />
+      )}
+      {housingAsksAddress(housingType) && (
+        <>
+          <StreetAddressFields address={address} onChange={onChange} />
+          <LocationShareFields address={address} onChange={onChange} />
+        </>
+      )}
+      {housingType === HOUSING_LODGING_CODE && (
+        <LodgingFields
+          address={address}
+          onChange={onChange}
+          labelClassName={fl}
+          fieldClassName={ic}
+        />
+      )}
+    </div>
+  )
 }
 
 interface ContactPersonFieldsProps {
@@ -440,6 +602,19 @@ export function Step5Datos({
       )
       return
     }
+    const documentError = documentNumberError(
+      pd.documentType ?? "DNI",
+      pd.dni,
+    )
+    if (documentError) {
+      setError(documentError)
+      return
+    }
+    const lodgingError = lodgingCostError(temporaryAddress)
+    if (hasTemporaryAddress && lodgingError) {
+      setError(lodgingError)
+      return
+    }
     if (
       !isValidLocationUrl(address.locationUrl) ||
       !isValidLocationUrl(temporaryAddress.locationUrl)
@@ -510,14 +685,18 @@ export function Step5Datos({
         <SectionHeader icon={CreditCard} title="Información de Identidad" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label className={fl}>DNI</Label>
-            <Input
-              placeholder="74829304"
+            <Label className={fl}>Documento de identidad</Label>
+            <IdentityDocumentInput
+              type={pd.documentType ?? "DNI"}
+              number={pd.dni ?? ""}
               className={ic}
-              value={pd.dni ?? ""}
-              onChange={(event) =>
+              onChange={({ type, number }) =>
                 updateDraft({
-                  patientData: { ...pd, dni: event.target.value || null },
+                  patientData: {
+                    ...pd,
+                    documentType: type,
+                    dni: number || null,
+                  },
                 })
               }
             />
@@ -769,32 +948,7 @@ export function Step5Datos({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label className={fl}>Ubicación web de la residencia</Label>
-          <Input
-            type="url"
-            placeholder="https://maps.google.com/..."
-            className={ic}
-            value={address.locationUrl ?? ""}
-            onChange={(event) =>
-              updateAddress({ locationUrl: event.target.value || undefined })
-            }
-          />
-          {address.locationUrl && isValidLocationUrl(address.locationUrl) && (
-            <a
-              href={address.locationUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-primary text-xs underline underline-offset-4"
-            >
-              Abrir ubicación
-            </a>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Pegue un enlace de Google Maps u otro mapa con protocolo http o
-            https.
-          </p>
-        </div>
+        <LocationShareFields address={address} onChange={updateAddress} />
         <div className="flex flex-col gap-2">
           <Label className={fl}>
             ¿Cuenta con una vivienda provisional adicional?
@@ -829,102 +983,10 @@ export function Step5Datos({
                 en provincia.
               </p>
             </div>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>Dirección</Label>
-                <Input
-                  placeholder="Av. Principal 123"
-                  className={ic}
-                  value={temporaryAddress.address ?? ""}
-                  onChange={(event) =>
-                    updateTemporaryAddress({
-                      address: event.target.value || undefined,
-                    })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>Distrito</Label>
-                  <Input
-                    placeholder="Miraflores"
-                    className={ic}
-                    value={temporaryAddress.district ?? ""}
-                    onChange={(event) =>
-                      updateTemporaryAddress({
-                        district: event.target.value || undefined,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className={fl}>Provincia</Label>
-                  <Input
-                    placeholder="Lima"
-                    className={ic}
-                    value={temporaryAddress.province ?? ""}
-                    onChange={(event) =>
-                      updateTemporaryAddress({
-                        province: event.target.value || undefined,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>Departamento</Label>
-                <Select
-                  items={DEPARTMENTS}
-                  value={temporaryAddress.department ?? ""}
-                  onValueChange={(value) =>
-                    updateTemporaryAddress({
-                      department: (value || undefined) as
-                        | PeruDepartment
-                        | undefined,
-                    })
-                  }
-                >
-                  <SelectTrigger className={sc}>
-                    <SelectValue placeholder="Seleccionar departamento..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPARTMENTS.map((department) => (
-                      <SelectItem
-                        key={department.value}
-                        value={department.value}
-                      >
-                        {department.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className={fl}>Ubicación web de la residencia</Label>
-                <Input
-                  type="url"
-                  placeholder="https://maps.google.com/..."
-                  className={ic}
-                  value={temporaryAddress.locationUrl ?? ""}
-                  onChange={(event) =>
-                    updateTemporaryAddress({
-                      locationUrl: event.target.value || undefined,
-                    })
-                  }
-                />
-                {temporaryAddress.locationUrl &&
-                  isValidLocationUrl(temporaryAddress.locationUrl) && (
-                    <a
-                      href={temporaryAddress.locationUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary text-xs underline underline-offset-4"
-                    >
-                      Abrir ubicación
-                    </a>
-                  )}
-              </div>
-            </div>
+            <TemporaryHousingFields
+              address={temporaryAddress}
+              onChange={updateTemporaryAddress}
+            />
           </div>
         )}
         <DurationInput

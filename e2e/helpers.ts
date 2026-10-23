@@ -28,6 +28,18 @@ const ADMIN = {
 }
 
 const CATALOGS: Record<string, ReturnType<typeof catalogItem>[]> = {
+  location_share_status: [
+    catalogItem("location_share_status", "SHARES", "Sí, comparte la ubicación"),
+    catalogItem("location_share_status", "DOES_NOT_WANT", "No desea compartir"),
+    catalogItem("location_share_status", "OTRO", "Otro"),
+  ],
+  temporary_housing_type: [
+    catalogItem("temporary_housing_type", "OWN", "Propia"),
+    catalogItem("temporary_housing_type", "INEN", "Se queda en el INEN"),
+    catalogItem("temporary_housing_type", "SHELTER", "Albergue"),
+    catalogItem("temporary_housing_type", "LODGING", "Alojamiento / hotel"),
+    catalogItem("temporary_housing_type", "OTRO", "Otro"),
+  ],
   entry_source: [
     catalogItem("entry_source", "REDES_SOCIALES", "Redes sociales"),
     catalogItem("entry_source", "LINEA_TELEFONICA", "Línea telefónica"),

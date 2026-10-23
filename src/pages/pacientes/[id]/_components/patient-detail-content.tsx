@@ -27,6 +27,7 @@ import {
   isPatientTab,
   withPatientTab,
 } from "../_lib/patient-tabs"
+import { formatIdentityDocument } from "@/types/identity-document"
 const statusLabels: Record<"UNENROLLED" | "ENROLLED", string> = {
   UNENROLLED: "Prospecto",
   ENROLLED: "Enrolado",
@@ -172,7 +173,11 @@ export function PatientDetailContent() {
             </Badge>
           </div>
           <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-4 text-sm">
-            <span>{patient.dni ? `DNI ${patient.dni}` : "Sin DNI"}</span>
+            <span>
+              {patient.dni
+                ? formatIdentityDocument(patient.documentType, patient.dni)
+                : "Sin documento"}
+            </span>
             <span className="flex items-center gap-1">
               <Clock className="size-3" />
               {enrolledOn

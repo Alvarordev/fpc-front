@@ -43,6 +43,11 @@ import {
   patientHealthSubcategoryPhase,
   requiresActiveDiagnosis,
 } from "@/lib/patient-health-subcategory"
+import { IdentityDocumentInput } from "@/components/identity-document-input"
+import {
+  documentNumberError,
+  type IdentityDocumentType,
+} from "@/types/identity-document"
 
 type EducationValue = NonNullable<PatientDetailsInput["educationLevel"]>
 type HealthPhaseValue = PatientHealthPhase
@@ -50,6 +55,7 @@ type HealthSubcategoryValue = PatientHealthSubcategory | "UNASSIGNED"
 
 export type PatientProfileFormValues = {
   fullName: string
+  documentType: IdentityDocumentType
   dni: string
   birthDate: string
   gender: string
@@ -75,6 +81,7 @@ type SelectOption = { value: string; label: string }
 
 const DEFAULT_FORM_VALUES: PatientProfileFormValues = {
   fullName: "",
+  documentType: "DNI",
   dni: "",
   birthDate: "",
   gender: "",
@@ -137,6 +144,7 @@ function formValuesFromPatient(
 ): PatientProfileFormValues {
   return {
     fullName: patient.fullName,
+    documentType: patient.documentType ?? "DNI",
     dni: patient.dni ?? "",
     birthDate: patient.birthDate ?? "",
     gender: patient.gender ?? "",
@@ -240,11 +248,18 @@ export function PatientProfileDialog({
 
   const updateMutation = useMutation({
     mutationFn: async (values: PatientProfileFormValues) => {
+      const documentError = documentNumberError(
+        values.documentType,
+        values.dni,
+      )
+      if (documentError) throw new Error(documentError)
       const patientInput: UpdatePatientInput = {
         fullName: values.fullName.trim(),
         primaryPhone: values.primaryPhone.trim(),
         secondaryPhone: optionalText(values.secondaryPhone),
-        dni: optionalText(values.dni),
+        ...(optionalText(values.dni)
+          ? { documentType: values.documentType, dni: optionalText(values.dni) }
+          : { dni: optionalText(values.dni) }),
         birthDate: optionalText(values.birthDate),
         gender: optionalText(values.gender),
         hasWhatsapp: values.hasWhatsapp,
@@ -343,8 +358,16 @@ export function PatientProfileDialog({
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="patient-dni">DNI</Label>
-                <Input id="patient-dni" {...register("dni")} />
+                <Label htmlFor="patient-dni">Documento de identidad</Label>
+                <IdentityDocumentInput
+                  id="patient-dni"
+                  type={formValues.documentType ?? "DNI"}
+                  number={formValues.dni ?? ""}
+                  onChange={({ type, number }) => {
+                    setValue("documentType", type)
+                    setValue("dni", number)
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="patient-birth-date">Fecha de nacimiento</Label>

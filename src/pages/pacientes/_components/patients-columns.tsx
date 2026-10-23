@@ -11,6 +11,7 @@ import { formatCatalogValue, useCatalog } from "@/hooks/use-catalog"
 import { cn } from "@/lib/utils"
 import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
 import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
+import { formatIdentityDocument } from "@/types/identity-document"
 
 function TruncatedDiagnosis({ code }: { code: string }) {
   const { data: items = [] } = useCatalog("cancer_diagnosis")
@@ -63,7 +64,9 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
           <div>
             <p className="text-sm font-medium">{patient.fullName}</p>
             <p className="text-muted-foreground text-xs">
-              {patient.dni ? `DNI ${patient.dni}` : "Sin DNI"}
+              {patient.dni
+                ? formatIdentityDocument(patient.documentType, patient.dni)
+                : "Sin documento"}
             </p>
           </div>
         </div>

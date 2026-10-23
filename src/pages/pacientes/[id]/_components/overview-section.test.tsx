@@ -174,6 +174,25 @@ const patient = {
   sisAffiliations: [],
   medicalAppointments: [],
   symptomReports: [],
+  healthBackgroundAssessments: [
+    {
+      id: "background-1",
+      patientId: "patient-1",
+      followUpId: "follow-up-1",
+      hasPsychiatry: null,
+      activeComorbidities: [
+        {
+          id: "comorbidity-1",
+          conditionName: "Hipotiroidismo",
+          treatmentDescription: "Levotiroxina",
+          followUpSpecialty: "Endocrinología",
+        },
+      ],
+      limitations: [],
+      familyCancerHistory: [],
+      createdAt: "2026-02-01T00:00:00.000Z",
+    },
+  ],
   nonOncologicalFollowUps: [
     {
       id: "non-oncological-1",
@@ -235,6 +254,11 @@ describe("OverviewSection", () => {
 
   it("shows derived patient information and current residences", async () => {
     renderOverview()
+
+    expect(await screen.findByText("Hipotiroidismo")).toBeTruthy()
+    expect(
+      screen.getByText("Levotiroxina · Control en Endocrinología"),
+    ).toBeTruthy()
 
     expect(await screen.findByText("Campaña")).toBeTruthy()
     expect(screen.getByText("Edad")).toBeTruthy()

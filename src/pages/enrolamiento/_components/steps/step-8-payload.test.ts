@@ -1110,6 +1110,132 @@ describe("step 8 Nest enrollment payload", () => {
     ).toThrow("Completa nombre, parentesco y teléfono del contacto")
   })
 
+  it("sends only the fields that apply to each provisional housing type", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+        ],
+        addresses: [
+          {
+            type: "PERMANENT",
+            isPrimary: true,
+            address: "Av. Arequipa 123",
+            locationShareStatus: "DOES_NOT_WANT",
+            locationUrl: "https://maps.google.com/x",
+          },
+          {
+            type: "TEMPORARY",
+            isPrimary: false,
+            housingType: "LODGING",
+            address: "No debe enviarse",
+            travelTimeToHospital: { valueMin: 30, unit: "MINUTE" },
+            averageLodgingCost: 45.5,
+            averageLodgingCostPeriod: "NIGHT",
+            shelterName: "No debe enviarse",
+          },
+        ],
+      }),
+    })
+
+    expect(payload.addresses).toEqual([
+      expect.objectContaining({
+        type: "PERMANENT",
+        address: "Av. Arequipa 123",
+        locationShareStatus: "DOES_NOT_WANT",
+        locationUrl: undefined,
+      }),
+      expect.objectContaining({
+        type: "TEMPORARY",
+        housingType: "LODGING",
+        address: undefined,
+        shelterName: undefined,
+        travelTimeToHospital: { valueMin: 30, unit: "MINUTE" },
+        averageLodgingCost: 45.5,
+        averageLodgingCostPeriod: "NIGHT",
+      }),
+    ])
+  })
+
+  it("requires the period of the lodging cost", () => {
+    expect(() =>
+      buildEnrollmentPayload({
+        agentId: "agent-1",
+        categoriaClinica: "CANCER_DIAGNOSIS",
+        draft: draft({
+          diagnoses: [
+            { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+          ],
+          addresses: [
+            { type: "PERMANENT", isPrimary: true, district: "Iquitos" },
+            {
+              type: "TEMPORARY",
+              isPrimary: false,
+              housingType: "LODGING",
+              averageLodgingCost: 800,
+            },
+          ],
+        }),
+      }),
+    ).toThrow("Indique si el gasto promedio del alojamiento es por noche o por mes")
+  })
+
+  it("keeps the shelter name and address for a shelter", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        diagnoses: [
+          { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+        ],
+        addresses: [
+          { type: "PERMANENT", isPrimary: true, district: "Iquitos" },
+          {
+            type: "TEMPORARY",
+            isPrimary: false,
+            housingType: "SHELTER",
+            shelterName: "Casa Magia",
+            address: "Jr. Huánuco 456",
+            locationShareStatus: "SHARES",
+            locationUrl: "https://maps.google.com/casa",
+          },
+        ],
+      }),
+    })
+
+    expect(payload.addresses?.[1]).toMatchObject({
+      housingType: "SHELTER",
+      shelterName: "Casa Magia",
+      address: "Jr. Huánuco 456",
+      locationUrl: "https://maps.google.com/casa",
+    })
+  })
+
+  it("sends the identity document type with its number", () => {
+    const payload = buildEnrollmentPayload({
+      agentId: "agent-1",
+      categoriaClinica: "CANCER_DIAGNOSIS",
+      draft: draft({
+        patientData: {
+          fullName: "Paciente Test",
+          primaryPhone: "988111222",
+          documentType: "CE",
+          dni: "001234567",
+        },
+        diagnoses: [
+          { draftId: "diagnosis-1", diagnosis: "MAMA_DUCTAL", isCurrent: true },
+        ],
+      }),
+    })
+
+    expect(payload.patient).toMatchObject({
+      documentType: "CE",
+      dni: "001234567",
+    })
+  })
+
   it("maps a foreign birth country without a peru department", () => {
     const payload = buildEnrollmentPayload({
       agentId: "agent-1",

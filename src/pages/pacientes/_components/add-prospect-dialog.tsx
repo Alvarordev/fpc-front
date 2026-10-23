@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { IdentityDocumentInput } from "@/components/identity-document-input";
+import { documentNumberError } from "@/types/identity-document";
 
 const ENTRY_POINTS = [
   "Llamada directa",
@@ -36,6 +38,7 @@ const schema = z
   .object({
     fullName: z.string().min(1, "Nombre requerido"),
     phone: z.string().min(1, "Celular requerido"),
+    documentType: z.enum(["DNI", "CE", "CPP"]),
     dni: z.string().optional(),
     email: z.string().email("Correo inválido").optional().or(z.literal("")),
     diagnosisNote: z.string().optional(),
@@ -45,6 +48,11 @@ const schema = z
     scheduledDate: z.string().optional(),
     scheduledTime: z.string().optional(),
     additionalNotes: z.string().optional(),
+  })
+  .superRefine((values, context) => {
+    const error = documentNumberError(values.documentType, values.dni);
+    if (error)
+      context.addIssue({ code: "custom", path: ["dni"], message: error });
   })
   .refine((values) => !values.scheduledDate || !!values.scheduledTime, {
     path: ["scheduledTime"],
@@ -85,6 +93,7 @@ export function AddProspectDialog({
     defaultValues: {
       fullName: "",
       phone: "",
+      documentType: "DNI",
       dni: "",
       email: "",
       diagnosisNote: "",
@@ -166,11 +175,15 @@ export function AddProspectDialog({
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <Label className={fl}>DNI</Label>
-                <Input
-                  placeholder="74829304"
+                <Label className={fl}>Documento de identidad</Label>
+                <IdentityDocumentInput
+                  type={watch("documentType")}
+                  number={watch("dni") ?? ""}
                   className={ic}
-                  {...register("dni")}
+                  onChange={({ type, number }) => {
+                    setValue("documentType", type);
+                    setValue("dni", number);
+                  }}
                 />
               </div>
             </div>

@@ -38,7 +38,9 @@ export function ProspectsContent() {
     try {
       await patientsApi.create({
         fullName: values.fullName,
-        dni: values.dni || undefined,
+        ...(values.dni
+          ? { documentType: values.documentType, dni: values.dni }
+          : {}),
         primaryPhone: values.phone,
         email: values.email || undefined,
         hasWhatsapp: true,

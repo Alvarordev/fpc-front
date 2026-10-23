@@ -3,6 +3,8 @@
 // ============================================================
 
 import type { DurationDraft } from "./duration"
+import type { IdentityDocumentType } from "./identity-document"
+import type { LodgingCostPeriod } from "@/pages/enrolamiento/_utils/address-housing"
 
 export type { DurationDraft, DurationInput, DurationUnit } from "./duration"
 
@@ -120,6 +122,8 @@ export interface LoginRequest {
 
 export interface CreatePatientRequest {
   fullName: string
+  documentType?: IdentityDocumentType | null
+  /** Identity document number (DNI, CE or CPP per `documentType`). */
   dni?: string | null
   birthDate?: string | null
   gender?: string | null
@@ -372,6 +376,17 @@ export interface EnrollmentAddressRequest {
   province?: string
   reference?: string
   locationUrl?: string
+  /** Catalog `location_share_status`. */
+  locationShareStatus?: string
+  locationShareStatusOther?: string
+  /** Catalog `temporary_housing_type`; TEMPORARY addresses only. */
+  housingType?: string
+  housingTypeOther?: string
+  shelterName?: string
+  travelTimeToHospital?: DurationDraft
+  /** Average spend in soles when renting lodging. */
+  averageLodgingCost?: number
+  averageLodgingCostPeriod?: LodgingCostPeriod
   dniMatchesAddress?: boolean
   validFrom?: string
   validTo?: string

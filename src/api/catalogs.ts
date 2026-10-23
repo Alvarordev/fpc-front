@@ -46,6 +46,8 @@ export const CATALOG_KIND_LABELS: Record<CatalogKind, string> = {
   country: "País",
   chemotherapy_route: "Vía de quimioterapia",
   surgical_procedure: "Procedimiento quirúrgico",
+  location_share_status: "Ubicación web de la vivienda",
+  temporary_housing_type: "Tipo de vivienda provisional",
 }
 
 /** Labels as they appear on enrollment / clinical forms, for error copy. */

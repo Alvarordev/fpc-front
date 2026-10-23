@@ -10,6 +10,7 @@ import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import { getAge } from "../../_utils/patient-age"
 import { toDurationInput } from "@/types/duration"
 import { fixedWaitTime } from "@/types/wait-time-recall"
+import { housingPayloadFields } from "../../_utils/address-housing"
 import type { EnrollmentContactSource } from "@/types"
 
 interface BaseBuildEnrollmentPayloadOptions {
@@ -448,6 +449,21 @@ export function buildEnrollmentPayload({
   const appointmentToSend =
     healthPhase === "CANCER_DIAGNOSIS" ? appointment : undefined
   const addresses = draft.addresses
+    .map((address) => {
+      const { asksAddress, fields } = housingPayloadFields(address)
+      return {
+        type: address.type,
+        isPrimary: address.isPrimary ?? true,
+        address: asksAddress ? value(address.address) : undefined,
+        district: asksAddress ? value(address.district) : undefined,
+        province: asksAddress ? value(address.province) : undefined,
+        department: asksAddress ? address.department : undefined,
+        ...fields,
+        dniMatchesAddress: address.dniMatchesAddress,
+        validFrom: value(address.validFrom),
+        validTo: value(address.validTo),
+      }
+    })
     .filter(
       (address) =>
         address.address ||
@@ -455,20 +471,10 @@ export function buildEnrollmentPayload({
         address.province ||
         address.department ||
         address.locationUrl ||
+        address.locationShareStatus ||
+        address.housingType ||
         address.dniMatchesAddress !== undefined,
     )
-    .map((address) => ({
-      type: address.type,
-      isPrimary: address.isPrimary ?? true,
-      address: value(address.address),
-      district: value(address.district),
-      province: value(address.province),
-      department: address.department,
-      locationUrl: value(address.locationUrl),
-      dniMatchesAddress: address.dniMatchesAddress,
-      validFrom: value(address.validFrom),
-      validTo: value(address.validTo),
-    }))
   const talks = draft.familyPreventionTalkInterests
     .filter((item) => value(item.talkName) && value(item.familyMemberName))
     .map((item) => ({
@@ -534,7 +540,12 @@ export function buildEnrollmentPayload({
               ? { primaryPhone: value(draft.patientData.primaryPhone) }
               : {}),
             secondaryPhone: value(draft.patientData.secondaryPhone),
-            dni: value(draft.patientData.dni),
+            ...(value(draft.patientData.dni)
+              ? {
+                  documentType: draft.patientData.documentType ?? "DNI",
+                  dni: value(draft.patientData.dni),
+                }
+              : {}),
             birthDate: value(draft.patientData.birthDate),
             gender: value(draft.patientData.gender),
             hasWhatsapp: draft.patientData.hasWhatsapp,

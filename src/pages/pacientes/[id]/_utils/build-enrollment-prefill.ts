@@ -32,6 +32,7 @@ export function buildEnrollmentPrefill(
     patientId: patient.id,
     patientData: {
       fullName: patient.fullName,
+      documentType: patient.documentType,
       dni: patient.dni,
       birthDate: patient.birthDate,
       gender: patient.gender,

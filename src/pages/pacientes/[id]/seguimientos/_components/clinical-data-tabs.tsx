@@ -129,6 +129,20 @@ import {
   resolveWaitTimeRecall,
   type FixedWaitTimeRecall,
 } from "@/types/wait-time-recall"
+import {
+  HousingTypeQuestion,
+  LocationShareQuestion,
+  LodgingFields,
+  ShelterNameField,
+} from "@/components/address-housing-fields"
+import {
+  asksLocationUrl,
+  HOUSING_LODGING_CODE,
+  HOUSING_SHELTER_CODE,
+  housingAsksAddress,
+  housingPayloadFields,
+} from "@/pages/enrolamiento/_utils/address-housing"
+import type { EnrollmentAddressRequest } from "@/types"
 
 // ── Tri-state Sí/No/sin dato select ──
 
@@ -1439,7 +1453,10 @@ function isHttpUrl(value: string) {
   }
 }
 
-type AddressFormValues = Omit<CreatePatientAddressInput, "followUpId">
+type AddressFormValues = Omit<
+  CreatePatientAddressInput,
+  "followUpId" | "travelTimeToHospital"
+> & { travelTimeToHospital?: DurationDraft }
 
 function AddressForm({
   draft,
@@ -1467,6 +1484,14 @@ function AddressForm({
       department: draft?.department,
       reference: draft?.reference ?? "",
       locationUrl: draft?.locationUrl ?? "",
+      locationShareStatus: draft?.locationShareStatus,
+      locationShareStatusOther: draft?.locationShareStatusOther,
+      housingType: draft?.housingType,
+      housingTypeOther: draft?.housingTypeOther,
+      shelterName: draft?.shelterName,
+      travelTimeToHospital: normalizeDuration(draft?.travelTimeToHospital),
+      averageLodgingCost: draft?.averageLodgingCost,
+      averageLodgingCostPeriod: draft?.averageLodgingCostPeriod,
       dniMatchesAddress: draft?.dniMatchesAddress,
       validFrom: draft?.validFrom ?? "",
       validTo: draft?.validTo ?? "",
@@ -1477,20 +1502,50 @@ function AddressForm({
   const isPrimary = watch("isPrimary")
   const dniMatchesAddress = watch("dniMatchesAddress")
   const department = watch("department")
+  const housing = watch()
+  const housingType =
+    addressType === "TEMPORARY" ? housing.housingType : undefined
+  const asksAddress =
+    addressType !== "TEMPORARY" || housingAsksAddress(housingType)
+
+  function updateHousing(partial: Partial<EnrollmentAddressRequest>) {
+    for (const [key, value] of Object.entries(partial))
+      setValue(key as keyof AddressFormValues, value as never)
+  }
 
   function submit(values: AddressFormValues) {
-    if (!values.address?.trim() && !values.district?.trim()) {
+    let housingAnswers: ReturnType<typeof housingPayloadFields>
+    try {
+      housingAnswers = housingPayloadFields(values)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Revisa la vivienda")
+      return
+    }
+    if (
+      housingAnswers.asksAddress &&
+      !values.address?.trim() &&
+      !values.district?.trim()
+    ) {
       toast.error("Indica al menos la dirección o el distrito")
       return
     }
+    if (values.type === "TEMPORARY" && !housingAnswers.fields.housingType) {
+      toast.error("Indica qué tipo de vivienda provisional es")
+      return
+    }
+    const { asksAddress: withAddress, fields } = housingAnswers
     onSave({
-      ...values,
+      type: values.type,
       isPrimary: values.type === "TEMPORARY" ? false : values.isPrimary,
-      address: values.address?.trim() || undefined,
-      district: values.district?.trim() || undefined,
-      province: values.province?.trim() || undefined,
-      reference: values.reference?.trim() || undefined,
-      locationUrl: values.locationUrl?.trim() || undefined,
+      address: withAddress ? values.address?.trim() || undefined : undefined,
+      district: withAddress ? values.district?.trim() || undefined : undefined,
+      province: withAddress ? values.province?.trim() || undefined : undefined,
+      department: withAddress ? values.department : undefined,
+      reference: withAddress
+        ? values.reference?.trim() || undefined
+        : undefined,
+      ...fields,
+      dniMatchesAddress: values.dniMatchesAddress,
       validFrom: values.validFrom || undefined,
       validTo: values.validTo || undefined,
     })
@@ -1574,64 +1629,103 @@ function AddressForm({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Departamento</Label>
-            <Select
-              items={DEPARTMENT_OPTIONS.map((value) => ({
-                value: value.value,
-                label: value.label,
-              }))}
-              value={department ?? ""}
-              onValueChange={(value) =>
-                setValue("department", value as AddressFormValues["department"])
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {DEPARTMENT_OPTIONS.map((department) => (
-                  <SelectItem key={department.value} value={department.value}>
-                    {department.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Dirección</Label>
-            <Input {...register("address")} placeholder="Av. Principal 123" />
-          </div>
-          <div className="space-y-2">
-            <Label>Distrito</Label>
-            <Input {...register("district")} placeholder="Miraflores" />
-          </div>
-          <div className="space-y-2">
-            <Label>Provincia</Label>
-            <Input {...register("province")} placeholder="Lima" />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Referencia</Label>
-            <Input {...register("reference")} placeholder="Frente al parque" />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Ubicación web de la residencia</Label>
-            <Input
-              type="url"
-              {...register("locationUrl", {
-                validate: (value) =>
-                  !value ||
-                  isHttpUrl(value.trim()) ||
-                  "Usa una URL http o https",
-              })}
-              placeholder="https://maps.google.com/..."
-            />
-            {errors.locationUrl?.message && (
-              <p className="text-destructive text-xs">
-                {errors.locationUrl.message}
-              </p>
-            )}
-          </div>
+          {addressType === "TEMPORARY" && (
+            <div className="md:col-span-2">
+              <HousingTypeQuestion address={housing} onChange={updateHousing} />
+            </div>
+          )}
+          {housingType === HOUSING_SHELTER_CODE && (
+            <div className="md:col-span-2">
+              <ShelterNameField address={housing} onChange={updateHousing} />
+            </div>
+          )}
+          {housingType === HOUSING_LODGING_CODE && (
+            <div className="md:col-span-2">
+              <LodgingFields address={housing} onChange={updateHousing} />
+            </div>
+          )}
+          {asksAddress && (
+            <>
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select
+                  items={DEPARTMENT_OPTIONS.map((value) => ({
+                    value: value.value,
+                    label: value.label,
+                  }))}
+                  value={department ?? ""}
+                  onValueChange={(value) =>
+                    setValue(
+                      "department",
+                      value as AddressFormValues["department"],
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_OPTIONS.map((department) => (
+                      <SelectItem
+                        key={department.value}
+                        value={department.value}
+                      >
+                        {department.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Dirección</Label>
+                <Input
+                  {...register("address")}
+                  placeholder="Av. Principal 123"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Distrito</Label>
+                <Input {...register("district")} placeholder="Miraflores" />
+              </div>
+              <div className="space-y-2">
+                <Label>Provincia</Label>
+                <Input {...register("province")} placeholder="Lima" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Referencia</Label>
+                <Input
+                  {...register("reference")}
+                  placeholder="Frente al parque"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <LocationShareQuestion
+                  address={housing}
+                  onChange={updateHousing}
+                />
+              </div>
+              {asksLocationUrl(housing) && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Ubicación web de la residencia</Label>
+                  <Input
+                    type="url"
+                    {...register("locationUrl", {
+                      validate: (value) =>
+                        !value ||
+                        isHttpUrl(value.trim()) ||
+                        "Usa una URL http o https",
+                    })}
+                    placeholder="https://maps.google.com/..."
+                  />
+                  {errors.locationUrl?.message && (
+                    <p className="text-destructive text-xs">
+                      {errors.locationUrl.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           <div className="space-y-2">
             <Label>Vigente desde</Label>
             <Input type="date" {...register("validFrom")} />
