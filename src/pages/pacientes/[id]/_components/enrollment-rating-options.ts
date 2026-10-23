@@ -5,3 +5,9 @@ export const ENROLLMENT_RATING_OPTIONS = [
   { value: "4", label: "4 — Buena" },
   { value: "5", label: "5 — Muy buena" },
 ] as const
+
+// Sólo la encuesta de enrolamiento admite "No indica" (0 en el backend).
+export const ENROLLMENT_SURVEY_RATING_OPTIONS = [
+  ...ENROLLMENT_RATING_OPTIONS,
+  { value: "0", label: "No indica" },
+] as const

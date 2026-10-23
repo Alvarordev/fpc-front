@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuthStore } from "@/store/auth-store"
 import { EnrollmentRatingDialog } from "./enrollment-rating-dialog"
-import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
+import { ENROLLMENT_SURVEY_RATING_OPTIONS } from "./enrollment-rating-options"
 
 function ratingLabel(rating: number | null) {
-  return ENROLLMENT_RATING_OPTIONS.find((option) => option.value === String(rating))?.label
+  return ENROLLMENT_SURVEY_RATING_OPTIONS.find((option) => option.value === String(rating))?.label
 }
 
 export function EnrollmentRatingCard({
@@ -73,12 +73,12 @@ export function EnrollmentRatingCard({
               className="h-7 gap-1 text-xs"
               onClick={() => setDialogOpen(true)}
             >
-              {enrollment.followUpQualityRating ? (
+              {enrollment.followUpQualityRating != null ? (
                 <Pencil className="size-3" />
               ) : (
                 <Plus className="size-3" />
               )}
-              {enrollment.followUpQualityRating ? "Editar" : "Registrar"}
+              {enrollment.followUpQualityRating != null ? "Editar" : "Registrar"}
             </Button>
           )}
         </div>
@@ -95,7 +95,7 @@ export function EnrollmentRatingCard({
           </p>
         ) : enrollment ? (
           <div className="flex items-center gap-2 text-sm">
-            {enrollment.followUpQualityRating ? (
+            {enrollment.followUpQualityRating != null ? (
               <Badge variant="secondary">
                 {ratingLabel(enrollment.followUpQualityRating) ??
                   enrollment.followUpQualityRating}

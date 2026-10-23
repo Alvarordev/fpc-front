@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
+import { ENROLLMENT_SURVEY_RATING_OPTIONS } from "./enrollment-rating-options"
 
 interface EnrollmentRatingDialogProps {
   open: boolean
@@ -34,7 +34,7 @@ export function EnrollmentRatingDialog({
   isPending,
   onSubmit,
 }: EnrollmentRatingDialogProps) {
-  const [rating, setRating] = useState(currentRating ? String(currentRating) : "")
+  const [rating, setRating] = useState(currentRating != null ? String(currentRating) : "")
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -50,7 +50,7 @@ export function EnrollmentRatingDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {currentRating ? "Editar calificación" : "Registrar calificación"}
+            {currentRating != null ? "Editar calificación" : "Registrar calificación"}
           </DialogTitle>
           <DialogDescription>
             Registra la respuesta de la encuesta de satisfacción del enrolamiento.
@@ -60,7 +60,7 @@ export function EnrollmentRatingDialog({
           <div className="space-y-2">
             <Label htmlFor="enrollment-rating">Calificación</Label>
             <Select
-              items={ENROLLMENT_RATING_OPTIONS}
+              items={ENROLLMENT_SURVEY_RATING_OPTIONS}
               value={rating}
               onValueChange={(value) => setRating(value ?? "")}
             >
@@ -68,7 +68,7 @@ export function EnrollmentRatingDialog({
                 <SelectValue placeholder="Seleccionar calificación" />
               </SelectTrigger>
               <SelectContent>
-                {ENROLLMENT_RATING_OPTIONS.map((option) => (
+                {ENROLLMENT_SURVEY_RATING_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
