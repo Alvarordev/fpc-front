@@ -82,6 +82,11 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  patientHealthPhaseLabels,
+  patientHealthSubcategoryLabels,
+  patientHealthSubcategoriesByPhase,
+} from "@/lib/patient-health-subcategory"
 import { patientDocumentsApi } from "@/api/patient-documents"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
 import { PatientDocumentUploadDialog } from "../../_components/patient-document-upload-dialog"
@@ -483,13 +488,18 @@ export function ClinicalDataTabs({
     .filter((report) => report.enrollmentId !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   const currentDiagnoses = diagnoses.filter((diagnosis) => diagnosis.isCurrent)
-  const showDiagnosticStatus = Boolean(
-    enrollmentSymptomReport || diagnosticStatus || drafts.diagnosticStatus,
+  const patientHealthPhase = patient?.details?.healthPhase
+  const searchWasStarted = Boolean(
+    diagnosticStatus || drafts.diagnosticStatus,
   )
+  const lockDiagnosticSearch =
+    !isDiagnosticStatusLoading &&
+    patientHealthPhase === "CANCER_DIAGNOSIS" &&
+    !searchWasStarted
   const effectiveDiagnosticStatus =
     drafts.diagnosticStatus?.status ?? diagnosticStatus?.status
   const showInlineNonOncologicalFollowUp =
-    effectiveDiagnosticStatus === "RULED_OUT"
+    effectiveDiagnosticStatus === "RULED_OUT" && !lockDiagnosticSearch
   const nonOncologicalDiagnosticStatusEventId = drafts.diagnosticStatus
     ? null
     : diagnosticStatus?.status === "RULED_OUT"
@@ -602,37 +612,47 @@ export function ClinicalDataTabs({
             showPrimaryCareViaSepaQuestions={showPrimaryCareViaSepaQuestions}
             onOpenNewHospital={openNewHospital}
             diagnosticStatusSection={
-              showDiagnosticStatus ? (
-                <DiagnosticStatusSection
-                  key={`${diagnosticStatus?.id ?? "none"}:${drafts.diagnosticStatus?.status ?? "none"}:${drafts.diagnosticStatus?.eventId ?? "none"}`}
-                  current={diagnosticStatus}
-                  isLoading={isDiagnosticStatusLoading}
-                  readOnly={isHistorical}
-                  draft={drafts.diagnosticStatus}
-                  onDraftChange={(diagnosticStatus) =>
-                    onDraftsChange((prev) => ({
-                      ...prev,
-                      diagnosticStatus,
-                    }))
-                  }
-                />
-              ) : null
+              <DiagnosticStatusSection
+                key={`${diagnosticStatus?.id ?? "none"}:${drafts.diagnosticStatus?.status ?? "none"}:${drafts.diagnosticStatus?.eventId ?? "none"}`}
+                current={diagnosticStatus}
+                isLoading={isDiagnosticStatusLoading}
+                readOnly={isHistorical}
+                locked={lockDiagnosticSearch}
+                draft={drafts.diagnosticStatus}
+                onDraftChange={(diagnosticStatus) =>
+                  onDraftsChange((prev) => ({
+                    ...prev,
+                    diagnosticStatus,
+                  }))
+                }
+              />
             }
             nonOncologicalFollowUpSection={
               showInlineNonOncologicalFollowUp ? (
-                <NonOncologicalFollowUpForm
-                  key={drafts.nonOncologicalFollowUp?.id ?? "inline-new"}
-                  draft={drafts.nonOncologicalFollowUp}
-                  diagnosticStatusEventId={
-                    nonOncologicalDiagnosticStatusEventId
-                  }
-                  onSave={(nonOncologicalFollowUp) =>
-                    onDraftsChange((prev) => ({
-                      ...prev,
-                      nonOncologicalFollowUp,
-                    }))
-                  }
-                />
+                <div className="border-border/60 space-y-3 border-t pt-4 md:col-span-2">
+                  <div>
+                    <h3 className="text-base font-semibold">
+                      Diagnóstico no oncológico
+                    </h3>
+                    <p className="text-muted-foreground text-sm">
+                      El cáncer quedó descartado. Registrá el diagnóstico no
+                      oncológico y el seguimiento asociado.
+                    </p>
+                  </div>
+                  <NonOncologicalFollowUpForm
+                    key={drafts.nonOncologicalFollowUp?.id ?? "inline-new"}
+                    draft={drafts.nonOncologicalFollowUp}
+                    diagnosticStatusEventId={
+                      nonOncologicalDiagnosticStatusEventId
+                    }
+                    onSave={(nonOncologicalFollowUp) =>
+                      onDraftsChange((prev) => ({
+                        ...prev,
+                        nonOncologicalFollowUp,
+                      }))
+                    }
+                  />
+                </div>
               ) : null
             }
             onSave={(symptomReport) =>
@@ -1856,9 +1876,11 @@ function NonOncologicalFollowUpForm({
           <>
             <div className="space-y-2">
               <Label>Especialidad de control *</Label>
-              <Input
-                value={controlSpecialty}
-                onChange={(event) => setControlSpecialty(event.target.value)}
+              <CatalogSelect
+                kind="medical_specialty"
+                value={controlSpecialty || null}
+                onValueChange={(code) => setControlSpecialty(code ?? "")}
+                placeholder="Seleccionar especialidad"
               />
             </div>
             <DurationInput
@@ -2465,6 +2487,8 @@ function SintomasForm({
               </div>
             </>
           )}
+          {diagnosticStatusSection}
+          {nonOncologicalFollowUpSection}
           <TriSelect
             label="¿Logró ser referido a un establecimiento de salud de mayor complejidad a partir del soporte del programa?"
             value={watch("referredViaSepa") ?? undefined}
@@ -2540,8 +2564,6 @@ function SintomasForm({
               />
             </div>
           )}
-          {diagnosticStatusSection}
-          {nonOncologicalFollowUpSection}
           <TriSelect
             label="¿El dolor está presente actualmente?"
             value={isPainPresent}
@@ -5512,16 +5534,32 @@ function SeguimientoSocialForm({
 
 // ── Situación del diagnóstico oncológico ──
 
+const CONFIRMED_SUBCATEGORY_ITEMS = patientHealthSubcategoriesByPhase
+  .CANCER_DIAGNOSIS
+  .map((value) => ({
+    value,
+    label: patientHealthSubcategoryLabels[value],
+  }))
+
+function diagnosticResultConsequence(status: DiagnosticStatusDraft["status"]) {
+  if (status === "CONFIRMED") {
+    return `${patientHealthPhaseLabels.CANCER_DIAGNOSIS} · ${patientHealthSubcategoryLabels.ACTIVE_TREATMENT}`
+  }
+  return `${patientHealthPhaseLabels.ANNUAL_CHECKUP} · ${patientHealthSubcategoryLabels.CANCER_RULED_OUT}`
+}
+
 function DiagnosticStatusSection({
   current,
   isLoading,
   readOnly,
+  locked,
   draft,
   onDraftChange,
 }: {
   current: PatientDiagnosticStatusEvent | null | undefined
   isLoading: boolean
   readOnly: boolean
+  locked: boolean
   draft?: DiagnosticStatusDraft
   onDraftChange: (draft: DiagnosticStatusDraft) => void
 }) {
@@ -5534,6 +5572,9 @@ function DiagnosticStatusSection({
   const [notes, setNotes] = useState(draft?.notes ?? current?.notes ?? "")
   const [diagnosis, setDiagnosis] = useState(
     draft?.diagnosis ?? current?.reportedDiagnosis ?? "",
+  )
+  const [healthSubcategory, setHealthSubcategory] = useState(
+    draft?.healthSubcategory ?? "ACTIVE_TREATMENT",
   )
   const resultItems = DIAGNOSTIC_STATUS_ITEMS.filter(
     (option) => option.value !== "SEARCHING",
@@ -5552,31 +5593,60 @@ function DiagnosticStatusSection({
     const nextNotes = "notes" in patch ? (patch.notes ?? "") : notes
     const nextDiagnosis =
       "diagnosis" in patch ? (patch.diagnosis ?? "") : diagnosis
+    const nextHealthSubcategory =
+      "healthSubcategory" in patch
+        ? (patch.healthSubcategory ?? "ACTIVE_TREATMENT")
+        : healthSubcategory
     const nextDraft: DiagnosticStatusDraft = {
       status: nextStatus,
       supportedBySepa: nextSupportedBySepa,
       notes: nextNotes,
-      ...(nextStatus === "CONFIRMED" ? { diagnosis: nextDiagnosis } : {}),
+      ...(nextStatus === "CONFIRMED"
+        ? {
+            diagnosis: nextDiagnosis,
+            healthSubcategory: nextHealthSubcategory,
+          }
+        : {}),
     }
 
     setStatus(nextStatus)
     setSupportedBySepa(nextSupportedBySepa)
     setNotes(nextNotes)
     setDiagnosis(nextDiagnosis)
+    setHealthSubcategory(nextHealthSubcategory)
     onDraftChange(nextDraft)
   }
 
-  const currentLabel = current?.status
-    ? diagnosticStatusLabels[current.status]
-    : "Sin registrar"
+  const currentLabel = locked
+    ? "No aplica"
+    : current?.status
+      ? diagnosticStatusLabels[current.status]
+      : "En búsqueda (sin resultado)"
+  const fieldsDisabled = readOnly || locked
 
   return (
     <div className="border-border/60 space-y-3 border-t pt-4 md:col-span-2">
       <div>
         <h3 className="text-base font-semibold">
-          Situación del diagnóstico oncológico
+          Resultado de la búsqueda diagnóstica
         </h3>
-        <p className="text-muted-foreground text-xs">
+        {locked ? (
+          <p className="text-muted-foreground text-sm">
+            Este paciente se enroló ya con{" "}
+            <span className="text-foreground font-medium">
+              diagnóstico de cáncer
+            </span>
+            , sin pasar por signos y síntomas. No hay una búsqueda abierta, así
+            que no se puede marcar encontrado ni descartado.
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Tras el enrolamiento en signos y síntomas el paciente queda{" "}
+            <span className="text-foreground font-medium">En búsqueda</span>{" "}
+            hasta que se registre un resultado.
+          </p>
+        )}
+        <p className="text-muted-foreground mt-1 text-xs">
           Actual: {isLoading ? "Cargando…" : currentLabel}
           {current?.supportedBySepa != null
             ? ` · Soporte SEPA: ${current.supportedBySepa ? "Sí" : "No"}`
@@ -5592,64 +5662,106 @@ function DiagnosticStatusSection({
             : ""}
         </p>
       </div>
-      {!readOnly && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Situación del diagnóstico</Label>
-            <Select
-              items={resultItems}
-              value={status}
-              onValueChange={(value) =>
-                updateDraft({
-                  status: value as DiagnosticStatusDraft["status"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar estado" />
-              </SelectTrigger>
-              <SelectContent>
-                {resultItems.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {status === "CONFIRMED" && (
-            <div className="space-y-2 md:col-span-2">
-              <Label>Diagnóstico formal *</Label>
-              <Input
-                value={diagnosis}
-                onChange={(event) =>
-                  updateDraft({ diagnosis: event.target.value })
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Resultado de la búsqueda</Label>
+          <Select
+            items={resultItems}
+            value={status}
+            disabled={fieldsDisabled}
+            onValueChange={(value) =>
+              updateDraft({
+                status: value as DiagnosticStatusDraft["status"],
+              })
+            }
+          >
+            <SelectTrigger disabled={fieldsDisabled}>
+              <SelectValue
+                placeholder={
+                  locked
+                    ? "No aplica"
+                    : "Seleccionar: encontrado o descartado"
                 }
-                placeholder="Escriba el diagnóstico confirmado"
               />
-            </div>
-          )}
-          {status && (
+            </SelectTrigger>
+            <SelectContent>
+              {resultItems.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {!fieldsDisabled && status === "CONFIRMED" && (
             <>
-              <TriSelect
-                label="¿Soportado por SEPA?"
-                value={supportedBySepa}
-                onChange={(value) => updateDraft({ supportedBySepa: value })}
-              />
-              <div className="space-y-2 md:col-span-2">
-                <Label>Notas (opcional)</Label>
-                <Input
-                  value={notes}
-                  onChange={(event) =>
-                    updateDraft({ notes: event.target.value })
+              <div className="space-y-2">
+                <Label>Subcategoría del paciente *</Label>
+                <Select
+                  items={CONFIRMED_SUBCATEGORY_ITEMS}
+                  value={healthSubcategory ?? "ACTIVE_TREATMENT"}
+                  onValueChange={(value) =>
+                    updateDraft({
+                      healthSubcategory:
+                        value as DiagnosticStatusDraft["healthSubcategory"],
+                    })
                   }
-                  placeholder="Detalle del cambio de estado"
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar subcategoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONFIRMED_SUBCATEGORY_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Diagnóstico formal *</Label>
+                <Input
+                  value={diagnosis}
+                  onChange={(event) =>
+                    updateDraft({ diagnosis: event.target.value })
+                  }
+                  placeholder="Escriba el diagnóstico confirmado"
                 />
               </div>
             </>
           )}
-        </div>
-      )}
+        {!fieldsDisabled && status && (
+          <>
+            <p className="text-muted-foreground md:col-span-2 text-xs">
+              Al completar el seguimiento el paciente pasará a{" "}
+              <span className="text-foreground font-medium">
+                {status === "CONFIRMED"
+                  ? `${patientHealthPhaseLabels.CANCER_DIAGNOSIS} · ${patientHealthSubcategoryLabels[(healthSubcategory ?? "ACTIVE_TREATMENT") as keyof typeof patientHealthSubcategoryLabels]}`
+                  : diagnosticResultConsequence(status)}
+              </span>
+              {status === "RULED_OUT"
+                ? ". Debajo podés registrar el diagnóstico no oncológico."
+                : "."}
+            </p>
+            <TriSelect
+              label="¿Soportado por SEPA?"
+              value={supportedBySepa}
+              onChange={(value) => updateDraft({ supportedBySepa: value })}
+            />
+            <div className="space-y-2 md:col-span-2">
+              <Label>Notas (opcional)</Label>
+              <Input
+                value={notes}
+                onChange={(event) =>
+                  updateDraft({ notes: event.target.value })
+                }
+                placeholder="Detalle del cambio de estado"
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

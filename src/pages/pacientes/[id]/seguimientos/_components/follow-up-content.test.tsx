@@ -47,6 +47,12 @@ vi.mock("@/api/patients", () => ({
     createTreatment: mocks.createTreatment,
   },
 }))
+vi.mock("@/api/non-oncological-follow-ups", () => ({
+  nonOncologicalFollowUpsApi: {
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+}))
 vi.mock("@/api/catalogs", async () => {
   const actual = await vi.importActual<typeof import("@/api/catalogs")>(
     "@/api/catalogs",
@@ -166,7 +172,12 @@ describe("FollowUpContent closed follow-up editing", () => {
     })
     mocks.listTimeline.mockResolvedValue({ data: [] })
     mocks.listAgents.mockResolvedValue([])
-    mocks.getPatient.mockResolvedValue({ diagnoses: [], treatments: [] })
+    mocks.getPatient.mockResolvedValue({
+      diagnoses: [],
+      treatments: [],
+      nonOncologicalFollowUps: [],
+      details: { healthPhase: "SIGNS_AND_SYMPTOMS" },
+    })
     useFollowUpDraftStore.getState().reset()
   })
 
@@ -312,6 +323,54 @@ describe("FollowUpContent closed follow-up editing", () => {
           followUpId: "follow-up-1",
           supportedBySepa: true,
           notes: "Resultado revisado",
+        },
+      )
+    })
+  })
+
+  it("persists a confirmed diagnosis with the oncological subcategory", async () => {
+    const user = userEvent.setup()
+    mocks.getById.mockResolvedValue(scheduledFollowUp)
+    mocks.update.mockResolvedValue({
+      ...scheduledFollowUp,
+      status: "COMPLETED",
+    })
+    mocks.transitionDiagnosticStatus.mockResolvedValue({
+      id: "event-confirmed",
+    })
+    renderFollowUp()
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Completar" })).toBeTruthy(),
+    )
+    useFollowUpDraftStore.getState().updateClinical((previous) => ({
+      ...previous,
+      diagnosticStatus: {
+        status: "CONFIRMED",
+        diagnosis: "Cáncer de mama",
+        healthSubcategory: "UNDER_CONTROLS",
+        supportedBySepa: true,
+      },
+    }))
+
+    await user.click(screen.getByRole("button", { name: "Completar" }))
+    await user.click(
+      screen.getByRole("button", { name: "Completar seguimiento" }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.transitionDiagnosticStatus).toHaveBeenCalledWith(
+        "patient-1",
+        {
+          status: "CONFIRMED",
+          followUpId: "follow-up-1",
+          diagnosis: {
+            diagnosis: "Cáncer de mama",
+            mode: "PARALLEL",
+          },
+          healthSubcategory: "UNDER_CONTROLS",
+          supportedBySepa: true,
+          notes: undefined,
         },
       )
     })

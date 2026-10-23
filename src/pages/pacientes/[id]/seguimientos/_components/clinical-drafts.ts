@@ -117,6 +117,7 @@ export type DiagnosticStatusDraft = {
   diagnosis?: string
   supportedBySepa?: boolean
   notes?: string
+  healthSubcategory?: TransitionPatientDiagnosticStatusDto["healthSubcategory"]
 }
 
 /** Contact choice kept as draft in historical mode (no immediate PATCH). */

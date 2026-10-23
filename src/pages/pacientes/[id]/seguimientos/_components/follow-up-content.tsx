@@ -170,9 +170,10 @@ export function FollowUpContent() {
   const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const patientQuery = usePatient(patientId ?? "")
   useEffect(() => {
-    const record = patientQuery.data?.nonOncologicalFollowUps?.find(
-      (item) => item.followUpId === followUpId,
-    )
+    const records = patientQuery.data?.nonOncologicalFollowUps ?? []
+    const record =
+      records.find((item) => item.followUpId === followUpId) ??
+      records.find((item) => item.status === "ACTIVE")
     if (!record) return
     const current =
       useFollowUpDraftStore.getState().clinical.nonOncologicalFollowUp
@@ -573,6 +574,9 @@ export function FollowUpContent() {
                   diagnosis: diagnosticStatusDraft.diagnosis!.trim(),
                   mode: "PARALLEL",
                 },
+                healthSubcategory:
+                  diagnosticStatusDraft.healthSubcategory ??
+                  "ACTIVE_TREATMENT",
               }
             : {}),
           supportedBySepa: diagnosticStatusDraft.supportedBySepa,
