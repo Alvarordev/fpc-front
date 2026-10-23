@@ -36,7 +36,11 @@ import {
   CatalogSelect,
   NON_ONCOLOGICAL_DIAGNOSIS,
 } from "@/components/catalog-select"
-import { catalogLabel, catalogSelectItems, useCatalog } from "@/hooks/use-catalog"
+import {
+  catalogLabel,
+  catalogSelectItems,
+  useCatalog,
+} from "@/hooks/use-catalog"
 import { DurationInput } from "@/components/duration-input"
 import { calculateDurationBetweenDates } from "@/types/duration"
 import {
@@ -106,8 +110,10 @@ const TALK_TOPICS = [
 const TALK_OTHER = "TALK_OTHER"
 
 type NewHospitalTarget =
+  | "primary"
   | "diagnosis"
   | "referred"
+  | "symptom-consultation"
   | "symptom-referred"
   | "appointment"
   | "treatment-source"
@@ -228,7 +234,9 @@ export function Step7Atencion({
     const reported = sr.reportedDiagnosis?.trim()
     if (
       reported &&
-      !catalogSelectItems(cancerDiagnoses).some((item) => item.value === reported)
+      !catalogSelectItems(cancerDiagnoses).some(
+        (item) => item.value === reported,
+      )
     ) {
       setNonOncologicalDiagnosis(true)
     }
@@ -244,10 +252,16 @@ export function Step7Atencion({
   }
 
   function handleNewHospitalCreated(center: HealthCenter) {
+    if (newHospitalTarget === "primary")
+      updateDraft({
+        details: { ...details, primaryHealthCenterId: center.id },
+      })
     if (newHospitalTarget === "diagnosis")
       updateDiagnosis({ healthCenterId: center.id })
     if (newHospitalTarget === "referred")
       updateDiagnosis({ referredHealthCenterId: center.id })
+    if (newHospitalTarget === "symptom-consultation")
+      updateSymptomReport({ healthCenterId: center.id })
     if (newHospitalTarget === "symptom-referred")
       updateSymptomReport({ referredHealthCenterId: center.id })
     if (newHospitalTarget === "appointment")
@@ -514,29 +528,46 @@ export function Step7Atencion({
             Opcional. Selecciónalo si el paciente ya tiene un hospital principal
             definido.
           </p>
-          <Select
-            items={activeCenters.map((c) => ({
-              value: c.id,
-              label: `${c.name} — ${c.department}`,
-            }))}
-            value={details.primaryHealthCenterId ?? ""}
-            onValueChange={(v) =>
-              updateDraft({
-                details: { ...details, primaryHealthCenterId: v || undefined },
-              })
-            }
-          >
-            <SelectTrigger className={sc}>
-              <SelectValue placeholder="No definido" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeCenters.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name} — {c.department}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select
+              items={activeCenters.map((c) => ({
+                value: c.id,
+                label: `${c.name} — ${c.department}`,
+              }))}
+              value={details.primaryHealthCenterId ?? ""}
+              onValueChange={(v) =>
+                updateDraft({
+                  details: {
+                    ...details,
+                    primaryHealthCenterId: v || undefined,
+                  },
+                })
+              }
+            >
+              <SelectTrigger className={sc}>
+                <SelectValue placeholder="No definido" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeCenters.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} — {c.department}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1"
+              aria-label="Agregar hospital principal"
+              title="Agregar hospital principal"
+              onClick={() => openNewHospital("primary")}
+            >
+              <Building2 className="size-3.5" />
+              <Plus className="size-3" />
+            </Button>
+          </div>
         </section>
 
         {esSignos && (
@@ -694,8 +725,7 @@ export function Step7Atencion({
               <div className="flex flex-col gap-2">
                 <Label className={fl}>
                   ¿Sabe por qué no ha solicitado ni asistido a una consulta
-                  médica?{" "}
-                  <span className="text-destructive">*</span>
+                  médica? <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   value={sr.noMedicalConsultationReason ?? ""}
@@ -716,27 +746,41 @@ export function Step7Atencion({
                     ¿En qué establecimiento de salud?{" "}
                     <span className="text-destructive">*</span>
                   </Label>
-                  <Select
-                    items={activeCenters.map((center) => ({
-                      value: center.id,
-                      label: `${center.name} — ${center.department}`,
-                    }))}
-                    value={sr.healthCenterId ?? ""}
-                    onValueChange={(value) =>
-                      updateSymptomReport({ healthCenterId: value || null })
-                    }
-                  >
-                    <SelectTrigger className={sc}>
-                      <SelectValue placeholder="Seleccionar establecimiento..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeCenters.map((center) => (
-                        <SelectItem key={center.id} value={center.id}>
-                          {center.name} — {center.department}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      items={activeCenters.map((center) => ({
+                        value: center.id,
+                        label: `${center.name} — ${center.department}`,
+                      }))}
+                      value={sr.healthCenterId ?? ""}
+                      onValueChange={(value) =>
+                        updateSymptomReport({ healthCenterId: value || null })
+                      }
+                    >
+                      <SelectTrigger className={sc}>
+                        <SelectValue placeholder="Seleccionar establecimiento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeCenters.map((center) => (
+                          <SelectItem key={center.id} value={center.id}>
+                            {center.name} — {center.department}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      aria-label="Agregar hospital de consulta por síntomas"
+                      title="Agregar hospital de consulta por síntomas"
+                      onClick={() => openNewHospital("symptom-consultation")}
+                    >
+                      <Building2 className="size-3.5" />
+                      <Plus className="size-3" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
@@ -862,6 +906,8 @@ export function Step7Atencion({
                         variant="outline"
                         size="sm"
                         className="shrink-0 gap-1"
+                        aria-label="Agregar hospital de referencia por síntomas"
+                        title="Agregar hospital de referencia por síntomas"
                         onClick={() => openNewHospital("symptom-referred")}
                       >
                         <Building2 className="size-3.5" />
@@ -1415,6 +1461,8 @@ export function Step7Atencion({
                       variant="outline"
                       size="sm"
                       className="shrink-0 gap-1"
+                      aria-label="Agregar hospital de diagnóstico"
+                      title="Agregar hospital de diagnóstico"
                       onClick={() => openNewHospital("diagnosis")}
                     >
                       <Building2 className="size-3.5" />
@@ -1473,6 +1521,8 @@ export function Step7Atencion({
                         variant="outline"
                         size="sm"
                         className="shrink-0 gap-1"
+                        aria-label="Agregar hospital de referencia"
+                        title="Agregar hospital de referencia"
                         onClick={() => openNewHospital("referred")}
                       >
                         <Building2 className="size-3.5" />
@@ -1620,6 +1670,8 @@ export function Step7Atencion({
                         variant="outline"
                         size="sm"
                         className="shrink-0 gap-1"
+                        aria-label="Agregar hospital de consulta"
+                        title="Agregar hospital de consulta"
                         onClick={() => openNewHospital("appointment")}
                       >
                         <Building2 className="size-3.5" />
@@ -1898,10 +1950,7 @@ export function Step7Atencion({
                         items={diagnoses.map((diagnosis, index) => ({
                           value: diagnosis.draftId,
                           label: diagnosis.diagnosis.trim()
-                            ? catalogLabel(
-                                cancerDiagnoses,
-                                diagnosis.diagnosis,
-                              )
+                            ? catalogLabel(cancerDiagnoses, diagnosis.diagnosis)
                             : `Diagnóstico ${index + 1}`,
                         }))}
                         value={tx.diagnosisRef}
@@ -1993,6 +2042,8 @@ export function Step7Atencion({
                               variant="outline"
                               size="sm"
                               className="shrink-0 gap-1"
+                              aria-label="Agregar hospital de origen"
+                              title="Agregar hospital de origen"
                               onClick={() =>
                                 openNewHospital("treatment-source")
                               }
@@ -2036,6 +2087,8 @@ export function Step7Atencion({
                               variant="outline"
                               size="sm"
                               className="shrink-0 gap-1"
+                              aria-label="Agregar hospital receptor"
+                              title="Agregar hospital receptor"
                               onClick={() =>
                                 openNewHospital("treatment-receiving")
                               }
@@ -2080,6 +2133,8 @@ export function Step7Atencion({
                             variant="outline"
                             size="sm"
                             className="shrink-0 gap-1"
+                            aria-label="Agregar hospital receptor"
+                            title="Agregar hospital receptor"
                             onClick={() =>
                               openNewHospital("treatment-receiving")
                             }
