@@ -46,6 +46,11 @@ import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
 import { getAge } from "@/pages/enrolamiento/_utils/patient-age"
 import { PatientRecordsSection } from "./patient-records-section"
 import { TreatmentCard } from "./treatment-card"
+import {
+  groupTreatmentSeries,
+  isClosedTreatment,
+  type TreatmentSeries,
+} from "../_lib/treatment-series"
 import { PatientProfileDialog } from "./patient-profile-dialog"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { useAuthStore } from "@/store/auth-store"
@@ -270,9 +275,12 @@ export function OverviewSection({
     patient.id,
     patient.role === "COMPANION",
   )
-  const currentTreatments = patient.treatments.filter((item) => item.isCurrent)
-  const historicalTreatments = patient.treatments.filter(
-    (item) => !item.isCurrent,
+  const treatmentSeries = groupTreatmentSeries(patient.treatments)
+  const currentTreatments = treatmentSeries.filter(
+    (series) => !isClosedTreatment(series.current),
+  )
+  const historicalTreatments = treatmentSeries.filter((series) =>
+    isClosedTreatment(series.current),
   )
   const nonOncologicalFollowUps = patient.nonOncologicalFollowUps ?? []
   const enrollmentQuery = useQuery({
@@ -503,10 +511,7 @@ export function OverviewSection({
                   label="Zonificación de residencia"
                   value={
                     details.zoneType ? (
-                      <CatalogValue
-                        kind="zone_type"
-                        code={details.zoneType}
-                      />
+                      <CatalogValue kind="zone_type" code={details.zoneType} />
                     ) : null
                   }
                   icon={MapPin}
@@ -816,9 +821,9 @@ export function OverviewSection({
           <div>
             <p className="text-muted-foreground mb-3 flex items-center gap-1 text-xs font-medium">
               <Pill className="size-3" />
-              Tratamientos ({patient.treatments.length})
+              Tratamientos ({treatmentSeries.length})
             </p>
-            {patient.treatments.length === 0 ? (
+            {treatmentSeries.length === 0 ? (
               <EmptyState message="No hay tratamientos registrados." />
             ) : (
               <div className="space-y-5">
@@ -987,7 +992,7 @@ function TreatmentGroup({
   emptyMessage = "No hay registros.",
 }: {
   title: string
-  treatments: PatientDetailsResponse["treatments"]
+  treatments: TreatmentSeries[]
   patientId: string
   allowMedicationManagement: boolean
   emptyMessage?: string
@@ -1002,11 +1007,12 @@ function TreatmentGroup({
       </div>
       {treatments.length ? (
         <div className="space-y-3">
-          {treatments.map((treatment) => (
+          {treatments.map((series) => (
             <TreatmentCard
-              key={treatment.id}
+              key={series.seriesId}
               patientId={patientId}
-              treatment={treatment}
+              treatment={series.current}
+              previousVersions={series.previousVersions}
               allowMedicationManagement={allowMedicationManagement}
             />
           ))}
