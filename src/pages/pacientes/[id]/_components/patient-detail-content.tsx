@@ -10,6 +10,7 @@ import { buildEnrollmentPrefill } from "../_utils/build-enrollment-prefill"
 import { AlertBanner } from "./alert-banner"
 import { OverviewSection } from "./overview-section"
 import { EnrollmentRatingCard } from "./enrollment-rating-card"
+import { PatientCareJourneyBoard } from "./patient-care-journey-board"
 import { SeguimientoTab } from "./seguimiento-tab"
 import { PsicoTab } from "./psico-tab"
 import { RecordatoriosTab } from "./recordatorios-tab"
@@ -209,6 +210,7 @@ export function PatientDetailContent() {
                 patient.role !== "COMPANION" && patient.status === "ENROLLED"
               }
             />
+            <PatientCareJourneyBoard patient={patient} />
           </div>
         </TabsContent>
         <TabsContent value="seguimiento">
