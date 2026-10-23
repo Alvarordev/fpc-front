@@ -959,6 +959,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/diagnoses/{diagnosisId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct an active patient diagnosis
+         * @description Updates the diagnosis in place (its id does not change) and records the overwritten values in the revision log. The diagnosis code cannot be changed; record a REPLACE diagnosis instead. changeReason is required.
+         */
+        patch: operations["PatientDiagnosesController_update"];
+        trace?: never;
+    };
     "/patients/{patientId}/insurance": {
         parameters: {
             query?: never;
@@ -2613,6 +2633,7 @@ export interface components {
             timestamp: string;
         };
         UpdateEnrollmentSurveyDto: {
+            /** @description 0 = No indica */
             followUpQualityRating: number;
         };
         FamilyTalkInterestResponseDto: {
@@ -3678,6 +3699,36 @@ export interface components {
             isSepaActiveReferral?: boolean;
             changeReason?: string;
         };
+        UpdatePatientDiagnosisDto: {
+            /**
+             * Format: uuid
+             * @description Follow-up in which the correction is recorded
+             */
+            followUpId: string;
+            /** @description Why the diagnosis is being corrected */
+            changeReason: string;
+            cancerStage?: string | null;
+            /** Format: date */
+            diagnosisDate?: string | null;
+            /** Format: date */
+            firstSymptomsDate?: string | null;
+            /** Format: uuid */
+            healthCenterId?: string | null;
+            /** Format: uuid */
+            referredHealthCenterId?: string | null;
+            hasReferral?: boolean | null;
+            diagnosisSpecialty?: string | null;
+            diagnosisSpecialtyOther?: string | null;
+            /**
+             * @deprecated
+             * @description Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists.
+             */
+            symptomLeadingToCheckup?: string | null;
+            /** @description Omit to recompute from the dates when both are set; null clears it. */
+            waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
+            isSepaActiveReferral?: boolean | null;
+            hasMedicalReport?: boolean;
+        };
         CreatePatientInsuranceDto: {
             insuranceType: string;
             epsProvider?: string;
@@ -4027,7 +4078,7 @@ export interface components {
         };
         TransitionPatientDiagnosticStatusDto: {
             /** @enum {string} */
-            status: "SEARCHING" | "CONFIRMED" | "RULED_OUT";
+            status: "CONFIRMED" | "RULED_OUT";
             /** Format: uuid */
             followUpId: string;
             /** Format: date-time */
@@ -8074,6 +8125,65 @@ export interface operations {
                 content?: never;
             };
             /** @description The replacement diagnosis belongs to another patient or is not active */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientDiagnosesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                diagnosisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientDiagnosisDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDiagnosisResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient, follow-up, diagnosis or health center not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The diagnosis is not active */
             409: {
                 headers: {
                     [name: string]: unknown;

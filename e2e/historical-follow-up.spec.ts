@@ -101,7 +101,7 @@ async function openTab(page: Page, name: string) {
 async function addDiagnosisDraft(page: Page) {
   const dialog = followUpDialog(page)
   await openTab(page, "Diagnóstico")
-  await dialog.getByText("Agregar o reemplazar diagnóstico").click()
+  await dialog.getByText("Agregar diagnóstico", { exact: true }).click()
   const form = page.getByRole("dialog", { name: "Nuevo diagnóstico" })
   await expect(form).toBeVisible()
   await chooseLabeled(page, form, /^Diagnóstico$/, "Cáncer de mama")

@@ -54,6 +54,8 @@ export type PatientSummaryResponse =
   components["schemas"]["PatientSummaryResponseDto"]
 export type CreatePatientDiagnosisInput =
   components["schemas"]["CreatePatientDiagnosisDto"]
+export type UpdatePatientDiagnosisInput =
+  components["schemas"]["UpdatePatientDiagnosisDto"]
 export type CreatePatientTreatmentInput =
   components["schemas"]["CreatePatientTreatmentDto"]
 export type CreatePatientInsuranceInput =
@@ -325,6 +327,26 @@ export const patientsApi = {
       "/patients/{patientId}/diagnoses",
       {
         params: { path: { patientId } },
+        body: input,
+      },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async updateDiagnosis(
+    patientId: string,
+    diagnosisId: string,
+    input: UpdatePatientDiagnosisInput,
+  ) {
+    const { data, response } = await api.PATCH(
+      "/patients/{patientId}/diagnoses/{diagnosisId}",
+      {
+        params: { path: { patientId, diagnosisId } },
         body: input,
       },
     )

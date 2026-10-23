@@ -26,6 +26,7 @@ export function draftDiagnosisIdFromOption(value: string) {
   return value.slice(`${DRAFT_DIAGNOSIS_ID}:`.length)
 }
 
+/** How a new diagnosis relates to the active ones. */
 export type DiagnosisDecisionMode = "REPLACE" | "PARALLEL"
 
 export type DiagnosisDraft = Omit<
@@ -33,8 +34,10 @@ export type DiagnosisDraft = Omit<
   "followUpId" | "waitTimeForDiagnosis" | "mode" | "replacementDiagnosisId"
 > & {
   draftId: string
-  mode: DiagnosisDecisionMode
+  /** EDIT corrects the active diagnosis `editedDiagnosisId` in place. */
+  mode: DiagnosisDecisionMode | "EDIT"
   replacementDiagnosisId?: string
+  editedDiagnosisId?: string
   waitTimeForDiagnosis?: DurationDraft
   waitTimeForDiagnosisManuallyEdited?: boolean
   remembersWaitTimeForDiagnosis?: boolean

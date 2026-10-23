@@ -386,11 +386,16 @@ export function FollowUpContent() {
     }
 
     const newDiagnosisIds = new Map<string, string>()
-    for (const diagnosisDecision of clinicalDrafts.diagnoses ?? []) {
+    // Corrections first: a later REPLACE in the same batch retires its target.
+    const diagnosisDecisions = [...(clinicalDrafts.diagnoses ?? [])].sort(
+      (a, b) => Number(b.mode === "EDIT") - Number(a.mode === "EDIT"),
+    )
+    for (const diagnosisDecision of diagnosisDecisions) {
       const {
         draftId,
         mode,
         replacementDiagnosisId,
+        editedDiagnosisId,
         waitTimeForDiagnosisManuallyEdited,
         remembersWaitTimeForDiagnosis,
         changeReason,
@@ -411,6 +416,27 @@ export function FollowUpContent() {
         throw new Error(
           "Completa correctamente el tiempo de espera para el diagnóstico",
         )
+
+      if (mode === "EDIT") {
+        if (!editedDiagnosisId || !changeReason?.trim())
+          throw new Error("Indica el motivo de la corrección del diagnóstico")
+        // Empty fields are sent as null so a correction can clear them.
+        await patientsApi.updateDiagnosis(patientId!, editedDiagnosisId, {
+          followUpId: followUpId!,
+          changeReason,
+          cancerStage: diagnosisDraft.cancerStage ?? null,
+          diagnosisDate: diagnosisDraft.diagnosisDate ?? null,
+          firstSymptomsDate: diagnosisDraft.firstSymptomsDate ?? null,
+          healthCenterId: diagnosisDraft.healthCenterId ?? null,
+          diagnosisSpecialty: diagnosisDraft.diagnosisSpecialty ?? null,
+          symptomLeadingToCheckup:
+            diagnosisDraft.symptomLeadingToCheckup ?? null,
+          isSepaActiveReferral: diagnosisDraft.isSepaActiveReferral ?? null,
+          hasMedicalReport: diagnosisDraft.hasMedicalReport,
+          waitTimeForDiagnosis,
+        })
+        continue
+      }
 
       const created = await patientsApi.createDiagnosis(patientId!, {
         ...diagnosisDraft,

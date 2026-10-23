@@ -88,6 +88,9 @@ function buildDiagnosis(
   draft: DiagnosisDraft,
   existingId?: string,
 ): DiagnosisPayload {
+  // Historical capture never offers in-place corrections of active diagnoses.
+  if (draft.mode === "EDIT")
+    throw new Error("La carga histórica no admite corregir diagnósticos")
   const waitTimeForDiagnosis = resolveWaitTimeForDiagnosis(draft)
   if (
     draft.remembersWaitTimeForDiagnosis !== false &&

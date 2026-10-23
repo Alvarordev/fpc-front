@@ -54,6 +54,7 @@ import { enrollmentsApi } from "@/api/enrollments"
 import { followUpsApi } from "@/api/follow-ups"
 import {
   calculateDurationBetweenDates,
+  normalizeDuration,
   toDurationInput,
   type DurationDraft,
 } from "@/types/duration"
@@ -729,6 +730,7 @@ export function ClinicalDataTabs({
             onOpenNewHospital={openNewHospital}
             onViewDiagnosis={onViewDiagnosis}
             viewingDiagnosisId={viewingDiagnosisId}
+            allowCorrections={!isHistorical}
             onSave={(diagnoses) =>
               onDraftsChange((prev) => ({ ...prev, diagnoses }))
             }
@@ -2633,6 +2635,7 @@ function DiagnosticoForm({
   onOpenNewHospital,
   onViewDiagnosis,
   viewingDiagnosisId,
+  allowCorrections = true,
   onSave,
 }: {
   draft: DiagnosisDraft[] | undefined
@@ -2641,6 +2644,8 @@ function DiagnosticoForm({
   onOpenNewHospital: (apply: (id: string) => void) => void
   onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
   viewingDiagnosisId?: string | null
+  /** In-place corrections of active diagnoses (not offered in historical capture). */
+  allowCorrections?: boolean
   onSave: (diagnoses: DiagnosisDraft[]) => void
 }) {
   const initial = draft?.[0]
@@ -2682,12 +2687,12 @@ function DiagnosticoForm({
     : waitTimeForDiagnosisManuallyEdited
       ? waitTimeForDiagnosis
       : (calculatedWaitTime ?? waitTimeForDiagnosis)
-  const [mode, setMode] = useState<DiagnosisDecisionMode>(
-    initial?.mode ?? "PARALLEL",
-  )
-  const [replacementDiagnosisId, setReplacementDiagnosisId] = useState(
-    initial?.replacementDiagnosisId ?? "",
-  )
+  // No default: whoever adds a diagnosis must say whether it replaces one.
+  const [mode, setMode] = useState<DiagnosisDecisionMode | "">("")
+  const [replacementDiagnosisId, setReplacementDiagnosisId] = useState("")
+  /** Set while correcting an active diagnosis in place. */
+  const [correctedDiagnosisId, setCorrectedDiagnosisId] = useState("")
+  const [changeReason, setChangeReason] = useState("")
   const [decisions, setDecisions] = useState<DiagnosisDraft[]>(draft ?? [])
   const [editingDecisionIndex, setEditingDecisionIndex] = useState<
     number | null
@@ -2695,9 +2700,29 @@ function DiagnosticoForm({
   const [formOpen, setFormOpen] = useState(false)
   const selectedId = viewingDiagnosisId ?? null
   const showForm = formOpen || editingDecisionIndex !== null
+  const isCorrection = correctedDiagnosisId !== ""
+  const correctedDiagnosis = currentDiagnoses.find(
+    (item) => item.id === correctedDiagnosisId,
+  )
+  // Ignore the decision being edited so it can keep its own target.
+  const otherDecisions = decisions.filter(
+    (_, index) => index !== editingDecisionIndex,
+  )
+  const replaceableDiagnoses = currentDiagnoses.filter(
+    (item) =>
+      !otherDecisions.some(
+        (decision) =>
+          decision.replacementDiagnosisId === item.id ||
+          decision.editedDiagnosisId === item.id,
+      ),
+  )
+  const canReplace = replaceableDiagnoses.length > 0
   const decisionModeItems = [
-    { value: "PARALLEL", label: "Agregar diagnóstico activo" },
-    { value: "REPLACE", label: "Reemplazar diagnóstico existente" },
+    {
+      value: "PARALLEL",
+      label: "No, es un diagnóstico adicional (se mantienen los actuales)",
+    },
+    { value: "REPLACE", label: "Sí, reemplaza a un diagnóstico actual" },
   ] as const
   const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
   const { data: cancerStages = [] } = useCatalog("cancer_stage")
@@ -2734,19 +2759,20 @@ function DiagnosticoForm({
       toast.error("Ingresá el diagnóstico")
       return
     }
-    if (mode === "REPLACE" && !replacementDiagnosisId) {
-      toast.error("Seleccioná el diagnóstico que deseas reemplazar")
+    // With no active diagnosis to replace, the new one can only be additional.
+    const decisionMode: DiagnosisDecisionMode | "" = canReplace
+      ? mode
+      : "PARALLEL"
+    if (isCorrection && !changeReason.trim()) {
+      toast.error("Indicá el motivo de la corrección")
       return
     }
-    if (
-      mode === "REPLACE" &&
-      decisions.some(
-        (decision, index) =>
-          index !== editingDecisionIndex &&
-          decision.replacementDiagnosisId === replacementDiagnosisId,
-      )
-    ) {
-      toast.error("Ya agregaste un reemplazo para ese diagnóstico")
+    if (!isCorrection && !decisionMode) {
+      toast.error("Indicá si el diagnóstico reemplaza a uno actual")
+      return
+    }
+    if (decisionMode === "REPLACE" && !replacementDiagnosisId) {
+      toast.error("Seleccioná el diagnóstico que deseas reemplazar")
       return
     }
 
@@ -2771,11 +2797,17 @@ function DiagnosticoForm({
         editingDecisionIndex !== null
           ? (decisions[editingDecisionIndex]?.draftId ?? createDraftId())
           : createDraftId(),
-      mode,
+      mode: isCorrection ? "EDIT" : (decisionMode as DiagnosisDecisionMode),
       diagnosis: values.diagnosis.trim(),
       diagnosisSpecialty: values.diagnosisSpecialty.trim() || undefined,
       isSepaActiveReferral: values.isSepaActiveReferral,
-      cancerStage: values.cancerStage,
+      // The form shows an empty stage as UNKNOWN; don't log that as a correction.
+      cancerStage:
+        isCorrection &&
+        !correctedDiagnosis?.cancerStage &&
+        values.cancerStage === "UNKNOWN"
+          ? undefined
+          : values.cancerStage || undefined,
       diagnosisDate: values.diagnosisDate || undefined,
       firstSymptomsDate: values.firstSymptomsDate || undefined,
       healthCenterId: values.healthCenterId,
@@ -2785,7 +2817,14 @@ function DiagnosticoForm({
         values.waitTimeForDiagnosisManuallyEdited,
       remembersWaitTimeForDiagnosis: values.remembersWaitTimeForDiagnosis,
       hasMedicalReport: values.hasMedicalReport,
-      ...(mode === "REPLACE" ? { replacementDiagnosisId } : {}),
+      ...(isCorrection
+        ? {
+            editedDiagnosisId: correctedDiagnosisId,
+            changeReason: changeReason.trim(),
+          }
+        : decisionMode === "REPLACE"
+          ? { replacementDiagnosisId }
+          : {}),
     }
     const nextDecisions = [...decisions]
     if (editingDecisionIndex === null) nextDecisions.push(nextDecision)
@@ -2794,7 +2833,11 @@ function DiagnosticoForm({
     onSave(nextDecisions)
     resetDiagnosisForm()
     setFormOpen(false)
-    toast.success("Diagnóstico guardado en el borrador")
+    toast.success(
+      isCorrection
+        ? "Corrección guardada en el borrador"
+        : "Diagnóstico guardado en el borrador",
+    )
   }
 
   function resetDiagnosisForm() {
@@ -2810,8 +2853,10 @@ function DiagnosticoForm({
     setValue("waitTimeForDiagnosisManuallyEdited", false)
     setValue("remembersWaitTimeForDiagnosis", true)
     setValue("hasMedicalReport", false)
-    setMode("PARALLEL")
+    setMode("")
     setReplacementDiagnosisId("")
+    setCorrectedDiagnosisId("")
+    setChangeReason("")
     setEditingDecisionIndex(null)
   }
 
@@ -2821,7 +2866,38 @@ function DiagnosticoForm({
   }
 
   function openDiagnosisForm() {
-    if (editingDecisionIndex !== null) resetDiagnosisForm()
+    if (editingDecisionIndex !== null || isCorrection) resetDiagnosisForm()
+    setFormOpen(true)
+  }
+
+  /** Opens the active diagnosis prefilled; reopens its pending correction if any. */
+  function correctDiagnosis(diagnosis: PatientDiagnosis) {
+    const pendingIndex = decisions.findIndex(
+      (decision) => decision.editedDiagnosisId === diagnosis.id,
+    )
+    if (pendingIndex !== -1) {
+      editDecision(pendingIndex)
+      return
+    }
+    resetDiagnosisForm()
+    setCorrectedDiagnosisId(diagnosis.id)
+    setValue("diagnosis", diagnosis.diagnosis)
+    setValue("diagnosisSpecialty", diagnosis.diagnosisSpecialty ?? "")
+    setValue("isSepaActiveReferral", diagnosis.isSepaActiveReferral ?? undefined)
+    setValue("cancerStage", (diagnosis.cancerStage ?? "UNKNOWN") as CancerStage)
+    setValue("diagnosisDate", diagnosis.diagnosisDate ?? "")
+    setValue("firstSymptomsDate", diagnosis.firstSymptomsDate ?? "")
+    setValue("healthCenterId", diagnosis.healthCenterId ?? undefined)
+    setValue("symptomLeadingToCheckup", diagnosis.symptomLeadingToCheckup ?? "")
+    setValue(
+      "waitTimeForDiagnosis",
+      normalizeDuration(diagnosis.waitTimeForDiagnosis),
+    )
+    setValue(
+      "waitTimeForDiagnosisManuallyEdited",
+      diagnosis.waitTimeSource === "REPORTED",
+    )
+    setValue("hasMedicalReport", diagnosis.hasMedicalReport ?? false)
     setFormOpen(true)
   }
 
@@ -2830,8 +2906,10 @@ function DiagnosticoForm({
     if (!decision) return
     setFormOpen(true)
     setEditingDecisionIndex(index)
-    setMode(decision.mode)
+    setMode(decision.mode === "EDIT" ? "" : decision.mode)
     setReplacementDiagnosisId(decision.replacementDiagnosisId ?? "")
+    setCorrectedDiagnosisId(decision.editedDiagnosisId ?? "")
+    setChangeReason(decision.changeReason ?? "")
     setValue("diagnosis", decision.diagnosis)
     setValue("diagnosisSpecialty", decision.diagnosisSpecialty ?? "")
     setValue("isSepaActiveReferral", decision.isSepaActiveReferral)
@@ -2861,12 +2939,16 @@ function DiagnosticoForm({
         <div className="flex flex-wrap gap-2">
           {currentDiagnoses.map((diagnosis) => {
             const selected = diagnosis.id === selectedId
+            const pendingReplacement = decisions.some(
+              (decision) => decision.replacementDiagnosisId === diagnosis.id,
+            )
             return (
+              <div key={diagnosis.id} className="relative">
               <button
-                key={diagnosis.id}
                 type="button"
                 className={cn(
                   "min-w-44 max-w-64 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                  allowCorrections && "pr-10",
                   selected
                     ? "border-blue-300 bg-blue-100 text-blue-950"
                     : "border-border bg-background hover:bg-muted/40",
@@ -2901,21 +2983,42 @@ function DiagnosticoForm({
                   )}
                 </span>
               </button>
+              {allowCorrections && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute top-1.5 right-1.5"
+                  disabled={pendingReplacement}
+                  title={
+                    pendingReplacement
+                      ? "Tiene un reemplazo pendiente en este seguimiento"
+                      : "Corregir datos del diagnóstico"
+                  }
+                  aria-label="Corregir datos del diagnóstico"
+                  onClick={() => correctDiagnosis(diagnosis)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              )}
+              </div>
             )
           })}
           <button
             type="button"
-            aria-expanded={showForm && editingDecisionIndex === null}
+            aria-expanded={
+              showForm && editingDecisionIndex === null && !isCorrection
+            }
             className={cn(
               "inline-flex min-h-[3.25rem] min-w-44 items-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-colors",
-              showForm && editingDecisionIndex === null
+              showForm && editingDecisionIndex === null && !isCorrection
                 ? "border-primary/40 bg-primary/5 text-foreground"
                 : "border-border text-muted-foreground hover:border-foreground/30 hover:bg-muted/30 hover:text-foreground",
             )}
             onClick={openDiagnosisForm}
           >
             <Plus className="size-4 shrink-0" />
-            Agregar o reemplazar diagnóstico
+            Agregar diagnóstico
           </button>
         </div>
         <p className="text-muted-foreground text-xs">
@@ -2943,17 +3046,19 @@ function DiagnosticoForm({
                   <b className="block truncate">
                     {catalogLabel(cancerDiagnoses, decision.diagnosis)}
                   </b>
-                  <span className="text-muted-foreground text-xs">
-                    {decision.mode === "REPLACE"
-                      ? `Reemplaza ${
-                          replacement
-                            ? catalogLabel(
-                                cancerDiagnoses,
-                                replacement.diagnosis,
-                              )
-                            : "un diagnóstico"
-                        }`
-                      : "Nuevo diagnóstico activo"}
+                  <span className="text-muted-foreground block truncate text-xs">
+                    {decision.mode === "EDIT"
+                      ? `Corrección · ${decision.changeReason}`
+                      : decision.mode === "REPLACE"
+                        ? `Reemplaza ${
+                            replacement
+                              ? catalogLabel(
+                                  cancerDiagnoses,
+                                  replacement.diagnosis,
+                                )
+                              : "un diagnóstico"
+                          }`
+                        : "Nuevo diagnóstico activo"}
                   </span>
                 </span>
                 <span className="flex shrink-0 gap-1">
@@ -2977,7 +3082,11 @@ function DiagnosticoForm({
                       setDecisions(next)
                       onSave(next)
                     }}
-                    aria-label="Quitar diagnóstico"
+                    aria-label={
+                      decision.mode === "EDIT"
+                        ? "Descartar corrección"
+                        : "Quitar diagnóstico"
+                    }
                   >
                     <Minus className="size-3.5" />
                   </Button>
@@ -2998,75 +3107,104 @@ function DiagnosticoForm({
             <div className="flex items-center gap-2 text-base font-semibold text-red-600">
               <Stethoscope className="size-5" />
               <DialogTitle className="text-lg">
-                {editingDecisionIndex === null
-                  ? "Nuevo diagnóstico"
-                  : "Editar diagnóstico"}
+                {isCorrection
+                  ? "Corregir diagnóstico"
+                  : editingDecisionIndex === null
+                    ? "Nuevo diagnóstico"
+                    : "Editar diagnóstico"}
               </DialogTitle>
             </div>
             <DialogDescription className="text-xs">
-              Se guarda en el borrador hasta completar el seguimiento.
+              {isCorrection
+                ? "Corrige los datos sin cambiar el diagnóstico. Si el diagnóstico cambió, agrega uno nuevo que lo reemplace."
+                : "Se guarda en el borrador hasta completar el seguimiento."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-          <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">
-                {editingDecisionIndex === null
-                  ? "Nueva decisión de diagnóstico"
-                  : "Editar decisión de diagnóstico"}
-              </p>
+          {isCorrection ? (
+            <div className="bg-muted/20 space-y-2 rounded-lg border p-3">
+              <Label htmlFor="diagnosis-change-reason">
+                Motivo de la corrección
+              </Label>
+              <Textarea
+                id="diagnosis-change-reason"
+                value={changeReason}
+                onChange={(event) => setChangeReason(event.target.value)}
+                placeholder="Ej: la etapa se cargó mal en el enrolamiento"
+                rows={2}
+              />
               <p className="text-muted-foreground text-xs">
-                Elegí si el diagnóstico se agrega o reemplaza uno activo.
+                Queda registrado en el historial junto con los valores
+                anteriores.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label>Tipo de decisión</Label>
-          <Select
-            items={decisionModeItems}
-            value={mode}
-            onValueChange={(value) => {
-              const nextMode = (value || "PARALLEL") as DiagnosisDecisionMode
-              setMode(nextMode)
-              if (nextMode === "PARALLEL") setReplacementDiagnosisId("")
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {decisionModeItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {mode === "REPLACE" && (
-          <div className="space-y-2">
-            <Label>Diagnóstico activo a reemplazar</Label>
-            <Select
-              items={currentDiagnoses.map((item) => ({
-                value: item.id,
-                label: diagnosisStageLabel(item.diagnosis, item.cancerStage),
-              }))}
-              value={replacementDiagnosisId}
-              onValueChange={(value) => setReplacementDiagnosisId(value ?? "")}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar diagnóstico actual" />
-              </SelectTrigger>
-              <SelectContent>
-                {currentDiagnoses.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {diagnosisStageLabel(item.diagnosis, item.cancerStage)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </div>
+          ) : (
+            canReplace && (
+              <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
+                <div className="space-y-2">
+                  <Label>¿Este diagnóstico reemplaza a uno actual?</Label>
+                  <Select
+                    items={decisionModeItems}
+                    value={mode}
+                    onValueChange={(value) => {
+                      const nextMode = (value ?? "") as
+                        | DiagnosisDecisionMode
+                        | ""
+                      setMode(nextMode)
+                      if (nextMode !== "REPLACE") setReplacementDiagnosisId("")
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {decisionModeItems.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {mode === "REPLACE" && (
+                  <div className="space-y-2">
+                    <Label>Diagnóstico activo a reemplazar</Label>
+                    <Select
+                      items={replaceableDiagnoses.map((item) => ({
+                        value: item.id,
+                        label: diagnosisStageLabel(
+                          item.diagnosis,
+                          item.cancerStage,
+                        ),
+                      }))}
+                      value={replacementDiagnosisId}
+                      onValueChange={(value) =>
+                        setReplacementDiagnosisId(value ?? "")
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar diagnóstico actual" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {replaceableDiagnoses.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {diagnosisStageLabel(
+                              item.diagnosis,
+                              item.cancerStage,
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-muted-foreground text-xs">
+                      El diagnóstico reemplazado deja de estar activo y queda
+                      en el historial.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )
+          )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
           <Label>Diagnóstico</Label>
@@ -3074,6 +3212,7 @@ function DiagnosticoForm({
             kind="cancer_diagnosis"
             value={watch("diagnosis") || null}
             onValueChange={(code) => setValue("diagnosis", code ?? "")}
+            disabled={isCorrection}
           />
         </div>
         <div className="space-y-2">
@@ -3246,9 +3385,11 @@ function DiagnosticoForm({
           size="sm"
           className="bg-red-600 text-white hover:bg-red-700"
         >
-          {editingDecisionIndex === null
-            ? "Guardar en borrador"
-            : "Actualizar borrador"}
+          {isCorrection
+            ? "Guardar corrección"
+            : editingDecisionIndex === null
+              ? "Guardar en borrador"
+              : "Actualizar borrador"}
         </Button>
       </DialogFooter>
           </form>
