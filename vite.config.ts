@@ -36,7 +36,12 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    server: proxy ? { proxy } : undefined,
+    server: {
+      ...(proxy ? { proxy } : {}),
+      watch: {
+        ignored: ["**/.pnpm-store/**"],
+      },
+    },
     test: {
       exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**"],
     },
