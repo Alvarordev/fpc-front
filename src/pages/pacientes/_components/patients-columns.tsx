@@ -2,9 +2,41 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { CatalogValue } from "@/components/catalog-select"
 import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { formatCatalogValue, useCatalog } from "@/hooks/use-catalog"
 import { cn } from "@/lib/utils"
 import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
 import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
+
+function TruncatedDiagnosis({ code }: { code: string }) {
+  const { data: items = [] } = useCatalog("cancer_diagnosis")
+  const label = formatCatalogValue(items, code)
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            tabIndex={0}
+            className="text-muted-foreground block max-w-64 cursor-default truncate text-sm"
+          >
+            {label}
+          </span>
+        }
+      />
+      <TooltipContent
+        side="top"
+        align="start"
+        className="max-w-sm text-left leading-snug"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 const healthPhaseStyles: Record<PatientHealthPhase, string> = {
   CANCER_DIAGNOSIS: "bg-rose-50 text-rose-700 border-rose-200",
@@ -41,18 +73,13 @@ export const patientColumns: ColumnDef<PatientListItem>[] = [
   {
     accessorKey: "currentDiagnosis",
     header: "Diagnóstico",
+    size: 256,
     cell: ({ row }) => {
       const diagnosis = row.original.currentDiagnosis?.diagnosis
       if (!diagnosis) {
         return <span className="text-muted-foreground text-sm">-</span>
       }
-      return (
-        <CatalogValue
-          kind="cancer_diagnosis"
-          code={diagnosis}
-          className="text-muted-foreground text-sm"
-        />
-      )
+      return <TruncatedDiagnosis code={diagnosis} />
     },
   },
   {
