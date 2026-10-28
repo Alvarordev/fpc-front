@@ -3,6 +3,7 @@ import type { DashboardEpidemiology } from "@/api/dashboard"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { number } from "./dashboard-labels"
+import { IndicatorDefinition } from "./indicator-definition"
 import { DistributionBars } from "./distribution-bars"
 import {
   dashboardPanelClass,
@@ -88,6 +89,11 @@ export function ProfileClinical({
           </TabsList>
           {TABS.map((item) => (
             <TabsContent key={item.value} value={item.value}>
+              <p className="mb-2 text-[13px] font-medium">
+                <IndicatorDefinition definition={data.meta.definitions[item.key]}>
+                  {item.label}
+                </IndicatorDefinition>
+              </p>
               <DistributionBars
                 distribution={data[item.key]}
                 catalogKind={item.catalogKind}
@@ -99,10 +105,20 @@ export function ProfileClinical({
             </TabsContent>
           ))}
         </Tabs>
-        <p className="text-muted-foreground mt-4 text-[12.5px]">
-          Fallecimientos {number.format(data.events.deaths)} · Cáncer confirmado{" "}
-          {number.format(data.events.diagnosticConfirmed)} · Cáncer descartado{" "}
-          {number.format(data.events.diagnosticRuledOut)}
+        <p className="text-muted-foreground mt-4 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px]">
+          <IndicatorDefinition definition={data.meta.definitions["events.deaths"]}>
+            <span>Fallecimientos {number.format(data.events.deaths)}</span>
+          </IndicatorDefinition>
+          <IndicatorDefinition
+            definition={data.meta.definitions["events.diagnosticConfirmed"]}
+          >
+            <span>Cáncer confirmado {number.format(data.events.diagnosticConfirmed)}</span>
+          </IndicatorDefinition>
+          <IndicatorDefinition
+            definition={data.meta.definitions["events.diagnosticRuledOut"]}
+          >
+            <span>Cáncer descartado {number.format(data.events.diagnosticRuledOut)}</span>
+          </IndicatorDefinition>
         </p>
       </CardContent>
     </Card>

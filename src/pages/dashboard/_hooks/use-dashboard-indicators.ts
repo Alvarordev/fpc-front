@@ -10,16 +10,7 @@ export function useDashboardIndicators(
 ) {
   const enabled = options?.enabled ?? true
   const territoryOnly = options?.territoryOnly ?? false
-  const key = [
-    query.period ?? null,
-    query.year ?? null,
-    query.month ?? null,
-    query.from ?? null,
-    query.to ?? null,
-    query.timezone ?? "America/Lima",
-    query.population ?? "all_active",
-    query.department ?? null,
-  ]
+  const key = [JSON.stringify(query)]
 
   const demographics = useQuery({
     queryKey: ["dashboard-indicators", "demographics", ...key],
@@ -57,6 +48,12 @@ export function useDashboardIndicators(
     staleTime: 30_000,
     enabled: enabled && !territoryOnly,
   })
+  const satisfaction = useQuery({
+    queryKey: ["dashboard-indicators", "satisfaction", ...key],
+    queryFn: () => dashboardIndicatorsApi.getSatisfaction(query),
+    staleTime: 30_000,
+    enabled: enabled && !territoryOnly,
+  })
 
   return {
     demographics,
@@ -65,5 +62,6 @@ export function useDashboardIndicators(
     productivity,
     adherence,
     abandonment,
+    satisfaction,
   }
 }

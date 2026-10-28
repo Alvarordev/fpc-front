@@ -1,12 +1,14 @@
-import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
-import type { DashboardPopulation } from "@/api/dashboard"
 import { CoverageCard } from "./_components/coverage-card"
+import { DashboardCrossTable } from "./_components/dashboard-cross-table"
 import {
   DashboardControls,
   periodTitle,
 } from "./_components/dashboard-controls"
+import { DashboardFilterBar } from "./_components/dashboard-filter-bar"
 import { DashboardKpis } from "./_components/dashboard-kpis"
+import { DashboardSatisfaction } from "./_components/dashboard-satisfaction"
 import { EnrollmentBars } from "./_components/enrollment-bars"
 import { ProfileClinical } from "./_components/profile-clinical"
 import { ProfileDemographic } from "./_components/profile-demographic"
@@ -19,43 +21,34 @@ import {
 import { DashboardCatalogProvider } from "./_components/dashboard-catalog"
 import { useDashboardData } from "./_hooks/use-dashboard-data"
 import { useDashboardIndicators } from "./_hooks/use-dashboard-indicators"
+import {
+  indicatorQuery,
+  readDashboardFilters,
+  summaryQuery,
+  writeDashboardFilters,
+  type DashboardFilterState,
+} from "./_lib/dashboard-filters"
 
 export function DashboardPage() {
-  const today = new Date()
-  const [period, setPeriod] = useState<"month" | "year">("year")
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth() + 1)
-  const [population, setPopulation] =
-    useState<DashboardPopulation>("all_active")
-  const [department, setDepartment] = useState<string | null>(null)
-  const flowQuery = {
-    period,
-    year,
-    ...(period === "month" ? { month } : {}),
-    timezone: "America/Lima" as const,
-  }
-  const baseQuery = {
-    ...flowQuery,
-    population,
-  }
-  const dashboard = useDashboardData(flowQuery)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filters = readDashboardFilters(searchParams)
+  const baseQuery = indicatorQuery(filters)
+  const dashboard = useDashboardData(summaryQuery(filters))
   const indicators = useDashboardIndicators(baseQuery)
-  const territorial = useDashboardIndicators(
-    { ...baseQuery, department: department ?? undefined },
-    { territoryOnly: true, enabled: Boolean(department) },
-  )
   const data = dashboard.data
-  const demographics = department
-    ? territorial.demographics.data
-    : indicators.demographics.data
-  const epidemiology = department
-    ? territorial.epidemiology.data
-    : indicators.epidemiology.data
-  const territoryLabel = department
-    ? (PERU_DEPARTMENTS.find((item) => item.value === department)?.label ??
-      department)
+  const demographics = indicators.demographics.data
+  const epidemiology = indicators.epidemiology.data
+  const territoryLabel = filters.department
+    ? (PERU_DEPARTMENTS.find((item) => item.value === filters.department)
+        ?.label ?? filters.department)
     : null
-  const title = periodTitle(period, year, month)
+  const title = periodTitle(filters.period, filters.year, filters.month)
+  const customRange = Boolean(filters.from && filters.to)
+
+  function updateFilters(patch: Partial<DashboardFilterState>) {
+    const next = writeDashboardFilters({ ...filters, ...patch })
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <DashboardCatalogProvider>
@@ -68,15 +61,27 @@ export function DashboardPage() {
       </div>
 
       <DashboardControls
-        period={period}
-        year={year}
-        month={month}
-        population={population}
-        onPeriodChange={setPeriod}
-        onYearChange={setYear}
-        onMonthChange={setMonth}
-        onPopulationChange={setPopulation}
+        period={filters.period}
+        year={filters.year}
+        month={filters.month}
+        population={filters.population}
+        onPeriodChange={(period) => updateFilters({ period })}
+        onYearChange={(year) => updateFilters({ year })}
+        onMonthChange={(month) => updateFilters({ month })}
+        onPopulationChange={(population) => updateFilters({ population })}
       />
+      <DashboardFilterBar
+        filters={filters}
+        query={baseQuery}
+        onChange={updateFilters}
+      />
+      {customRange && (
+        <p className="text-muted-foreground text-xs">
+          El rango de fechas se aplica a los indicadores. El resumen de
+          enrolamientos sigue usando el mes o año, porque ese endpoint no
+          acepta rango ni el resto de filtros.
+        </p>
+      )}
 
       {dashboard.isLoading && <Loading />}
       {dashboard.isError && (
@@ -102,7 +107,7 @@ export function DashboardPage() {
             sessions={data.summary.sessions}
           />
           <section className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
-            <EnrollmentBars data={data.trend} period={period} />
+            <EnrollmentBars data={data.trend} period={filters.period} />
             {indicators.epidemiology.data ? (
               <CoverageCard
                 items={[
@@ -159,7 +164,9 @@ export function DashboardPage() {
               coveragePct: indicators.demographics.data.department.coveragePct,
             },
           ]}
-          onDepartmentChange={setDepartment}
+          onDepartmentChange={(department) =>
+            updateFilters({ department: department ?? "" })
+          }
         />
       )}
 
@@ -167,7 +174,23 @@ export function DashboardPage() {
         <IndicatorError message="No se pudieron cargar los indicadores epidemiológicos." />
       )}
       {epidemiology && (
-        <ProfileClinical data={epidemiology} territoryLabel={territoryLabel} />
+        <>
+          <ProfileClinical data={epidemiology} territoryLabel={territoryLabel} />
+          <section className="grid gap-6 xl:grid-cols-2">
+            <DashboardCrossTable
+              title="Diagnóstico por departamento"
+              definition={epidemiology.meta.definitions.diagnosisByDepartment}
+              items={epidemiology.diagnosisByDepartment}
+              empty="No hay cruces de diagnóstico y departamento."
+            />
+            <DashboardCrossTable
+              title="Diagnóstico por estadio"
+              definition={epidemiology.meta.definitions.diagnosisByStage}
+              items={epidemiology.diagnosisByStage}
+              empty="No hay cruces de diagnóstico y estadio."
+            />
+          </section>
+        </>
       )}
       {demographics && (
         <ProfileDemographic
@@ -190,6 +213,12 @@ export function DashboardPage() {
             management={indicators.management.data}
           />
         )}
+      {indicators.satisfaction.isError && (
+        <IndicatorError message="No se pudo cargar la satisfacción." />
+      )}
+      {indicators.satisfaction.data && (
+        <DashboardSatisfaction data={indicators.satisfaction.data} />
+      )}
     </div>
     </DashboardCatalogProvider>
   )

@@ -28,6 +28,8 @@ export type DashboardAdherence =
   components["schemas"]["DashboardAdherenceResponseDto"]
 export type DashboardAbandonment =
   components["schemas"]["DashboardAbandonmentResponseDto"]
+export type DashboardSatisfaction =
+  components["schemas"]["DashboardSatisfactionResponseDto"]
 
 export const dashboardApi = {
   async get(query: DashboardQuery): Promise<Dashboard> {
@@ -121,6 +123,20 @@ export const dashboardIndicatorsApi = {
     if (!data)
       throw new Error(
         `No se pudo obtener los indicadores de abandono (${response.status})`,
+      )
+    return data
+  },
+
+  async getSatisfaction(
+    query: DashboardIndicatorQuery,
+  ): Promise<DashboardSatisfaction> {
+    const { data, response } = await api.GET(
+      "/dashboard/indicators/satisfaction",
+      { params: { query } },
+    )
+    if (!data)
+      throw new Error(
+        `No se pudo obtener la satisfacción (${response.status})`,
       )
     return data
   },
