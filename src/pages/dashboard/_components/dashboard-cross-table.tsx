@@ -1,4 +1,7 @@
+import type { CatalogKind } from "@/api/catalogs"
 import type { DashboardEpidemiology } from "@/api/dashboard"
+import { PERU_DEPARTMENTS } from "@/lib/peru-departments"
+import { useDashboardCatalogLabel } from "./dashboard-catalog"
 import { IndicatorDefinition } from "./indicator-definition"
 
 type CrossItem = DashboardEpidemiology["diagnosisByDepartment"][number]
@@ -8,12 +11,23 @@ export function DashboardCrossTable({
   definition,
   items,
   empty,
+  rowKind,
+  columnKind,
 }: {
   title: string
   definition?: string
   items: CrossItem[]
   empty: string
+  rowKind?: CatalogKind
+  /** "department" usa los nombres de departamento; si no, el catálogo indicado. */
+  columnKind?: CatalogKind | "department"
 }) {
+  const labelOf = useDashboardCatalogLabel()
+  const columnLabel = (code: string) =>
+    columnKind === "department"
+      ? (PERU_DEPARTMENTS.find((item) => item.value === code)?.label ??
+        labelOf(undefined, code))
+      : labelOf(columnKind, code)
   const rows = unique(items.map((item) => item.row))
   const columns = unique(items.map((item) => item.column))
   const lookup = new Map(items.map((item) => [`${item.row}::${item.column}`, item.count]))
@@ -34,7 +48,7 @@ export function DashboardCrossTable({
                 <th className="border-b p-2 font-medium" />
                 {columns.map((column) => (
                   <th key={column} className="border-b p-2 font-medium">
-                    {column}
+                    {columnLabel(column)}
                   </th>
                 ))}
               </tr>
@@ -42,7 +56,9 @@ export function DashboardCrossTable({
             <tbody>
               {rows.map((row) => (
                 <tr key={row}>
-                  <th className="border-b p-2 font-medium">{row}</th>
+                  <th className="border-b p-2 font-medium">
+                    {labelOf(rowKind, row)}
+                  </th>
                   {columns.map((column) => {
                     const count = lookup.get(`${row}::${column}`) ?? 0
                     return (

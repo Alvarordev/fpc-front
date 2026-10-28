@@ -85,9 +85,9 @@ export function DashboardPage() {
       />
       {customRange && (
         <p className="text-muted-foreground text-xs">
-          El rango de fechas se aplica a los indicadores. El resumen de
-          enrolamientos sigue usando el mes o año, porque ese endpoint no
-          acepta rango ni el resto de filtros.
+          El rango de fechas y los filtros se aplican a los indicadores y a
+          la exportación. Los totales y el gráfico de enrolamientos siguen
+          mostrando el mes o año elegido.
         </p>
       )}
 
@@ -189,12 +189,16 @@ export function DashboardPage() {
               title="Diagnóstico por departamento"
               definition={epidemiology.meta.definitions.diagnosisByDepartment}
               items={epidemiology.diagnosisByDepartment}
+              rowKind="cancer_diagnosis"
+              columnKind="department"
               empty="No hay cruces de diagnóstico y departamento."
             />
             <DashboardCrossTable
               title="Diagnóstico por estadio"
               definition={epidemiology.meta.definitions.diagnosisByStage}
               items={epidemiology.diagnosisByStage}
+              rowKind="cancer_diagnosis"
+              columnKind="cancer_stage"
               empty="No hay cruces de diagnóstico y estadio."
             />
           </section>

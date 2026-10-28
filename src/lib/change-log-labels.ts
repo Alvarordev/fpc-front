@@ -29,6 +29,41 @@ const fieldLabels: Record<string, string> = {
   district: "Distrito",
   province: "Provincia",
   department: "Departamento",
+  diagnosis_date: "Fecha de diagnóstico",
+  change_reason: "Motivo del cambio",
+  diagnosis_code: "Diagnóstico",
+  stage: "Estadio",
+  treatment_type: "Tipo de tratamiento",
+  situation: "Situación del tratamiento",
+  start_date: "Fecha de inicio",
+  end_date: "Fecha de fin",
+  scheduled_sessions: "Sesiones programadas",
+  completed_sessions: "Sesiones completadas",
+  deactivated_at: "Fecha de baja",
+  insurance_type: "Tipo de seguro",
+  outcome: "Resultado",
+  channel: "Canal",
+  reason: "Motivo",
+  type: "Tipo",
+  specialty: "Especialidad",
+  issued_on: "Fecha de emisión",
+  attended_on: "Fecha de atención",
+  role: "Rol",
+}
+
+// Columnas técnicas que no aportan al historial (versionado, claves, marcas de tiempo).
+const hiddenFields = new Set([
+  "id",
+  "is_current",
+  "created_at",
+  "updated_at",
+  "patient_id",
+  "follow_up_id",
+  "previous_version_id",
+])
+
+export function isVisibleChangeLogEntry(entry: ChangeLogEntry) {
+  return !entry.field || !hiddenFields.has(entry.field)
 }
 
 const valueLabels: Record<string, string> = {
@@ -66,6 +101,14 @@ const entityLabels: Record<string, string> = {
   referrals: "derivación",
   patient_diagnoses: "diagnóstico",
   patient_treatments: "tratamiento",
+  enrollments: "enrolamiento",
+  patient_insurances: "seguro",
+  patient_addresses: "dirección",
+  patient_companions: "acompañante",
+  reminders: "recordatorio",
+  psychooncology_appointments: "cita de psicooncología",
+  medical_appointments: "cita médica",
+  surveys: "encuesta",
 }
 
 export function changeLogFieldLabel(field: string | null | undefined) {

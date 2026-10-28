@@ -179,7 +179,6 @@ function AttemptRow({ attempt }: { attempt: FollowUpAttempt }) {
       </p>
       <p className="text-muted-foreground text-xs">
         {when}
-        {attempt.actorUserId ? " · registrado por un usuario" : ""}
       </p>
       {attempt.notes && <p className="mt-1 text-xs">{attempt.notes}</p>}
     </li>

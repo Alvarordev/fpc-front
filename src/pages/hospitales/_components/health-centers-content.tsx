@@ -125,6 +125,7 @@ export function HealthCentersContent() {
         columns={columns}
         isLoading={canQuery && (isLoading || isFetching)}
         emptyMessage={emptyMessage}
+        emptyDescription={canQuery ? undefined : null}
       />
 
       <CreateHealthCenterDialog

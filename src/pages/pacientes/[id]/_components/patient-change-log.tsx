@@ -5,6 +5,7 @@ import {
   changeLogContextLabels,
   describeChangeLogEntry,
   isActivityStatusChange,
+  isVisibleChangeLogEntry,
 } from "@/lib/change-log-labels"
 import { useAuthStore } from "@/store/auth-store"
 
@@ -52,7 +53,9 @@ export function PatientChangeLog({
   if (!canSeeChangeLog(role)) return null
 
   const items = (query.data?.items ?? []).filter((entry) =>
-    onlyActivityStatus ? isActivityStatusChange(entry) : true,
+    onlyActivityStatus
+      ? isActivityStatusChange(entry)
+      : isVisibleChangeLogEntry(entry),
   )
   const groups = groupChanges(items)
 

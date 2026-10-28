@@ -3,6 +3,7 @@ export const DISPLAY_LABELS: Record<string, string> = {
   MALE: "Hombre",
   OTHER: "Otro",
   UNKNOWN: "Sin información",
+  "Sin informacion": "Sin información",
   STAGE_1: "Etapa 1",
   STAGE_2: "Etapa 2",
   STAGE_3: "Etapa 3",

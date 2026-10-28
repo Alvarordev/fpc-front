@@ -187,7 +187,7 @@ export function PatientActivityActions({
             <PatientChangeLog
               patientId={patient.id}
               title="Historial de bajas y reactivaciones"
-              description="Sale del historial de cambios del estado de actividad. No hay un endpoint aparte."
+              description="Cada baja y reactivación registrada, con quién la hizo."
               onlyActivityStatus
             />
             <DialogFooter>
