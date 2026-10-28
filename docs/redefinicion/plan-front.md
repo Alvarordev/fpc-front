@@ -11,11 +11,13 @@ romperse con los contratos que cambiaron.
 - Front (aquí trabajas): `/home/hazard/code/fpc-front-redefinicion`, rama `refactor/redefinicion`.
   React + Vite + TypeScript, `openapi-fetch`, componentes en `src/components/ui` (Base UI / shadcn),
   TanStack Query, react-hook-form. UI en español.
-- Backend (solo lectura, NO lo modifiques): `/home/hazard/code/fpc-backend-redefinicion`.
-  - Reglas de negocio vigentes: `docs/redefinicion/decisiones.md` (mandan sobre cualquier otra cosa).
-  - Contrato que cambió: `docs/redefinicion/api-diff.md` (endpoints nuevos, campos agregados/quitados,
-    enums cambiados). Es tu lista de trabajo de la Fase 1.
-  - Contrato completo: `openapi/openapi.json`.
+- Backend: `/home/hazard/code/fpc-backend-redefinicion` — NO lo modifiques. Sus documentos están
+  copiados en este repo, en `docs/redefinicion/backend/`:
+  - Reglas de negocio vigentes: `decisiones.md` (mandan sobre cualquier otra cosa).
+  - Contrato que cambió: `api-diff.md` (endpoints nuevos, campos agregados/quitados, enums
+    cambiados). Es tu lista de trabajo de la Fase 1.
+  - Diseño del historial de cambios: `diseno-01-trazabilidad.md`.
+  - Contrato completo: `openapi.json`.
 - Reglas del repo front: `AGENTS.md` en la raíz. En especial: todo `<Select>` cuyo `value` pueda venir
   asignado y difiera de la etiqueta DEBE recibir `items` en la raíz (ver el archivo).
 
@@ -54,9 +56,8 @@ romperse con los contratos que cambiaron.
 
 **Objetivo:** cero errores de tipos y ninguna pantalla rota por contratos cambiados.
 
-1. Cambia `api:generate` en `package.json` para que lea
-   `../fpc-backend-redefinicion/openapi/openapi.json`, regenera `src/api/schema.d.ts` y corrige todo error
-   de `tsc -b` que aparezca.
+1. Cambia `api:generate` en `package.json` para que lea `docs/redefinicion/backend/openapi.json`,
+   regenera `src/api/schema.d.ts` (`npm run api:generate`) y corrige todo error de `tsc -b`.
 2. Recorre `api-diff.md` sección por sección y adapta cada uso:
    - **Hospitales:** `category` → `careCategory` (enum MINSA I-1…III-E) + `careLevel` (I/II/III, solo
      lectura) + `institution`, `ubigeoDistrictCode`, `renipressCode`. Columnas, toolbar (filtro por nivel),
@@ -96,7 +97,7 @@ dar de baja y reactivar a un paciente.
 
 ## Fase 2 — Recorrido del paciente (núcleo)
 
-Reglas: decisiones §2–§4, §7, §17c R-11; diseño `diseno-01-trazabilidad.md`.
+Reglas: decisiones §2–§4, §7, §17c R-11; `diseno-01-trazabilidad.md`.
 
 1. **Intentos de contacto (S5)** en el seguimiento: lista de intentos (canal, resultado, hora, autor) y
    acción "Registrar intento" (`POST /follow-ups/:id/attempts`: canal = tipo de contacto, resultado
