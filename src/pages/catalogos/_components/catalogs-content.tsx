@@ -118,7 +118,7 @@ export function CatalogsContent() {
           </h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             Opciones de formularios clínicos.
-            {role === "AGENT" && " Como agente solo podés editar los catálogos abiertos."}{" "}
+            {role === "AGENT" && " Como agente solo puedes editar los catálogos abiertos."}{" "}
             Los hospitales se gestionan en{" "}
             <Link to="/hospitales" className="text-primary underline">
               Hospitales

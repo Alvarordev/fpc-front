@@ -980,8 +980,8 @@ export function Step7Atencion({
                       />
                     )}
                     <p className="text-muted-foreground text-xs">
-                      Si no es oncológico, elegí “Otro (no oncológico)” y
-                      escribí el diagnóstico. No se agrega al catálogo de
+                      Si no es oncológico, elige “Otro (no oncológico)” y
+                      escribe el diagnóstico. No se agrega al catálogo de
                       cáncer.
                     </p>
                   </div>

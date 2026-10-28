@@ -173,10 +173,10 @@ export function ReminderFormDialog({
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Modificá los campos del recordatorio."
+              ? "Modifica los campos del recordatorio."
               : draftMode
                 ? "Se guardará al completar el seguimiento."
-                : "Registrá un recordatorio genérico o una cita médica."}
+                : "Registra un recordatorio genérico o una cita médica."}
           </DialogDescription>
         </DialogHeader>
         <form

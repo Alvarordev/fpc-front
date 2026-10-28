@@ -41,7 +41,7 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
       await refresh()
       if (updated.deliveryStatus === "FAILED") {
         toast.error("El correo no se envió", {
-          description: updated.deliveryError ?? "Revisá el correo del paciente.",
+          description: updated.deliveryError ?? "Revisa el correo del paciente.",
         })
         return
       }

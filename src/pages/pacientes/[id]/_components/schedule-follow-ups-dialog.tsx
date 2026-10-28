@@ -49,10 +49,10 @@ function createEmptyRow(): ScheduleFollowUpFormValues {
 }
 
 function formatRowDate(row: ScheduleFollowUpFormValues) {
-  if (!row.date) return "Elegí una fecha"
+  if (!row.date) return "Elige una fecha"
 
   const date = new Date(`${row.date}T12:00:00`)
-  if (Number.isNaN(date.valueOf())) return "Elegí una fecha"
+  if (Number.isNaN(date.valueOf())) return "Elige una fecha"
 
   return date.toLocaleDateString("es-PE", {
     weekday: "short",
@@ -65,7 +65,7 @@ function formatRowDate(row: ScheduleFollowUpFormValues) {
 function getRowError(row: ScheduleFollowUpFormValues) {
   const result = scheduleFollowUpSchema.safeParse(row)
   if (!result.success)
-    return result.error.issues[0]?.message ?? "Revisá este seguimiento"
+    return result.error.issues[0]?.message ?? "Revisa este seguimiento"
 
   const scheduledAt = new Date(`${row.date}T${row.time}:00`)
   if (Number.isNaN(scheduledAt.valueOf()) || scheduledAt <= new Date()) {
@@ -150,7 +150,7 @@ export function ScheduleFollowUpsDialog({
 
     const nextAgentError =
       requiresAgentSelection && !selectedAgentId
-        ? "Seleccioná un agente responsable"
+        ? "Selecciona un agente responsable"
         : undefined
     setAgentError(nextAgentError)
 
@@ -179,7 +179,7 @@ export function ScheduleFollowUpsDialog({
             Planificar seguimientos
           </DialogTitle>
           <DialogDescription>
-            Organizá los próximos seguimientos de este paciente.
+            Organiza los próximos seguimientos de este paciente.
           </DialogDescription>
         </DialogHeader>
 

@@ -129,7 +129,7 @@ export function CreateAppointmentDialog({
       return
     }
     if (reminderLead === "CUSTOM" && !reminderAt) {
-      setErrorMsg("Indicá la fecha y hora de la anticipación personalizada.")
+      setErrorMsg("Indica la fecha y hora de la anticipación personalizada.")
       return
     }
 

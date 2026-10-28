@@ -103,7 +103,7 @@ export function PatientSurveysSection({
                 </Badge>
               ) : legacyRating != null ? (
                 <p className="text-muted-foreground">
-                  Calificación anterior: {ratingLabel(legacyRating)}. Registrala
+                  Calificación anterior: {ratingLabel(legacyRating)}. Regístrala
                   como encuesta para que entre al dashboard.
                 </p>
               ) : (

@@ -282,7 +282,7 @@ export function SchedulePsychooncologyDialog({
       }
 
       if (reminderMode === "CUSTOM" && !remindAt) {
-        toast.error("Indicá la fecha del recordatorio personalizado")
+        toast.error("Indica la fecha del recordatorio personalizado")
         return
       }
       const reminderAt =
@@ -401,7 +401,7 @@ export function SchedulePsychooncologyDialog({
               : followUpId
                 ? "La cita quedará vinculada al seguimiento actual."
                 : isEdit
-                  ? "Podés reprogramar el horario o cambiar el psicooncólogo, además de actualizar la modalidad y el motivo de derivación."
+                  ? "Puedes reprogramar el horario o cambiar el psicooncólogo, además de actualizar la modalidad y el motivo de derivación."
                   : "Esta cita se registrará de forma independiente."}
           </DialogDescription>
         </DialogHeader>
@@ -569,7 +569,7 @@ export function SchedulePsychooncologyDialog({
                   placeholder={
                     volunteerId
                       ? "Seleccionar horario"
-                      : "Primero seleccioná un psicooncólogo"
+                      : "Primero selecciona un psicooncólogo"
                   }
                 />
               </SelectTrigger>

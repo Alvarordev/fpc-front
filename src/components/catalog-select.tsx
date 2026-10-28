@@ -116,7 +116,7 @@ export function CatalogSelect({
             >
               <SelectValue
                 placeholder={
-                  missingParent ? "Seleccioná primero la fuente" : placeholder
+                  missingParent ? "Selecciona primero la fuente" : placeholder
                 }
               />
             </SelectTrigger>

@@ -257,7 +257,7 @@ export function RegionalIndicatorsMap({
     <Card className="gap-0">
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 border-b pb-5">
         <DashboardSectionTitle
-          hint="Pacientes por departamento de residencia. Seleccioná uno para ver el detalle y aplicarlo al perfil clínico y la demografía."
+          hint="Pacientes por departamento de residencia. Selecciona uno para ver el detalle y aplicarlo al perfil clínico y la demografía."
           badge={<ScopeBadge kind="estado" />}
         >
           Territorio

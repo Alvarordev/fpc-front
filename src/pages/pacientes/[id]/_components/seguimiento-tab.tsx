@@ -466,7 +466,7 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
             No se pudo cargar el seguimiento
           </p>
           <p className="text-muted-foreground text-xs">
-            Intentá volver a cargar la página.
+            Intenta volver a cargar la página.
           </p>
         </Card>
       ) : (

@@ -62,8 +62,8 @@ export function RegisterSurveyDialog({
   const resolvedPatientId = patientId ?? selectedPatientId
   const mutation = useMutation({
     mutationFn: () => {
-      if (!resolvedPatientId) throw new Error("Elegí un paciente")
-      if (!channel) throw new Error("Elegí un canal")
+      if (!resolvedPatientId) throw new Error("Elige un paciente")
+      if (!channel) throw new Error("Elige un canal")
       return surveysApi.create({
         patientId: resolvedPatientId,
         type,
@@ -86,7 +86,7 @@ export function RegisterSurveyDialog({
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!resolvedPatientId) {
-      toast.error("Elegí un paciente")
+      toast.error("Elige un paciente")
       return
     }
     if (!rating) {

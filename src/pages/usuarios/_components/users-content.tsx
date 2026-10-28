@@ -106,7 +106,7 @@ export function UsersContent() {
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <ShieldUser className="text-muted-foreground/30 mb-4 size-12" />
         <p className="text-muted-foreground text-sm">
-          No tenés permisos para ver esta sección.
+          No tienes permisos para ver esta sección.
         </p>
       </div>
     )

@@ -83,7 +83,7 @@ export function HistoricalPsychooncologyDialog({
               : "Agregar sesión psicooncológica"}
           </DialogTitle>
           <DialogDescription>
-            Registrá una sesión ya ocurrida junto con su resultado. No se
+            Registra una sesión ya ocurrida junto con su resultado. No se
             reserva ningún horario del calendario.
           </DialogDescription>
         </DialogHeader>
@@ -351,7 +351,7 @@ function HistoricalPsychooncologyForm({
             <Textarea
               value={sessionDetails}
               onChange={(event) => setSessionDetails(event.target.value)}
-              placeholder="Describí lo trabajado durante la sesión..."
+              placeholder="Describe lo trabajado durante la sesión..."
               className="min-h-20 resize-y"
             />
           </Field>

@@ -45,7 +45,7 @@ export function MergeCatalogItemDialog({
   const target = targets.find((item) => item.id === targetId) ?? null
   const mutation = useMutation({
     mutationFn: () => {
-      if (!source || !targetId) throw new Error("Elegí el ítem que se conserva")
+      if (!source || !targetId) throw new Error("Elige el ítem que se conserva")
       return catalogsApi.mergeInto(source.id, targetId)
     },
     onSuccess: async () => {
@@ -71,8 +71,8 @@ export function MergeCatalogItemDialog({
           <DialogTitle>Fusionar con…</DialogTitle>
           <DialogDescription>
             {source
-              ? `«${source.label}» es el duplicado. Elegí el ítem que se conserva.`
-              : "Elegí el ítem que se conserva."}
+              ? `«${source.label}» es el duplicado. Elige el ítem que se conserva.`
+              : "Elige el ítem que se conserva."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

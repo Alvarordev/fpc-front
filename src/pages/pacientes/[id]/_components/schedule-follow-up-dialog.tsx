@@ -77,7 +77,7 @@ export function ScheduleFollowUpDialog({
 
   async function submit(values: ScheduleFollowUpFormValues) {
     if (requiresAgentSelection && !values.agentId) {
-      setError("agentId", { message: "Seleccioná un agente" })
+      setError("agentId", { message: "Selecciona un agente" })
       return
     }
 
@@ -91,7 +91,7 @@ export function ScheduleFollowUpDialog({
         <DialogHeader>
           <DialogTitle>Agendar seguimiento</DialogTitle>
           <DialogDescription>
-            Programá un nuevo seguimiento para este paciente.
+            Programa un nuevo seguimiento para este paciente.
           </DialogDescription>
         </DialogHeader>
 
@@ -174,7 +174,7 @@ export function ScheduleFollowUpDialog({
               </Select>
               {errors.agentId && (
                 <p className="text-destructive text-xs">
-                  {errors.agentId.message ?? "Seleccioná un agente"}
+                  {errors.agentId.message ?? "Selecciona un agente"}
                 </p>
               )}
             </div>

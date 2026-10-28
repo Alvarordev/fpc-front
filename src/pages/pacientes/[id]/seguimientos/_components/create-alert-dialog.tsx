@@ -22,11 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 const alertSchema = z.object({
-  healthCenterId: z.string().min(1, "Seleccioná un establecimiento"),
+  healthCenterId: z.string().min(1, "Selecciona un establecimiento"),
   title: z.string().min(3, "Título requerido"),
-  description: z.string().min(5, "Detallá el problema reportado"),
+  description: z.string().min(5, "Detalla el problema reportado"),
   severity: z.enum(["HIGH", "MEDIUM", "LOW"], { message: "Selecciona la severidad" }),
-  category: z.string().min(1, "Seleccioná una categoría"),
+  category: z.string().min(1, "Selecciona una categoría"),
 })
 
 const SEVERITY_OPTIONS = [
@@ -110,7 +110,7 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
             <Textarea
               {...form.register("description")}
               className="min-h-24 resize-none"
-              placeholder="Describí el problema reportado..."
+              placeholder="Describe el problema reportado..."
             />
             {form.formState.errors.description && (
               <p className="text-destructive text-xs">{form.formState.errors.description.message}</p>

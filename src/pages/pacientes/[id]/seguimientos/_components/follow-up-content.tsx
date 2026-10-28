@@ -1102,7 +1102,7 @@ export function FollowUpContent() {
               className="min-h-24 resize-y"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Registrá el resultado del seguimiento..."
+              placeholder="Registra el resultado del seguimiento..."
               disabled={
                 isEditing
                   ? editMutation.isPending
@@ -1132,7 +1132,7 @@ export function FollowUpContent() {
             <p className="text-muted-foreground text-xs">
               La nota se conserva en esta sesión hasta que la guardes o la
               restablezcas. Los cambios de la ficha se guardan al completar el
-              seguimiento; si lo cancelás o marcás «No contestó», se descartan.
+              seguimiento; si lo cancelas o marcas «No contestó», se descartan.
             </p>
           )}
           {followUpTimelineEvent?.outcomes.length ? (

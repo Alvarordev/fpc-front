@@ -124,7 +124,7 @@ export function CreateHealthCenterDialog({
         <DialogHeader>
           <DialogTitle>Nuevo centro de salud</DialogTitle>
           <DialogDescription>
-            Registrá un nuevo hospital o centro de salud en el sistema.
+            Registra un nuevo hospital o centro de salud en el sistema.
           </DialogDescription>
         </DialogHeader>
 

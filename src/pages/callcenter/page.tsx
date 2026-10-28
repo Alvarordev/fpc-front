@@ -174,7 +174,7 @@ export default function CallcenterPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Call center</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Carga de trabajo pendiente, organizada por agente. Podés reasignar
+          Carga de trabajo pendiente, organizada por agente. Puedes reasignar
           seguimientos programados o vencidos.
         </p>
       </div>

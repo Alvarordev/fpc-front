@@ -136,7 +136,7 @@ export function EditHealthCenterDialog({
         <DialogHeader>
           <DialogTitle>Editar centro de salud</DialogTitle>
           <DialogDescription>
-            Modificá los datos del centro de salud.
+            Modifica los datos del centro de salud.
           </DialogDescription>
         </DialogHeader>
 

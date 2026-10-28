@@ -565,7 +565,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
                     : "acompañantes"}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  Podés crear una cita independiente o vincularla desde un
+                  Puedes crear una cita independiente o vincularla desde un
                   seguimiento.
                 </p>
               </div>

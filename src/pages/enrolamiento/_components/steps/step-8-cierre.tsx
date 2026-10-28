@@ -331,7 +331,7 @@ export function Step8Cierre({
         <div className="border-destructive/20 bg-destructive/5 rounded-xl border p-4">
           <p className="text-destructive text-sm">
             {mutation.error instanceof TypeError
-              ? "Error al guardar. Verificá la conexión."
+              ? "Error al guardar. Verifica la conexión."
               : mutation.error.message}
           </p>
         </div>

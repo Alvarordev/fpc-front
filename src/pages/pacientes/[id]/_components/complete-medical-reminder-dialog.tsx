@@ -172,11 +172,11 @@ export function CompleteMedicalReminderDialog({
           <DialogDescription>
             {specialty ? (
               <>
-                Registrá el resultado de la cita de{" "}
+                Registra el resultado de la cita de{" "}
                 <CatalogValue kind="medical_specialty" code={specialty} />.
               </>
             ) : (
-              "Registrá el resultado de la cita médica."
+              "Registra el resultado de la cita médica."
             )}
           </DialogDescription>
         </DialogHeader>

@@ -125,7 +125,7 @@ function AlertOperationsBody({
       toast.success(
         result.emailEnabled
           ? `Avisos enviados: ${result.sent} de ${result.withEmail}`
-          : "El correo no está configurado. Copiá el texto para avisar a mano.",
+          : "El correo no está configurado. Copia el texto para avisar a mano.",
       )
     },
     onError: (error: Error) =>

@@ -134,7 +134,7 @@ export function CreateCatalogItemDialog({
 
   async function onSubmit(values: FormValues) {
     if (parentKind && !resolvedParentCode) {
-      toast.error("Seleccioná la fuente de ingreso padre")
+      toast.error("Selecciona la fuente de ingreso padre")
       return
     }
     try {
@@ -163,7 +163,7 @@ export function CreateCatalogItemDialog({
         <DialogHeader>
           <DialogTitle>Nuevo ítem de catálogo</DialogTitle>
           <DialogDescription>
-            Agregá una opción a {kindLabel}. Quedará disponible en todos los
+            Agrega una opción a {kindLabel}. Quedará disponible en todos los
             formularios.
           </DialogDescription>
         </DialogHeader>

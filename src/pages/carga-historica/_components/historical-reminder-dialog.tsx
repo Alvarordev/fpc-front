@@ -121,7 +121,7 @@ export function HistoricalReminderDialog({
               : "Agregar recordatorio histórico"}
           </DialogTitle>
           <DialogDescription>
-            Registrá un recordatorio genérico o una cita médica ya ocurrida, con
+            Registra un recordatorio genérico o una cita médica ya ocurrida, con
             su resultado.
           </DialogDescription>
         </DialogHeader>

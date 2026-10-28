@@ -232,7 +232,7 @@ export function buildEnrollmentPayload({
       !value(treatment.interruptionReasonOther)
     )
       throw new Error(
-        `Especificá el motivo de interrupción del tratamiento ${index + 1}`,
+        `Especifica el motivo de interrupción del tratamiento ${index + 1}`,
       )
     if (isSurgery && !value(treatment.operationName))
       throw new Error(`Selecciona el procedimiento de la cirugía ${index + 1}`)

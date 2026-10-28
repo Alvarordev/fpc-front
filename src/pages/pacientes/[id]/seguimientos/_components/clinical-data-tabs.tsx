@@ -649,7 +649,7 @@ export function ClinicalDataTabs({
                       Diagnóstico no oncológico
                     </h3>
                     <p className="text-muted-foreground text-sm">
-                      El cáncer quedó descartado. Registrá el diagnóstico no
+                      El cáncer quedó descartado. Registra el diagnóstico no
                       oncológico y el seguimiento asociado.
                     </p>
                   </div>
@@ -2820,7 +2820,7 @@ function DiagnosticoForm({
 
   function onSubmit(values: DiagnosisFormValues) {
     if (!values.diagnosis.trim()) {
-      toast.error("Ingresá el diagnóstico")
+      toast.error("Ingresa el diagnóstico")
       return
     }
     // With no active diagnosis to replace, the new one can only be additional.
@@ -2828,15 +2828,15 @@ function DiagnosticoForm({
       ? mode
       : "PARALLEL"
     if (isCorrection && !changeReason.trim()) {
-      toast.error("Indicá el motivo de la corrección")
+      toast.error("Indica el motivo de la corrección")
       return
     }
     if (!isCorrection && !decisionMode) {
-      toast.error("Indicá si el diagnóstico reemplaza a uno actual")
+      toast.error("Indica si el diagnóstico reemplaza a uno actual")
       return
     }
     if (decisionMode === "REPLACE" && !replacementDiagnosisId) {
-      toast.error("Seleccioná el diagnóstico que deseas reemplazar")
+      toast.error("Selecciona el diagnóstico que deseas reemplazar")
       return
     }
 
@@ -3828,11 +3828,11 @@ function TratamientosForm({
 
   function onSubmit(values: TreatmentFormValues) {
     if (!values.diagnosisId) {
-      toast.error("Seleccioná el diagnóstico asociado")
+      toast.error("Selecciona el diagnóstico asociado")
       return
     }
     if (!values.treatmentType.trim()) {
-      toast.error("Ingresá el tipo de tratamiento")
+      toast.error("Ingresa el tipo de tratamiento")
       return
     }
     if (
@@ -3853,7 +3853,7 @@ function TratamientosForm({
       values.interruptionReason === "OTHER" &&
       !values.interruptionReasonOther.trim()
     ) {
-      toast.error("Especificá el motivo de interrupción")
+      toast.error("Especifica el motivo de interrupción")
       return
     }
     if (
@@ -3873,7 +3873,7 @@ function TratamientosForm({
       values.isReferred &&
       (!values.sourceHealthCenterId || !values.receivingHealthCenterId)
     ) {
-      toast.error("Seleccioná el hospital de origen y el hospital receptor")
+      toast.error("Selecciona el hospital de origen y el hospital receptor")
       return
     }
     if (
@@ -4012,7 +4012,7 @@ function TratamientosForm({
         : {}),
     }
     if (mode === "REPLACE" && !selectedSeriesId) {
-      toast.error("Seleccioná el tratamiento que deseas actualizar")
+      toast.error("Selecciona el tratamiento que deseas actualizar")
       return
     }
     if (
@@ -4352,7 +4352,7 @@ function TratamientosForm({
               </Select>
               {!canPickDiagnosis && (
                 <p className="text-muted-foreground text-xs">
-                  Primero registrá un diagnóstico.
+                  Primero registra un diagnóstico.
                 </p>
               )}
             </div>
@@ -5026,7 +5026,7 @@ function SeguroForm({
 
   function onSubmit(values: InsuranceFormValues) {
     if (!values.insuranceType) {
-      toast.error("Seleccioná el tipo de seguro")
+      toast.error("Selecciona el tipo de seguro")
       return
     }
 
@@ -5860,7 +5860,7 @@ function DiagnosticStatusSection({
                   : diagnosticResultConsequence(status)}
               </span>
               {status === "RULED_OUT"
-                ? ". Debajo podés registrar el diagnóstico no oncológico."
+                ? ". Debajo puedes registrar el diagnóstico no oncológico."
                 : "."}
             </p>
             <TriSelect

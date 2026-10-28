@@ -161,7 +161,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
       : ownAgentId
 
     if (!assignedAgentId) {
-      toast.error("Seleccioná un agente responsable")
+      toast.error("Selecciona un agente responsable")
       return
     }
 
@@ -253,7 +253,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
             Sin recordatorios
           </p>
           <p className="text-muted-foreground max-w-xs text-center text-xs">
-            Registrá citas médicas, procedimientos o medicaciones.
+            Registra citas médicas, procedimientos o medicaciones.
           </p>
           {canManage && (
             <Button

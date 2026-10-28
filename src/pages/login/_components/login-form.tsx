@@ -40,7 +40,7 @@ export function LoginForm() {
           Iniciar sesión
         </h2>
         <p className="text-sm text-muted-foreground">
-          Ingresá tus credenciales para acceder al panel.
+          Ingresa tus credenciales para acceder al panel.
         </p>
       </div>
 

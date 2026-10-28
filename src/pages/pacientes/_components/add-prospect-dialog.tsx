@@ -130,7 +130,7 @@ export function AddProspectDialog({
         <DialogHeader>
           <DialogTitle>Agregar prospecto</DialogTitle>
           <DialogDescription>
-            Registrá un nuevo paciente como prospecto y agendá un primer
+            Registra un nuevo paciente como prospecto y agenda un primer
             contacto.
           </DialogDescription>
         </DialogHeader>
@@ -283,7 +283,7 @@ export function AddProspectDialog({
                 Agendamiento del primer contacto
               </p>
               <p className="text-xs text-muted-foreground/70">
-                Opcional. Completá fecha y hora solo si querés dejar un contacto posterior programado.
+                Opcional. Completa fecha y hora solo si quieres dejar un contacto posterior programado.
               </p>
             </div>
 

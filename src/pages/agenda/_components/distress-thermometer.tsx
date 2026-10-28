@@ -114,7 +114,7 @@ export function DistressThermometer({
 
   const scoreLabel =
     score === null
-      ? "Seleccioná un valor"
+      ? "Selecciona un valor"
       : score <= 3
         ? "Malestar leve"
         : score <= 6

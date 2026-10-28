@@ -45,7 +45,7 @@ export function PsychoSessionActions({
     },
     onError: (error: Error) => {
       if (videoWithoutZoom || error.message.includes("409")) {
-        setBlocked("Esta videollamada no tiene link de Zoom. Agregalo antes de copiar o marcar el recordatorio.")
+        setBlocked("Esta videollamada no tiene link de Zoom. Agrégalo antes de copiar o marcar el recordatorio.")
       }
       toast.error("No se pudo copiar el recordatorio", { description: error.message })
     },
@@ -60,7 +60,7 @@ export function PsychoSessionActions({
     },
     onError: (error: Error) => {
       if (videoWithoutZoom) {
-        setBlocked("Esta videollamada no tiene link de Zoom. Agregalo antes de copiar o marcar el recordatorio.")
+        setBlocked("Esta videollamada no tiene link de Zoom. Agrégalo antes de copiar o marcar el recordatorio.")
       }
       toast.error("No se pudo marcar el recordatorio", { description: error.message })
     },
@@ -129,7 +129,7 @@ export function PsychoSessionActions({
       </div>
       {videoWithoutZoom && pending && (
         <p className="text-xs text-amber-800">
-          Esta videollamada no tiene link de Zoom. Agregalo antes de copiar o marcar el recordatorio.
+          Esta videollamada no tiene link de Zoom. Agrégalo antes de copiar o marcar el recordatorio.
         </p>
       )}
     </div>
