@@ -10,6 +10,11 @@ export type FollowUp = components["schemas"]["FollowUpResponseDto"]
 export type FollowUpFilters = NonNullable<
   operations["FollowUpsController_findAll"]["parameters"]["query"]
 >
+export type FollowUpAttempt = components["schemas"]["FollowUpAttemptResponseDto"]
+export type CreateFollowUpAttemptInput =
+  components["schemas"]["CreateFollowUpAttemptDto"]
+export type RescheduleFollowUpInput =
+  components["schemas"]["RescheduleFollowUpDto"]
 
 export class FollowUpsApiError extends Error {
   readonly status: number
@@ -94,6 +99,30 @@ export const followUpsApi = {
       throw new FollowUpsApiError(response.status)
     }
 
+    return data
+  },
+
+  async recordAttempt(
+    id: string,
+    input: CreateFollowUpAttemptInput,
+  ): Promise<FollowUpAttempt> {
+    const { data, response } = await api.POST("/follow-ups/{id}/attempts", {
+      params: { path: { id } },
+      body: input,
+    })
+    if (!data) throw new FollowUpsApiError(response.status)
+    return data
+  },
+
+  async reschedule(
+    id: string,
+    input: RescheduleFollowUpInput,
+  ): Promise<FollowUp> {
+    const { data, response } = await api.POST("/follow-ups/{id}/reschedule", {
+      params: { path: { id } },
+      body: input,
+    })
+    if (!data) throw new FollowUpsApiError(response.status)
     return data
   },
 

@@ -1,4 +1,5 @@
 import { HealthCenterCombobox } from "@/components/health-center-combobox"
+import { HealthSubcategoryHelp } from "@/components/health-subcategory-help"
 import { useEffect } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -596,6 +597,7 @@ export function PatientProfileDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <HealthSubcategoryHelp />
                   <p className="text-muted-foreground text-xs">
                     Fase de salud:{" "}
                     {healthPhase

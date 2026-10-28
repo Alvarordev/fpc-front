@@ -6,6 +6,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Tag } from "lucide-react"
 import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
+import { HealthSubcategoryHelp } from "@/components/health-subcategory-help"
 import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
 
 export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
@@ -72,6 +73,7 @@ export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
               Selecciona una categoría clínica.
             </p>
           )}
+          <HealthSubcategoryHelp />
         </div>
       </div>
       {!embedded && <StepNav currentStep={6} onPrev={prevStep} />}

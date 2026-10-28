@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Phone,
   PhoneCall,
+  UserRound,
   Users,
   Video,
 } from "lucide-react"
@@ -60,7 +61,10 @@ const followUpTypeIcons: Record<
 function isScheduledFollowUp(
   followUp: FollowUp,
 ): followUp is ScheduledFollowUp {
-  return followUp.status === "SCHEDULED" && Boolean(followUp.scheduledAt)
+  return (
+    (followUp.status === "SCHEDULED" || followUp.status === "OVERDUE") &&
+    Boolean(followUp.scheduledAt)
+  )
 }
 
 function formatShortDate(date: string | null | undefined): string {
@@ -205,9 +209,11 @@ function StatCard({
 
 function ScheduledFollowUpCard({
   followUp,
+  agentName,
   onClick,
 }: {
   followUp: ScheduledFollowUp
+  agentName: string
   onClick: () => void
 }) {
   const Icon = followUpTypeIcons[followUp.type]
@@ -263,7 +269,16 @@ function ScheduledFollowUpCard({
             <Clock3 className="size-3.5" />
             {date.time}
           </span>
+          <span className="flex items-center gap-1.5">
+            <UserRound className="size-3.5" />
+            {agentName}
+          </span>
         </div>
+        {followUp.nextFollowUpId && (
+          <p className="mt-2 text-xs font-medium">
+            Ya fue reagendado. Abre este seguimiento para ver el nuevo.
+          </p>
+        )}
         {followUp.notes && (
           <p className="text-muted-foreground mt-3 line-clamp-2 text-sm leading-relaxed">
             {followUp.notes}
@@ -424,7 +439,8 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
             Plan de seguimientos
           </h2>
           <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-            Organizá los próximos seguimientos y consultá lo que ya ocurrió.
+            Incluye los seguimientos de todos los agentes. Cada tarjeta indica
+            quién lo tiene asignado.
           </p>
         </div>
         {canManage && (
@@ -510,6 +526,11 @@ export function SeguimientoTab({ pacienteId }: SeguimientoTabProps) {
                   <ScheduledFollowUpCard
                     key={followUp.id}
                     followUp={followUp}
+                    agentName={
+                      agentsQuery.data?.find(
+                        (agent) => agent.id === followUp.agentId,
+                      )?.fullName ?? "Agente asignado"
+                    }
                     onClick={() =>
                       navigate(
                         `/pacientes/${pacienteId}/seguimientos/${followUp.id}`,

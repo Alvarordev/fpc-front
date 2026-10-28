@@ -90,7 +90,13 @@ export default function AgentAgendaPage() {
 
   const followUpsQuery = useQuery({
     queryKey: ["agent-follow-ups", agentId],
-    queryFn: () => followUpsApi.list({ agentId, status: "SCHEDULED" }),
+    queryFn: async () => {
+      const [scheduled, overdue] = await Promise.all([
+        followUpsApi.list({ agentId, status: "SCHEDULED" }),
+        followUpsApi.list({ agentId, status: "OVERDUE" }),
+      ])
+      return [...scheduled, ...overdue]
+    },
     enabled: Boolean(agentId),
     staleTime: 30_000,
   })
@@ -117,8 +123,18 @@ export default function AgentAgendaPage() {
   })
 
   const rescheduleMutation = useMutation({
-    mutationFn: ({ id, scheduledAt }: { id: string; scheduledAt: string }) =>
-      followUpsApi.update(id, { scheduledAt }),
+    mutationFn: ({
+      id,
+      scheduledAt,
+      status,
+    }: {
+      id: string
+      scheduledAt: string
+      status: FollowUp["status"]
+    }) =>
+      status === "OVERDUE" || status === "CANCELLED"
+        ? followUpsApi.reschedule(id, { scheduledAt })
+        : followUpsApi.update(id, { scheduledAt }),
     onSuccess: async (_data, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
@@ -128,12 +144,34 @@ export default function AgentAgendaPage() {
           queryKey: ["follow-up", variables.id],
         }),
         queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-follow-ups"] }),
       ])
       setEditingFollowUp(null)
       toast.success("Seguimiento reagendado")
     },
     onError: (error: Error) =>
       toast.error("No se pudo reagendar el seguimiento", {
+        description: error.message,
+      }),
+  })
+
+  const cancelFollowUpMutation = useMutation({
+    mutationFn: (followUp: FollowUp) =>
+      followUpsApi.update(followUp.id, { status: "CANCELLED" }),
+    onSuccess: async (_data, followUp) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["agent-follow-ups", agentId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["follow-up", followUp.id] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-follow-ups"] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
+      ])
+      setSelectedFollowUp(null)
+      toast.success("Seguimiento cancelado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo cancelar el seguimiento", {
         description: error.message,
       }),
   })
@@ -395,6 +433,8 @@ export default function AgentAgendaPage() {
         onClose={() => setSelectedFollowUp(null)}
         onGoToFollowUp={goToFollowUp}
         onEdit={openFollowUpEditor}
+        onCancel={(followUp) => cancelFollowUpMutation.mutate(followUp)}
+        isCancelling={cancelFollowUpMutation.isPending}
       />
       <FollowUpEditDialog
         key={editingFollowUp?.id ?? "follow-up-editor-closed"}
@@ -404,7 +444,11 @@ export default function AgentAgendaPage() {
         onOpenChange={(open) => !open && setEditingFollowUp(null)}
         onSave={({ scheduledAt }) => {
           if (editingFollowUp)
-            rescheduleMutation.mutate({ id: editingFollowUp.id, scheduledAt })
+            rescheduleMutation.mutate({
+              id: editingFollowUp.id,
+              scheduledAt,
+              status: editingFollowUp.status,
+            })
         }}
       />
       <ReminderDetailDialog

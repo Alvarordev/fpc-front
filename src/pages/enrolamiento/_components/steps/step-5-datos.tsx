@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { DurationInput } from "@/components/duration-input"
 import { IdentityDocumentInput } from "@/components/identity-document-input"
+import { EnrollmentDniLookup } from "../enrollment-dni-lookup"
+import { useEnrollmentDniLookup } from "../use-enrollment-dni-lookup"
 import { documentNumberError } from "@/types/identity-document"
 import { CatalogSelect } from "@/components/catalog-select"
 import { Input } from "@/components/ui/input"
@@ -448,6 +450,10 @@ export function Step5Datos({
 }) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
   const [error, setError] = useState<string | null>(null)
+  const dniLookup = useEnrollmentDniLookup(
+    draft.patientData.documentType,
+    draft.patientData.dni,
+  )
 
   const pd = draft.patientData
   const details = draft.details
@@ -590,6 +596,27 @@ export function Step5Datos({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (dniLookup.state === "loading") {
+      setError("Espera a que termine la búsqueda del documento")
+      return
+    }
+    if (dniLookup.state === "blocked") {
+      setError("Ya está enrolado, registra un seguimiento")
+      return
+    }
+    if (dniLookup.state === "prospect") {
+      setError("Este documento ya tiene una ficha. Ábrela para enrolarlo.")
+      return
+    }
+    if (
+      dniLookup.state === "reenroll" &&
+      draft.patientId !== dniLookup.match?.id
+    ) {
+      setError(
+        "Este documento es de un paciente inactivo o con cáncer descartado. Usa Reenrolar para continuar.",
+      )
+      return
+    }
     if (
       !pd.fullName.trim() ||
       (!historical && !pd.primaryPhone.trim()) ||
@@ -690,15 +717,25 @@ export function Step5Datos({
               type={pd.documentType ?? "DNI"}
               number={pd.dni ?? ""}
               className={ic}
-              onChange={({ type, number }) =>
+              onChange={({ type, number }) => {
+                const sameDocument =
+                  type === (pd.documentType ?? "DNI") &&
+                  number === (pd.dni ?? "")
                 updateDraft({
+                  ...(sameDocument ? {} : { patientId: null }),
                   patientData: {
                     ...pd,
                     documentType: type,
                     dni: number || null,
                   },
                 })
-              }
+              }}
+            />
+            <EnrollmentDniLookup
+              documentType={pd.documentType}
+              dni={pd.dni}
+              patientId={draft.patientId}
+              onReenroll={(patient) => updateDraft({ patientId: patient.id })}
             />
           </div>
           <div className="flex flex-col gap-2">

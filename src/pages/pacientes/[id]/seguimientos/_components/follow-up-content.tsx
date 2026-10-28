@@ -14,6 +14,7 @@ import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { alertsApi } from "@/api/alerts"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
+import { HealthSubcategoryHelp } from "@/components/health-subcategory-help"
 import {
   patientTimelineApi,
   type PatientTimelineEvent,
@@ -43,7 +44,11 @@ import { useAuthStore } from "@/store/auth-store"
 import { ScheduleFollowUpDialog } from "../../_components/schedule-follow-up-dialog"
 import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
 import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
+import { PatientChangeLog } from "../../_components/patient-change-log"
+import { PatientReferralsSection } from "../../_components/patient-referrals-section"
 import { ClinicalDataTabs } from "./clinical-data-tabs"
+import { FollowUpAttemptsPanel } from "./follow-up-attempts-panel"
+import { FollowUpReschedulePanel } from "./follow-up-reschedule-panel"
 import {
   draftDiagnosisIdFromOption,
   hasAnyClinicalDraft,
@@ -170,6 +175,9 @@ export function FollowUpContent() {
     enabled: canManage,
     staleTime: 60_000,
   })
+  const ownAgentId = agentsQuery.data?.find(
+    (agent) => agent.userId === user?.id,
+  )?.id
   const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const patientQuery = usePatient(patientId ?? "")
   useEffect(() => {
@@ -349,7 +357,14 @@ export function FollowUpContent() {
     )
   const isOpen =
     followUp.status === "SCHEDULED" || followUp.status === "OVERDUE"
-  const canEditClosed = canManage && !isOpen
+  const canActOnFollowUp =
+    canManage &&
+    (user?.role !== "AGENT" ||
+      (Boolean(ownAgentId) && followUp.agentId === ownAgentId))
+  const followUpAgentName = agentsQuery.data?.find(
+    (agent) => agent.id === followUp.agentId,
+  )?.fullName
+  const canEditClosed = canActOnFollowUp && !isOpen
   const followUpTimelineEvent = patientTimelineQuery.data?.data.find(
     (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
       event.kind === "FOLLOW_UP" && event.followUpId === followUp.id,
@@ -901,6 +916,17 @@ export function FollowUpContent() {
                 {patientQuery.data.fullName}
               </span>
             ) : null}
+            {followUpAgentName ? (
+              <span className="text-muted-foreground text-sm">
+                Agente: {followUpAgentName}
+              </span>
+            ) : null}
+            {user?.role === "AGENT" && !canActOnFollowUp ? (
+              <span className="text-muted-foreground text-xs">
+                Este seguimiento es de otro agente. Puedes consultarlo, no
+                modificarlo.
+              </span>
+            ) : null}
             <span
               className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${followUpStatusClasses[followUp.status]}`}
             >
@@ -959,7 +985,7 @@ export function FollowUpContent() {
               </Button>
             </>
           ) : null}
-          {canManage && isOpen ? (
+          {canActOnFollowUp && isOpen ? (
             <>
               <Button
                 type="button"
@@ -993,6 +1019,26 @@ export function FollowUpContent() {
           ) : null}
         </div>
       </div>
+
+      <FollowUpAttemptsPanel
+        followUp={followUp}
+        canRegister={canActOnFollowUp}
+      />
+      <FollowUpReschedulePanel
+        followUp={followUp}
+        patientId={patientId!}
+        canReschedule={canActOnFollowUp}
+      />
+      <PatientChangeLog
+        patientId={patientId!}
+        followUpId={followUp.id}
+        title="Qué cambió en este contacto"
+        description="Cambios registrados durante este seguimiento."
+      />
+      <PatientReferralsSection
+        patientId={patientId!}
+        followUpId={followUp.id}
+      />
 
       <Card size="sm" className="min-w-0 border-border/60">
         <CardContent className="space-y-5 pt-5">
@@ -1060,12 +1106,12 @@ export function FollowUpContent() {
               disabled={
                 isEditing
                   ? editMutation.isPending
-                  : !canManage || !isOpen
+                  : !canActOnFollowUp || !isOpen
               }
             />
           </div>
 
-          {canManage && isOpen ? (
+          {canActOnFollowUp && isOpen ? (
             <FollowUpAside
               onPsicoOpen={() => setPsychooncologyOpen(true)}
               hasPsicoDraft={Boolean(psicoDraft)}
@@ -1107,7 +1153,7 @@ export function FollowUpContent() {
         </CardContent>
       </Card>
 
-      {canManage && isOpen ? (
+      {canActOnFollowUp && isOpen ? (
         <Card size="sm" className="min-w-0 border-border/60">
           <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 pb-3">
             <CardTitle className="text-base">Ficha clínica</CardTitle>
@@ -1263,6 +1309,7 @@ function PatientHealthSubcategoryControl({
           ))}
         </SelectContent>
       </Select>
+      <HealthSubcategoryHelp />
       <p className="text-muted-foreground text-[11px]">
         Fase de salud:{" "}
         {selectedPhase ? (

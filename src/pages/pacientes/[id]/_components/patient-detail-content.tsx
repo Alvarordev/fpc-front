@@ -14,6 +14,9 @@ import { AlertBanner } from "./alert-banner"
 import { OverviewSection } from "./overview-section"
 import { EnrollmentRatingCard } from "./enrollment-rating-card"
 import { PatientCareJourneyBoard } from "./patient-care-journey-board"
+import { PatientActivityActions } from "./patient-activity-actions"
+import { PatientChangeLog } from "./patient-change-log"
+import { PatientReferralsSection } from "./patient-referrals-section"
 import { SeguimientoTab } from "./seguimiento-tab"
 import { PsicoTab } from "./psico-tab"
 import { RecordatoriosTab } from "./recordatorios-tab"
@@ -187,12 +190,15 @@ export function PatientDetailContent() {
           </div>
         </div>
 
-        {patient.role !== "COMPANION" && patient.status === "UNENROLLED" && (
-          <Button size="sm" className="shrink-0 gap-1.5" onClick={handleEnroll}>
-            <UserPlus className="size-4" />
-            Enrolar
-          </Button>
-        )}
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {patient.role !== "COMPANION" && patient.status === "UNENROLLED" && (
+            <Button size="sm" className="gap-1.5" onClick={handleEnroll}>
+              <UserPlus className="size-4" />
+              Enrolar
+            </Button>
+          )}
+          <PatientActivityActions patient={patient} />
+        </div>
       </div>
 
       {alerts.length > 0 && <AlertBanner alerts={alerts} />}
@@ -227,6 +233,12 @@ export function PatientDetailContent() {
               }
             />
             <PatientCareJourneyBoard patient={patient} />
+            {patient.role !== "COMPANION" && (
+              <>
+                <PatientReferralsSection patientId={patient.id} />
+                <PatientChangeLog patientId={patient.id} />
+              </>
+            )}
           </div>
         </TabsContent>
         <TabsContent value="seguimiento">

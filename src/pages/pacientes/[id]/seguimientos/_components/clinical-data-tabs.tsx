@@ -1,4 +1,5 @@
 import { HealthCenterCombobox } from "@/components/health-center-combobox"
+import { HealthSubcategoryHelp } from "@/components/health-subcategory-help"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -5835,6 +5836,7 @@ function DiagnosticStatusSection({
                     ))}
                   </SelectContent>
                 </Select>
+                <HealthSubcategoryHelp />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Diagnóstico formal *</Label>

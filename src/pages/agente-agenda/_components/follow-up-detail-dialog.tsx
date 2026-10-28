@@ -1,3 +1,5 @@
+import { useState } from "react"
+import { Link } from "react-router-dom"
 import {
   ArrowRight,
   CalendarDays,
@@ -31,6 +33,8 @@ interface FollowUpDetailDialogProps {
   onClose: () => void
   onGoToFollowUp: (followUp: FollowUp) => void
   onEdit: (followUp: FollowUp) => void
+  onCancel: (followUp: FollowUp) => void
+  isCancelling?: boolean
 }
 
 export function FollowUpDetailDialog({
@@ -38,11 +42,26 @@ export function FollowUpDetailDialog({
   onClose,
   onGoToFollowUp,
   onEdit,
+  onCancel,
+  isCancelling = false,
 }: FollowUpDetailDialogProps) {
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const canCancel =
+    followUp?.status === "SCHEDULED" || followUp?.status === "OVERDUE"
+  const canReschedule =
+    (followUp?.status === "OVERDUE" || followUp?.status === "CANCELLED") &&
+    !followUp.nextFollowUpId
+  const canEditDate = followUp?.status === "SCHEDULED" && !followUp.nextFollowUpId
+
   return (
     <Dialog
       open={Boolean(followUp)}
-      onOpenChange={(open) => !open && onClose()}
+      onOpenChange={(open) => {
+        if (!open) {
+          setConfirmCancel(false)
+          onClose()
+        }
+      }}
     >
       {followUp && (
         <DialogContent className="sm:max-w-lg">
@@ -102,6 +121,19 @@ export function FollowUpDetailDialog({
               />
             </div>
 
+            {followUp.nextFollowUpId && (
+              <p className="text-sm">
+                Ya fue reagendado.{" "}
+                <Link
+                  className="font-medium underline"
+                  to={`/pacientes/${followUp.subjectPatientId}/seguimientos/${followUp.nextFollowUpId}`}
+                  onClick={onClose}
+                >
+                  Ver el seguimiento nuevo
+                </Link>
+              </p>
+            )}
+
             {followUp.notes && (
               <div className="bg-background rounded-xl border p-3">
                 <p className="text-muted-foreground mb-1 text-[11px] font-semibold tracking-wide uppercase">
@@ -123,10 +155,33 @@ export function FollowUpDetailDialog({
               Ir al seguimiento
               <ArrowRight className="size-4" />
             </Button>
-            <Button type="button" onClick={() => onEdit(followUp)}>
-              <Pencil className="size-4" />
-              Editar seguimiento
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {canCancel &&
+                (confirmCancel ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isCancelling}
+                    onClick={() => onCancel(followUp)}
+                  >
+                    {isCancelling ? "Cancelando..." : "Confirmar cancelación"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmCancel(true)}
+                  >
+                    Cancelar
+                  </Button>
+                ))}
+              {(canEditDate || canReschedule) && (
+                <Button type="button" onClick={() => onEdit(followUp)}>
+                  <Pencil className="size-4" />
+                  {canReschedule ? "Reagendar" : "Editar seguimiento"}
+                </Button>
+              )}
+            </div>
           </DialogFooter>
         </DialogContent>
       )}
