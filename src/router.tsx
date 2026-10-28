@@ -99,7 +99,7 @@ export const router = createBrowserRouter([
       {
         path: "callcenter",
         element: (
-          <RoleGuard allowedRoles={["ADMIN"]}>
+          <RoleGuard allowedRoles={["ADMIN", "FOUNDATION"]}>
             <CallcenterPage />
           </RoleGuard>
         ),
@@ -115,7 +115,7 @@ export const router = createBrowserRouter([
       {
         path: "catalogos",
         element: (
-          <RoleGuard allowedRoles={["ADMIN"]}>
+          <RoleGuard allowedRoles={["ADMIN", "FOUNDATION", "AGENT"]}>
             <CatalogsPage />
           </RoleGuard>
         ),

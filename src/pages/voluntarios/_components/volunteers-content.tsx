@@ -157,7 +157,7 @@ export function VolunteersContent() {
         <VolunteerProfileDialog
           key={profileVolunteer.id}
           volunteer={profileVolunteer}
-          canEdit={role === "ADMIN"}
+          canEdit={role === "ADMIN" || role === "FOUNDATION"}
           open
           onOpenChange={(open) => {
             if (!open) setProfileVolunteerId(null)

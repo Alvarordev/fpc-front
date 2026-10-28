@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Pencil, Archive, RotateCcw } from "lucide-react"
+import { MoreHorizontal, Pencil, Archive, RotateCcw, GitMerge } from "lucide-react"
 import type { CatalogItem } from "@/api/catalogs"
 import { cn } from "@/lib/utils"
 
@@ -15,12 +15,14 @@ interface CatalogColumnsOptions {
   onEdit: (item: CatalogItem) => void
   onArchive: (item: CatalogItem) => void
   onReactivate: (item: CatalogItem) => void
+  onMerge?: (item: CatalogItem) => void
 }
 
 export function catalogColumns({
   onEdit,
   onArchive,
   onReactivate,
+  onMerge,
 }: CatalogColumnsOptions): ColumnDef<CatalogItem>[] {
   return [
     {
@@ -103,6 +105,17 @@ export function catalogColumns({
                   <Pencil className="size-4" />
                   Editar
                 </DropdownMenuItem>
+                {onMerge && item.isActive && (
+                  <DropdownMenuItem
+                    disabled={item.isSystem}
+                    onClick={() => {
+                      if (!item.isSystem) onMerge(item)
+                    }}
+                  >
+                    <GitMerge className="size-4" />
+                    Fusionar con…
+                  </DropdownMenuItem>
+                )}
                 {item.isActive ? (
                   <DropdownMenuItem
                     disabled={item.isSystem}

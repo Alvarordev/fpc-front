@@ -2,6 +2,7 @@ import type { components } from "./schema"
 import { api } from "./client"
 
 export type CatalogItem = components["schemas"]["CatalogItemResponseDto"]
+export type CatalogMerge = components["schemas"]["CatalogMergeResponseDto"]
 export type CatalogKind = components["schemas"]["CreateCatalogItemDto"]["kind"]
 export type CreateCatalogItemInput =
   components["schemas"]["CreateCatalogItemDto"]
@@ -129,6 +130,36 @@ export const catalogsApi = {
     })
     if (!data) {
       throw catalogError(response.status, "No se pudo archivar el ítem")
+    }
+    return data
+  },
+
+  async mergeInto(id: string, targetId: string): Promise<CatalogMerge> {
+    const { data, response } = await api.POST(
+      "/catalogs/{id}/merge-into/{targetId}",
+      { params: { path: { id, targetId } } },
+    )
+    if (!data) {
+      if (response.status === 400) {
+        throw new Error(
+          "No se puede fusionar: el origen es de sistema, el destino está archivado o no son del mismo catálogo.",
+        )
+      }
+      if (response.status === 403) {
+        throw new Error("Solo un administrador puede fusionar ítems.")
+      }
+      if (response.status === 409) {
+        throw new Error("Ese ítem ya fue fusionado.")
+      }
+      throw catalogError(response.status, "No se pudo fusionar el ítem")
+    }
+    return data
+  },
+
+  async listMerges(): Promise<CatalogMerge[]> {
+    const { data, response } = await api.GET("/catalogs/merges")
+    if (!data) {
+      throw catalogError(response.status, "No se pudo obtener el historial de fusiones")
     }
     return data
   },

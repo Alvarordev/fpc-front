@@ -39,6 +39,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
           icon: GraduationCap,
         },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
+        { title: "Catálogos", url: "/catalogos", icon: BookMarked },
       ],
     },
   ],
@@ -90,6 +91,8 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
         { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Call center", url: "/callcenter", icon: Headset },
+        { title: "Catálogos", url: "/catalogos", icon: BookMarked },
         {
           title: "Charlas de prevención",
           url: "/charlas",

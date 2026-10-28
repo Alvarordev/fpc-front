@@ -12,7 +12,7 @@ import { usePatientAlerts } from "../_hooks/use-patient-alerts"
 import { buildEnrollmentPrefill } from "../_utils/build-enrollment-prefill"
 import { AlertBanner } from "./alert-banner"
 import { OverviewSection } from "./overview-section"
-import { EnrollmentRatingCard } from "./enrollment-rating-card"
+import { PatientSurveysSection } from "./patient-surveys-section"
 import { PatientCareJourneyBoard } from "./patient-care-journey-board"
 import { PatientActivityActions } from "./patient-activity-actions"
 import { PatientChangeLog } from "./patient-change-log"
@@ -226,7 +226,7 @@ export function PatientDetailContent() {
         <TabsContent value="resumen">
           <div className="space-y-4">
             <OverviewSection patient={patient} />
-            <EnrollmentRatingCard
+            <PatientSurveysSection
               patientId={patient.id}
               enabled={
                 patient.role !== "COMPANION" && patient.status === "ENROLLED"
