@@ -3,6 +3,8 @@ import { AuthGuard, GuestGuard } from "@/components/auth-guard"
 import { RoleGuard } from "@/components/role-guard"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { LoginPage } from "@/pages/login/page"
+import { ForgotPasswordPage } from "@/pages/recuperar-contrasena/page"
+import { ResetPasswordPage } from "@/pages/restablecer-contrasena/page"
 import { HomePage } from "@/pages/home/page"
 import PatientsPage from "@/pages/pacientes/page"
 import ProspectsPage from "@/pages/prospectos/page"
@@ -32,6 +34,19 @@ export const router = createBrowserRouter([
         <LoginPage />
       </GuestGuard>
     ),
+  },
+  {
+    path: "/recuperar-contrasena",
+    element: (
+      <GuestGuard>
+        <ForgotPasswordPage />
+      </GuestGuard>
+    ),
+  },
+  {
+    // Sin guard: el enlace del correo debe abrir aunque haya una sesión iniciada.
+    path: "/restablecer-contrasena",
+    element: <ResetPasswordPage />,
   },
   {
     path: "/",

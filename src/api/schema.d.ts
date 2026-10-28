@@ -456,6 +456,57 @@ export interface paths {
         patch: operations["FoundationsController_update"];
         trace?: never;
     };
+    "/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a password reset link (same response whether or not the email exists) */
+        post: operations["AuthController_forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check that a password reset link is still valid */
+        post: operations["AuthController_verifyPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a new password with a reset link and close open sessions */
+        post: operations["AuthController_resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -2899,6 +2950,23 @@ export interface components {
             firstName?: string;
             lastName?: string;
             phone?: string;
+        };
+        ForgotPasswordDto: {
+            /**
+             * Format: email
+             * @example agente@fpc.org.pe
+             */
+            email: string;
+        };
+        VerifyPasswordResetDto: {
+            /** @description Token recibido en el enlace del correo */
+            token: string;
+        };
+        ResetPasswordDto: {
+            /** @description Token recibido en el enlace del correo */
+            token: string;
+            /** @example nueva-contraseña-segura */
+            password: string;
         };
         LoginDto: {
             /**
@@ -6435,7 +6503,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6470,7 +6538,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6503,14 +6571,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6570,7 +6638,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert is already resolved */
+            /** @description La alerta ya está resuelta. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6616,21 +6684,21 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Foundation role required */
+            /** @description Esta acción la puede hacer solo la fundación. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Alert is already resolved */
+            /** @description La alerta ya está resuelta. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6676,14 +6744,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Alert is already resolved */
+            /** @description La alerta ya está resuelta. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6718,7 +6786,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6806,7 +6874,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6841,7 +6909,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6876,7 +6944,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6922,7 +6990,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6964,7 +7032,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Alert not found */
+            /** @description No se encontró la alerta. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7599,7 +7667,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7634,7 +7702,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agent not found */
+            /** @description No se encontró el agente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7673,14 +7741,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Agent not found */
+            /** @description No se encontró el agente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7715,14 +7783,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Agent not found */
+            /** @description No se encontró el agente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7785,7 +7853,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7820,7 +7888,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Foundation profile not found */
+            /** @description No se encontró el perfil de fundación. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7859,15 +7927,92 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Foundation profile not found */
+            /** @description No se encontró el perfil de fundación. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_verifyPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyPasswordResetDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El enlace no es válido o ya venció. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El enlace no es válido o ya venció. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7896,7 +8041,7 @@ export interface operations {
                     "application/json": components["schemas"]["LoginResponseDto"];
                 };
             };
-            /** @description Invalid credentials */
+            /** @description Correo o contraseña incorrectos. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -7922,7 +8067,7 @@ export interface operations {
                     "application/json": components["schemas"]["RefreshResponseDto"];
                 };
             };
-            /** @description Invalid refresh token */
+            /** @description Tu sesión expiró. Vuelve a iniciar sesión. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8053,14 +8198,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agents can only update their own enrollment */
+            /** @description Solo puedes modificar tus propios enrolamientos. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Enrollment not found */
+            /** @description No se encontró el enrolamiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8313,7 +8458,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Follow-up not found */
+            /** @description No se encontró el seguimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8366,7 +8511,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Follow-up not found */
+            /** @description No se encontró el seguimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8465,14 +8610,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agents can only modify their own follow-ups */
+            /** @description Solo puedes modificar tus propios seguimientos. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Follow-up not found */
+            /** @description No se encontró el seguimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8518,7 +8663,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agents can only modify their own follow-ups */
+            /** @description Solo puedes modificar tus propios seguimientos. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -8681,7 +8826,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Health center not found */
+            /** @description No se encontró el establecimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8727,7 +8872,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Health center not found */
+            /** @description No se encontró el establecimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8903,7 +9048,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Catalog item not found */
+            /** @description No se encontró el ítem del catálogo. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8945,7 +9090,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Catalog item not found */
+            /** @description No se encontró el ítem del catálogo. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8990,21 +9135,21 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Esta acción la puede hacer solo un administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Catalog item not found */
+            /** @description No se encontró el ítem del catálogo. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Catalog item was already merged */
+            /** @description Ese ítem ya fue fusionado. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9218,7 +9363,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9270,7 +9415,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Medical appointment not found */
+            /** @description No se encontró la cita médica. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9423,7 +9568,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9599,7 +9744,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9639,7 +9784,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9683,7 +9828,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9723,7 +9868,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9767,7 +9912,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9811,7 +9956,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9855,7 +10000,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9906,7 +10051,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10492,7 +10637,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Treatment not found */
+            /** @description No se encontró el tratamiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10532,7 +10677,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Medication not found */
+            /** @description No se encontró el medicamento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10578,7 +10723,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Medication not found */
+            /** @description No se encontró el medicamento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10662,7 +10807,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10701,7 +10846,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Address not found */
+            /** @description No se encontró la dirección. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10746,7 +10891,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Address not found */
+            /** @description No se encontró la dirección. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10870,7 +11015,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -11183,7 +11328,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -11258,7 +11403,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description File type is not supported */
+            /** @description Ese tipo de archivo no está permitido. Usa PDF, imagen o Word. */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -11300,14 +11445,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Document not found */
+            /** @description No se encontró el documento. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Document has been archived */
+            /** @description El documento fue archivado. */
             410: {
                 headers: {
                     [name: string]: unknown;
@@ -11348,7 +11493,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Document not found */
+            /** @description No se encontró el documento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -11641,7 +11786,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Cancelled or rescheduled appointments cannot be updated */
+            /** @description No se puede modificar una cita cancelada o reprogramada. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11913,14 +12058,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Agents cannot reassign reminders */
+            /** @description No puedes reasignar recordatorios. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Agent not found */
+            /** @description No se encontró el agente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -11952,7 +12097,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReminderResponseDto"];
                 };
             };
-            /** @description Closed reminders cannot be edited */
+            /** @description No se puede editar un recordatorio cerrado. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -12008,7 +12153,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Reminder not found */
+            /** @description No se encontró el recordatorio. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12057,7 +12202,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Reminder not found */
+            /** @description No se encontró el recordatorio. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12106,7 +12251,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Reminder not found */
+            /** @description No se encontró el recordatorio. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12159,7 +12304,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Reminder not found */
+            /** @description No se encontró el recordatorio. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12187,7 +12332,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReminderResponseDto"];
                 };
             };
-            /** @description Only pending reminders can be dismissed */
+            /** @description Solo se puede descartar un recordatorio pendiente. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -12208,7 +12353,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Reminder not found */
+            /** @description No se encontró el recordatorio. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12285,7 +12430,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Email already exists */
+            /** @description Ya existe un usuario con ese correo. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12355,14 +12500,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description User not found */
+            /** @description No se encontró el usuario. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Email already exists */
+            /** @description Ya existe un usuario con ese correo. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12404,14 +12549,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Volunteer is inactive */
+            /** @description El voluntario está inactivo. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12443,7 +12588,7 @@ export interface operations {
                     "application/json": components["schemas"]["VolunteerAvailabilityResponseDto"];
                 };
             };
-            /** @description End time must be after start time */
+            /** @description La hora de fin debe ser posterior a la de inicio. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -12457,14 +12602,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers can only manage their own availability */
+            /** @description Solo puedes gestionar tu propia disponibilidad. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12517,21 +12662,21 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers can only manage their own availability */
+            /** @description Solo puedes gestionar tu propia disponibilidad. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Volunteer is inactive */
+            /** @description El voluntario está inactivo. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12567,7 +12712,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers can only manage their own availability */
+            /** @description Solo puedes gestionar tu propia disponibilidad. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -12609,7 +12754,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers can only manage their own availability */
+            /** @description Solo puedes gestionar tu propia disponibilidad. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -12726,7 +12871,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12761,14 +12906,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers can only view their own profile */
+            /** @description Solo puedes ver tu propio perfil. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12814,7 +12959,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12856,7 +13001,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12898,7 +13043,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -12940,7 +13085,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteer not found */
+            /** @description No se encontró el voluntario. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13143,7 +13288,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Follow-up not found */
+            /** @description No se encontró el seguimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13196,7 +13341,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Follow-up not found */
+            /** @description No se encontró el seguimiento. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13300,7 +13445,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Reminder not found */
+            /** @description No se encontró el recordatorio. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13591,7 +13736,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Non-oncological follow-up not found */
+            /** @description No se encontró el seguimiento no oncológico. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13698,7 +13843,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13828,7 +13973,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -13923,7 +14068,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -14007,7 +14152,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Referral not found */
+            /** @description No se encontró la derivación. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -14174,7 +14319,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient not found */
+            /** @description No se encontró el paciente. */
             404: {
                 headers: {
                     [name: string]: unknown;
