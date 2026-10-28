@@ -224,7 +224,7 @@ function TreatmentDetails({
   const { data: specialtyItems = [] } = useCatalog("medical_specialty")
   const situation =
     treatment.treatmentSituation ??
-    (treatment.isCurrent ? "EN_CURSO" : "FINALIZADO")
+    (treatment.isCurrent ? "EN_PROCESO" : "CULMINADO")
 
   return (
     <div className="space-y-3">

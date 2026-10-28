@@ -316,11 +316,11 @@ function normalizeDraft(
     string,
     EnrollmentTreatmentDraft["treatmentSituation"]
   > = {
-    "En curso": "EN_CURSO",
-    "Por iniciar": "PENDIENTE_DE_INICIO",
-    "Suspendido temporalmente": "INTERRUMPIDO",
-    Finalizado: "FINALIZADO",
-    "En evaluación": "PENDIENTE_DE_INICIO",
+    "En curso": "EN_PROCESO",
+    "Por iniciar": "EN_ESPERA",
+    "Suspendido temporalmente": "SUSPENDIDO",
+    Finalizado: "CULMINADO",
+    "En evaluación": "EN_ESPERA",
   }
   const normalizeMedications = (
     medications: unknown,

@@ -35,14 +35,18 @@ const statusLabels: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Completada",
   CANCELLED: "Cancelada",
-  NO_ANSWER: "No contestó",
+  NO_SHOW: "No se presentó",
+  RESCHEDULED: "Reprogramada",
+  OVERDUE: "Vencida",
 }
 
 const statusStyles: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "border-violet-200 bg-violet-50 text-violet-700",
   COMPLETED: "border-emerald-200 bg-emerald-50 text-emerald-700",
   CANCELLED: "border-zinc-200 bg-zinc-100 text-zinc-600",
-  NO_ANSWER: "border-amber-200 bg-amber-50 text-amber-700",
+  NO_SHOW: "border-amber-200 bg-amber-50 text-amber-700",
+  RESCHEDULED: "border-violet-200 bg-violet-50 text-violet-700",
+  OVERDUE: "border-orange-200 bg-orange-50 text-orange-800",
 }
 
 const referralLabels: Record<string, string> = {
@@ -240,7 +244,10 @@ export function PsychooncologySessionDetailDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
-          {appointment.status === "SCHEDULED" && onRegister ? (
+          {(appointment.status === "SCHEDULED" ||
+            appointment.status === "OVERDUE" ||
+            appointment.status === "NO_SHOW") &&
+          onRegister ? (
             <Button
               onClick={() => {
                 onOpenChange(false)

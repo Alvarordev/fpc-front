@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
+import { isCareLevel } from "@/lib/health-center-labels";
 import {
   useHealthCenters,
   useDeleteHealthCenter,
@@ -12,45 +13,39 @@ import { healthCenterColumns } from "./health-centers-columns";
 import { HealthCentersToolbar } from "./health-centers-toolbar";
 import { CreateHealthCenterDialog } from "./create-health-center-dialog";
 import { EditHealthCenterDialog } from "./edit-health-center-dialog";
-import { DEPARTMENTS } from "../_utils/departments";
-import type { HealthCenter } from "@/api/health-centers";
+import type { HealthCenter, HealthCenterListFilters } from "@/api/health-centers";
 
 export function HealthCentersContent() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [department, setDepartment] = useState("all");
-  const [category, setCategory] = useState("all");
+  const [careLevel, setCareLevel] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-
-  // Edit dialog state
   const [editingCenter, setEditingCenter] = useState<HealthCenter | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  const { data: centers = [], isLoading } = useHealthCenters();
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const filters = useMemo<HealthCenterListFilters>(() => {
+    const query: HealthCenterListFilters = {};
+    if (debouncedSearch.length >= 2) query.search = debouncedSearch;
+    if (department !== "all") {
+      query.department = department as HealthCenterListFilters["department"];
+    }
+    if (isCareLevel(careLevel)) query.careLevel = careLevel;
+    return query;
+  }, [debouncedSearch, department, careLevel]);
+
+  const canQuery = Boolean(filters.search || filters.department || filters.careLevel);
+  const { data: centers = [], isLoading, isFetching } = useHealthCenters(filters, {
+    enabled: canQuery,
+  });
 
   const deleteMutation = useDeleteHealthCenter();
   const reactivateMutation = useReactivateHealthCenter();
-
-  const filtered = useMemo(() => {
-    let result = centers;
-
-    if (department !== "all") {
-      const depValue = DEPARTMENTS.find((d) => d.label === department)?.value;
-      if (depValue) {
-        result = result.filter((c) => c.department === depValue);
-      }
-    }
-
-    if (category !== "all") {
-      result = result.filter((c) => c.category === category);
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((c) => c.name.toLowerCase().includes(q));
-    }
-
-    return result;
-  }, [centers, search, department, category]);
 
   const handleEdit = useCallback((center: HealthCenter) => {
     setEditingCenter(center);
@@ -89,6 +84,10 @@ export function HealthCentersContent() {
     [handleEdit, handleToggleActive],
   );
 
+  const emptyMessage = canQuery
+    ? "No hay establecimientos con esos filtros"
+    : "Busca por nombre (mínimo 2 letras) o filtra por departamento o nivel";
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
@@ -97,7 +96,9 @@ export function HealthCentersContent() {
             Centros de salud
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {centers.length} establecimientos registrados
+            {canQuery
+              ? `${centers.length} establecimientos`
+              : "Busca entre los establecimientos registrados"}
           </p>
         </div>
         <Button
@@ -115,15 +116,15 @@ export function HealthCentersContent() {
         onSearchChange={setSearch}
         department={department}
         onDepartmentChange={setDepartment}
-        category={category}
-        onCategoryChange={setCategory}
+        careLevel={careLevel}
+        onCareLevelChange={setCareLevel}
       />
 
       <DataTable
-        data={filtered}
+        data={canQuery ? centers : []}
         columns={columns}
-        isLoading={isLoading}
-        emptyMessage="No hay centros de salud registrados"
+        isLoading={canQuery && (isLoading || isFetching)}
+        emptyMessage={emptyMessage}
       />
 
       <CreateHealthCenterDialog

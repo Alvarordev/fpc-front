@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { alertStatusClasses, alertStatusLabels } from "@/lib/alert-status";
 import { cn } from "@/lib/utils";
 import type { Alert, AlertEvent } from "@/api/alerts";
 import {
@@ -76,8 +77,6 @@ export function AlertTimelineDrawer({ alert, onClose }: AlertTimelineDrawerProps
 
   if (!alert) return null;
 
-  const isActive = alert.status === "ACTIVE";
-
   async function handleAddComment(e: React.FormEvent) {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -125,13 +124,16 @@ export function AlertTimelineDrawer({ alert, onClose }: AlertTimelineDrawerProps
               <Badge
                 className={cn(
                   "text-xs font-medium border",
-                  isActive
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200",
+                  alertStatusClasses[alert.status],
                 )}
               >
-                {isActive ? "Activa" : "Resuelta"}
+                {alertStatusLabels[alert.status]}
               </Badge>
+              {alert.categoryLabel && (
+                <Badge variant="outline" className="text-xs">
+                  {alert.categoryLabel}
+                </Badge>
+              )}
               <Badge variant="outline" className="text-xs">
                 Prioridad: {severityLabels[alert.severity]}
               </Badge>

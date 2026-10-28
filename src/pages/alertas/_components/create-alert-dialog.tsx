@@ -13,7 +13,8 @@ import {
   SearchableSelect,
   type SearchableOption,
 } from "@/components/ui/searchable-select"
-import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers"
+import { CatalogSelect } from "@/components/catalog-select"
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { usePatients } from "@/pages/pacientes/_hooks/use-patients"
 import { useCreateAlert } from "../_hooks/use-alerts"
 
@@ -30,9 +31,9 @@ export function CreateAlertDialog({
   const [healthCenterId, setHealthCenterId] = useState("")
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
+  const [category, setCategory] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
 
-  const { data: healthCenters = [] } = useHealthCenters()
   const { data: patientPage } = usePatients({
     filters: { segment: "CARE" },
   })
@@ -45,17 +46,12 @@ export function CreateAlertDialog({
     sublabel: `${p.dni ? `DNI: ${p.dni}` : "Sin DNI"} | Tel: ${p.primaryPhone ?? "Sin teléfono registrado"}`,
   }))
 
-  const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({
-    value: hc.id,
-    label: hc.name,
-    sublabel: hc.department,
-  }))
-
   function resetForm() {
     setPatientId("")
     setTitle("")
     setDescription("")
     setHealthCenterId("")
+    setCategory("")
     setErrorMsg("")
   }
 
@@ -77,6 +73,7 @@ export function CreateAlertDialog({
         subjectPatientId: patientId || undefined,
         title: title.trim(),
         description: description.trim(),
+        category: category || undefined,
       })
 
       resetForm()
@@ -130,12 +127,10 @@ export function CreateAlertDialog({
               <Building2 className="text-muted-foreground size-3.5" />
               Establecimiento de Salud *
             </label>
-            <SearchableSelect
-              options={healthCenterOptions}
+            <HealthCenterCombobox
               value={healthCenterId}
-              onChange={setHealthCenterId}
+              onValueChange={(id) => setHealthCenterId(id ?? "")}
               placeholder="Buscar centro de salud u hospital..."
-              searchPlaceholder="Escribe el hospital..."
             />
           </div>
 
@@ -150,6 +145,18 @@ export function CreateAlertDialog({
               onChange={(e) => setTitle(e.target.value)}
               className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
               required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-foreground text-xs font-semibold">
+              Categoría
+            </label>
+            <CatalogSelect
+              kind="alert_category"
+              value={category}
+              onValueChange={(value) => setCategory(value ?? "")}
+              placeholder="Seleccionar categoría"
             />
           </div>
 

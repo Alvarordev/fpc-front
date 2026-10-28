@@ -86,7 +86,7 @@ import {
 } from "@/lib/follow-up-labels"
 import { fixedWaitTime } from "@/types/wait-time-recall"
 
-type EditableFollowUpStatus = Exclude<FollowUp["status"], "SCHEDULED">
+type EditableFollowUpStatus = "COMPLETED" | "NO_ANSWER" | "CANCELLED"
 
 const EDITABLE_STATUS_OPTIONS = [
   { value: "COMPLETED", label: "Completado" },
@@ -99,7 +99,9 @@ const NO_SUBCATEGORY_VALUE = "UNASSIGNED"
 function isClosedFollowUpStatus(
   status: FollowUp["status"],
 ): status is EditableFollowUpStatus {
-  return status !== "SCHEDULED"
+  return (
+    status === "COMPLETED" || status === "NO_ANSWER" || status === "CANCELLED"
+  )
 }
 
 export function FollowUpContent() {
@@ -232,11 +234,12 @@ export function FollowUpContent() {
     hasNotesDraft && notesKey
       ? notesDrafts[notesKey]
       : (followUpQuery.data?.notes ?? "")
+  const currentFollowUpStatus = followUpQuery.data?.status
   const editStatus: EditableFollowUpStatus =
     editStatusDraft && editStatusDraft.followUpId === followUpId
       ? editStatusDraft.value
-      : followUpQuery.data?.status && followUpQuery.data.status !== "SCHEDULED"
-        ? followUpQuery.data.status
+      : currentFollowUpStatus && isClosedFollowUpStatus(currentFollowUpStatus)
+        ? currentFollowUpStatus
         : "COMPLETED"
   const isEditing = editingFollowUpId === followUpId
 
@@ -344,7 +347,8 @@ export function FollowUpContent() {
         onBack={() => navigate(patientTabUrl(patientId!, "seguimiento"))}
       />
     )
-  const isOpen = followUp.status === "SCHEDULED"
+  const isOpen =
+    followUp.status === "SCHEDULED" || followUp.status === "OVERDUE"
   const canEditClosed = canManage && !isOpen
   const followUpTimelineEvent = patientTimelineQuery.data?.data.find(
     (event): event is Extract<PatientTimelineEvent, { kind: "FOLLOW_UP" }> =>
@@ -511,7 +515,7 @@ export function FollowUpContent() {
             : undefined,
         treatmentSituation: treatmentDraft.treatmentSituation,
         treatmentAbandonmentReason:
-          treatmentDraft.treatmentSituation === "ABANDONED"
+          treatmentDraft.treatmentSituation === "ABANDONADO"
             ? treatmentDraft.treatmentAbandonmentReason
             : undefined,
         interruptionReason: treatmentDraft.interruptionReason,

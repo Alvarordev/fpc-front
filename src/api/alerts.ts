@@ -45,8 +45,11 @@ export const alertsApi = {
     if (!response.ok) throw new Error(`No se pudo eliminar la alerta (${response.status})`)
   },
 
-  async resolve(id: string): Promise<Alert> {
-    const { data, response } = await api.PATCH("/alerts/{id}/resolve", { params: { path: { id } } })
+  async resolve(id: string, resolutionNotes: string): Promise<Alert> {
+    const { data, response } = await api.PATCH("/alerts/{id}/resolve", {
+      params: { path: { id } },
+      body: { resolutionNotes },
+    })
     if (!data) throw new Error(`No se pudo resolver la alerta (${response.status})`)
     return data
   },

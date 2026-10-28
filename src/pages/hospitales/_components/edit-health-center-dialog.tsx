@@ -24,13 +24,24 @@ import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateHealthCenter } from "../_hooks/use-health-centers";
 import { DEPARTMENTS } from "../_utils/departments";
-import { CatalogSelect } from "@/components/catalog-select";
+import {
+  CARE_CATEGORIES,
+  CARE_LEVEL_LABELS,
+  HEALTH_CENTER_INSTITUTIONS,
+  HEALTH_CENTER_INSTITUTION_LABELS,
+  type CareCategory,
+  type CareLevel,
+  type HealthCenterInstitution,
+} from "@/lib/health-center-labels";
 import type { HealthCenter, UpdateHealthCenterInput } from "@/api/health-centers";
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
   department: z.string().min(1, "Requerido"),
-  category: z.string().min(1, "Requerido"),
+  careCategory: z.string().min(1, "Requerido"),
+  institution: z.string().optional(),
+  renipressCode: z.string().optional(),
+  ubigeoDistrictCode: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -57,11 +68,19 @@ export function EditHealthCenterDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", department: "", category: "" },
+    defaultValues: {
+      name: "",
+      department: "",
+      careCategory: "",
+      institution: "",
+      renipressCode: "",
+      ubigeoDistrictCode: "",
+    },
   });
 
   const department = watch("department");
-  const category = watch("category");
+  const careCategory = watch("careCategory");
+  const institution = watch("institution");
 
   // Pre-fill the form when dialog opens with a center
   useEffect(() => {
@@ -69,7 +88,10 @@ export function EditHealthCenterDialog({
       reset({
         name: center.name,
         department: center.department,
-        category: center.category ?? "",
+        careCategory: center.careCategory ?? "",
+        institution: center.institution ?? "",
+        renipressCode: center.renipressCode ?? "",
+        ubigeoDistrictCode: center.ubigeoDistrictCode ?? "",
       });
     }
   }, [open, center, reset]);
@@ -84,14 +106,20 @@ export function EditHealthCenterDialog({
 
     const name = values.name.toUpperCase();
     const department = values.department as UpdateHealthCenterInput["department"];
-    const category = values.category as NonNullable<
-      UpdateHealthCenterInput["category"]
-    >;
 
     try {
       await updateMutation.mutateAsync({
         id: center.id,
-        data: { name, department, category },
+        data: {
+          name,
+          department,
+          careCategory: values.careCategory as CareCategory,
+          institution: (values.institution || undefined) as
+            | HealthCenterInstitution
+            | undefined,
+          renipressCode: values.renipressCode?.trim() || undefined,
+          ubigeoDistrictCode: values.ubigeoDistrictCode?.trim() || undefined,
+        },
       });
       toast.success("Centro de salud actualizado");
       handleClose();
@@ -157,19 +185,78 @@ export function EditHealthCenterDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Categoría</Label>
-            <CatalogSelect
-              kind="health_center_category"
-              allowCreate={false}
-              value={category || null}
-              onValueChange={(v) => setValue("category", v ?? "")}
-              placeholder="Seleccionar categoría..."
-            />
-            {errors.category && (
+            <Label>Categoría de atención</Label>
+            <Select
+              items={CARE_CATEGORIES.map((category) => ({
+                value: category,
+                label: category,
+              }))}
+              value={careCategory}
+              onValueChange={(v) => setValue("careCategory", v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar categoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                {CARE_CATEGORIES.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.careCategory && (
               <p className="text-xs text-destructive">
-                {errors.category.message}
+                {errors.careCategory.message}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Nivel</Label>
+            <Input
+              readOnly
+              value={
+                center?.careLevel
+                  ? (CARE_LEVEL_LABELS[center.careLevel as CareLevel] ??
+                    center.careLevel)
+                  : "Se calcula a partir de la categoría"
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Institución</Label>
+            <Select
+              items={HEALTH_CENTER_INSTITUTIONS.map((item) => ({
+                value: item,
+                label: HEALTH_CENTER_INSTITUTION_LABELS[item],
+              }))}
+              value={institution || null}
+              onValueChange={(v) => setValue("institution", v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar institución..." />
+              </SelectTrigger>
+              <SelectContent>
+                {HEALTH_CENTER_INSTITUTIONS.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {HEALTH_CENTER_INSTITUTION_LABELS[item]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Código RENIPRESS</Label>
+              <Input {...register("renipressCode")} placeholder="Opcional" />
+            </div>
+            <div className="space-y-2">
+              <Label>Ubigeo del distrito</Label>
+              <Input {...register("ubigeoDistrictCode")} placeholder="Opcional" />
+            </div>
           </div>
 
           <DialogFooter className="pt-2">
@@ -178,7 +265,7 @@ export function EditHealthCenterDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!department || !category || updateMutation.isPending}
+              disabled={!department || !careCategory || updateMutation.isPending}
             >
               {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
             </Button>

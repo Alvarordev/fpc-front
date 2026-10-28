@@ -1,5 +1,5 @@
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { useEffect, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
 import {
   createEnrollmentDiagnosisDraft,
   createEnrollmentTreatmentDraft,
@@ -30,7 +30,6 @@ import {
   Minus,
 } from "lucide-react"
 import { StepContainer, StepHeader, SectionHeader, StepNav } from "../shared"
-import { healthCentersApi } from "@/api/health-centers"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
 import {
   CatalogSelect,
@@ -225,14 +224,6 @@ export function Step7Atencion({
     })
     return others
   })
-
-  const { data: healthCenters = [] } = useQuery<HealthCenter[]>({
-    queryKey: ["healthCenters"],
-    queryFn: () => healthCentersApi.list(),
-    staleTime: 60 * 1000,
-  })
-
-  const activeCenters = healthCenters.filter((c) => c.isActive)
 
   useEffect(() => {
     if (!cancerDiagnosesFetched) return
@@ -535,32 +526,18 @@ export function Step7Atencion({
             definido.
           </p>
           <div className="flex gap-2">
-            <Select
-              items={activeCenters.map((c) => ({
-                value: c.id,
-                label: `${c.name} — ${c.department}`,
-              }))}
-              value={details.primaryHealthCenterId ?? ""}
-              onValueChange={(v) =>
+            <HealthCenterCombobox
+                      className={sc}
+                      value={details.primaryHealthCenterId ?? ""}
+                      onValueChange={(v) =>
                 updateDraft({
                   details: {
                     ...details,
                     primaryHealthCenterId: v || undefined,
                   },
-                })
-              }
-            >
-              <SelectTrigger className={sc}>
-                <SelectValue placeholder="No definido" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeCenters.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} — {c.department}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                })}
+                      placeholder="No definido"
+                    />
             <Button
               type="button"
               variant="outline"
@@ -753,27 +730,13 @@ export function Step7Atencion({
                     <span className="text-destructive">*</span>
                   </Label>
                   <div className="flex gap-2">
-                    <Select
-                      items={activeCenters.map((center) => ({
-                        value: center.id,
-                        label: `${center.name} — ${center.department}`,
-                      }))}
+                    <HealthCenterCombobox
+                      className={sc}
                       value={sr.healthCenterId ?? ""}
                       onValueChange={(value) =>
-                        updateSymptomReport({ healthCenterId: value || null })
-                      }
-                    >
-                      <SelectTrigger className={sc}>
-                        <SelectValue placeholder="Seleccionar establecimiento..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeCenters.map((center) => (
-                          <SelectItem key={center.id} value={center.id}>
-                            {center.name} — {center.department}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        updateSymptomReport({ healthCenterId: value || null })}
+                      placeholder="Seleccionar establecimiento..."
+                    />
                     <Button
                       type="button"
                       variant="outline"
@@ -884,29 +847,15 @@ export function Step7Atencion({
                       <span className="text-destructive">*</span>
                     </Label>
                     <div className="flex gap-2">
-                      <Select
-                        items={activeCenters.map((center) => ({
-                          value: center.id,
-                          label: `${center.name} — ${center.department}`,
-                        }))}
-                        value={sr.referredHealthCenterId ?? ""}
-                        onValueChange={(value) =>
+                      <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={sr.referredHealthCenterId ?? ""}
+                      onValueChange={(value) =>
                           updateSymptomReport({
                             referredHealthCenterId: value || null,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="bg-card flex-1 border">
-                          <SelectValue placeholder="Seleccionar establecimiento..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeCenters.map((center) => (
-                            <SelectItem key={center.id} value={center.id}>
-                              {center.name} — {center.department}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          })}
+                      placeholder="Seleccionar establecimiento..."
+                    />
                       <Button
                         type="button"
                         variant="outline"
@@ -1446,27 +1395,13 @@ export function Step7Atencion({
                 <div className="flex flex-col gap-2">
                   <Label className={flGrid}>¿Dónde fue diagnosticado?</Label>
                   <div className="flex gap-2">
-                    <Select
-                      items={activeCenters.map((c) => ({
-                        value: c.id,
-                        label: `${c.name} — ${c.department}`,
-                      }))}
+                    <HealthCenterCombobox
+                      className="min-w-0 flex-1"
                       value={dx.healthCenterId ?? ""}
                       onValueChange={(v) =>
-                        updateDiagnosis({ healthCenterId: v || null })
-                      }
-                    >
-                      <SelectTrigger className="bg-card flex-1 border">
-                        <SelectValue placeholder="Seleccionar establecimiento..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeCenters.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} — {c.department}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        updateDiagnosis({ healthCenterId: v || null })}
+                      placeholder="Seleccionar establecimiento..."
+                    />
                     <Button
                       type="button"
                       variant="outline"
@@ -1504,29 +1439,15 @@ export function Step7Atencion({
                       ¿a qué centro de salud fue derivado?
                     </Label>
                     <div className="flex gap-2">
-                      <Select
-                        items={activeCenters.map((center) => ({
-                          value: center.id,
-                          label: `${center.name} — ${center.department}`,
-                        }))}
-                        value={dx.referredHealthCenterId ?? ""}
-                        onValueChange={(value) =>
+                      <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={dx.referredHealthCenterId ?? ""}
+                      onValueChange={(value) =>
                           updateDiagnosis({
                             referredHealthCenterId: value || null,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="bg-card flex-1 border">
-                          <SelectValue placeholder="Seleccionar establecimiento..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeCenters.map((center) => (
-                            <SelectItem key={center.id} value={center.id}>
-                              {center.name} — {center.department}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          })}
+                      placeholder="Seleccionar establecimiento..."
+                    />
                       <Button
                         type="button"
                         variant="outline"
@@ -1655,27 +1576,13 @@ export function Step7Atencion({
                       <span className="text-destructive"> *</span>
                     </Label>
                     <div className="flex gap-2">
-                      <Select
-                        items={activeCenters.map((center) => ({
-                          value: center.id,
-                          label: `${center.name} — ${center.department}`,
-                        }))}
-                        value={appointment.healthCenterId ?? ""}
-                        onValueChange={(value) =>
-                          updateAppointment({ healthCenterId: value || null })
-                        }
-                      >
-                        <SelectTrigger className="bg-card flex-1 border">
-                          <SelectValue placeholder="Seleccionar establecimiento..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeCenters.map((center) => (
-                            <SelectItem key={center.id} value={center.id}>
-                              {center.name} — {center.department}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={appointment.healthCenterId ?? ""}
+                      onValueChange={(value) =>
+                          updateAppointment({ healthCenterId: value || null })}
+                      placeholder="Seleccionar establecimiento..."
+                    />
                       <Button
                         type="button"
                         variant="outline"
@@ -2025,29 +1932,15 @@ export function Step7Atencion({
                             <span className="text-destructive">*</span>
                           </Label>
                           <div className="flex gap-2">
-                            <Select
-                              items={activeCenters.map((c) => ({
-                                value: c.id,
-                                label: `${c.name} — ${c.department}`,
-                              }))}
-                              value={tx.sourceHealthCenterId ?? ""}
-                              onValueChange={(v) =>
+                            <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={tx.sourceHealthCenterId ?? ""}
+                      onValueChange={(v) =>
                                 updateTreatment({
                                   sourceHealthCenterId: v || undefined,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="bg-card flex-1 border">
-                                <SelectValue placeholder="Seleccionar origen..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {activeCenters.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.name} — {c.department}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                })}
+                      placeholder="Seleccionar origen..."
+                    />
                             <Button
                               type="button"
                               variant="outline"
@@ -2070,29 +1963,15 @@ export function Step7Atencion({
                             <span className="text-destructive">*</span>
                           </Label>
                           <div className="flex gap-2">
-                            <Select
-                              items={activeCenters.map((c) => ({
-                                value: c.id,
-                                label: `${c.name} — ${c.department}`,
-                              }))}
-                              value={tx.receivingHealthCenterId ?? ""}
-                              onValueChange={(v) =>
+                            <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={tx.receivingHealthCenterId ?? ""}
+                      onValueChange={(v) =>
                                 updateTreatment({
                                   receivingHealthCenterId: v || undefined,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="bg-card flex-1 border">
-                                <SelectValue placeholder="Seleccionar receptor..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {activeCenters.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.name} — {c.department}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                })}
+                      placeholder="Seleccionar receptor..."
+                    />
                             <Button
                               type="button"
                               variant="outline"
@@ -2116,29 +1995,15 @@ export function Step7Atencion({
                           Hospital donde recibe el tratamiento
                         </Label>
                         <div className="flex gap-2">
-                          <Select
-                            items={activeCenters.map((c) => ({
-                              value: c.id,
-                              label: `${c.name} — ${c.department}`,
-                            }))}
-                            value={tx.receivingHealthCenterId ?? ""}
-                            onValueChange={(v) =>
+                          <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={tx.receivingHealthCenterId ?? ""}
+                      onValueChange={(v) =>
                               updateTreatment({
                                 receivingHealthCenterId: v || undefined,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="bg-card flex-1 border">
-                              <SelectValue placeholder="Opcional" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {activeCenters.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  {c.name} — {c.department}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                              })}
+                      placeholder="Opcional"
+                    />
                           <Button
                             type="button"
                             variant="outline"
@@ -2171,13 +2036,13 @@ export function Step7Atencion({
                               | undefined
                             updateTreatment({
                               treatmentSituation,
-                              ...(treatmentSituation !== "INTERRUMPIDO"
+                              ...(treatmentSituation !== "SUSPENDIDO"
                                 ? {
                                     interruptionReason: undefined,
                                     interruptionReasonOther: undefined,
                                   }
                                 : {}),
-                              ...(treatmentSituation !== "ABANDONED"
+                              ...(treatmentSituation !== "ABANDONADO"
                                 ? { treatmentAbandonmentReason: null }
                                 : {}),
                             })
@@ -2186,7 +2051,7 @@ export function Step7Atencion({
                           triggerClassName={sc}
                         />
                       </div>
-                      {tx.treatmentSituation === "INTERRUMPIDO" && (
+                      {tx.treatmentSituation === "SUSPENDIDO" && (
                         <div className="flex flex-col gap-2">
                           <Label className={flGrid}>
                             Motivo de interrupción{" "}
@@ -2223,7 +2088,7 @@ export function Step7Atencion({
                           </Select>
                         </div>
                       )}
-                      {tx.treatmentSituation === "INTERRUMPIDO" &&
+                      {tx.treatmentSituation === "SUSPENDIDO" &&
                         tx.interruptionReason === "OTHER" && (
                           <div className="flex flex-col gap-2 md:col-span-2">
                             <Label className={flGrid}>
@@ -2340,7 +2205,7 @@ export function Step7Atencion({
                           className="bg-card border"
                         />
                       </div>
-                      {tx.treatmentSituation === "ABANDONED" && (
+                      {tx.treatmentSituation === "ABANDONADO" && (
                         <div className="flex flex-col gap-2 md:col-span-2">
                           <Label className={flGrid}>Motivo de abandono</Label>
                           <Textarea

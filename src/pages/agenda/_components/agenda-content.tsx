@@ -4,7 +4,7 @@ import type { PsychooncologyAppointment } from "@/api/psychooncology-appointment
 import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useVolunteerProfile } from "@/hooks/use-volunteer-profile"
-import { isOverdue, isToday } from "@/pages/agente-agenda/_lib/agenda"
+import { isToday } from "@/pages/agente-agenda/_lib/agenda"
 import { PsychooncologySessionDetailDialog } from "@/pages/pacientes/[id]/_components/psychooncology-session-detail-dialog"
 import { useAgenda } from "../_hooks/use-agenda"
 import { AgendaSessionResultDialog } from "./agenda-session-result-dialog"
@@ -66,19 +66,18 @@ export function AgendaContent() {
     [patients, sortedAppointments],
   )
   const pendingCount = appointments.filter(
-    (appointment) => appointment.status === "SCHEDULED",
+    (appointment) =>
+      appointment.status === "SCHEDULED" || appointment.status === "OVERDUE",
   ).length
   const todayCount = appointments.filter(
     (appointment) =>
-      appointment.status === "SCHEDULED" &&
+      (appointment.status === "SCHEDULED" ||
+        appointment.status === "OVERDUE") &&
       appointment.scheduledAt !== null &&
       isToday(appointment.scheduledAt),
   ).length
   const overdueCount = appointments.filter(
-    (appointment) =>
-      appointment.status === "SCHEDULED" &&
-      appointment.scheduledAt !== null &&
-      isOverdue(appointment.scheduledAt),
+    (appointment) => appointment.status === "OVERDUE",
   ).length
 
   const activePatientName = resultAppointment
@@ -198,7 +197,9 @@ export function AgendaContent() {
         }
         volunteerName={volunteerName}
         onRegister={
-          detailAppointment?.status === "SCHEDULED"
+          (detailAppointment?.status === "SCHEDULED" ||
+            detailAppointment?.status === "OVERDUE" ||
+            detailAppointment?.status === "NO_SHOW")
             ? () => openResult(detailAppointment)
             : undefined
         }

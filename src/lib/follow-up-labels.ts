@@ -22,6 +22,7 @@ export const followUpStatusLabels: Record<FollowUp["status"], string> = {
   COMPLETED: "Completado",
   CANCELLED: "Cancelado",
   NO_ANSWER: "No contestó",
+  OVERDUE: "Vencido",
 }
 
 export const followUpStatusClasses: Record<FollowUp["status"], string> = {
@@ -29,6 +30,7 @@ export const followUpStatusClasses: Record<FollowUp["status"], string> = {
   COMPLETED: "border-emerald-200 bg-emerald-50 text-emerald-700",
   CANCELLED: "border-slate-200 bg-slate-50 text-slate-600",
   NO_ANSWER: "border-orange-200 bg-orange-50 text-orange-800",
+  OVERDUE: "border-red-200 bg-red-50 text-red-800",
 }
 
 export function formatFollowUpTitle(

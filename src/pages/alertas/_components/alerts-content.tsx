@@ -2,13 +2,15 @@ import { useState } from "react";
 import { TriangleAlert, CheckCircle, Clock, Building2, Sparkles, History, Ticket, Plus, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { alertStatusClasses, alertStatusLabels } from "@/lib/alert-status";
 import { useAlerts, useResolveAlert } from "../_hooks/use-alerts";
 import { AlertTimelineDrawer } from "./alert-timeline-drawer";
 import { CreateAlertDialog } from "./create-alert-dialog";
 import type { Alert } from "@/api/alerts";
 
-type Filter = "ACTIVE" | "RESOLVED" | "all";
+type Filter = Alert["status"] | "all";
 
 function formatDate(iso: string): string {
   try {
@@ -23,8 +25,9 @@ function formatDate(iso: string): string {
 }
 
 export function AlertsContent() {
-  const [filter, setFilter] = useState<Filter>("ACTIVE");
+  const [filter, setFilter] = useState<Filter>("REPORTED");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [resolutionNotes, setResolutionNotes] = useState("");
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -37,9 +40,12 @@ export function AlertsContent() {
 
   async function handleResolve(alert: Alert, e: React.MouseEvent) {
     e.stopPropagation();
+    const notes = resolutionNotes.trim();
+    if (!notes) return;
     try {
-      await resolveAlert.mutateAsync(alert.id);
+      await resolveAlert.mutateAsync({ id: alert.id, resolutionNotes: notes });
       setConfirmId(null);
+      setResolutionNotes("");
     } catch (err) {
       console.error("Error resolving alert:", err);
     }
@@ -71,9 +77,10 @@ export function AlertsContent() {
       <div className="flex items-center gap-2">
         {(
           [
-            { value: "ACTIVE" as Filter, label: "Activas" },
-            { value: "all" as Filter, label: "Todas" },
+            { value: "REPORTED" as Filter, label: "Reportadas" },
+            { value: "IN_REVIEW" as Filter, label: "En revisión" },
             { value: "RESOLVED" as Filter, label: "Resueltas" },
+            { value: "all" as Filter, label: "Todas" },
           ] as const
         ).map(({ value, label }) => (
           <button
@@ -101,17 +108,19 @@ export function AlertsContent() {
             Sin alertas
           </p>
           <p className="text-xs text-muted-foreground">
-            {filter === "ACTIVE"
-              ? "No hay alertas activas en este momento."
-              : filter === "RESOLVED"
-                ? "No hay alertas resueltas."
-                : "No hay alertas registradas."}
+            {filter === "REPORTED"
+              ? "No hay alertas reportadas."
+              : filter === "IN_REVIEW"
+                ? "No hay alertas en revisión."
+                : filter === "RESOLVED"
+                  ? "No hay alertas resueltas."
+                  : "No hay alertas registradas."}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {sorted.map((alert) => {
-            const isActive = alert.status === "ACTIVE";
+            const isOpen = alert.status !== "RESOLVED";
             const isPending = confirmId === alert.id;
 
             return (
@@ -120,18 +129,19 @@ export function AlertsContent() {
                 onClick={() => setSelectedAlert(alert)}
                 className={cn(
                   "rounded-xl border bg-card p-4 transition-all duration-200 cursor-pointer hover:shadow-md",
-                  isActive && "border-l-4 border-l-red-500",
-                  !isActive && "border-l-4 border-l-emerald-500 opacity-80",
+                  alert.status === "REPORTED" && "border-l-4 border-l-red-500",
+                  alert.status === "IN_REVIEW" && "border-l-4 border-l-amber-500",
+                  alert.status === "RESOLVED" && "border-l-4 border-l-emerald-500 opacity-80",
                 )}
               >
                 <div className="flex items-start gap-3">
                   <div
                     className={cn(
                       "flex size-8 items-center justify-center rounded-full shrink-0 mt-0.5",
-                      isActive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600",
+                      isOpen ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600",
                     )}
                   >
-                    {isActive ? (
+                    {isOpen ? (
                       <TriangleAlert className="size-4" />
                     ) : (
                       <CheckCircle className="size-4" />
@@ -156,6 +166,11 @@ export function AlertsContent() {
                         <p className="text-xs font-medium text-foreground/90 mt-0.5">
                           {alert.title}
                         </p>
+                        {alert.categoryLabel && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {alert.categoryLabel}
+                          </p>
+                        )}
 
                         {/* Patient Information Badge */}
                         {alert.patientFullName && (
@@ -183,12 +198,10 @@ export function AlertsContent() {
                         <Badge
                           className={cn(
                             "border text-xs font-medium shrink-0",
-                            isActive
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200",
+                            alertStatusClasses[alert.status],
                           )}
                         >
-                          {isActive ? "Activa" : "Resuelta"}
+                          {alertStatusLabels[alert.status]}
                         </Badge>
                       </div>
                     </div>
@@ -220,35 +233,44 @@ export function AlertsContent() {
                           Línea de Tiempo / Bot IA
                         </Button>
 
-                        {isActive && (
+                        {isOpen && (
                           <div>
                             {isPending ? (
                               <div
-                                className="flex items-center gap-2 p-1.5 rounded-lg bg-red-50 border border-red-200"
+                                className="flex flex-col gap-2 p-1.5 rounded-lg bg-red-50 border border-red-200"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <span className="text-[11px] text-red-800 font-medium">
-                                  ¿Resolver?
-                                </span>
-                                <Button
-                                  size="sm"
-                                  className="h-6 text-[10px] bg-red-600 hover:bg-red-700 px-2 text-white"
-                                  onClick={(e) => handleResolve(alert, e)}
-                                  disabled={resolveAlert.isPending}
-                                >
-                                  Sí
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 text-[10px] px-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmId(null);
-                                  }}
-                                >
-                                  No
-                                </Button>
+                                <Textarea
+                                  value={resolutionNotes}
+                                  onChange={(event) => setResolutionNotes(event.target.value)}
+                                  placeholder="Nota del procedimiento (obligatoria)"
+                                  className="min-h-16 bg-white text-xs"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] text-red-800 font-medium">
+                                    ¿Resolver?
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    className="h-6 text-[10px] bg-red-600 hover:bg-red-700 px-2 text-white"
+                                    onClick={(e) => handleResolve(alert, e)}
+                                    disabled={resolveAlert.isPending || !resolutionNotes.trim()}
+                                  >
+                                    Sí
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[10px] px-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmId(null);
+                                      setResolutionNotes("");
+                                    }}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
                             ) : (
                               <Button
@@ -257,6 +279,7 @@ export function AlertsContent() {
                                 className="h-7 text-xs"
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  setResolutionNotes("");
                                   setConfirmId(alert.id);
                                 }}
                               >

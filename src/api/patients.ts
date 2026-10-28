@@ -12,6 +12,8 @@ export type UpdateCompanionLinkInput =
 export type UpdatePatientInput = components["schemas"]["UpdatePatientDto"]
 export type DeactivatePatientInput =
   components["schemas"]["DeactivatePatientDto"]
+export type ReactivatePatientInput =
+  components["schemas"]["ReactivatePatientDto"]
 export type PatientDetailsInput =
   components["schemas"]["UpsertPatientDetailsDto"]
 export type PatientResponse = components["schemas"]["PatientResponseDto"]
@@ -166,9 +168,10 @@ export const patientsApi = {
     return data
   },
 
-  async reactivate(id: string) {
+  async reactivate(id: string, input: ReactivatePatientInput = {}) {
     const { data, response } = await api.PATCH("/patients/{id}/reactivate", {
       params: { path: { id } },
+      body: input,
     })
 
     if (!data) {

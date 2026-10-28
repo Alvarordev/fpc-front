@@ -59,7 +59,7 @@ export interface paths {
         head?: never;
         /**
          * Update an alert
-         * @description Patch semantics: omitted fields are left unchanged. Explicit null is only accepted for derivedTo and derivationNotes. Use PATCH /alerts/:id/resolve to resolve an alert — setting status to RESOLVED here is rejected.
+         * @description Patch semantics: omitted fields are left unchanged; null is rejected. status moves between REPORTED and IN_REVIEW (recorded in the timeline). Use /resolve and /derive for those actions.
          */
         patch: operations["AlertsController_update"];
         trace?: never;
@@ -77,8 +77,80 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Resolve an alert */
+        /** Resolve an alert, recording the procedure followed */
         patch: operations["AlertsController_resolve"];
+        trace?: never;
+    };
+    "/alerts/{id}/derive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Derive an alert to an external entity (catalog) with a note */
+        patch: operations["AlertsController_derive"];
+        trace?: never;
+    };
+    "/alerts/{id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the patient reports linked to an alert */
+        get: operations["AlertsController_findReports"];
+        put?: never;
+        /**
+         * Link another patient report (follow-up) to an existing alert
+         * @description Pass followUpId, or subjectPatientId to create a completed follow-up (agents only).
+         */
+        post: operations["AlertsController_linkReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/{id}/affected-patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patients with an ongoing (EN_PROCESO) treatment at the alert hospital, with a message ready to copy */
+        get: operations["AlertsController_affectedPatients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/{id}/affected-patients/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email the alert notice to affected patients that have an email */
+        post: operations["AlertsController_notifyAffectedPatients"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/alerts/{id}/events": {
@@ -129,10 +201,30 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get pending call center workload */
+        /**
+         * Get pending call center workload
+         * @description Pending follow-ups and reminders, with per-agent counts for today, this week and overdue.
+         */
         get: operations["CallCenterController_workload"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/call-center/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reassign pending follow-ups to another agent */
+        post: operations["CallCenterController_reassign"];
         delete?: never;
         options?: never;
         head?: never;
@@ -233,6 +325,23 @@ export interface paths {
         };
         /** Get epidemiological dashboard indicators */
         get: operations["DashboardController_getEpidemiology"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/indicators/satisfaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get satisfaction survey indicators (c1–c4) */
+        get: operations["DashboardController_getSatisfaction"];
         put?: never;
         post?: never;
         delete?: never;
@@ -476,7 +585,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List visible follow-ups */
+        /**
+         * List visible follow-ups
+         * @description Agents see every follow-up of a patient when patientId is given; otherwise only their own unless agentId is given.
+         */
         get: operations["FollowUpsController_findAll"];
         put?: never;
         /** Create a follow-up */
@@ -511,7 +623,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a follow-up */
+        /** Get a follow-up with its attempts */
         get: operations["FollowUpsController_findOne"];
         put?: never;
         post?: never;
@@ -533,6 +645,46 @@ export interface paths {
         put?: never;
         /** Schedule the next follow-up */
         post: operations["FollowUpsController_next"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/follow-ups/{id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a contact attempt
+         * @description A CONTACTED attempt completes the follow-up; a failed one marks it NO_ANSWER unless it was already completed.
+         */
+        post: operations["FollowUpsController_attempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/follow-ups/{id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reschedule an overdue or cancelled follow-up
+         * @description Creates a new scheduled follow-up linked through nextFollowUpId.
+         */
+        post: operations["FollowUpsController_reschedule"];
         delete?: never;
         options?: never;
         head?: never;
@@ -602,7 +754,7 @@ export interface paths {
         /** List catalog items */
         get: operations["CatalogsController_findAll"];
         put?: never;
-        /** Create a catalog item (agents/foundation: open kinds only) */
+        /** Create a catalog item (agents: open kinds only) */
         post: operations["CatalogsController_create"];
         delete?: never;
         options?: never;
@@ -627,6 +779,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalogs/merges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List catalog merges, newest first */
+        get: operations["CatalogsController_findMerges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalogs/{id}": {
         parameters: {
             query?: never;
@@ -640,7 +809,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update a catalog item */
+        /** Update a catalog item (agents: open kinds only) */
         patch: operations["CatalogsController_update"];
         trace?: never;
     };
@@ -653,8 +822,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Archive (soft-deactivate) a non-system catalog item */
+        /** Archive (soft-deactivate) a non-system catalog item (agents: open kinds only) */
         post: operations["CatalogsController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalogs/{id}/merge-into/{targetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merge a duplicate catalog item into another: re-points every stored reference and archives the duplicate */
+        post: operations["CatalogsController_merge"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1310,8 +1496,45 @@ export interface paths {
         /** List psycho-oncology appointments */
         get: operations["PsychooncologyAppointmentsController_findAll"];
         put?: never;
-        /** Schedule a psycho-oncology appointment */
+        /**
+         * Schedule a psycho-oncology appointment on a free slot
+         * @description Opens a care cycle when the patient has none. After the 4 base sessions, only additional sessions can be scheduled.
+         */
         post: operations["PsychooncologyAppointmentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/psychooncology-appointments/needs-reassignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pending sessions of deactivated volunteers to reassign */
+        get: operations["PsychooncologyAppointmentsController_findNeedingReassignment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/psychooncology-appointments/patients/{patientId}/unmanaged-no-shows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether a patient has no-show sessions nobody followed up yet */
+        get: operations["PsychooncologyAppointmentsController_findUnmanagedNoShows"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1332,7 +1555,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update a psycho-oncology appointment */
+        /**
+         * Update a psycho-oncology appointment
+         * @description Volunteers only record results (status COMPLETED/NO_SHOW and session fields) of their own sessions; agents only edit logistics.
+         */
         patch: operations["PsychooncologyAppointmentsController_update"];
         trace?: never;
     };
@@ -1351,6 +1577,77 @@ export interface paths {
         head?: never;
         /** Cancel a psycho-oncology appointment */
         patch: operations["PsychooncologyAppointmentsController_cancel"];
+        trace?: never;
+    };
+    "/psychooncology-appointments/{id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reschedule a session to another free slot
+         * @description The slot may belong to another volunteer. The original session becomes RESCHEDULED and links to the returned new session.
+         */
+        post: operations["PsychooncologyAppointmentsController_reschedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/psychooncology-appointments/{id}/reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the ready-to-copy reminder of a session */
+        get: operations["PsychooncologyAppointmentsController_reminder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/psychooncology-appointments/{id}/reminder/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark the session reminder as sent manually */
+        patch: operations["PsychooncologyAppointmentsController_markReminderSent"];
+        trace?: never;
+    };
+    "/psychooncology-appointments/{id}/no-show-managed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark a no-show session as managed */
+        patch: operations["PsychooncologyAppointmentsController_markNoShowManaged"];
         trace?: never;
     };
     "/reminders": {
@@ -1386,6 +1683,60 @@ export interface paths {
         head?: never;
         /** Update a pending reminder */
         patch: operations["RemindersController_update"];
+        trace?: never;
+    };
+    "/reminders/{id}/message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the reminder text ready to copy (manual WhatsApp delivery) */
+        get: operations["RemindersController_message"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reminders/{id}/send-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email the reminder to the patient now
+         * @description The outcome is stored in deliveryStatus (SENT or FAILED with deliveryError). When email is not configured the reminder ends as FAILED.
+         */
+        post: operations["RemindersController_sendEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reminders/{id}/mark-sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a reminder as delivered manually (e.g. copied to WhatsApp) */
+        post: operations["RemindersController_markSent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/reminders/{id}/complete": {
@@ -1492,6 +1843,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/volunteers/{volunteerId}/availability/recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a weekly availability block split into 1-hour slots */
+        post: operations["VolunteerAvailabilityController_createRecurring"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/volunteers/{volunteerId}/availability/recurrences/{recurrenceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove the free future slots of a recurring block */
+        delete: operations["VolunteerAvailabilityController_removeRecurrence"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/volunteers/{volunteerId}/availability/{id}": {
         parameters: {
             query?: never;
@@ -1521,6 +1906,23 @@ export interface paths {
         put?: never;
         /** Create a volunteer */
         post: operations["VolunteersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/volunteers/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the profile of the authenticated volunteer */
+        get: operations["VolunteersController_findMe"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1558,7 +1960,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Deactivate a volunteer user account */
+        /**
+         * Deactivate a volunteer user account
+         * @description Future sessions of the volunteer are flagged as needing reassignment.
+         */
         patch: operations["VolunteersController_deactivate"];
         trace?: never;
     };
@@ -1575,7 +1980,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Pause a volunteer */
+        /**
+         * Pause a volunteer
+         * @description Future sessions of the volunteer are flagged as needing reassignment.
+         */
         patch: operations["VolunteersController_pause"];
         trace?: never;
     };
@@ -1785,28 +2193,208 @@ export interface paths {
         patch: operations["PatientNonOncologicalFollowUpsController_update"];
         trace?: never;
     };
+    "/exports/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export patients and their records to Excel, one sheet per entity, with the dashboard filters */
+        get: operations["ExportsController_exportPatients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/change-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Field-level history of every change to the patient record */
+        get: operations["PatientChangeLogController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/psychooncology-cycles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the psycho-oncology cycles of a patient */
+        get: operations["PsychooncologyCyclesController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/psychooncology-cycles/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Close a psycho-oncology cycle (completed, abandoned, not needed) */
+        patch: operations["PsychooncologyCyclesController_close"];
+        trace?: never;
+    };
+    "/patients/{patientId}/referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List patient referrals, newest first */
+        get: operations["ReferralsController_findAll"];
+        put?: never;
+        /** Record a patient referral */
+        post: operations["ReferralsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/referrals/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patient's care route: referrals in chronological order */
+        get: operations["ReferralsController_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/referrals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a patient referral */
+        get: operations["ReferralsController_findOne"];
+        put?: never;
+        post?: never;
+        /** Delete a patient referral */
+        delete: operations["ReferralsController_remove"];
+        options?: never;
+        head?: never;
+        /** Update a patient referral */
+        patch: operations["ReferralsController_update"];
+        trace?: never;
+    };
+    "/surveys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List surveys. Volunteers only see psycho-oncology surveys. */
+        get: operations["SurveysController_findAll"];
+        put?: never;
+        /** Record a satisfaction survey answer (1–5) */
+        post: operations["SurveysController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/surveys/script": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the survey message ready to copy */
+        get: operations["SurveysController_script"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/surveys/pending/three-months": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Active patients enrolled 90 or more days ago without a three-month survey */
+        get: operations["SurveysController_pendingThreeMonths"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         CreateAlertDto: {
+            /**
+             * Format: uuid
+             * @description Existing follow-up the report comes from
+             */
+            followUpId?: string;
+            /**
+             * Format: uuid
+             * @description Required when followUpId is omitted; a follow-up is created
+             */
+            subjectPatientId?: string;
             /** @enum {string} */
             severity?: "HIGH" | "MEDIUM" | "LOW";
-            /** @enum {string} */
-            category?: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER";
+            /** @description Code from the alert_category catalog. Defaults to GENERAL. */
+            category?: string;
             /** Format: uuid */
             healthCenterId: string;
-            /** Format: uuid */
-            followUpId?: string;
-            /** Format: uuid */
-            subjectPatientId?: string;
+            title: string;
+            description: string;
             /** Format: uuid */
             interlocutorId?: string;
             /** @enum {string} */
             followUpType?: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             followUpNotes?: string;
-            title: string;
-            description: string;
         };
         AlertResponseDto: {
             /** Format: uuid */
@@ -1816,7 +2404,10 @@ export interface components {
             /** Format: uuid */
             healthCenterId: string;
             healthCenterName: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Follow-up of the first report
+             */
             followUpId: string;
             /** Format: uuid */
             createdById: string;
@@ -1829,19 +2420,24 @@ export interface components {
             title: string;
             description: string;
             /** @enum {string} */
-            status: "ACTIVE" | "RESOLVED";
+            status: "REPORTED" | "IN_REVIEW" | "RESOLVED";
             /** @enum {string} */
             severity: "HIGH" | "MEDIUM" | "LOW";
-            /** @enum {string} */
-            category: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER";
-            underReview: boolean;
+            /** @description Code from the alert_category catalog */
+            category: string;
+            categoryLabel: string | null;
+            /** @description Code from the alert_derivation_entity catalog */
             derivedTo: string | null;
+            derivedToLabel: string | null;
             derivationNotes: string | null;
+            /** Format: date-time */
+            derivedAt: string | null;
+            resolutionNotes: string | null;
+            /** @description Number of linked patient reports */
+            reportsCount: number;
             aiSummary: string | null;
             /** Format: date-time */
             resolvedAt: string | null;
-            /** Format: uuid */
-            resolvedById: string | null;
             /** Format: uuid */
             resolvedByUserId: string | null;
             resolvedByName: string | null;
@@ -1858,8 +2454,11 @@ export interface components {
             /** Format: uuid */
             agentId: string | null;
             agentName: string | null;
+            /** Format: uuid */
+            actorUserId: string | null;
+            actorName: string | null;
             /** @enum {string} */
-            eventType: "CREATED" | "STATUS_CHANGED" | "DERIVED" | "COMMENT" | "AI_SUMMARY_GENERATED" | "RESOLVED";
+            eventType: "CREATED" | "STATUS_CHANGED" | "DERIVED" | "COMMENT" | "AI_SUMMARY_GENERATED" | "RESOLVED" | "REPORT_LINKED" | "PATIENTS_NOTIFIED";
             title: string;
             description: string | null;
             /** Format: date-time */
@@ -1875,17 +2474,84 @@ export interface components {
             description?: string | null;
             /** Format: uuid */
             healthCenterId?: string | null;
-            /** Format: uuid */
-            followUpId?: string | null;
-            /** @enum {string|null} */
-            status?: "ACTIVE" | "RESOLVED" | null;
-            underReview?: boolean | null;
-            derivedTo?: string | null;
-            derivationNotes?: string | null;
+            /**
+             * @description Use PATCH /alerts/:id/resolve to resolve an alert
+             * @enum {string|null}
+             */
+            status?: "REPORTED" | "IN_REVIEW" | null;
             /** @enum {string|null} */
             severity?: "HIGH" | "MEDIUM" | "LOW" | null;
-            /** @enum {string|null} */
-            category?: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER" | null;
+            /** @description Code from the alert_category catalog */
+            category?: string | null;
+        };
+        ResolveAlertDto: {
+            /** @description Procedure followed to resolve the alert */
+            resolutionNotes: string;
+        };
+        DeriveAlertDto: {
+            /** @description Code from the alert_derivation_entity catalog */
+            entityCode: string;
+            notes: string;
+        };
+        AlertReportResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            alertId: string;
+            /** Format: uuid */
+            patientId: string;
+            patientFullName: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: date-time */
+            reportedAt: string;
+            /** Format: uuid */
+            reportedByUserId: string | null;
+            reportedByEmail: string | null;
+        };
+        LinkAlertReportDto: {
+            /**
+             * Format: uuid
+             * @description Existing follow-up the report comes from
+             */
+            followUpId?: string;
+            /**
+             * Format: uuid
+             * @description Required when followUpId is omitted; a follow-up is created
+             */
+            subjectPatientId?: string;
+            /** Format: uuid */
+            interlocutorId?: string;
+            /** @enum {string} */
+            followUpType?: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            followUpNotes?: string;
+        };
+        AlertAffectedPatientDto: {
+            /** Format: uuid */
+            patientId: string;
+            fullName: string;
+            dni: string | null;
+            phone: string | null;
+            email: string | null;
+        };
+        AlertAffectedPatientsResponseDto: {
+            /** Format: uuid */
+            alertId: string;
+            /** Format: uuid */
+            healthCenterId: string;
+            healthCenterName: string;
+            patients: components["schemas"]["AlertAffectedPatientDto"][];
+            subject: string;
+            /** @description Plain text ready to copy (e.g. WhatsApp) */
+            text: string;
+        };
+        AlertNotifyPatientsResponseDto: {
+            totalPatients: number;
+            withEmail: number;
+            sent: number;
+            failed: number;
+            /** @description False when email delivery is not configured */
+            emailEnabled: boolean;
         };
         CreateAlertEventDto: {
             title: string;
@@ -1896,6 +2562,21 @@ export interface components {
             id: string;
             fullName: string;
         };
+        CallCenterPendingCountsDto: {
+            /** @description Due today (America/Lima) */
+            today: number;
+            /** @description Due from today through Sunday */
+            week: number;
+            /** @description Due before today and still pending */
+            overdue: number;
+        };
+        CallCenterAgentLoadDto: {
+            /** Format: uuid */
+            agentId: string;
+            fullName: string;
+            followUps: components["schemas"]["CallCenterPendingCountsDto"];
+            reminders: components["schemas"]["CallCenterPendingCountsDto"];
+        };
         CallCenterFollowUpDto: {
             /** Format: uuid */
             id: string;
@@ -1905,11 +2586,15 @@ export interface components {
             /** Format: uuid */
             agentId: string;
             /** @enum {string} */
+            status: "SCHEDULED" | "OVERDUE";
+            /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
             purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
             /** Format: date-time */
             scheduledAt: string | null;
+            /** Format: date */
+            scheduledOn: string | null;
         };
         CallCenterReminderDto: {
             /** Format: uuid */
@@ -1922,11 +2607,30 @@ export interface components {
             description: string;
             /** Format: date-time */
             dueAt: string;
+            /** Format: date */
+            dueOn: string | null;
         };
         CallCenterWorkloadResponseDto: {
             agents: components["schemas"]["CallCenterAgentDto"][];
+            /** Format: date */
+            today: string;
+            /**
+             * Format: date
+             * @description Sunday of the current week
+             */
+            weekEnd: string;
+            load: components["schemas"]["CallCenterAgentLoadDto"][];
+            /** @description Scheduled and overdue follow-ups */
             scheduledFollowUps: components["schemas"]["CallCenterFollowUpDto"][];
             pendingReminders: components["schemas"]["CallCenterReminderDto"][];
+        };
+        ReassignFollowUpsDto: {
+            followUpIds: string[];
+            /** Format: uuid */
+            agentId: string;
+        };
+        ReassignFollowUpsResponseDto: {
+            reassigned: number;
         };
         DashboardIndicatorMetaDto: {
             /** Format: date */
@@ -1939,6 +2643,10 @@ export interface components {
             /** @example America/Lima */
             timezone: string;
             definition: string;
+            /** @description Formula and source of each indicator, keyed by field name. */
+            definitions: {
+                [key: string]: string;
+            };
             population: string;
             populationCount: number;
             /** @description Patients in the population whose first enrollment is before the period start. Zero when population is enrolled_in_period. */
@@ -1975,6 +2683,7 @@ export interface components {
             isWorking: components["schemas"]["DashboardIndicatorDistributionDto"];
             insuranceType: components["schemas"]["DashboardIndicatorDistributionDto"];
             epsProvider: components["schemas"]["DashboardIndicatorDistributionDto"];
+            insuranceTypeAtEnrollment: components["schemas"]["DashboardIndicatorDistributionDto"];
         };
         DashboardManagementResponseDto: {
             meta: components["schemas"]["DashboardIndicatorMetaDto"];
@@ -1993,7 +2702,7 @@ export interface components {
         };
         DashboardProductivityResponseDto: {
             meta: components["schemas"]["DashboardIndicatorMetaDto"];
-            /** @description Average days from enrollment to SIS affiliation for patients whose current insurance is SIS and whose affiliation date differs from enrollment. Null when unknown. */
+            /** @description Average, one value per patient, of days from first enrollment to the first SIS affiliation achieved via SEPA. Negative intervals are ignored. Null when unknown. */
             avgDaysEnrollmentToSis: number | null;
             avgDaysPrimaryCareToDiagnosis: number | null;
             avgDaysDiagnosisToTreatment: number | null;
@@ -2014,6 +2723,7 @@ export interface components {
             withAccessBarriers: number;
             orientedRegardingBarriers: number;
             abandonedWithBarriers: number;
+            treatmentAbandonmentReasons: components["schemas"]["DashboardIndicatorDistributionDto"];
             interruptedAdverseReaction: number;
             palliativeNoActiveTreatment: number;
         };
@@ -2023,7 +2733,18 @@ export interface components {
             voluntary: number;
             unlocatable: number;
             deceased: number;
+            transferredOut: number;
             other: number;
+            /** @description Patients whose deactivation happened inside the period. */
+            dropoutsInPeriod: number;
+        };
+        DashboardCrossItemDto: {
+            /** @example Cáncer de mama */
+            row: string;
+            /** @example LIMA */
+            column: string;
+            /** @example 7 */
+            count: number;
         };
         DashboardEpidemiologyEventsDto: {
             deaths: number;
@@ -2037,7 +2758,25 @@ export interface components {
             currentTreatmentTypes: components["schemas"]["DashboardIndicatorDistributionDto"];
             currentTreatmentSituations: components["schemas"]["DashboardIndicatorDistributionDto"];
             currentDiagnosticStatuses: components["schemas"]["DashboardIndicatorDistributionDto"];
+            /** @description Current diagnoses (row) by residence department (column). */
+            diagnosisByDepartment: components["schemas"]["DashboardCrossItemDto"][];
+            /** @description Current diagnoses (row) by cancer stage (column). */
+            diagnosisByStage: components["schemas"]["DashboardCrossItemDto"][];
             events: components["schemas"]["DashboardEpidemiologyEventsDto"];
+        };
+        DashboardSurveySummaryDto: {
+            /** @example 4.5 */
+            average: number | null;
+            responses: number;
+            /** @description Answers per rating, from 1 to 5. */
+            distribution: components["schemas"]["DashboardIndicatorItemDto"][];
+        };
+        DashboardSatisfactionResponseDto: {
+            meta: components["schemas"]["DashboardIndicatorMetaDto"];
+            enrollment: components["schemas"]["DashboardSurveySummaryDto"];
+            threeMonths: components["schemas"]["DashboardSurveySummaryDto"];
+            talk: components["schemas"]["DashboardSurveySummaryDto"];
+            psychooncology: components["schemas"]["DashboardSurveySummaryDto"];
         };
         DashboardMetaDto: {
             /** @enum {string} */
@@ -2198,6 +2937,25 @@ export interface components {
             /** Format: email */
             email?: string;
         };
+        EnrollmentContactPersonDto: {
+            fullName: string;
+            primaryPhone: string;
+            secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
+            dni?: string;
+            birthDate?: string;
+            gender?: string;
+            hasWhatsapp?: boolean;
+            relationship: string;
+        };
+        EnrollmentContactInputDto: {
+            /** @enum {string} */
+            role: "PRIMARY" | "SECONDARY";
+            /** @enum {string} */
+            source: "PATIENT" | "CALLER" | "NEW";
+            person?: components["schemas"]["EnrollmentContactPersonDto"];
+        };
         EnrollmentFollowUpDto: {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
@@ -2225,25 +2983,6 @@ export interface components {
             contactRole?: "PRIMARY" | "SECONDARY" | null;
             isCaregiver?: boolean;
             relationship?: string;
-        };
-        EnrollmentContactPersonDto: {
-            fullName: string;
-            primaryPhone: string;
-            secondaryPhone?: string;
-            /** @enum {string} */
-            documentType?: "DNI" | "CE" | "CPP";
-            dni?: string;
-            birthDate?: string;
-            gender?: string;
-            hasWhatsapp?: boolean;
-            relationship: string;
-        };
-        EnrollmentContactInputDto: {
-            /** @enum {string} */
-            role: "PRIMARY" | "SECONDARY";
-            /** @enum {string} */
-            source: "PATIENT" | "CALLER" | "NEW";
-            person?: components["schemas"]["EnrollmentContactPersonDto"];
         };
         DurationDto: {
             valueMin?: number;
@@ -2275,9 +3014,6 @@ export interface components {
             receivesFinancialSupport?: boolean;
             hasConadisCard?: boolean;
             knowsAboutFissal?: boolean;
-            programDropoutReason?: string;
-            /** Format: date */
-            programDropoutDate?: string;
             transportationViaSepa?: boolean;
             transportationSepaProvider?: string;
             transportationSepaProviderOther?: string;
@@ -2287,15 +3023,15 @@ export interface components {
             attendedEducationalTalk?: boolean;
             /** Format: date */
             attendedEducationalTalkAt?: string;
-            programDropoutReasonCode?: string;
         };
         EnrollmentInsuranceDto: {
             insuranceType: string;
             epsProvider?: string;
+            /** @description ESSALUD activation achieved by SEPA. SIS affiliations by SEPA belong to sis-affiliation. */
+            affiliatedViaSepa?: boolean;
             changeReason?: string;
             startDate?: string;
             endDate?: string;
-            affiliatedViaSepa?: boolean;
         };
         EnrollmentSisAffiliationDto: {
             canAffiliate: boolean;
@@ -2338,7 +3074,7 @@ export interface components {
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
-            /** @description Temporary client reference used to associate enrollment treatments; required for diagnoses[] and omitted only by the legacy diagnosis field */
+            /** @description Temporary client reference used to associate treatments; required by enrollments */
             clientRef?: string;
         };
         CreateTreatmentMedicationDto: {
@@ -2393,7 +3129,7 @@ export interface components {
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
-            /** @description Temporary clientRef of the diagnosis for this treatment; required when diagnoses[] is used and omitted only for the legacy diagnosis field */
+            /** @description Temporary clientRef of the diagnosis for this treatment; required by enrollments */
             diagnosisRef?: string;
         };
         EnrollmentMedicalAppointmentDto: {
@@ -2418,6 +3154,11 @@ export interface components {
             referredViaSepa?: boolean;
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** @enum {string} */
+            reminderLead?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM";
+            reminderAt?: string;
+            /** @enum {string} */
+            reminderChannel?: "EMAIL" | "MANUAL";
         };
         EnrollmentAddressDto: {
             /** @enum {string} */
@@ -2563,25 +3304,25 @@ export interface components {
             familyMemberEmail?: string;
         };
         CreateEnrollmentDto: {
+            /** @description New patient, or updated data of patientId when re-enrolling an inactive or cancer-ruled-out patient */
+            patient?: components["schemas"]["CreatePatientDto"];
             healthPhase: string;
+            contacts: components["schemas"]["EnrollmentContactInputDto"][];
             /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
             currentlyAttendingConsultations?: boolean;
             notAttendingConsultationsNote?: string | null;
             notReceivingTreatmentReason?: string | null;
             /** Format: uuid */
             patientId?: string;
-            patient?: components["schemas"]["CreatePatientDto"];
             followUp: components["schemas"]["EnrollmentFollowUpDto"];
             /** @enum {string} */
             affiliationType: "SELF" | "FAMILY_FRIEND";
             /** Format: uuid */
             companionId?: string;
             companion?: components["schemas"]["CreateCompanionDto"];
-            contacts?: components["schemas"]["EnrollmentContactInputDto"][];
             details?: components["schemas"]["UpsertPatientDetailsDto"];
             insurance?: components["schemas"]["EnrollmentInsuranceDto"];
             sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
-            diagnosis?: components["schemas"]["EnrollmentDiagnosisDto"];
             diagnoses?: components["schemas"]["EnrollmentDiagnosisDto"][];
             treatments?: components["schemas"]["EnrollmentTreatmentDto"][];
             medicalAppointments?: components["schemas"]["EnrollmentMedicalAppointmentDto"][];
@@ -2686,6 +3427,23 @@ export interface components {
             scheduledAt?: string;
             completedAt?: string;
         };
+        FollowUpAttemptResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            channel: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            outcome: "CONTACTED" | "NO_ANSWER" | "WRONG_NUMBER" | "REJECTED";
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            actorUserId: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
         FollowUpResponseDto: {
             /** Format: uuid */
             id: string;
@@ -2699,7 +3457,7 @@ export interface components {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             /** @enum {string} */
             purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
             /** Format: date-time */
@@ -2718,6 +3476,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             isHistorical: boolean;
+            /** @description Only returned by GET /follow-ups/:id */
+            attempts?: components["schemas"]["FollowUpAttemptResponseDto"][];
         };
         CreateScheduledFollowUpDto: {
             /** Format: uuid */
@@ -2741,9 +3501,33 @@ export interface components {
             interlocutorId?: string;
             notes?: string;
             /** @enum {string} */
-            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             scheduledAt?: string;
             completedAt?: string;
+        };
+        CreateFollowUpAttemptDto: {
+            /** @enum {string} */
+            channel: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            /** @enum {string} */
+            outcome: "CONTACTED" | "NO_ANSWER" | "WRONG_NUMBER" | "REJECTED";
+            /**
+             * Format: date-time
+             * @description Defaults to now
+             */
+            occurredAt?: string;
+            notes?: string;
+        };
+        RescheduleFollowUpDto: {
+            /** Format: date-time */
+            scheduledAt: string;
+            /**
+             * Format: uuid
+             * @description Defaults to the original agent; agents always reschedule to themselves
+             */
+            agentId?: string;
+            /** @enum {string} */
+            type?: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
+            notes?: string;
         };
         CreateReminderMedicalAppointmentDto: {
             /** Format: uuid */
@@ -2752,6 +3536,21 @@ export interface components {
             isFirstConsultation?: boolean;
         };
         CreateReminderDto: {
+            /**
+             * @description Defaults to EMAIL for appointment reminders of patients with an email, MANUAL otherwise
+             * @enum {string}
+             */
+            channel?: "EMAIL" | "MANUAL";
+            /**
+             * @description How long before the appointment (dueAt) to remind. Defaults to ONE_DAY. Only for MEDICAL_APPOINTMENT reminders.
+             * @enum {string}
+             */
+            lead?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM";
+            /**
+             * Format: date-time
+             * @description Required when lead is CUSTOM. For GENERIC reminders defaults to dueAt.
+             */
+            remindAt?: string;
             /** Format: uuid */
             subjectPatientId: string;
             dueAt: string;
@@ -2803,8 +3602,20 @@ export interface components {
             completedAt: string | null;
             /** Format: date */
             completedOn: string | null;
-            /** Format: uuid */
-            resultingFollowUpId: string | null;
+            /** @enum {string} */
+            channel: "EMAIL" | "MANUAL";
+            /** @enum {string|null} */
+            lead: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | null;
+            /**
+             * Format: date-time
+             * @description When the reminder should be sent to the patient
+             */
+            remindAt: string | null;
+            /** @enum {string} */
+            deliveryStatus: "PENDING" | "SENT" | "FAILED";
+            /** Format: date-time */
+            sentAt: string | null;
+            deliveryError: string | null;
             /** Format: date-time */
             createdAt: string;
             isHistorical: boolean;
@@ -2813,7 +3624,14 @@ export interface components {
             name: string;
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
-            category: string;
+            /** @enum {string|null} */
+            careCategory?: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-2" | "III-E" | null;
+            /** @enum {string|null} */
+            institution?: "MINSA" | "ESSALUD" | "FFAA_PNP" | "PRIVADO" | "GOBIERNO_REGIONAL" | "OTRO" | null;
+            /** @description INEI district code */
+            ubigeoDistrictCode?: string | null;
+            /** @description RENIPRESS code */
+            renipressCode?: string | null;
         };
         HealthCenterResponseDto: {
             /** Format: uuid */
@@ -2822,7 +3640,14 @@ export interface components {
             slug: string;
             /** @enum {string} */
             department: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
-            category: string | null;
+            /** @enum {string|null} */
+            careCategory: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-2" | "III-E" | null;
+            /** @enum {string|null} */
+            careLevel: "I" | "II" | "III" | null;
+            /** @enum {string|null} */
+            institution: "MINSA" | "ESSALUD" | "FFAA_PNP" | "PRIVADO" | "GOBIERNO_REGIONAL" | "OTRO" | null;
+            ubigeoDistrictCode: string | null;
+            renipressCode: string | null;
             isActive: boolean;
             patientCount: number;
             /** Format: date-time */
@@ -2834,7 +3659,14 @@ export interface components {
             name?: string;
             /** @enum {string} */
             department?: "AMAZONAS" | "ANCASH" | "APURIMAC" | "AREQUIPA" | "AYACUCHO" | "CAJAMARCA" | "CALLAO" | "CUSCO" | "HUANCAVELICA" | "HUANUCO" | "ICA" | "JUNIN" | "LA_LIBERTAD" | "LAMBAYEQUE" | "LIMA" | "LORETO" | "MADRE_DE_DIOS" | "MOQUEGUA" | "PASCO" | "PIURA" | "PUNO" | "SAN_MARTIN" | "TACNA" | "TUMBES" | "UCAYALI";
-            category?: string;
+            /** @enum {string|null} */
+            careCategory?: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-2" | "III-E" | null;
+            /** @enum {string|null} */
+            institution?: "MINSA" | "ESSALUD" | "FFAA_PNP" | "PRIVADO" | "GOBIERNO_REGIONAL" | "OTRO" | null;
+            /** @description INEI district code */
+            ubigeoDistrictCode?: string | null;
+            /** @description RENIPRESS code */
+            renipressCode?: string | null;
             isActive?: boolean;
         };
         CatalogItemResponseDto: {
@@ -2881,7 +3713,7 @@ export interface components {
         };
         CreateCatalogItemDto: {
             /** @enum {string} */
-            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type";
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity";
             code: string;
             label: string;
             parentCode?: string | null;
@@ -2889,6 +3721,25 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
+        };
+        CatalogMergeResponseDto: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            /** Format: uuid */
+            sourceItemId: string;
+            /** Format: uuid */
+            targetItemId: string;
+            sourceCode: string;
+            targetCode: string;
+            /** Format: uuid */
+            actorUserId: string | null;
+            /** @description Re-pointed rows per table.column */
+            affectedRows: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            createdAt: string;
         };
         UpdateCatalogItemDto: {
             label?: string;
@@ -2920,6 +3771,11 @@ export interface components {
             isFirstConsultation?: boolean;
             attendedViaSepa?: boolean;
             referredViaSepa?: boolean;
+            /** @enum {string} */
+            reminderLead?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM";
+            reminderAt?: string;
+            /** @enum {string} */
+            reminderChannel?: "EMAIL" | "MANUAL";
         };
         MedicalAppointmentResponseDto: {
             /** Format: uuid */
@@ -3007,7 +3863,7 @@ export interface components {
             historicalLoadedById: string | null;
             historicalLoadedByEmail: string | null;
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             /** Format: uuid */
             followUpId: string;
             /** @enum {string} */
@@ -3060,7 +3916,7 @@ export interface components {
             historicalLoadedById: string | null;
             historicalLoadedByEmail: string | null;
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED" | "RESCHEDULED" | "OVERDUE";
             /** Format: uuid */
             followUpId: string | null;
             /** @enum {string} */
@@ -3115,7 +3971,7 @@ export interface components {
             /** @enum {string} */
             activityStatus: "ACTIVE" | "INACTIVE" | "REACTIVE";
             /** @enum {string|null} */
-            deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
+            deactivationReason: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "TRANSFERRED_OUT" | "OTHER" | null;
             deactivationReasonDetail: string | null;
             /** Format: date-time */
             deactivatedAt: string | null;
@@ -3209,7 +4065,7 @@ export interface components {
             /** @enum {string} */
             activityStatus: "ACTIVE" | "INACTIVE" | "REACTIVE";
             /** @enum {string|null} */
-            deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
+            deactivationReason: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "TRANSFERRED_OUT" | "OTHER" | null;
             deactivationReasonDetail: string | null;
             /** Format: date-time */
             deactivatedAt: string | null;
@@ -3285,9 +4141,6 @@ export interface components {
             receivesFinancialSupport: boolean | null;
             hasConadisCard: boolean | null;
             knowsAboutFissal: boolean | null;
-            programDropoutReason: string | null;
-            /** Format: date */
-            programDropoutDate: string | null;
             transportationViaSepa: boolean | null;
             transportationSepaProvider: string | null;
             transportationSepaProviderOther: string | null;
@@ -3297,7 +4150,6 @@ export interface components {
             attendedEducationalTalk: boolean | null;
             /** Format: date */
             attendedEducationalTalkAt: string | null;
-            programDropoutReasonCode: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3646,7 +4498,7 @@ export interface components {
             /** @enum {string} */
             activityStatus: "ACTIVE" | "INACTIVE" | "REACTIVE";
             /** @enum {string|null} */
-            deactivationReason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER" | null;
+            deactivationReason: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "TRANSFERRED_OUT" | "OTHER" | null;
             deactivationReasonDetail: string | null;
             /** Format: date-time */
             deactivatedAt: string | null;
@@ -3684,10 +4536,21 @@ export interface components {
         };
         DeactivatePatientDto: {
             /** @enum {string} */
-            reason: "DECEASED" | "WITHDREW_CONSENT" | "LOST_CONTACT" | "TRANSFERRED_OUT" | "OTHER";
-            detail?: string;
+            reason: "VOLUNTARY" | "UNLOCATABLE" | "DECEASED" | "TRANSFERRED_OUT";
             /** Format: date */
             deceasedAt?: string;
+            /**
+             * Format: uuid
+             * @description Follow-up in which the deactivation was decided
+             */
+            followUpId?: string;
+        };
+        ReactivatePatientDto: {
+            /**
+             * Format: uuid
+             * @description Follow-up in which the patient came back
+             */
+            followUpId?: string;
         };
         CreatePatientDiagnosisDto: {
             diagnosisOther?: string | null;
@@ -3759,12 +4622,13 @@ export interface components {
         CreatePatientInsuranceDto: {
             insuranceType: string;
             epsProvider?: string;
+            /** @description ESSALUD activation achieved by SEPA. SIS affiliations by SEPA belong to sis-affiliation. */
+            affiliatedViaSepa?: boolean;
             /** Format: uuid */
             followUpId: string;
             changeReason?: string;
             startDate?: string;
             endDate?: string;
-            affiliatedViaSepa?: boolean;
         };
         CreatePatientMedicalAppointmentDto: {
             /** Format: uuid */
@@ -3790,6 +4654,11 @@ export interface components {
             referredViaSepa?: boolean;
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            /** @enum {string} */
+            reminderLead?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM";
+            reminderAt?: string;
+            /** @enum {string} */
+            reminderChannel?: "EMAIL" | "MANUAL";
         };
         CreatePatientSisAffiliationDto: {
             /** Format: uuid */
@@ -4185,6 +5054,18 @@ export interface components {
             beneficiaryType?: "PATIENT" | "COMPANION";
             /** Format: uuid */
             companionId?: string | null;
+            /** @description Required once the base cycle already has its 4 sessions (scheduled by an agent) */
+            isAdditionalSession?: boolean;
+            /**
+             * @default MANUAL
+             * @enum {string}
+             */
+            reminderMode: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | "MANUAL";
+            /**
+             * Format: date-time
+             * @description Required when reminderMode is CUSTOM
+             */
+            remindAt?: string;
             /** Format: uuid */
             patientId: string;
             /** Format: uuid */
@@ -4194,7 +5075,6 @@ export interface components {
             patientEmail?: string;
             /** Format: uri */
             zoomLink?: string;
-            isAdditionalSession?: boolean;
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
             schedulingNotes?: string;
@@ -4225,7 +5105,7 @@ export interface components {
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED" | "RESCHEDULED" | "OVERDUE";
             /** Format: date-time */
             scheduledAt: string | null;
             /** Format: date */
@@ -4243,26 +5123,60 @@ export interface components {
             noAnswerNote: string | null;
             satisfactionRating: number | null;
             satisfactionComment: string | null;
+            /** Format: uuid */
+            cycleId: string | null;
+            /**
+             * Format: uuid
+             * @description Session that replaced this one when RESCHEDULED
+             */
+            rescheduledToId: string | null;
+            needsReassignment: boolean;
+            /** @enum {string} */
+            reminderMode: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | "MANUAL";
+            /** Format: date-time */
+            remindAt: string | null;
+            /** Format: date-time */
+            reminderSentAt: string | null;
+            /** Format: date-time */
+            noShowManagedAt: string | null;
+            /** Format: uuid */
+            noShowManagedById: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
             isHistorical: boolean;
         };
+        UnmanagedNoShowsResponseDto: {
+            /** Format: uuid */
+            patientId: string;
+            hasUnmanagedNoShows: boolean;
+            count: number;
+            appointmentIds: string[][];
+        };
         UpdatePsychooncologyAppointmentDto: {
             /** @enum {string} */
             beneficiaryType?: "PATIENT" | "COMPANION";
             /** Format: uuid */
             companionId?: string | null;
+            /**
+             * @description Session result. Cancel and reschedule have their own endpoints.
+             * @enum {string}
+             */
+            status?: "COMPLETED" | "NO_SHOW";
             /** @enum {string} */
-            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
-            /** Format: uuid */
-            availabilityId?: string;
+            reminderMode?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | "MANUAL";
+            /**
+             * Format: date-time
+             * @description Required when reminderMode is CUSTOM
+             */
+            remindAt?: string;
             /** @enum {string} */
             modality?: "CALL" | "VIDEO_CALL";
             /** Format: uri */
             zoomLink?: string | null;
             patientEmail?: string;
+            isAdditionalSession?: boolean;
             schedulingNotes?: string | null;
             noAnswerNote?: string | null;
             satisfactionRating?: number | null;
@@ -4273,13 +5187,60 @@ export interface components {
             recommendations?: string;
             referral?: string;
         };
+        ReschedulePsychooncologyAppointmentDto: {
+            /**
+             * Format: uuid
+             * @description Free availability slot; it may belong to another volunteer
+             */
+            availabilityId: string;
+            /** @enum {string} */
+            modality?: "CALL" | "VIDEO_CALL";
+            /**
+             * Format: uri
+             * @description Defaults to the current link when the volunteer does not change
+             */
+            zoomLink?: string;
+            /** @enum {string} */
+            reminderMode?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | "MANUAL";
+            /** Format: date-time */
+            remindAt?: string;
+            schedulingNotes?: string;
+        };
+        AppointmentReminderResponseDto: {
+            /** Format: uuid */
+            appointmentId: string;
+            /** @description Ready-to-copy reminder text for the patient */
+            message: string;
+            /** @enum {string} */
+            reminderMode: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | "MANUAL";
+            /** Format: date-time */
+            remindAt: string | null;
+            /** Format: date-time */
+            reminderSentAt: string | null;
+        };
         UpdateReminderDto: {
+            /** @enum {string} */
+            channel?: "EMAIL" | "MANUAL";
+            /** @enum {string} */
+            lead?: "TWO_HOURS" | "ONE_DAY" | "CUSTOM";
+            /** Format: date-time */
+            remindAt?: string;
             /** Format: uuid */
             assignedAgentId?: string;
             dueAt?: string;
             description?: string;
             /** Format: uuid */
             healthCenterId?: string;
+        };
+        ReminderMessageResponseDto: {
+            /** Format: uuid */
+            reminderId: string;
+            patientName: string | null;
+            phone: string | null;
+            email: string | null;
+            subject: string;
+            /** @description Plain text ready to copy (e.g. WhatsApp) */
+            text: string;
         };
         CompleteReminderMedicalAppointmentDto: {
             /** @enum {string} */
@@ -4295,8 +5256,6 @@ export interface components {
             changeReason: string;
         };
         CompleteReminderDto: {
-            /** Format: uuid */
-            resultingFollowUpId?: string;
             medicalAppointment?: components["schemas"]["CompleteReminderMedicalAppointmentDto"];
         };
         CreateUserDto: {
@@ -4358,9 +5317,47 @@ export interface components {
             endTime: string | null;
             /** @enum {string} */
             status: "AVAILABLE" | "RESERVED";
+            /** Format: uuid */
+            recurrenceId: string | null;
             isHistorical: boolean;
             /** Format: date-time */
             createdAt: string;
+        };
+        CreateRecurringAvailabilityDto: {
+            /**
+             * @description Days of the week, 0 = Sunday … 6 = Saturday
+             * @example [
+             *       1,
+             *       3
+             *     ]
+             */
+            daysOfWeek: number[];
+            /**
+             * @description Start of the block (HH:mm)
+             * @example 09:00
+             */
+            startTime: string;
+            /** @description Hours of the block; it is split into 1-hour slots */
+            hours: number;
+            /**
+             * Format: date
+             * @description Defaults to today
+             */
+            startDate?: string;
+            /** Format: date */
+            endDate: string;
+        };
+        RecurringAvailabilityResponseDto: {
+            /** Format: uuid */
+            recurrenceId: string;
+            created: components["schemas"]["VolunteerAvailabilityResponseDto"][];
+            /** @description Slots skipped because they overlap existing availability */
+            skipped: number;
+        };
+        RemoveRecurrenceResponseDto: {
+            removed: number;
+            /** @description Reserved slots kept because they are booked */
+            keptReserved: number;
         };
         CreateVolunteerDto: {
             /** Format: date */
@@ -4447,7 +5444,7 @@ export interface components {
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED" | "RESCHEDULED" | "OVERDUE";
             /** Format: date-time */
             scheduledAt: string;
         };
@@ -4483,7 +5480,7 @@ export interface components {
             /** Format: uuid */
             agentId: string;
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             notes?: string;
             /** Format: date-time */
             scheduledAt?: string;
@@ -4496,6 +5493,7 @@ export interface components {
         };
         CreateHistoricalEnrollmentDto: {
             healthPhase: string;
+            contacts: components["schemas"]["EnrollmentContactInputDto"][];
             /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
             currentlyAttendingConsultations?: boolean;
             notAttendingConsultationsNote?: string | null;
@@ -4507,11 +5505,9 @@ export interface components {
             /** Format: uuid */
             companionId?: string;
             companion?: components["schemas"]["CreateCompanionDto"];
-            contacts?: components["schemas"]["EnrollmentContactInputDto"][];
             details?: components["schemas"]["UpsertPatientDetailsDto"];
             insurance?: components["schemas"]["EnrollmentInsuranceDto"];
             sisAffiliation?: components["schemas"]["EnrollmentSisAffiliationDto"];
-            diagnosis?: components["schemas"]["EnrollmentDiagnosisDto"];
             diagnoses?: components["schemas"]["EnrollmentDiagnosisDto"][];
             treatments?: components["schemas"]["EnrollmentTreatmentDto"][];
             medicalAppointments?: components["schemas"]["EnrollmentMedicalAppointmentDto"][];
@@ -4574,7 +5570,7 @@ export interface components {
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
-            /** @description Temporary clientRef of the diagnosis for this treatment; required when diagnoses[] is used and omitted only for the legacy diagnosis field */
+            /** @description Temporary clientRef of the diagnosis for this treatment; required by enrollments */
             diagnosisRef?: string;
             /**
              * Format: uuid
@@ -4620,7 +5616,7 @@ export interface components {
             /** @enum {string} */
             purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             notes?: string;
             /** Format: date */
             scheduledOn?: string;
@@ -4674,7 +5670,7 @@ export interface components {
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
-            /** @description Temporary client reference used to associate enrollment treatments; required for diagnoses[] and omitted only by the legacy diagnosis field */
+            /** @description Temporary client reference used to associate treatments; required by enrollments */
             clientRef?: string;
             /** Format: uuid */
             id?: string;
@@ -4715,7 +5711,7 @@ export interface components {
             hasLatestPrescription?: boolean;
             latestPrescriptionDate?: string;
             medications?: components["schemas"]["CreateTreatmentMedicationDto"][];
-            /** @description Temporary clientRef of the diagnosis for this treatment; required when diagnoses[] is used and omitted only for the legacy diagnosis field */
+            /** @description Temporary clientRef of the diagnosis for this treatment; required by enrollments */
             diagnosisRef?: string;
             /**
              * Format: uuid
@@ -4808,10 +5804,11 @@ export interface components {
         UpdateHistoricalInsuranceDto: {
             insuranceType: string;
             epsProvider?: string;
+            /** @description ESSALUD activation achieved by SEPA. SIS affiliations by SEPA belong to sis-affiliation. */
+            affiliatedViaSepa?: boolean;
             changeReason?: string;
             startDate?: string;
             endDate?: string;
-            affiliatedViaSepa?: boolean;
             /** Format: uuid */
             id?: string;
         };
@@ -4869,7 +5866,7 @@ export interface components {
             /** @enum {string} */
             purpose?: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
             /** @enum {string} */
-            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             notes?: string;
             /** Format: date */
             scheduledOn?: string | null;
@@ -4925,8 +5922,6 @@ export interface components {
             assignedAgentId: string;
             /** Format: uuid */
             createdFromFollowUpId?: string;
-            /** Format: uuid */
-            resultingFollowUpId?: string;
             description: string;
             /** @enum {string} */
             kind?: "GENERIC" | "MEDICAL_APPOINTMENT";
@@ -4948,8 +5943,6 @@ export interface components {
             status?: "PENDING" | "DONE" | "DISMISSED";
             /** Format: uuid */
             createdFromFollowUpId?: string | null;
-            /** Format: uuid */
-            resultingFollowUpId?: string | null;
             medicalAppointment?: components["schemas"]["HistoricalReminderMedicalAppointmentDto"];
         };
         CreateHistoricalMedicalAppointmentDto: {
@@ -5002,7 +5995,7 @@ export interface components {
             /** @enum {string} */
             modality: "CALL" | "VIDEO_CALL";
             /** @enum {string} */
-            status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status: "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED" | "RESCHEDULED" | "OVERDUE";
             /** Format: date */
             scheduledOn: string;
             /** Format: date */
@@ -5041,7 +6034,7 @@ export interface components {
             /** @enum {string} */
             modality?: "CALL" | "VIDEO_CALL";
             /** @enum {string} */
-            status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+            status?: "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED" | "RESCHEDULED" | "OVERDUE";
             /** Format: date */
             scheduledOn?: string;
             /** Format: date */
@@ -5099,6 +6092,234 @@ export interface components {
             dischargedOn?: string | null;
             dischargeReason?: string | null;
         };
+        ChangeLogEntryResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Groups the changes saved together in one operation
+             */
+            changeSetId: string;
+            /** @description Table of the changed record */
+            entityType: string;
+            /** Format: uuid */
+            entityId: string;
+            /** @enum {string} */
+            operation: "INSERT" | "UPDATE" | "DELETE";
+            /** @description Changed column; null when the whole record was created or deleted */
+            field?: string | null;
+            oldValue?: Record<string, never> | null;
+            newValue?: Record<string, never> | null;
+            /** @enum {string} */
+            context: "FOLLOW_UP" | "ADMIN_ADJUSTMENT" | "HISTORICAL_LOAD" | "SYSTEM";
+            /** Format: uuid */
+            followUpId?: string | null;
+            /** Format: uuid */
+            actorUserId?: string | null;
+            actorEmail?: string | null;
+            /** Format: date-time */
+            changedAt: string;
+        };
+        ChangeLogPageResponseDto: {
+            items: components["schemas"]["ChangeLogEntryResponseDto"][];
+            total: number;
+        };
+        PsychooncologyCycleResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @enum {string|null} */
+            closeReason: "COMPLETED" | "ABANDONED" | "NOT_NEEDED" | null;
+            /** Format: uuid */
+            closedById: string | null;
+            notes: string | null;
+            /** @description Base sessions planned for a cycle */
+            baseSessions: number;
+            /** @description Sessions not cancelled nor rescheduled */
+            sessionCount: number;
+            completedSessionCount: number;
+            additionalSessionCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ClosePsychooncologyCycleDto: {
+            /** @enum {string} */
+            reason: "COMPLETED" | "ABANDONED" | "NOT_NEEDED";
+            /**
+             * Format: date-time
+             * @description Defaults to now; cannot be in the future
+             */
+            closedAt?: string;
+            notes?: string;
+        };
+        ReferralHealthCenterDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            department: string;
+            /** @enum {string|null} */
+            careCategory: "I-1" | "I-2" | "I-3" | "I-4" | "II-1" | "II-2" | "II-E" | "III-1" | "III-2" | "III-E" | null;
+            /** @enum {string|null} */
+            careLevel: "I" | "II" | "III" | null;
+        };
+        ReferralResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            originHealthCenter: components["schemas"]["ReferralHealthCenterDto"] | null;
+            destinationHealthCenter: components["schemas"]["ReferralHealthCenterDto"] | null;
+            specialty: string | null;
+            /** @enum {string} */
+            type: "FORMAL" | "SELF";
+            /** @enum {string} */
+            status: "REQUESTED" | "ISSUED" | "ATTENDED" | "REJECTED" | "EXPIRED";
+            /** Format: date */
+            requestedOn: string;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            attendedOn: string | null;
+            viaSepa: boolean;
+            /** Format: uuid */
+            followUpId: string | null;
+            /** Format: uuid */
+            referralSheetDocumentId: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateReferralDto: {
+            /** Format: uuid */
+            originHealthCenterId?: string | null;
+            /** Format: uuid */
+            destinationHealthCenterId?: string | null;
+            /** @description medical_specialty catalog code */
+            specialty?: string | null;
+            /** @enum {string} */
+            type: "FORMAL" | "SELF";
+            /**
+             * @default REQUESTED
+             * @enum {string}
+             */
+            status: "REQUESTED" | "ISSUED" | "ATTENDED" | "REJECTED" | "EXPIRED";
+            /** Format: date */
+            requestedOn: string;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            attendedOn?: string | null;
+            /** @default false */
+            viaSepa: boolean;
+            /** Format: uuid */
+            followUpId?: string | null;
+            /**
+             * Format: uuid
+             * @description Patient document holding the referral sheet
+             */
+            referralSheetDocumentId?: string | null;
+            notes?: string | null;
+        };
+        UpdateReferralDto: {
+            /** Format: uuid */
+            originHealthCenterId?: string | null;
+            /** Format: uuid */
+            destinationHealthCenterId?: string | null;
+            /** @description medical_specialty catalog code */
+            specialty?: string | null;
+            /** @enum {string} */
+            type?: "FORMAL" | "SELF";
+            /**
+             * @default REQUESTED
+             * @enum {string}
+             */
+            status: "REQUESTED" | "ISSUED" | "ATTENDED" | "REJECTED" | "EXPIRED";
+            /** Format: date */
+            requestedOn?: string;
+            /** Format: date */
+            issuedOn?: string | null;
+            /** Format: date */
+            attendedOn?: string | null;
+            /** @default false */
+            viaSepa: boolean;
+            /** Format: uuid */
+            followUpId?: string | null;
+            /**
+             * Format: uuid
+             * @description Patient document holding the referral sheet
+             */
+            referralSheetDocumentId?: string | null;
+            notes?: string | null;
+        };
+        CreateSurveyDto: {
+            /** Format: uuid */
+            patientId: string;
+            /** @enum {string} */
+            type: "ENROLLMENT" | "THREE_MONTHS" | "PSYCHOONCOLOGY" | "TALK";
+            /** @example 5 */
+            rating: number;
+            comment?: string;
+            /** @enum {string} */
+            channel: "CALL" | "WHATSAPP" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FORM";
+            /**
+             * Format: date-time
+             * @description When the patient answered. Defaults to now.
+             */
+            answeredAt?: string;
+            /** Format: uuid */
+            followUpId?: string;
+            /**
+             * Format: uuid
+             * @description Only for PSYCHOONCOLOGY surveys.
+             */
+            psychooncologyAppointmentId?: string;
+        };
+        SurveyResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** @enum {string} */
+            type: "ENROLLMENT" | "THREE_MONTHS" | "PSYCHOONCOLOGY" | "TALK";
+            rating: number;
+            comment: string | null;
+            /** @enum {string} */
+            channel: "CALL" | "WHATSAPP" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FORM";
+            /** Format: date-time */
+            answeredAt: string;
+            /** Format: uuid */
+            followUpId: string | null;
+            /** Format: uuid */
+            psychooncologyAppointmentId: string | null;
+            /** Format: uuid */
+            actorUserId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SurveyScriptResponseDto: {
+            /** @enum {string} */
+            type: "ENROLLMENT" | "THREE_MONTHS" | "PSYCHOONCOLOGY" | "TALK";
+            /** @enum {string|null} */
+            variant: "DIAGNOSED" | "SIGNS_AND_SYMPTOMS" | null;
+            text: string;
+        };
+        PendingThreeMonthSurveyDto: {
+            /** Format: uuid */
+            patientId: string;
+            fullName: string;
+            documentNumber: string | null;
+            primaryPhone: string | null;
+            /** Format: date */
+            enrolledOn: string;
+            daysSinceEnrollment: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -5111,12 +6332,14 @@ export interface operations {
     AlertsController_findAll: {
         parameters: {
             query?: {
-                status?: "ACTIVE" | "RESOLVED";
+                status?: "REPORTED" | "IN_REVIEW" | "RESOLVED";
                 healthCenterId?: string;
                 createdById?: string;
                 severity?: "HIGH" | "MEDIUM" | "LOW";
-                category?: "GENERAL" | "MEDICATION_SHORTAGE" | "APPOINTMENT_DELAY" | "INSURANCE_COVERAGE" | "TRANSPORT" | "ADMINISTRATIVE" | "PSYCHOSOCIAL" | "OTHER";
-                underReview?: boolean;
+                /** @description Code from the alert_category catalog */
+                category?: string;
+                /** @description Alerts reported by this patient (any linked report) */
+                patientId?: string;
                 ticketNumber?: string;
             };
             header?: never;
@@ -5319,7 +6542,7 @@ export interface operations {
                     "application/json": components["schemas"]["AlertResponseDto"];
                 };
             };
-            /** @description A non-nullable field was set to null, or status was set to RESOLVED */
+            /** @description A field was set to null or the category is not in the catalog */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5347,6 +6570,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Alert is already resolved */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     AlertsController_resolve: {
@@ -5358,7 +6588,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveAlertDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -5368,7 +6602,7 @@ export interface operations {
                     "application/json": components["schemas"]["AlertResponseDto"];
                 };
             };
-            /** @description The authenticated user has no agent profile */
+            /** @description resolutionNotes is required */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5382,7 +6616,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator or agent role required */
+            /** @description Foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5398,6 +6632,217 @@ export interface operations {
             };
             /** @description Alert is already resolved */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_derive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeriveAlertDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertResponseDto"];
+                };
+            };
+            /** @description The entity is not in the alert_derivation_entity catalog */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert is already resolved */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_findReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertReportResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_linkReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkAlertReportDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertReportResponseDto"];
+                };
+            };
+            /** @description Neither followUpId nor subjectPatientId was provided */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert, follow-up or patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert is resolved or the follow-up is already linked */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_affectedPatients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertAffectedPatientsResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertsController_notifyAffectedPatients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertNotifyPatientsResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Alert not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5512,7 +6957,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator or agent role required */
+            /** @description Administrator, agent, or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5552,8 +6997,59 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator or foundation role required */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CallCenterController_reassign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignFollowUpsDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReassignFollowUpsResponseDto"];
+                };
+            };
+            /** @description A follow-up is not scheduled or overdue */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agent or follow-up not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5574,10 +7070,18 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
-                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
                 department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
             };
             header?: never;
             path?: never;
@@ -5629,10 +7133,18 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
-                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
                 department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
             };
             header?: never;
             path?: never;
@@ -5684,10 +7196,18 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
-                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
                 department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
             };
             header?: never;
             path?: never;
@@ -5739,10 +7259,18 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
-                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
                 department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
             };
             header?: never;
             path?: never;
@@ -5794,10 +7322,18 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
-                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
                 department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
             };
             header?: never;
             path?: never;
@@ -5849,10 +7385,18 @@ export interface operations {
                 to?: string;
                 /** @description Only America/Lima is supported. */
                 timezone?: "America/Lima";
-                /** @description Denominator for estado indicators. Flujo metrics stay period-scoped. */
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
                 population?: "all_active" | "active_in_period" | "enrolled_in_period";
-                /** @description Optional residence department filter (uppercase catalog value). Applies to demographics and epidemiology. */
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
                 department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
             };
             header?: never;
             path?: never;
@@ -5866,6 +7410,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardEpidemiologyResponseDto"];
+                };
+            };
+            /** @description The indicator period or timezone is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getSatisfaction: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
+                department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSatisfactionResponseDto"];
                 };
             };
             /** @description The indicator period or timezone is invalid */
@@ -6532,7 +8139,7 @@ export interface operations {
             query?: {
                 agentId?: string;
                 patientId?: string;
-                status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+                status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             };
             header?: never;
             path?: never;
@@ -6821,6 +8428,112 @@ export interface operations {
             };
         };
     };
+    FollowUpsController_attempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFollowUpAttemptDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpAttemptResponseDto"];
+                };
+            };
+            /** @description The follow-up is cancelled */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agents can only modify their own follow-ups */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FollowUpsController_reschedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescheduleFollowUpDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpResponseDto"];
+                };
+            };
+            /** @description The follow-up is not overdue or cancelled, was already rescheduled, or the date is in the past */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agents can only modify their own follow-ups */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Follow-up or agent not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     FollowUpsController_reminder: {
         parameters: {
             query?: never;
@@ -6879,6 +8592,8 @@ export interface operations {
             query?: {
                 department?: string;
                 isActive?: "true" | "false";
+                careLevel?: "I" | "II" | "III";
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -7025,7 +8740,7 @@ export interface operations {
         parameters: {
             query?: {
                 includeInactive?: boolean;
-                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type";
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity";
             };
             header?: never;
             path?: never;
@@ -7078,7 +8793,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator, foundation, or agent role required; non-admins limited to open kinds */
+            /** @description Administrator, foundation, or agent role required; agents limited to open kinds */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7116,6 +8831,41 @@ export interface operations {
             };
         };
     };
+    CatalogsController_findMerges: {
+        parameters: {
+            query?: {
+                itemId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogMergeResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     CatalogsController_update: {
         parameters: {
             query?: never;
@@ -7146,7 +8896,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator, foundation, or agent role required; agents limited to open kinds */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7188,6 +8938,58 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Administrator, foundation, or agent role required; agents limited to open kinds */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog item not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CatalogsController_merge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Duplicate item */
+                id: string;
+                /** @description Item to keep */
+                targetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogMergeResponseDto"];
+                };
+            };
+            /** @description Different kinds, same item, system source item, or archived target */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Administrator role required */
             403: {
                 headers: {
@@ -7197,6 +8999,13 @@ export interface operations {
             };
             /** @description Catalog item not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog item was already merged */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8020,7 +9829,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReactivatePatientDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -9582,7 +11395,9 @@ export interface operations {
             query?: {
                 volunteerId?: string;
                 patientId?: string;
-                status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER";
+                cycleId?: string;
+                status?: "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED" | "RESCHEDULED" | "OVERDUE";
+                needsReassignment?: boolean;
             };
             header?: never;
             path?: never;
@@ -9635,7 +11450,7 @@ export interface operations {
                     "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
                 };
             };
-            /** @description The follow-up does not belong to the patient */
+            /** @description Invalid companion, follow-up, or reminder */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -9649,13 +11464,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers can only schedule appointments from their own availability */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description Patient, follow-up, availability slot, or volunteer not found */
             404: {
                 headers: {
@@ -9663,8 +11471,69 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Availability slot is reserved or volunteer is inactive */
+            /** @description Slot reserved or past, volunteer inactive, or base cycle already full */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyAppointmentsController_findNeedingReassignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyAppointmentsController_findUnmanagedNoShows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnmanagedNoShowsResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient is not accessible */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9744,7 +11613,7 @@ export interface operations {
                     "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
                 };
             };
-            /** @description Invalid appointment status transition */
+            /** @description Invalid status transition or reminder */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -9758,21 +11627,21 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Volunteers have limited update permissions */
+            /** @description The role cannot edit some of the given fields */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Appointment or availability slot not found */
+            /** @description Appointment not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Closed appointments cannot be updated */
+            /** @description Cancelled or rescheduled appointments cannot be updated */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9807,14 +11676,165 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Appointment or availability slot not found */
+            /** @description Appointment not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Closed appointments cannot be cancelled */
+            /** @description Only scheduled or overdue appointments can be cancelled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyAppointmentsController_reschedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReschedulePsychooncologyAppointmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Appointment or slot not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Appointment not pending, slot reserved or past, or volunteer inactive */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyAppointmentsController_reminder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentReminderResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Video call session without Zoom link */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyAppointmentsController_markReminderSent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentReminderResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session not pending, or video call without Zoom link */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyAppointmentsController_markNoShowManaged: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyAppointmentResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The session is not a no-show */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9962,6 +11982,139 @@ export interface operations {
             };
         };
     };
+    RemindersController_message: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderMessageResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Reminder not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RemindersController_sendEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponseDto"];
+                };
+            };
+            /** @description Reminder is not pending or the patient has no email */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agents can only send their own reminders */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Reminder not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RemindersController_markSent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponseDto"];
+                };
+            };
+            /** @description Reminder is not pending */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agents can only update their own reminders */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Reminder not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     RemindersController_complete: {
         parameters: {
             query?: never;
@@ -9985,7 +12138,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReminderResponseDto"];
                 };
             };
-            /** @description Reminder is not pending or the follow-up is invalid */
+            /** @description Reminder is not pending */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -10327,6 +12480,109 @@ export interface operations {
             };
         };
     };
+    VolunteerAvailabilityController_createRecurring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volunteerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecurringAvailabilityDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringAvailabilityResponseDto"];
+                };
+            };
+            /** @description Invalid range, days, or hours */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteers can only manage their own availability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteer is inactive */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    VolunteerAvailabilityController_removeRecurrence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volunteerId: string;
+                recurrenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoveRecurrenceResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteers can only manage their own availability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteer or recurrence not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     VolunteerAvailabilityController_remove: {
         parameters: {
             query?: never;
@@ -10400,6 +12656,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Volunteers cannot list volunteers */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     VolunteersController_create: {
@@ -10430,8 +12693,41 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator or foundation role required */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    VolunteersController_findMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolunteerResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteer not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10460,6 +12756,13 @@ export interface operations {
             };
             /** @description JWT missing, invalid, or expired */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteers can only view their own profile */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10504,7 +12807,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -10546,7 +12849,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -10588,7 +12891,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -10630,7 +12933,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Administrator role required */
+            /** @description Administrator or foundation role required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -11290,6 +13593,622 @@ export interface operations {
             };
             /** @description Non-oncological follow-up not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ExportsController_exportPatients: {
+        parameters: {
+            query?: {
+                period?: "month" | "year";
+                year?: number;
+                /** @description Required with period=month and year. Month is one-based. */
+                month?: number;
+                /** @description Inclusive Lima calendar date. Use with to as an alternative to period/year/month. */
+                from?: string;
+                /** @description Exclusive Lima calendar date. Use with from. */
+                to?: string;
+                /** @description Only America/Lima is supported. */
+                timezone?: "America/Lima";
+                /** @description all_active: patients enrolled before the period end whose last activity event at that moment is ACTIVE/REACTIVE. active_in_period: those of all_active with an enrollment, completed follow-up or psycho-oncology session in the period. enrolled_in_period: first enrollment inside the period, whatever their status. */
+                population?: "all_active" | "active_in_period" | "enrolled_in_period";
+                /** @description Residence department of the primary address (catalog value, case and spaces ignored). */
+                department?: string;
+                /** @description Primary health center of the patient. */
+                healthCenterId?: string;
+                /** @description Patients with at least one follow-up handled by this agent. */
+                agentId?: string;
+                /** @description Current health phase of the patient. */
+                healthPhase?: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+                /** @description Current health subcategory of the patient. */
+                healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Excel workbook */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid filters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientChangeLogController_findAll: {
+        parameters: {
+            query?: {
+                /** @description Only changes made in this follow-up */
+                followUpId?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeLogPageResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyCyclesController_findAll: {
+        parameters: {
+            query: {
+                patientId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyCycleResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient is not accessible */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PsychooncologyCyclesController_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosePsychooncologyCycleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PsychooncologyCycleResponseDto"];
+                };
+            };
+            /** @description Invalid closing date */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cycle not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cycle already closed or it still has scheduled sessions */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not assigned to volunteer */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReferralDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator, foundation, or agent role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient, health center, follow-up, or document not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralsController_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not assigned to volunteer */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralsController_findOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not assigned to volunteer */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or referral not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator, foundation, or agent role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Referral not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReferralDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator, foundation, or agent role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Referral or reference not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SurveysController_findAll: {
+        parameters: {
+            query?: {
+                patientId?: string;
+                type?: "ENROLLMENT" | "THREE_MONTHS" | "PSYCHOONCOLOGY" | "TALK";
+                psychooncologyAppointmentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SurveysController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSurveyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseDto"];
+                };
+            };
+            /** @description Invalid survey link */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient, follow-up or session not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SurveysController_script: {
+        parameters: {
+            query: {
+                type: "ENROLLMENT" | "THREE_MONTHS" | "PSYCHOONCOLOGY" | "TALK";
+                /** @description Fills the patient name and, for ENROLLMENT, picks the variant from the health phase. */
+                patientId?: string;
+                /** @description ENROLLMENT only. Overrides the variant taken from the patient. */
+                variant?: "DIAGNOSED" | "SIGNS_AND_SYMPTOMS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyScriptResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SurveysController_pendingThreeMonths: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingThreeMonthSurveyDto"][];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Volunteers cannot see pending surveys */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

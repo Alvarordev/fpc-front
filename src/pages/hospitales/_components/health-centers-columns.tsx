@@ -10,51 +10,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Building2, MapPin, MoreHorizontal, Pencil, Power, PowerOff } from "lucide-react";
 import type { HealthCenter } from "@/api/health-centers";
-import { catalogLabel, useCatalog } from "@/hooks/use-catalog";
-
-const departmentLabels: Record<string, string> = {
-  AMAZONAS: "Amazonas",
-  ANCASH: "Áncash",
-  APURIMAC: "Apurímac",
-  AREQUIPA: "Arequipa",
-  AYACUCHO: "Ayacucho",
-  CAJAMARCA: "Cajamarca",
-  CALLAO: "Callao",
-  CUSCO: "Cusco",
-  HUANCAVELICA: "Huancavelica",
-  HUANUCO: "Huánuco",
-  ICA: "Ica",
-  JUNIN: "Junín",
-  LA_LIBERTAD: "La Libertad",
-  LAMBAYEQUE: "Lambayeque",
-  LIMA: "Lima",
-  LORETO: "Loreto",
-  MADRE_DE_DIOS: "Madre de Dios",
-  MOQUEGUA: "Moquegua",
-  PASCO: "Pasco",
-  PIURA: "Piura",
-  PUNO: "Puno",
-  SAN_MARTIN: "San Martín",
-  TACNA: "Tacna",
-  TUMBES: "Tumbes",
-  UCAYALI: "Ucayali",
-};
+import { DEPARTMENT_LABELS } from "../_utils/departments";
+import { careLevelLabel, institutionLabel } from "@/lib/health-center-labels";
 
 interface HealthCenterColumnsOptions {
   onEdit: (center: HealthCenter) => void;
   onToggleActive: (center: HealthCenter) => void;
-}
-
-function HealthCenterCategoryCell({ code }: { code: string | null }) {
-  const { data: items = [] } = useCatalog("health_center_category");
-  if (!code) {
-    return <span className="text-sm text-muted-foreground">—</span>;
-  }
-  return (
-    <span className="text-sm text-muted-foreground">
-      {catalogLabel(items, code)}
-    </span>
-  );
 }
 
 export function healthCenterColumns({
@@ -86,18 +47,37 @@ export function healthCenterColumns({
         return (
           <span className="text-sm text-muted-foreground flex items-center gap-1">
             <MapPin className="size-3" />
-            {departmentLabels[dep] ?? dep}
+            {DEPARTMENT_LABELS[dep] ?? dep}
           </span>
         );
       },
     },
     {
-      accessorKey: "category",
+      accessorKey: "careCategory",
       header: "Categoría",
-      cell: ({ getValue }) => {
-        const category = getValue() as HealthCenter["category"];
-        return <HealthCenterCategoryCell code={category} />;
-      },
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.careCategory ?? "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "careLevel",
+      header: "Nivel",
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {careLevelLabel(row.original.careLevel) ?? "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "institution",
+      header: "Institución",
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {institutionLabel(row.original.institution) ?? "—"}
+        </span>
+      ),
     },
     {
       accessorKey: "isActive",

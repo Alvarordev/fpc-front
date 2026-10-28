@@ -44,18 +44,22 @@ interface PsicoTabProps {
   patientName: string
 }
 
-const statusLabels: Record<string, string> = {
+const statusLabels: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Completada",
+  NO_SHOW: "No se presentó",
   CANCELLED: "Cancelada",
-  NO_ANSWER: "No contestó",
+  RESCHEDULED: "Reprogramada",
+  OVERDUE: "Vencida",
 }
 
-const statusStyles: Record<string, string> = {
+const statusStyles: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "border-violet-200 bg-violet-50/70 hover:border-violet-300",
-  NO_ANSWER: "border-amber-200 bg-amber-50/70 hover:border-amber-300",
+  NO_SHOW: "border-amber-200 bg-amber-50/70 hover:border-amber-300",
   COMPLETED: "border-emerald-200 bg-emerald-50/60 hover:border-emerald-300",
   CANCELLED: "border-border bg-muted/40 hover:border-muted-foreground/30",
+  RESCHEDULED: "border-violet-200 bg-violet-50/70 hover:border-violet-300",
+  OVERDUE: "border-orange-200 bg-orange-50/70 hover:border-orange-300",
 }
 
 type SessionBeneficiaryTab = "PATIENT" | "COMPANION"
@@ -127,9 +131,10 @@ function PsychoSessionCard({
   const schedulingNotes = textValue(appointment.schedulingNotes)
   const noAnswerNote = textValue(appointment.noAnswerNote)
   const satisfactionComment = textValue(appointment.satisfactionComment)
-  const isScheduled = appointment.status === "SCHEDULED"
-  const isNoAnswer = appointment.status === "NO_ANSWER"
-  const isActionable = isScheduled || isNoAnswer
+  const isScheduled =
+    appointment.status === "SCHEDULED" || appointment.status === "OVERDUE"
+  const isActionable =
+    isScheduled || appointment.status === "NO_SHOW"
   const ModalityIcon = appointment.modality === "CALL" ? PhoneCall : Video
 
   return (
@@ -267,7 +272,7 @@ function PsychoSessionCard({
                     onNoAnswer()
                   }}
                 >
-                  No contestó
+                  No se presentó
                 </Button>
               )}
               {canRecordResult && isScheduled && (
@@ -415,6 +420,22 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
       await createMutation.mutateAsync(payload.input)
       return
     }
+    if (payload.mode === "reschedule") {
+      const created = await psychooncologyAppointmentsApi.reschedule(
+        payload.id,
+        payload.input,
+      )
+      if (payload.update) {
+        await updateMutation.mutateAsync({
+          id: created.id,
+          input: payload.update,
+        })
+        return
+      }
+      await invalidate()
+      toast.success("Sesión reprogramada")
+      return
+    }
     await updateMutation.mutateAsync({
       id: payload.id,
       input: payload.input,
@@ -451,7 +472,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     await updateMutation.mutateAsync({
       id: noAnswerTarget.id,
       input: {
-        status: "NO_ANSWER",
+        status: "NO_SHOW",
         noAnswerNote: noAnswerNote.trim(),
       },
     })
@@ -580,7 +601,10 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         patientName={patientName}
         volunteerName={detailAppointment ? detailVolunteerName : ""}
         onRegister={
-          user?.role === "VOLUNTEER" && detailAppointment?.status === "SCHEDULED"
+          user?.role === "VOLUNTEER" &&
+          (detailAppointment?.status === "SCHEDULED" ||
+            detailAppointment?.status === "OVERDUE" ||
+            detailAppointment?.status === "NO_SHOW")
             ? () => openResult(detailAppointment)
             : undefined
         }
@@ -617,10 +641,10 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Marcar como no contestó</DialogTitle>
+            <DialogTitle>Marcar como no se presentó</DialogTitle>
             <DialogDescription>
-              Registra una nota del intento de contacto. Podrás reprogramar o
-              completar la sesión después.
+              Registra una nota. El voluntario solo puede dejar la sesión como
+              realizada o como no presentada.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">

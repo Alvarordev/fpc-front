@@ -153,8 +153,6 @@ export interface EnrollPatientDetailsRequest {
   usesWoodStove?: boolean | null
   isWorking?: boolean | null
   receivesFinancialSupport?: boolean | null
-  programDropoutReason?: string | null
-  programDropoutDate?: string | null
   referredToSocialWorker?: boolean | null
   hasConadisCard?: boolean | null
   knowsAboutFissal?: boolean | null
@@ -196,15 +194,15 @@ export interface AddDiagnosisRequest {
 }
 
 export type TreatmentSituation =
-  | "EN_CURSO"
-  | "PENDIENTE_DE_INICIO"
-  | "INTERRUMPIDO"
-  | "FINALIZADO"
-  | "SEARCHING"
-  | "ABANDONED"
-  | "DECEASED_DURING_TREATMENT"
-  | "NOT_APPLICABLE"
-  | "REMISSION"
+  | "EN_PROCESO"
+  | "EN_ESPERA"
+  | "SUSPENDIDO"
+  | "CULMINADO"
+  | "EN_BUSQUEDA"
+  | "ABANDONADO"
+  | "FALLECIDO"
+  | "NO_APLICA"
+  | "REMISION"
 
 export type CareProgram = "COPHOES" | "PADOMI"
 

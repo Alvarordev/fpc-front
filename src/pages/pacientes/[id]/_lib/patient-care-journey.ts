@@ -25,7 +25,8 @@ export type PatientCareJourneyEvent = {
   department: string | null
   departmentCode: string | null
   departmentLabel: string | null
-  category: string | null
+  careCategory: string | null
+  careLevel: string | null
   specialty: string | null
   treatmentType: string | null
   appointmentStatus: PatientMedicalAppointment["status"] | null
@@ -57,6 +58,21 @@ type JourneyPatient = Pick<
   PatientDetailsResponse,
   "diagnoses" | "treatments" | "medicalAppointments"
 >
+
+export function collectJourneyHealthCenterIds(patient: JourneyPatient): string[] {
+  const ids = new Set<string>()
+  for (const diagnosis of patient.diagnoses) {
+    if (diagnosis.healthCenterId) ids.add(diagnosis.healthCenterId)
+  }
+  for (const treatment of patient.treatments) {
+    if (treatment.sourceHealthCenterId) ids.add(treatment.sourceHealthCenterId)
+    if (treatment.receivingHealthCenterId) ids.add(treatment.receivingHealthCenterId)
+  }
+  for (const appointment of patient.medicalAppointments) {
+    if (appointment.healthCenterId) ids.add(appointment.healthCenterId)
+  }
+  return [...ids]
+}
 
 export function buildPatientCareJourney(
   patient: JourneyPatient,
@@ -238,7 +254,8 @@ function toEvent({
     department,
     departmentCode: departmentCodeFromValue(department),
     departmentLabel: departmentLabelFromValue(department),
-    category: center?.category ?? null,
+    careCategory: center?.careCategory ?? null,
+    careLevel: center?.careLevel ?? null,
     specialty: specialty ?? null,
     treatmentType: treatmentType ?? null,
     appointmentStatus: appointmentStatus ?? null,

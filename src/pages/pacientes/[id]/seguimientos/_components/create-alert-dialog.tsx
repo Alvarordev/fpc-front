@@ -1,7 +1,8 @@
+import { CatalogSelect } from "@/components/catalog-select"
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useQuery } from "@tanstack/react-query"
 import {
   Dialog,
   DialogContent,
@@ -20,40 +21,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { healthCentersApi } from "@/api/health-centers"
-
 const alertSchema = z.object({
   healthCenterId: z.string().min(1, "Seleccioná un establecimiento"),
   title: z.string().min(3, "Título requerido"),
   description: z.string().min(5, "Detallá el problema reportado"),
   severity: z.enum(["HIGH", "MEDIUM", "LOW"]),
-  category: z.enum([
-    "GENERAL",
-    "MEDICATION_SHORTAGE",
-    "APPOINTMENT_DELAY",
-    "INSURANCE_COVERAGE",
-    "TRANSPORT",
-    "ADMINISTRATIVE",
-    "PSYCHOSOCIAL",
-    "OTHER",
-  ]),
+  category: z.string().min(1, "Seleccioná una categoría"),
 })
 
 const SEVERITY_OPTIONS = [
   { value: "HIGH", label: "Alta" },
   { value: "MEDIUM", label: "Media" },
   { value: "LOW", label: "Baja" },
-] as const
-
-const CATEGORY_OPTIONS = [
-  { value: "GENERAL", label: "General" },
-  { value: "MEDICATION_SHORTAGE", label: "Falta de medicamentos" },
-  { value: "APPOINTMENT_DELAY", label: "Demora en una cita" },
-  { value: "INSURANCE_COVERAGE", label: "Cobertura del seguro" },
-  { value: "TRANSPORT", label: "Transporte" },
-  { value: "ADMINISTRATIVE", label: "Administrativo" },
-  { value: "PSYCHOSOCIAL", label: "Psicosocial" },
-  { value: "OTHER", label: "Otro" },
 ] as const
 
 export type CreateAlertFormValues = z.infer<typeof alertSchema>
@@ -66,13 +45,6 @@ interface CreateAlertDialogProps {
 }
 
 export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: CreateAlertDialogProps) {
-  const { data: hospitals = [] } = useQuery({
-    queryKey: ["healthCenters"],
-    queryFn: () => healthCentersApi.list(),
-    staleTime: 5 * 60 * 1000,
-    enabled: open,
-  })
-
   const form = useForm<CreateAlertFormValues>({
     resolver: zodResolver(alertSchema),
     defaultValues: {
@@ -80,7 +52,7 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
       title: "",
       description: "",
       severity: "HIGH",
-      category: "GENERAL",
+      category: "",
     },
   })
 
@@ -110,22 +82,12 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
               name="healthCenterId"
               control={form.control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => field.onChange(v ?? "")}>
-                  <SelectTrigger className="w-full">
-                    {field.value ? (
-                      hospitals.find((h) => h.id === field.value)?.name
-                    ) : (
-                      <SelectValue placeholder="Seleccionar establecimiento" />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {hospitals.map((h) => (
-                      <SelectItem key={h.id} value={h.id}>
-                        {h.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <HealthCenterCombobox
+                      className="w-full"
+                      value={field.value}
+                      onValueChange={(v) => field.onChange(v ?? "")}
+                      placeholder="Seleccionar establecimiento"
+                    />
               )}
             />
             {form.formState.errors.healthCenterId && (
@@ -174,12 +136,17 @@ export function CreateAlertDialog({ open, onOpenChange, isPending, onSubmit }: C
                 name="category"
                 control={form.control}
                 render={({ field }) => (
-                  <Select items={CATEGORY_OPTIONS} value={field.value} onValueChange={(value) => field.onChange(value)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>{CATEGORY_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <CatalogSelect
+                    kind="alert_category"
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value ?? "")}
+                    placeholder="Seleccionar categoría"
+                  />
                 )}
               />
+              {form.formState.errors.category && (
+                <p className="text-destructive text-xs">{form.formState.errors.category.message}</p>
+              )}
             </div>
           </div>
           <DialogFooter>

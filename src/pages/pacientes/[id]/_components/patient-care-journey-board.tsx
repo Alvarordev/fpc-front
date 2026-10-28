@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Building2, Calendar } from "lucide-react"
-import { healthCentersApi } from "@/api/health-centers"
+import { healthCentersApi, type HealthCenter } from "@/api/health-centers"
 import type {
   PatientDetailsResponse,
   PatientMedicalAppointment,
 } from "@/api/patients"
+import { careLevelLabel } from "@/lib/health-center-labels"
+import { collectJourneyHealthCenterIds } from "../_lib/patient-care-journey"
 import { CatalogValue } from "@/components/catalog-select"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -49,9 +51,25 @@ export function PatientCareJourneyBoard({
 }: {
   patient: PatientDetailsResponse
 }) {
+  const healthCenterIds = useMemo(
+    () => collectJourneyHealthCenterIds(patient),
+    [patient],
+  )
   const { data: healthCenters = [], isLoading } = useQuery({
-    queryKey: ["healthCenters"],
-    queryFn: () => healthCentersApi.list(),
+    queryKey: ["health-centers", "journey", healthCenterIds],
+    queryFn: async () => {
+      const results = await Promise.all(
+        healthCenterIds.map(async (id) => {
+          try {
+            return await healthCentersApi.getById(id)
+          } catch {
+            return null
+          }
+        }),
+      )
+      return results.filter((center): center is HealthCenter => center !== null)
+    },
+    enabled: healthCenterIds.length > 0,
     staleTime: 5 * 60 * 1000,
   })
   const [highlightedCode, setHighlightedCode] = useState<string | null>(null)
@@ -165,13 +183,10 @@ function JourneyEventRow({
         <span>{event.departmentLabel ?? "Departamento no registrado"}</span>
         <span aria-hidden>·</span>
         <span className="text-foreground font-medium">
-          {event.category ? (
+          {event.careLevel || event.careCategory ? (
             <>
-              Nivel{" "}
-              <CatalogValue
-                kind="health_center_category"
-                code={event.category}
-              />
+              {careLevelLabel(event.careLevel) ?? "Nivel no registrado"}
+              {event.careCategory ? ` · ${event.careCategory}` : ""}
             </>
           ) : (
             "Nivel no registrado"

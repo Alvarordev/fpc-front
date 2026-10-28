@@ -9,27 +9,41 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DEPARTMENTS } from "../_utils/departments";
-import { catalogSelectItems, useCatalog } from "@/hooks/use-catalog";
+import { CARE_LEVELS, CARE_LEVEL_LABELS } from "@/lib/health-center-labels";
 
 interface HealthCentersToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
   department: string;
   onDepartmentChange: (value: string) => void;
-  category: string;
-  onCategoryChange: (value: string) => void;
+  careLevel: string;
+  onCareLevelChange: (value: string) => void;
 }
+
+const departmentItems = [
+  { value: "all", label: "Todos los departamentos" },
+  ...DEPARTMENTS.map((department) => ({
+    value: department.value,
+    label: department.label,
+  })),
+];
+
+const careLevelItems = [
+  { value: "all", label: "Todos los niveles" },
+  ...CARE_LEVELS.map((level) => ({
+    value: level,
+    label: CARE_LEVEL_LABELS[level],
+  })),
+];
 
 export function HealthCentersToolbar({
   search,
   onSearchChange,
   department,
   onDepartmentChange,
-  category,
-  onCategoryChange,
+  careLevel,
+  onCareLevelChange,
 }: HealthCentersToolbarProps) {
-  const { data: categories = [] } = useCatalog("health_center_category");
-  const categoryItems = catalogSelectItems(categories);
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative max-w-xs">
@@ -43,7 +57,7 @@ export function HealthCentersToolbar({
       </div>
 
       <Select
-        items={[{ value: "all", label: "Todos los departamentos" }, ...DEPARTMENTS.map((dep) => ({ value: dep.label, label: dep.label }))]}
+        items={departmentItems}
         value={department}
         onValueChange={(v) => onDepartmentChange(v ?? "all")}
       >
@@ -54,32 +68,7 @@ export function HealthCentersToolbar({
           </div>
         </SelectTrigger>
         <SelectContent className="max-h-72">
-          <SelectItem value="all">Todos los departamentos</SelectItem>
-          {DEPARTMENTS.map((dep) => (
-            <SelectItem key={dep.value} value={dep.label}>
-              {dep.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        items={[
-          { value: "all", label: "Todas las categorías" },
-          ...categoryItems,
-        ]}
-        value={category}
-        onValueChange={(v) => onCategoryChange(v ?? "all")}
-      >
-        <SelectTrigger className="h-8 w-52 text-sm bg-background">
-          <div className="flex items-center gap-2">
-            <Layers className="size-3 text-muted-foreground shrink-0" />
-            <SelectValue placeholder="Todas las categorías" />
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas las categorías</SelectItem>
-          {categoryItems.map((item) => (
+          {departmentItems.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               {item.label}
             </SelectItem>
@@ -87,14 +76,35 @@ export function HealthCentersToolbar({
         </SelectContent>
       </Select>
 
-      {(department !== "all" || category !== "all") && (
+      <Select
+        items={careLevelItems}
+        value={careLevel}
+        onValueChange={(v) => onCareLevelChange(v ?? "all")}
+      >
+        <SelectTrigger className="h-8 w-40 text-sm bg-background">
+          <div className="flex items-center gap-2">
+            <Layers className="size-3 text-muted-foreground shrink-0" />
+            <SelectValue placeholder="Todos los niveles" />
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          {careLevelItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {(department !== "all" || careLevel !== "all" || search.trim()) && (
         <Button
           variant="ghost"
           size="sm"
           className="h-8 px-2 text-xs text-muted-foreground"
           onClick={() => {
             onDepartmentChange("all");
-            onCategoryChange("all");
+            onCareLevelChange("all");
+            onSearchChange("");
           }}
         >
           <X className="size-3 mr-1" />

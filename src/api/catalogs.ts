@@ -48,6 +48,8 @@ export const CATALOG_KIND_LABELS: Record<CatalogKind, string> = {
   surgical_procedure: "Procedimiento quirúrgico",
   location_share_status: "Ubicación web de la vivienda",
   temporary_housing_type: "Tipo de vivienda provisional",
+  alert_category: "Categoría de alerta",
+  alert_derivation_entity: "Entidad de derivación de alerta",
 }
 
 /** Labels as they appear on enrollment / clinical forms, for error copy. */

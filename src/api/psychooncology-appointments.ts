@@ -3,6 +3,7 @@ import { api } from "./client"
 
 export type CreatePsychooncologyAppointmentInput = components["schemas"]["CreatePsychooncologyAppointmentDto"]
 export type UpdatePsychooncologyAppointmentInput = components["schemas"]["UpdatePsychooncologyAppointmentDto"]
+export type ReschedulePsychooncologyAppointmentInput = components["schemas"]["ReschedulePsychooncologyAppointmentDto"]
 export type PsychooncologyAppointment = components["schemas"]["PsychooncologyAppointmentResponseDto"]
 export type PsychooncologyAppointmentFilters = NonNullable<operations["PsychooncologyAppointmentsController_findAll"]["parameters"]["query"]>
 
@@ -38,6 +39,19 @@ export const psychooncologyAppointmentsApi = {
       params: { path: { id } },
       body: input,
     })
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
+    return data
+  },
+
+  async reschedule(
+    id: string,
+    input: ReschedulePsychooncologyAppointmentInput,
+  ): Promise<PsychooncologyAppointment> {
+    const { data, response } = await api.POST(
+      "/psychooncology-appointments/{id}/reschedule",
+      { params: { path: { id } }, body: input },
+    )
 
     if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
     return data

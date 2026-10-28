@@ -84,10 +84,10 @@ const STATUS_LABELS: Record<PatientResponse["status"], string> = {
 }
 
 const DEACTIVATION_REASON_LABELS: Record<string, string> = {
-  DECEASED: "Fallecimiento",
-  WITHDREW_CONSENT: "Retiró su consentimiento",
-  LOST_CONTACT: "Pérdida de contacto",
-  TRANSFERRED_OUT: "Traslado",
+  VOLUNTARY: "Retiro voluntario",
+  UNLOCATABLE: "No ubicable",
+  DECEASED: "Fallecido",
+  TRANSFERRED_OUT: "Transferido",
   OTHER: "Otro",
 }
 

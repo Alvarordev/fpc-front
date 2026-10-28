@@ -22,15 +22,21 @@ const STATUS_STYLES: Record<AppointmentStatus, string> = {
     "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
   CANCELLED:
     "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
-  NO_ANSWER:
+  NO_SHOW:
     "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+  RESCHEDULED:
+    "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800",
+  OVERDUE:
+    "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800",
 };
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Completada",
   CANCELLED: "Cancelada",
-  NO_ANSWER: "No contestó",
+  NO_SHOW: "No se presentó",
+  RESCHEDULED: "Reprogramada",
+  OVERDUE: "Vencida",
 };
 
 // --- Helpers ---
@@ -83,7 +89,11 @@ export function VolunteerPatientsContent() {
 
   // Only SCHEDULED or COMPLETED count for "mis pacientes"
   const relevantAppointments = appointments.filter(
-    (a) => a.status === "SCHEDULED" || a.status === "COMPLETED",
+    (a) =>
+      a.status === "SCHEDULED" ||
+      a.status === "COMPLETED" ||
+      a.status === "OVERDUE" ||
+      a.status === "NO_SHOW",
   );
 
   // Extract unique patient IDs
@@ -119,7 +129,7 @@ export function VolunteerPatientsContent() {
       (a): a is DatedPsychooncologyAppointment =>
         a.scheduledAt !== null &&
         a.scheduledAt.slice(0, 10) >= TODAY &&
-        a.status === "SCHEDULED",
+        (a.status === "SCHEDULED" || a.status === "OVERDUE"),
     )
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
 
@@ -246,7 +256,7 @@ export function VolunteerPatientsContent() {
                   (a): a is DatedPsychooncologyAppointment =>
                     a.scheduledAt !== null &&
                     a.scheduledAt.slice(0, 10) >= TODAY &&
-                    a.status === "SCHEDULED",
+                    (a.status === "SCHEDULED" || a.status === "OVERDUE"),
                 )
                 .sort((a, b) =>
                   a.scheduledAt.localeCompare(b.scheduledAt),

@@ -214,14 +214,14 @@ export function buildEnrollmentPayload({
     const treatmentEndDate = value(treatment.endDate)
     const isReferred = treatment.isReferred ?? false
     if (
-      treatment.treatmentSituation === "ABANDONED" &&
+      treatment.treatmentSituation === "ABANDONADO" &&
       !value(treatment.treatmentAbandonmentReason)
     )
       throw new Error(
         `Indica el motivo de abandono del tratamiento ${index + 1}`,
       )
     if (
-      treatment.treatmentSituation === "INTERRUMPIDO" &&
+      treatment.treatmentSituation === "SUSPENDIDO" &&
       !treatment.interruptionReason
     )
       throw new Error(
@@ -304,14 +304,14 @@ export function buildEnrollmentPayload({
         ? { chemotherapyRoute: value(treatment.chemotherapyRoute) }
         : {}),
       treatmentSituation: treatment.treatmentSituation ?? undefined,
-      ...(treatment.treatmentSituation === "ABANDONED"
+      ...(treatment.treatmentSituation === "ABANDONADO"
         ? {
             treatmentAbandonmentReason: value(
               treatment.treatmentAbandonmentReason,
             ),
           }
         : {}),
-      ...(treatment.treatmentSituation === "INTERRUMPIDO"
+      ...(treatment.treatmentSituation === "SUSPENDIDO"
         ? {
             interruptionReason: treatment.interruptionReason,
             ...(treatment.interruptionReason === "OTHER"

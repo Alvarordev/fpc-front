@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { alertsApi, type Alert, type CreateAlertInput } from "@/api/alerts";
 
-type AlertFilter = "ACTIVE" | "RESOLVED" | "all";
+type AlertFilter = Alert["status"] | "all";
 
 export function useAlerts(filter: AlertFilter = "all") {
   return useQuery<Alert[]>({
@@ -24,7 +24,13 @@ export function useCreateAlert() {
 export function useResolveAlert() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => alertsApi.resolve(id),
+    mutationFn: ({
+      id,
+      resolutionNotes,
+    }: {
+      id: string;
+      resolutionNotes: string;
+    }) => alertsApi.resolve(id, resolutionNotes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },

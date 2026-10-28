@@ -62,28 +62,28 @@ function treatmentStatus(treatment: PatientTreatment) {
   if (treatment.treatmentSituation) {
     return treatment.treatmentSituation
   }
-  return treatment.isCurrent ? "EN_CURSO" : "FINALIZADO"
+  return treatment.isCurrent ? "EN_PROCESO" : "CULMINADO"
 }
 
 function statusClass(status: ReturnType<typeof treatmentStatus>) {
   switch (status) {
-    case "EN_CURSO":
+    case "EN_PROCESO":
       return "border-emerald-200 bg-emerald-50 text-emerald-700"
-    case "PENDIENTE_DE_INICIO":
+    case "EN_ESPERA":
       return "border-amber-200 bg-amber-50 text-amber-700"
-    case "INTERRUMPIDO":
+    case "SUSPENDIDO":
       return "border-orange-200 bg-orange-50 text-orange-700"
-    case "FINALIZADO":
+    case "CULMINADO":
       return "border-border bg-muted text-muted-foreground"
-    case "SEARCHING":
+    case "EN_BUSQUEDA":
       return "border-sky-200 bg-sky-50 text-sky-700"
-    case "ABANDONED":
+    case "ABANDONADO":
       return "border-red-200 bg-red-50 text-red-700"
-    case "DECEASED_DURING_TREATMENT":
+    case "FALLECIDO":
       return "border-slate-200 bg-slate-50 text-slate-700"
-    case "NOT_APPLICABLE":
+    case "NO_APLICA":
       return "border-border bg-muted text-muted-foreground"
-    case "REMISSION":
+    case "REMISION":
       return "border-violet-200 bg-violet-50 text-violet-700"
     default:
       return "border-border bg-muted text-muted-foreground"

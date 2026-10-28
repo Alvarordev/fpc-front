@@ -18,6 +18,7 @@ import {
   followUpTypeLabels,
   formatFollowUpTitle,
 } from "@/lib/follow-up-labels"
+import { psychooncologyStatusLabels } from "@/lib/psychooncology-labels"
 import { FollowUpOutcomes } from "./follow-up-outcomes"
 
 const reminderStatusLabels: Record<string, string> = {
@@ -105,7 +106,14 @@ function getStatusTone(event: PatientTimelineEvent): StatusTone {
   if (event.status === "COMPLETED" || event.status === "DONE") {
     return "completed"
   }
-  if (event.status === "NO_ANSWER") return "noAnswer"
+  if (
+    event.status === "NO_ANSWER" ||
+    event.status === "NO_SHOW" ||
+    event.status === "OVERDUE"
+  ) {
+    return "noAnswer"
+  }
+  if (event.status === "RESCHEDULED") return "scheduled"
   if (event.status === "CANCELLED") return "cancelled"
   if (event.status === "DISMISSED") return "dismissed"
   return "neutral"
@@ -140,7 +148,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       ? reminderStatusLabels[event.status]
       : isSocialNote
         ? "Nota clínica"
-        : followUpStatusLabels[event.status]
+        : psychooncologyStatusLabels[event.status]
   const detail = isFollowUp
     ? `Canal · ${followUpTypeLabels[event.type]}`
     : isReminder

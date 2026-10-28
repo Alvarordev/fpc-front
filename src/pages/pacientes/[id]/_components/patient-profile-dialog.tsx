@@ -1,6 +1,7 @@
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { useEffect } from "react"
 import { useForm, useWatch } from "react-hook-form"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   patientsApi,
@@ -10,7 +11,6 @@ import {
   type PatientHealthSubcategory,
   type UpdatePatientInput,
 } from "@/api/patients"
-import { healthCentersApi } from "@/api/health-centers"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -184,12 +184,6 @@ export function PatientProfileDialog({
 }: PatientProfileDialogProps) {
   const queryClient = useQueryClient()
   const canEditDetails = patient.role === "PATIENT"
-  const { data: healthCenters = [] } = useQuery({
-    queryKey: ["health-centers"],
-    queryFn: () => healthCentersApi.list(),
-    enabled: open && canEditDetails,
-    staleTime: 5 * 60 * 1000,
-  })
   const {
     control,
     register,
@@ -231,17 +225,6 @@ export function PatientProfileDialog({
       ? "No menciona"
       : DEPARTMENT_LABELS[birthDepartment],
   )
-  const healthCenterItems = withCurrentOption(
-    healthCenters
-      .filter((center) => center.isActive)
-      .map((center) => ({
-        value: center.id,
-        label: `${center.name} - ${DEPARTMENT_LABELS[center.department] ?? center.department}`,
-      })),
-    primaryHealthCenterId,
-    patient.details?.primaryHealthCenterName ?? "Centro actual",
-  )
-
   useEffect(() => {
     if (open) reset(formValuesFromPatient(patient))
   }, [open, patient, reset])
@@ -538,24 +521,13 @@ export function PatientProfileDialog({
                 )}
                 <div className="space-y-2">
                   <Label>Centro de salud principal</Label>
-                  <Select
-                    items={healthCenterItems}
-                    value={primaryHealthCenterId}
-                    onValueChange={(value) =>
-                      setValue("primaryHealthCenterId", value ?? "")
-                    }
-                  >
-                    <SelectTrigger id="patient-primary-health-center">
-                      <SelectValue placeholder="Seleccionar centro" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {healthCenterItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <HealthCenterCombobox
+                      className="w-full"
+                      value={primaryHealthCenterId}
+                      onValueChange={(value) =>
+                      setValue("primaryHealthCenterId", value ?? "")}
+                      placeholder="Seleccionar centro"
+                    />
                 </div>
                 <div className="space-y-2">
                   <Label>Fase de salud</Label>

@@ -7,8 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
-import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers";
+import { HealthCenterCombobox } from "@/components/health-center-combobox";
 import { useUpdateMedicalAppointment } from "../_hooks/use-medical-appointments";
 import type { MedicalAppointment, UpdateMedicalAppointmentInput } from "@/api/medical-appointments";
 import { Calendar, Clock, Stethoscope, Building2, FileCheck, Loader2 } from "lucide-react";
@@ -31,7 +30,6 @@ export function EditAppointmentDialog({
   open,
   onOpenChange,
 }: EditAppointmentDialogProps) {
-  const { data: healthCenters = [] } = useHealthCenters();
   const updateAppointmentMutation = useUpdateMedicalAppointment();
 
   const [healthCenterId, setHealthCenterId] = useState(() => appointment?.healthCenterId || "");
@@ -50,12 +48,6 @@ export function EditAppointmentDialog({
   );
   const [changeReason, setChangeReason] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-
-  const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({
-    value: hc.id,
-    label: hc.name,
-    sublabel: hc.department,
-  }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,12 +128,10 @@ export function EditAppointmentDialog({
               <Building2 className="size-3.5 text-muted-foreground" />
               Hospital / Centro de Salud
             </label>
-            <SearchableSelect
-              options={healthCenterOptions}
+            <HealthCenterCombobox
               value={healthCenterId}
-              onChange={setHealthCenterId}
+              onValueChange={(id) => setHealthCenterId(id ?? "")}
               placeholder="Buscar hospital o clínica..."
-              searchPlaceholder="Escribe el nombre del hospital..."
             />
           </div>
 

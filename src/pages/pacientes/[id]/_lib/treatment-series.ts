@@ -5,11 +5,11 @@ import type { PatientTreatment } from "@/api/patients"
  * of these goes to "Historial de tratamientos" instead of the active list.
  */
 const CLOSED_TREATMENT_SITUATIONS = new Set([
-  "FINALIZADO",
-  "ABANDONED",
-  "DECEASED_DURING_TREATMENT",
-  "NOT_APPLICABLE",
-  "REMISSION",
+  "CULMINADO",
+  "ABANDONADO",
+  "FALLECIDO",
+  "NO_APLICA",
+  "REMISION",
 ])
 
 export type TreatmentSeries = {

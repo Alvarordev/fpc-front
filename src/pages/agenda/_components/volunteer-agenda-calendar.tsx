@@ -46,7 +46,9 @@ const statusLabels: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Completada",
   CANCELLED: "Cancelada",
-  NO_ANSWER: "No contestó",
+  NO_SHOW: "No se presentó",
+  RESCHEDULED: "Reprogramada",
+  OVERDUE: "Vencida",
 }
 
 const statusStyles: Record<PsychooncologyAppointment["status"], string> = {
@@ -55,7 +57,10 @@ const statusStyles: Record<PsychooncologyAppointment["status"], string> = {
   COMPLETED:
     "border-emerald-200 bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
   CANCELLED: "border-border bg-muted/60 text-muted-foreground hover:bg-muted",
-  NO_ANSWER: "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100",
+  NO_SHOW: "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100",
+  RESCHEDULED:
+    "border-violet-200 bg-violet-50 text-violet-950 hover:bg-violet-100",
+  OVERDUE: "border-orange-200 bg-orange-50 text-orange-950 hover:bg-orange-100",
 }
 
 export function VolunteerAgendaCalendar({

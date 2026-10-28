@@ -186,7 +186,7 @@ function buildTreatment(
         : undefined,
     treatmentSituation: draft.treatmentSituation,
     treatmentAbandonmentReason:
-      draft.treatmentSituation === "ABANDONED"
+      draft.treatmentSituation === "ABANDONADO"
         ? draft.treatmentAbandonmentReason
         : undefined,
     interruptionReason: draft.interruptionReason,

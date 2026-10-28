@@ -28,12 +28,21 @@ import type {
   HealthCenter,
 } from "@/api/health-centers"
 import { DEPARTMENTS } from "../_utils/departments"
-import { CatalogSelect } from "@/components/catalog-select"
+import {
+  CARE_CATEGORIES,
+  HEALTH_CENTER_INSTITUTIONS,
+  HEALTH_CENTER_INSTITUTION_LABELS,
+  type CareCategory,
+  type HealthCenterInstitution,
+} from "@/lib/health-center-labels"
 
 const schema = z.object({
   name: z.string().min(1, "Requerido"),
   department: z.string().min(1, "Requerido"),
-  category: z.string().min(1, "Requerido"),
+  careCategory: z.string().min(1, "Requerido"),
+  institution: z.string().optional(),
+  renipressCode: z.string().optional(),
+  ubigeoDistrictCode: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -67,11 +76,19 @@ export function CreateHealthCenterDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", department: "", category: "" },
+    defaultValues: {
+      name: "",
+      department: "",
+      careCategory: "",
+      institution: "",
+      renipressCode: "",
+      ubigeoDistrictCode: "",
+    },
   })
 
   const department = watch("department")
-  const category = watch("category")
+  const careCategory = watch("careCategory")
+  const institution = watch("institution")
 
   function handleClose() {
     onOpenChange(false)
@@ -84,7 +101,12 @@ export function CreateHealthCenterDialog({
       const created = await createMutation.mutateAsync({
         name,
         department: values.department as CreateHealthCenterInput["department"],
-        category: values.category as CreateHealthCenterInput["category"],
+        careCategory: values.careCategory as CareCategory,
+        institution: (values.institution || undefined) as
+          | HealthCenterInstitution
+          | undefined,
+        renipressCode: values.renipressCode?.trim() || undefined,
+        ubigeoDistrictCode: values.ubigeoDistrictCode?.trim() || undefined,
       })
       onCreated?.(created)
       toast.success(`"${name}" creado`)
@@ -157,19 +179,65 @@ export function CreateHealthCenterDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Categoría</Label>
-            <CatalogSelect
-              kind="health_center_category"
-              allowCreate={false}
-              value={category || null}
-              onValueChange={(v) => setValue("category", v ?? "")}
-              placeholder="Seleccionar categoría..."
-            />
-            {errors.category && (
+            <Label>Categoría de atención</Label>
+            <Select
+              items={CARE_CATEGORIES.map((category) => ({
+                value: category,
+                label: category,
+              }))}
+              value={careCategory}
+              onValueChange={(v) => setValue("careCategory", v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar categoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                {CARE_CATEGORIES.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.careCategory && (
               <p className="text-destructive text-xs">
-                {errors.category.message}
+                {errors.careCategory.message}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Institución</Label>
+            <Select
+              items={HEALTH_CENTER_INSTITUTIONS.map((item) => ({
+                value: item,
+                label: HEALTH_CENTER_INSTITUTION_LABELS[item],
+              }))}
+              value={institution || null}
+              onValueChange={(v) => setValue("institution", v ?? "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar institución..." />
+              </SelectTrigger>
+              <SelectContent>
+                {HEALTH_CENTER_INSTITUTIONS.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {HEALTH_CENTER_INSTITUTION_LABELS[item]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Código RENIPRESS</Label>
+              <Input {...register("renipressCode")} placeholder="Opcional" />
+            </div>
+            <div className="space-y-2">
+              <Label>Ubigeo del distrito</Label>
+              <Input {...register("ubigeoDistrictCode")} placeholder="Opcional" />
+            </div>
           </div>
 
           <DialogFooter className="pt-2">
@@ -178,7 +246,7 @@ export function CreateHealthCenterDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!department || !category || createMutation.isPending}
+              disabled={!department || !careCategory || createMutation.isPending}
             >
               {createMutation.isPending ? "Guardando..." : "Guardar"}
             </Button>

@@ -2,14 +2,10 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
 import { Building2, Plus, Stethoscope } from "lucide-react"
-import {
-  SearchableSelect,
-  type SearchableOption,
-} from "@/components/ui/searchable-select"
 import type { CatalogItem } from "@/api/catalogs"
 import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { catalogLabel } from "@/hooks/use-catalog"
-import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers"
 
 export interface MedicalAppointmentFieldsValue {
   specialty: string
@@ -44,12 +40,6 @@ export function MedicalAppointmentFields({
   disabled = false,
 }: MedicalAppointmentFieldsProps) {
   const [createHealthCenterOpen, setCreateHealthCenterOpen] = useState(false)
-  const { data: healthCenters = [] } = useHealthCenters()
-  const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({
-    value: hc.id,
-    label: hc.name,
-    sublabel: hc.department,
-  }))
 
   return (
     <div className="space-y-3">
@@ -81,15 +71,13 @@ export function MedicalAppointmentFields({
           Establecimiento de salud
         </label>
         <div className="flex items-start gap-2">
-          <SearchableSelect
+          <HealthCenterCombobox
             className="min-w-0 flex-1"
-            options={healthCenterOptions}
             value={value.healthCenterId}
-            onChange={(healthCenterId) =>
-              onChange({ ...value, healthCenterId })
+            onValueChange={(healthCenterId) =>
+              onChange({ ...value, healthCenterId: healthCenterId ?? "" })
             }
             placeholder="Buscar hospital o clínica..."
-            searchPlaceholder="Escribe el nombre del hospital..."
             disabled={disabled}
           />
           <Button

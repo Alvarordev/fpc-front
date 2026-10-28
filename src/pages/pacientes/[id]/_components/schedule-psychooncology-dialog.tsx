@@ -25,6 +25,7 @@ import { patientsApi, type CompanionPatient } from "@/api/patients"
 import type {
   CreatePsychooncologyAppointmentInput,
   PsychooncologyAppointment,
+  ReschedulePsychooncologyAppointmentInput,
   UpdatePsychooncologyAppointmentInput,
 } from "@/api/psychooncology-appointments"
 import { isAvailabilitySlotInFuture } from "@/lib/calendar-helpers"
@@ -34,6 +35,12 @@ import { relationshipSelectOptions } from "../_lib/clinical-labels"
 export type SchedulePsychooncologySubmitInput =
   | { mode: "create"; input: CreatePsychooncologyAppointmentInput }
   | { mode: "update"; id: string; input: UpdatePsychooncologyAppointmentInput }
+  | {
+      mode: "reschedule"
+      id: string
+      input: ReschedulePsychooncologyAppointmentInput
+      update?: UpdatePsychooncologyAppointmentInput
+    }
 
 interface SchedulePsychooncologyDialogProps {
   open: boolean
@@ -260,17 +267,17 @@ export function SchedulePsychooncologyDialog({
       }
 
       if (isEdit && appointment) {
-        const input: UpdatePsychooncologyAppointmentInput = {
-          availabilityId:
-            selectedSlotId !== appointment.availabilityId
-              ? selectedSlotId
-              : undefined,
-          modality,
-          zoomLink:
-            modality === "VIDEO_CALL" && zoomLink.trim()
-              ? zoomLink.trim()
-              : null,
-          schedulingNotes: schedulingNotes.trim() || null,
+        const zoom =
+          modality === "VIDEO_CALL" && zoomLink.trim() ? zoomLink.trim() : null
+        const notes = schedulingNotes.trim() || null
+        const slotChanged =
+          !completeIntent && selectedSlotId !== appointment.availabilityId
+        const patch: UpdatePsychooncologyAppointmentInput = {}
+
+        if (!slotChanged) {
+          patch.modality = modality
+          patch.zoomLink = zoom
+          patch.schedulingNotes = notes
         }
 
         const previousBeneficiaryType = appointment.beneficiaryType ?? "PATIENT"
@@ -279,21 +286,36 @@ export function SchedulePsychooncologyDialog({
           beneficiaryType !== previousBeneficiaryType ||
           companionId !== previousCompanionId
         ) {
-          input.beneficiaryType = beneficiaryType
-          input.companionId = companionId
+          patch.beneficiaryType = beneficiaryType
+          patch.companionId = companionId
         }
 
         if (completeIntent) {
-          input.status = "COMPLETED"
+          patch.status = "COMPLETED"
           if (satisfactionRating) {
-            input.satisfactionRating = Number(satisfactionRating)
+            patch.satisfactionRating = Number(satisfactionRating)
           }
           if (satisfactionComment.trim()) {
-            input.satisfactionComment = satisfactionComment.trim()
+            patch.satisfactionComment = satisfactionComment.trim()
           }
         }
 
-        await onSubmit({ mode: "update", id: appointment.id, input })
+        if (slotChanged) {
+          await onSubmit({
+            mode: "reschedule",
+            id: appointment.id,
+            input: {
+              availabilityId: selectedSlotId,
+              modality,
+              zoomLink: zoom ?? undefined,
+              schedulingNotes: notes ?? undefined,
+              reminderMode: "MANUAL",
+            },
+            update: Object.keys(patch).length > 0 ? patch : undefined,
+          })
+        } else {
+          await onSubmit({ mode: "update", id: appointment.id, input: patch })
+        }
         close()
         return
       }
@@ -307,6 +329,7 @@ export function SchedulePsychooncologyDialog({
           availabilityId: selectedSlotId,
           followUpId,
           modality,
+          reminderMode: "MANUAL",
           zoomLink:
             modality === "VIDEO_CALL" && zoomLink.trim()
               ? zoomLink.trim()

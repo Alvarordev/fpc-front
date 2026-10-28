@@ -1,3 +1,4 @@
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { healthCentersApi } from "@/api/health-centers"
 import {
   CatalogMultiSelect,
   CatalogSelect,
@@ -176,9 +176,6 @@ type TransportationSepaProvider = NonNullable<
 >
 type ShelterSepaProvider = NonNullable<
   PatientDetailsInput["shelterSepaProvider"]
->
-type ProgramDropoutReasonCode = NonNullable<
-  PatientDetailsInput["programDropoutReasonCode"]
 >
 const INTERRUPTION_REASON_ITEMS = labelMapToSelectItems(
   interruptionReasonLabels,
@@ -368,11 +365,6 @@ export function ClinicalDataTabs({
       queryKey: ["patient-diagnostic-status-current", patientId],
       queryFn: () => patientsApi.getCurrentDiagnosticStatus(patientId),
     })
-  const { data: hospitals = [] } = useQuery({
-    queryKey: ["healthCenters"],
-    queryFn: () => healthCentersApi.list(),
-    staleTime: 5 * 60 * 1000,
-  })
   const { data: addresses = [] } = usePatientAddresses(patientId)
   const { data: socialNotes = [] } = usePatientSocialNotes(patientId)
   const { data: companions = [] } = useQuery({
@@ -629,7 +621,6 @@ export function ClinicalDataTabs({
           <SintomasForm
             draft={drafts.symptomReport}
             enrollmentSymptomReport={enrollmentSymptomReport}
-            hospitals={hospitals}
             historical={isHistorical}
             showPrimaryCareViaSepaQuestions={showPrimaryCareViaSepaQuestions}
             onOpenNewHospital={openNewHospital}
@@ -746,7 +737,6 @@ export function ClinicalDataTabs({
         >
           <DiagnosticoForm
             draft={drafts.diagnoses}
-            hospitals={hospitals}
             currentDiagnoses={currentDiagnoses}
             onOpenNewHospital={openNewHospital}
             onViewDiagnosis={onViewDiagnosis}
@@ -765,7 +755,6 @@ export function ClinicalDataTabs({
           <TratamientosForm
             patientId={patientId}
             draft={drafts.treatments}
-            hospitals={hospitals}
             diagnoses={diagnoses}
             treatments={patient?.treatments ?? []}
             diagnosisDrafts={drafts.diagnoses}
@@ -2116,7 +2105,6 @@ type SymptomFormValues = Omit<
 function SintomasForm({
   draft,
   enrollmentSymptomReport,
-  hospitals,
   historical,
   showPrimaryCareViaSepaQuestions,
   onOpenNewHospital,
@@ -2126,7 +2114,6 @@ function SintomasForm({
 }: {
   draft: SymptomReportDraft | undefined
   enrollmentSymptomReport: PatientSymptomReport | undefined
-  hospitals: Array<{ id: string; name: string }>
   historical: boolean
   showPrimaryCareViaSepaQuestions: boolean
   onOpenNewHospital: (apply: (id: string) => void) => void
@@ -2446,27 +2433,13 @@ function SintomasForm({
               <div className="space-y-2 md:col-span-2">
                 <Label>¿En qué establecimiento de salud? *</Label>
                 <div className="flex gap-2">
-                  <Select
-                    items={hospitals.map((hospital) => ({
-                      value: hospital.id,
-                      label: hospital.name,
-                    }))}
-                    value={healthCenterId ?? ""}
-                    onValueChange={(value) =>
-                      setValue("healthCenterId", value || undefined)
-                    }
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleccionar establecimiento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {hospitals.map((hospital) => (
-                        <SelectItem key={hospital.id} value={hospital.id}>
-                          {hospital.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={healthCenterId ?? ""}
+                      onValueChange={(value) =>
+                      setValue("healthCenterId", value || undefined)}
+                      placeholder="Seleccionar establecimiento"
+                    />
                   <Button
                     type="button"
                     variant="outline"
@@ -2531,27 +2504,13 @@ function SintomasForm({
               {hasReferral === true && (
                 <div className="space-y-2 md:col-span-2">
                   <Label>¿A dónde lo han referido? *</Label>
-                  <Select
-                    items={hospitals.map((hospital) => ({
-                      value: hospital.id,
-                      label: hospital.name,
-                    }))}
-                    value={watch("referredHealthCenterId") ?? ""}
-                    onValueChange={(value) =>
-                      setValue("referredHealthCenterId", value || undefined)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar establecimiento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {hospitals.map((hospital) => (
-                        <SelectItem key={hospital.id} value={hospital.id}>
-                          {hospital.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <HealthCenterCombobox
+                      className="w-full"
+                      value={watch("referredHealthCenterId") ?? ""}
+                      onValueChange={(value) =>
+                      setValue("referredHealthCenterId", value || undefined)}
+                      placeholder="Seleccionar establecimiento"
+                    />
                 </div>
               )}
               {hasReferral === false && (
@@ -2733,7 +2692,6 @@ interface DiagnosisFormValues {
 
 function DiagnosticoForm({
   draft,
-  hospitals,
   currentDiagnoses,
   onOpenNewHospital,
   onViewDiagnosis,
@@ -2742,7 +2700,6 @@ function DiagnosticoForm({
   onSave,
 }: {
   draft: DiagnosisDraft[] | undefined
-  hospitals: Array<{ id: string; name: string }>
   currentDiagnoses: PatientDiagnosis[]
   onOpenNewHospital: (apply: (id: string) => void) => void
   onViewDiagnosis?: (diagnosis: PatientDiagnosis) => void
@@ -3401,25 +3358,12 @@ function DiagnosticoForm({
         <div className="space-y-2 md:col-span-2">
           <Label>Establecimiento de salud</Label>
           <div className="flex gap-2">
-            <Select
-              items={hospitals.map((hospital) => ({
-                value: hospital.id,
-                label: hospital.name,
-              }))}
-              value={healthCenterId}
-              onValueChange={(v) => setValue("healthCenterId", v ?? undefined)}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {hospitals.map((h) => (
-                  <SelectItem key={h.id} value={h.id}>
-                    {h.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={healthCenterId}
+                      onValueChange={(v) => setValue("healthCenterId", v ?? undefined)}
+                      placeholder="Seleccionar"
+                    />
             <Button
               type="button"
               variant="outline"
@@ -3571,7 +3515,6 @@ interface TreatmentFormValues {
 function TratamientosForm({
   patientId,
   draft,
-  hospitals,
   diagnoses,
   treatments,
   diagnosisDrafts,
@@ -3582,7 +3525,6 @@ function TratamientosForm({
 }: {
   patientId: string
   draft: TreatmentDraft[] | undefined
-  hospitals: Array<{ id: string; name: string }>
   diagnoses: PatientDiagnosis[]
   treatments: PatientTreatment[]
   diagnosisDrafts: DiagnosisDraft[] | undefined
@@ -3893,14 +3835,14 @@ function TratamientosForm({
       return
     }
     if (
-      values.treatmentSituation === "ABANDONED" &&
+      values.treatmentSituation === "ABANDONADO" &&
       !values.treatmentAbandonmentReason.trim()
     ) {
       toast.error("Indica el motivo de abandono del tratamiento")
       return
     }
     if (
-      values.treatmentSituation === "INTERRUMPIDO" &&
+      values.treatmentSituation === "SUSPENDIDO" &&
       !values.interruptionReason
     ) {
       toast.error("Indica el motivo de interrupción del tratamiento")
@@ -4026,14 +3968,14 @@ function TratamientosForm({
               : {}),
           }
         : {}),
-      ...(values.treatmentSituation === "ABANDONED"
+      ...(values.treatmentSituation === "ABANDONADO"
         ? {
             treatmentAbandonmentReason:
               values.treatmentAbandonmentReason.trim() || undefined,
           }
         : {}),
       treatmentViaSepa: values.treatmentViaSepa,
-      ...(values.treatmentSituation === "INTERRUMPIDO"
+      ...(values.treatmentSituation === "SUSPENDIDO"
         ? {
             interruptionReason: values.interruptionReason,
             interruptionReasonOther:
@@ -4576,7 +4518,7 @@ function TratamientosForm({
               value={orientedRegardingBarriers}
               onChange={(value) => setValue("orientedRegardingBarriers", value)}
             />
-            {treatmentSituation === "INTERRUMPIDO" && (
+            {treatmentSituation === "SUSPENDIDO" && (
               <>
                 <div className="space-y-2">
                   <Label>Motivo de interrupción</Label>
@@ -4613,7 +4555,7 @@ function TratamientosForm({
                 )}
               </>
             )}
-            {treatmentSituation === "ABANDONED" && (
+            {treatmentSituation === "ABANDONADO" && (
               <div className="space-y-2 md:col-span-2">
                 <Label>Motivo de abandono</Label>
                 <Textarea
@@ -4643,27 +4585,13 @@ function TratamientosForm({
                 <div className="space-y-2 md:col-span-2">
                   <Label>Hospital de origen</Label>
                   <div className="flex gap-2">
-                    <Select
-                      items={hospitals.map((h) => ({
-                        value: h.id,
-                        label: h.name,
-                      }))}
+                    <HealthCenterCombobox
+                      className="min-w-0 flex-1"
                       value={sourceHealthCenterId ?? ""}
                       onValueChange={(v) =>
-                        setValue("sourceHealthCenterId", v ?? undefined)
-                      }
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Seleccionar origen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {hospitals.map((h) => (
-                          <SelectItem key={h.id} value={h.id}>
-                            {h.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        setValue("sourceHealthCenterId", v ?? undefined)}
+                      placeholder="Seleccionar origen"
+                    />
                     <Button
                       type="button"
                       variant="outline"
@@ -4683,27 +4611,13 @@ function TratamientosForm({
                 <div className="space-y-2 md:col-span-2">
                   <Label>Hospital receptor</Label>
                   <div className="flex gap-2">
-                    <Select
-                      items={hospitals.map((h) => ({
-                        value: h.id,
-                        label: h.name,
-                      }))}
+                    <HealthCenterCombobox
+                      className="min-w-0 flex-1"
                       value={receivingHealthCenterId ?? ""}
                       onValueChange={(v) =>
-                        setValue("receivingHealthCenterId", v ?? undefined)
-                      }
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Seleccionar receptor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {hospitals.map((h) => (
-                          <SelectItem key={h.id} value={h.id}>
-                            {h.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        setValue("receivingHealthCenterId", v ?? undefined)}
+                      placeholder="Seleccionar receptor"
+                    />
                     <Button
                       type="button"
                       variant="outline"
@@ -4725,27 +4639,13 @@ function TratamientosForm({
               <div className="space-y-2 md:col-span-2">
                 <Label>Hospital donde recibe el tratamiento</Label>
                 <div className="flex gap-2">
-                  <Select
-                    items={hospitals.map((h) => ({
-                      value: h.id,
-                      label: h.name,
-                    }))}
-                    value={receivingHealthCenterId ?? ""}
-                    onValueChange={(v) =>
-                      setValue("receivingHealthCenterId", v ?? undefined)
-                    }
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Opcional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {hospitals.map((h) => (
-                        <SelectItem key={h.id} value={h.id}>
-                          {h.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <HealthCenterCombobox
+                      className="min-w-0 flex-1"
+                      value={receivingHealthCenterId ?? ""}
+                      onValueChange={(v) =>
+                      setValue("receivingHealthCenterId", v ?? undefined)}
+                      placeholder="Opcional"
+                    />
                   <Button
                     type="button"
                     variant="outline"
@@ -5269,9 +5169,6 @@ interface SocialFormValues {
   referredToSocialWorker: boolean | undefined
   hasConadisCard: boolean | undefined
   knowsAboutFissal: boolean | undefined
-  programDropoutDate: string
-  programDropoutReason: string
-  programDropoutReasonCode: ProgramDropoutReasonCode | undefined
   transportationViaSepa: boolean | undefined
   transportationSepaProvider: TransportationSepaProvider | undefined
   transportationSepaProviderOther: string
@@ -5353,16 +5250,6 @@ function SeguimientoSocialForm({
           draft?.knowsAboutFissal ??
           currentDetails?.knowsAboutFissal ??
           undefined,
-        programDropoutDate:
-          draft?.programDropoutDate ?? currentDetails?.programDropoutDate ?? "",
-        programDropoutReason:
-          draft?.programDropoutReason ??
-          currentDetails?.programDropoutReason ??
-          "",
-        programDropoutReasonCode:
-          draft?.programDropoutReasonCode ??
-          currentDetails?.programDropoutReasonCode ??
-          undefined,
         transportationViaSepa:
           draft?.transportationViaSepa ??
           currentDetails?.transportationViaSepa ??
@@ -5433,16 +5320,6 @@ function SeguimientoSocialForm({
         draft?.knowsAboutFissal ??
         currentDetails?.knowsAboutFissal ??
         undefined,
-      programDropoutDate:
-        draft?.programDropoutDate ?? currentDetails?.programDropoutDate ?? "",
-      programDropoutReason:
-        draft?.programDropoutReason ??
-        currentDetails?.programDropoutReason ??
-        "",
-      programDropoutReasonCode:
-        draft?.programDropoutReasonCode ??
-        currentDetails?.programDropoutReasonCode ??
-        undefined,
       transportationViaSepa:
         draft?.transportationViaSepa ??
         currentDetails?.transportationViaSepa ??
@@ -5499,9 +5376,6 @@ function SeguimientoSocialForm({
         referredToSocialWorker: values.referredToSocialWorker,
         hasConadisCard: values.hasConadisCard,
         knowsAboutFissal: values.knowsAboutFissal,
-        programDropoutDate: values.programDropoutDate || undefined,
-        programDropoutReason: values.programDropoutReason || undefined,
-        programDropoutReasonCode: values.programDropoutReasonCode,
         transportationViaSepa: values.transportationViaSepa,
         transportationSepaProvider:
           values.transportationViaSepa === true
@@ -5708,32 +5582,6 @@ function SeguimientoSocialForm({
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label>Fecha de abandono del programa</Label>
-          <Input type="date" {...register("programDropoutDate")} />
-        </div>
-        <div className="space-y-2">
-          <Label>Motivo de abandono del programa</Label>
-          <CatalogSelect
-            kind="program_dropout_reason"
-            allowCreate={false}
-            value={watch("programDropoutReasonCode") ?? null}
-            onValueChange={(code) =>
-              setValue(
-                "programDropoutReasonCode",
-                (code as ProgramDropoutReasonCode | null) ?? undefined,
-              )
-            }
-            placeholder="Seleccionar motivo"
-          />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Notas sobre el abandono (opcional)</Label>
-          <Input
-            {...register("programDropoutReason")}
-            placeholder="Detalle adicional, si hace falta"
-          />
-        </div>
       </div>
       <div className="space-y-3 border-t pt-4">
         <div>

@@ -62,8 +62,6 @@ export function buildEnrollmentPrefill(
       referredToSocialWorker: details.referredToSocialWorker,
       hasConadisCard: details.hasConadisCard,
       knowsAboutFissal: details.knowsAboutFissal,
-      programDropoutReason: details.programDropoutReason,
-      programDropoutDate: details.programDropoutDate,
     }
   }
 
