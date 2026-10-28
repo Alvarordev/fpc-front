@@ -29,16 +29,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
   isLoading: true,
 
+  // No activa isLoading: GuestGuard desmontaría el formulario y se perdería el error.
   login: async (credentials) => {
-    set({ isLoading: true })
-    try {
-      const user = await authApi.login(credentials)
-      set({ user, isLoading: false })
-      return user
-    } catch (error) {
-      set({ isLoading: false })
-      throw error
-    }
+    const user = await authApi.login(credentials)
+    set({ user, isLoading: false })
+    return user
   },
 
   restoreSession: () => {

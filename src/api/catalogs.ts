@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -74,38 +75,41 @@ export const ALL_CATALOG_KINDS: CatalogKind[] = [
   ),
 ]
 
-function catalogError(status: number, fallback: string): Error {
+function catalogError(status: number, fallback: string, body?: unknown): Error {
   if (status === 403) {
     return new Error(
-      "No tenés permiso para crear o modificar este catálogo. Pedile al administrador que agregue la opción.",
+      "No tienes permiso para crear o modificar este catálogo. Pide al administrador que agregue la opción.",
     )
   }
+  const message = readApiErrorMessage(body)
+  if (message) return new Error(message)
   if (status === 409) {
     return new Error("Ya existe un ítem con ese código en este catálogo.")
   }
-  return new Error(`${fallback} (${status})`)
+  return new Error(fallback)
 }
 
 export const catalogsApi = {
   async list(
     filters: { kind?: CatalogKind; includeInactive?: boolean } = {},
   ): Promise<CatalogItem[]> {
-    const { data, response } = await api.GET("/catalogs", {
+    const { data, error, response } = await api.GET("/catalogs", {
       params: { query: filters },
     })
     if (!data) {
       throw catalogError(
         response.status,
         "No se pudieron obtener los catálogos",
+        error,
       )
     }
     return data
   },
 
   async create(input: CreateCatalogItemInput): Promise<CatalogItem> {
-    const { data, response } = await api.POST("/catalogs", { body: input })
+    const { data, error, response } = await api.POST("/catalogs", { body: input })
     if (!data) {
-      throw catalogError(response.status, "No se pudo crear el ítem")
+      throw catalogError(response.status, "No se pudo crear el ítem", error)
     }
     return data
   },
@@ -114,52 +118,47 @@ export const catalogsApi = {
     id: string,
     input: UpdateCatalogItemInput,
   ): Promise<CatalogItem> {
-    const { data, response } = await api.PATCH("/catalogs/{id}", {
+    const { data, error, response } = await api.PATCH("/catalogs/{id}", {
       params: { path: { id } },
       body: input,
     })
     if (!data) {
-      throw catalogError(response.status, "No se pudo actualizar el ítem")
+      throw catalogError(response.status, "No se pudo actualizar el ítem", error)
     }
     return data
   },
 
   async archive(id: string): Promise<CatalogItem> {
-    const { data, response } = await api.POST("/catalogs/{id}/archive", {
+    const { data, error, response } = await api.POST("/catalogs/{id}/archive", {
       params: { path: { id } },
     })
     if (!data) {
-      throw catalogError(response.status, "No se pudo archivar el ítem")
+      throw catalogError(response.status, "No se pudo archivar el ítem", error)
     }
     return data
   },
 
   async mergeInto(id: string, targetId: string): Promise<CatalogMerge> {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/catalogs/{id}/merge-into/{targetId}",
       { params: { path: { id, targetId } } },
     )
     if (!data) {
-      if (response.status === 400) {
-        throw new Error(
-          "No se puede fusionar: el origen es de sistema, el destino está archivado o no son del mismo catálogo.",
-        )
-      }
       if (response.status === 403) {
         throw new Error("Solo un administrador puede fusionar ítems.")
       }
       if (response.status === 409) {
         throw new Error("Ese ítem ya fue fusionado.")
       }
-      throw catalogError(response.status, "No se pudo fusionar el ítem")
+      throw catalogError(response.status, "No se pudo fusionar el ítem", error)
     }
     return data
   },
 
   async listMerges(): Promise<CatalogMerge[]> {
-    const { data, response } = await api.GET("/catalogs/merges")
+    const { data, error, response } = await api.GET("/catalogs/merges")
     if (!data) {
-      throw catalogError(response.status, "No se pudo obtener el historial de fusiones")
+      throw catalogError(response.status, "No se pudo obtener el historial de fusiones", error)
     }
     return data
   },

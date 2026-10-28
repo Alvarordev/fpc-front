@@ -31,7 +31,9 @@ const schema = z
   .object({
     email: z.string().email("Email inválido"),
     password: z.string().min(8, "Mínimo 8 caracteres"),
-    role: z.enum(["ADMIN", "FOUNDATION", "AGENT", "VOLUNTEER"] as const),
+    role: z.enum(["ADMIN", "FOUNDATION", "AGENT", "VOLUNTEER"] as const, {
+      message: "Selecciona el rol",
+    }),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     specialty: z.string().optional(),
@@ -176,6 +178,14 @@ export function CreateUserDialog({
 
   async function onSubmit(values: FormValues) {
     setStepError(null)
+    try {
+      await submitUser(values)
+    } catch {
+      // El mensaje se muestra desde el estado de la mutación, debajo del formulario.
+    }
+  }
+
+  async function submitUser(values: FormValues) {
 
     if (values.role === "AGENT") {
       await createAgent.mutateAsync({

@@ -1,3 +1,4 @@
+import { apiErrorFromBody } from "./api-error"
 import type { components, operations } from "./schema"
 import { api } from "./client"
 
@@ -33,11 +34,11 @@ export type DashboardSatisfaction =
 
 export const dashboardApi = {
   async get(query: DashboardQuery): Promise<Dashboard> {
-    const { data, response } = await api.GET("/dashboard", {
+    const { data, error, response } = await api.GET("/dashboard", {
       params: { query },
     })
     if (!data)
-      throw new Error(`No se pudo obtener el dashboard (${response.status})`)
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener el dashboard")
     return data
   },
 }
@@ -46,98 +47,84 @@ export const dashboardIndicatorsApi = {
   async getDemographics(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardDemographics> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/demographics",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener los indicadores demográficos (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener los indicadores demográficos")
     return data
   },
 
   async getEpidemiology(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardEpidemiology> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/epidemiology",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener los indicadores epidemiológicos (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener los indicadores epidemiológicos")
     return data
   },
 
   async getManagement(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardManagement> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/management",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener los indicadores de gestión (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener los indicadores de gestión")
     return data
   },
 
   async getProductivity(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardProductivity> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/productivity",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener los indicadores de productividad (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener los indicadores de productividad")
     return data
   },
 
   async getAdherence(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardAdherence> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/adherence",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener los indicadores de adherencia (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener los indicadores de adherencia")
     return data
   },
 
   async getAbandonment(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardAbandonment> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/abandonment",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener los indicadores de abandono (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener los indicadores de abandono")
     return data
   },
 
   async getSatisfaction(
     query: DashboardIndicatorQuery,
   ): Promise<DashboardSatisfaction> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/dashboard/indicators/satisfaction",
       { params: { query } },
     )
     if (!data)
-      throw new Error(
-        `No se pudo obtener la satisfacción (${response.status})`,
-      )
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener la satisfacción")
     return data
   },
 }

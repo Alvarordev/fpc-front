@@ -129,7 +129,7 @@ function translateConstraint(path: string, constraint: ParsedConstraint): string
   const field = subject(path)
   switch (constraint.kind) {
     case "empty":
-      return `Completá ${field}.`
+      return `Completa ${field}.`
     case "enum":
       return `${capitalize(field)} debe ser una de estas opciones: ${enumLabels(path, constraint.values)}.`
     case "date":

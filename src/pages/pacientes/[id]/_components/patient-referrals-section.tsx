@@ -333,6 +333,14 @@ function ReferralForm({
       className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault()
+        if (!destinationId) {
+          toast.error("Selecciona el establecimiento de destino")
+          return
+        }
+        if (originId && originId === destinationId) {
+          toast.error("El origen y el destino deben ser establecimientos distintos")
+          return
+        }
         if (!requestedOn) {
           toast.error("Indica la fecha de solicitud")
           return

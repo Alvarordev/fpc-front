@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components, paths } from "./schema"
 import { api } from "./client"
 
@@ -90,8 +91,8 @@ export type TransitionPatientDiagnosticStatusDto =
 export class PatientsApiError extends Error {
   readonly status: number
 
-  constructor(status: number) {
-    super("No se pudo completar la solicitud de pacientes")
+  constructor(status: number, body?: unknown) {
+    super(readApiErrorMessage(body) ?? "No se pudo completar la solicitud de pacientes")
     this.name = "PatientsApiError"
     this.status = status
   }
@@ -99,117 +100,117 @@ export class PatientsApiError extends Error {
 
 export const patientsApi = {
   async list(filters: PatientListFilters = {}) {
-    const { data, response } = await api.GET("/patients", {
+    const { data, error, response } = await api.GET("/patients", {
       params: { query: filters },
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async create(input: CreatePatientInput) {
-    const { data, response } = await api.POST("/patients", { body: input })
+    const { data, error, response } = await api.POST("/patients", { body: input })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async getById(id: string) {
-    const { data, response } = await api.GET("/patients/{id}", {
+    const { data, error, response } = await api.GET("/patients/{id}", {
       params: { path: { id } },
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async listMedicalAppointments(patientId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/medical-appointments",
       { params: { path: { patientId } } },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
   async update(id: string, input: UpdatePatientInput) {
-    const { data, response } = await api.PATCH("/patients/{id}", {
+    const { data, error, response } = await api.PATCH("/patients/{id}", {
       params: { path: { id } },
       body: input,
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async deactivate(id: string, input: DeactivatePatientInput) {
-    const { data, response } = await api.PATCH("/patients/{id}/deactivate", {
+    const { data, error, response } = await api.PATCH("/patients/{id}/deactivate", {
       params: { path: { id } },
       body: input,
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async reactivate(id: string, input: ReactivatePatientInput = {}) {
-    const { data, response } = await api.PATCH("/patients/{id}/reactivate", {
+    const { data, error, response } = await api.PATCH("/patients/{id}/reactivate", {
       params: { path: { id } },
       body: input,
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async updateDetails(id: string, input: PatientDetailsInput) {
-    const { data, response } = await api.PUT("/patients/{id}/details", {
+    const { data, error, response } = await api.PUT("/patients/{id}/details", {
       params: { path: { id } },
       body: input,
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async companions(id: string) {
-    const { data, response } = await api.GET("/patients/{id}/companions", {
+    const { data, error, response } = await api.GET("/patients/{id}/companions", {
       params: { path: { id } },
     })
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
   async createCompanion(patientId: string, input: CreateCompanionInput) {
-    const { data, response } = await api.POST("/patients/{id}/companions", {
+    const { data, error, response } = await api.POST("/patients/{id}/companions", {
       params: { path: { id: patientId } },
       body: input,
     })
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
@@ -218,7 +219,7 @@ export const patientsApi = {
     linkId: string,
     input: UpdateCompanionLinkInput,
   ) {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{id}/companions/{linkId}",
       {
         params: { path: { id: patientId, linkId } },
@@ -226,12 +227,12 @@ export const patientsApi = {
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
   async listSocialNotes(patientId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/social-notes",
       {
         params: { path: { patientId } },
@@ -239,7 +240,7 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
@@ -249,7 +250,7 @@ export const patientsApi = {
     patientId: string,
     input: CreatePatientSocialNoteInput,
   ) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/social-notes",
       {
         params: { path: { patientId } },
@@ -258,14 +259,14 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async listHealthBackgroundAssessments(patientId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/health-background-assessments",
       {
         params: { path: { patientId } },
@@ -273,7 +274,7 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
@@ -283,7 +284,7 @@ export const patientsApi = {
     patientId: string,
     input: CreatePatientHealthBackgroundAssessmentInput,
   ) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/health-background-assessments",
       {
         params: { path: { patientId } },
@@ -292,26 +293,26 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async getSummary(id: string) {
-    const { data, response } = await api.GET("/patients/{id}/summary", {
+    const { data, error, response } = await api.GET("/patients/{id}/summary", {
       params: { path: { id } },
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async refreshSummary(id: string) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{id}/summary/refresh",
       {
         params: { path: { id } },
@@ -319,14 +320,14 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async createDiagnosis(patientId: string, input: CreatePatientDiagnosisInput) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/diagnoses",
       {
         params: { path: { patientId } },
@@ -335,7 +336,7 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
@@ -346,7 +347,7 @@ export const patientsApi = {
     diagnosisId: string,
     input: UpdatePatientDiagnosisInput,
   ) {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{patientId}/diagnoses/{diagnosisId}",
       {
         params: { path: { patientId, diagnosisId } },
@@ -355,14 +356,14 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async createTreatment(patientId: string, input: CreatePatientTreatmentInput) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/treatments",
       {
         params: { path: { patientId } },
@@ -371,14 +372,14 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async createInsurance(patientId: string, input: CreatePatientInsuranceInput) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/insurance",
       {
         params: { path: { patientId } },
@@ -387,7 +388,7 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
@@ -397,7 +398,7 @@ export const patientsApi = {
     patientId: string,
     input: CreatePatientSisAffiliationInput,
   ) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/sis-affiliations",
       {
         params: { path: { patientId } },
@@ -406,7 +407,7 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
@@ -416,7 +417,7 @@ export const patientsApi = {
     patientId: string,
     input: CreatePatientSymptomReportInput,
   ) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/symptom-reports",
       {
         params: { path: { patientId } },
@@ -424,24 +425,24 @@ export const patientsApi = {
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
   async listAddresses(patientId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/addresses",
       {
         params: { path: { patientId } },
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
   async createAddress(patientId: string, input: CreatePatientAddressInput) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/addresses",
       {
         params: { path: { patientId } },
@@ -449,7 +450,7 @@ export const patientsApi = {
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
@@ -458,7 +459,7 @@ export const patientsApi = {
     addressId: string,
     input: UpdatePatientAddressInput,
   ) {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{patientId}/addresses/{addressId}",
       {
         params: { path: { patientId, addressId } },
@@ -466,30 +467,30 @@ export const patientsApi = {
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
   async deactivateAddress(patientId: string, addressId: string) {
-    const { response } = await api.DELETE(
+    const { error, response } = await api.DELETE(
       "/patients/{patientId}/addresses/{addressId}",
       {
         params: { path: { patientId, addressId } },
       },
     )
 
-    if (!response.ok) throw new PatientsApiError(response.status)
+    if (!response.ok) throw new PatientsApiError(response.status, error)
   },
 
   async listTreatmentMedications(patientId: string, treatmentId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/treatments/{treatmentId}/medications",
       {
         params: { path: { patientId, treatmentId } },
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
@@ -498,7 +499,7 @@ export const patientsApi = {
     treatmentId: string,
     input: CreateTreatmentMedicationInput,
   ) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/treatments/{treatmentId}/medications",
       {
         params: { path: { patientId, treatmentId } },
@@ -506,7 +507,7 @@ export const patientsApi = {
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
@@ -516,7 +517,7 @@ export const patientsApi = {
     medicationId: string,
     input: UpdateTreatmentMedicationInput,
   ) {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{patientId}/treatments/{treatmentId}/medications/{medicationId}",
       {
         params: { path: { patientId, treatmentId, medicationId } },
@@ -524,7 +525,7 @@ export const patientsApi = {
       },
     )
 
-    if (!data) throw new PatientsApiError(response.status)
+    if (!data) throw new PatientsApiError(response.status, error)
     return data
   },
 
@@ -533,30 +534,30 @@ export const patientsApi = {
     treatmentId: string,
     medicationId: string,
   ) {
-    const { response } = await api.DELETE(
+    const { error, response } = await api.DELETE(
       "/patients/{patientId}/treatments/{treatmentId}/medications/{medicationId}",
       {
         params: { path: { patientId, treatmentId, medicationId } },
       },
     )
 
-    if (!response.ok) throw new PatientsApiError(response.status)
+    if (!response.ok) throw new PatientsApiError(response.status, error)
   },
 
   async accompanies(id: string) {
-    const { data, response } = await api.GET("/patients/{id}/accompanies", {
+    const { data, error, response } = await api.GET("/patients/{id}/accompanies", {
       params: { path: { id } },
     })
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async getDiagnosticStatus(patientId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/diagnostic-status",
       {
         params: { path: { patientId } },
@@ -564,14 +565,14 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data
   },
 
   async getCurrentDiagnosticStatus(patientId: string) {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/diagnostic-status/current",
       {
         params: { path: { patientId } },
@@ -579,7 +580,7 @@ export const patientsApi = {
     )
 
     if (!response.ok) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data ?? null
@@ -589,7 +590,7 @@ export const patientsApi = {
     patientId: string,
     body: TransitionPatientDiagnosticStatusDto,
   ) {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/diagnostic-status/transition",
       {
         params: { path: { patientId } },
@@ -598,7 +599,7 @@ export const patientsApi = {
     )
 
     if (!data) {
-      throw new PatientsApiError(response.status)
+      throw new PatientsApiError(response.status, error)
     }
 
     return data

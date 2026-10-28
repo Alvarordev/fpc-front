@@ -25,7 +25,7 @@ const alertSchema = z.object({
   healthCenterId: z.string().min(1, "Seleccioná un establecimiento"),
   title: z.string().min(3, "Título requerido"),
   description: z.string().min(5, "Detallá el problema reportado"),
-  severity: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  severity: z.enum(["HIGH", "MEDIUM", "LOW"], { message: "Selecciona la severidad" }),
   category: z.string().min(1, "Seleccioná una categoría"),
 })
 

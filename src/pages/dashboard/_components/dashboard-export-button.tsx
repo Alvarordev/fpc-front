@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "@/api/api-error"
 import { useState } from "react"
 import { Download } from "lucide-react"
 import { toast } from "sonner"
@@ -17,7 +18,10 @@ export function DashboardExportButton({ query }: { query: DashboardIndicatorQuer
       }
       const response = await apiFetch(`/exports/patients?${params.toString()}`)
       if (!response.ok) {
-        throw new Error(`No se pudo exportar (${response.status})`)
+        const body = await response.json().catch(() => undefined)
+        throw new Error(
+          readApiErrorMessage(body) ?? "No se pudo generar el archivo de exportación.",
+        )
       }
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)

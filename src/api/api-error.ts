@@ -57,3 +57,11 @@ function readMessage(
   }
   return undefined
 }
+
+/** Mensaje legible del cuerpo de error de la API, o undefined si no trae uno. */
+export function readApiErrorMessage(body: unknown): string | undefined {
+  const parsed = parseApiErrorBody(body)
+  return parsed.message
+    ? humanizeValidationApiMessage(humanizeCatalogApiMessage(parsed.message))
+    : undefined
+}

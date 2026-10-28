@@ -17,7 +17,10 @@ export class AuthApiError extends Error {
 
 function getAuthErrorMessage(status: number): string {
   if (status === 401) {
-    return "Credenciales inválidas"
+    return "Correo o contraseña incorrectos."
+  }
+  if (status === 429) {
+    return "Demasiados intentos. Espera un momento y vuelve a probar."
   }
 
   return "No se pudo completar la solicitud de autenticación"

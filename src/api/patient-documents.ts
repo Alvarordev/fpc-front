@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components, paths } from "./schema"
 import { api, apiFetch } from "./client"
 
@@ -19,8 +20,8 @@ export type CreatePatientDocumentInput = Omit<
 export class PatientDocumentsApiError extends Error {
   readonly status: number
 
-  constructor(message: string, status: number) {
-    super(message)
+  constructor(message: string, status: number, body?: unknown) {
+    super(readApiErrorMessage(body) ?? message)
     this.name = "PatientDocumentsApiError"
     this.status = status
   }
@@ -31,7 +32,7 @@ export const patientDocumentsApi = {
     patientId: string,
     filters: PatientDocumentListFilters = {},
   ): Promise<PatientDocumentList> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/documents",
       { params: { path: { patientId }, query: filters } },
     )
@@ -40,6 +41,7 @@ export const patientDocumentsApi = {
       throw new PatientDocumentsApiError(
         "No se pudieron obtener los documentos",
         response.status,
+        error,
       )
     }
 
@@ -66,6 +68,7 @@ export const patientDocumentsApi = {
       throw new PatientDocumentsApiError(
         "No se pudo cargar el documento",
         response.status,
+        await response.json().catch(() => undefined),
       )
     }
 
@@ -80,6 +83,7 @@ export const patientDocumentsApi = {
       throw new PatientDocumentsApiError(
         "No se pudo obtener el contenido del documento",
         response.status,
+        await response.json().catch(() => undefined),
       )
     }
 
@@ -90,7 +94,7 @@ export const patientDocumentsApi = {
     patientId: string,
     documentId: string,
   ): Promise<PatientDocument> {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{patientId}/documents/{documentId}/archive",
       { params: { path: { patientId, documentId } } },
     )
@@ -99,6 +103,7 @@ export const patientDocumentsApi = {
       throw new PatientDocumentsApiError(
         "No se pudo archivar el documento",
         response.status,
+        error,
       )
     }
 

@@ -148,8 +148,11 @@ export function ReminderFormDialog({
   }))
 
   const description = watch("description")
+  // Un recordatorio nuevo siempre es a futuro; lo pasado se registra en carga histórica.
+  const dueInPast = Boolean(dueAt) && !isEditing && new Date(dueAt) < new Date()
   const canSubmit = Boolean(
     dueAt &&
+      !dueInPast &&
       (isMedical
         ? specialty
         : description.trim()) &&
@@ -239,6 +242,11 @@ export function ReminderFormDialog({
               type="datetime-local"
               {...register("dueAt", { required: true })}
             />
+            {dueInPast && (
+              <p className="text-destructive text-xs">
+                La fecha ya pasó. Elige una fecha y hora futuras.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">

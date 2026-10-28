@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -7,8 +8,8 @@ export type ClosePsychooncologyCycleInput = components["schemas"]["ClosePsychoon
 export class PsychooncologyCyclesApiError extends Error {
   readonly status: number
 
-  constructor(status: number) {
-    super("No se pudo completar la solicitud del ciclo de psicooncología")
+  constructor(status: number, body?: unknown) {
+    super(readApiErrorMessage(body) ?? "No se pudo completar la solicitud del ciclo de psicooncología")
     this.name = "PsychooncologyCyclesApiError"
     this.status = status
   }
@@ -16,11 +17,11 @@ export class PsychooncologyCyclesApiError extends Error {
 
 export const psychooncologyCyclesApi = {
   async list(patientId: string): Promise<PsychooncologyCycle[]> {
-    const { data, response } = await api.GET("/psychooncology-cycles", {
+    const { data, error, response } = await api.GET("/psychooncology-cycles", {
       params: { query: { patientId } },
     })
 
-    if (!data) throw new PsychooncologyCyclesApiError(response.status)
+    if (!data) throw new PsychooncologyCyclesApiError(response.status, error)
     return data
   },
 
@@ -28,12 +29,12 @@ export const psychooncologyCyclesApi = {
     id: string,
     input: ClosePsychooncologyCycleInput,
   ): Promise<PsychooncologyCycle> {
-    const { data, response } = await api.PATCH("/psychooncology-cycles/{id}/close", {
+    const { data, error, response } = await api.PATCH("/psychooncology-cycles/{id}/close", {
       params: { path: { id } },
       body: input,
     })
 
-    if (!data) throw new PsychooncologyCyclesApiError(response.status)
+    if (!data) throw new PsychooncologyCyclesApiError(response.status, error)
     return data
   },
 }

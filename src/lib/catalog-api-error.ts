@@ -29,9 +29,9 @@ export function unknownCatalogValueMessage(
     options.allowCreate ??
     OPEN_CATALOG_KINDS.includes(kind as (typeof OPEN_CATALOG_KINDS)[number])
   const action = canCreate
-    ? "Si falta, agregala con + en esa misma selección o desde Catálogos."
+    ? "Si falta, agrégala con + en esa misma selección o desde Catálogos."
     : "Si falta, un administrador debe agregarla en Catálogos."
-  return `${quoted} no está en el catálogo de ${field}. Verificá esa selección. ${action}`
+  return `${quoted} no está en el catálogo de ${field}. Verifica esa selección. ${action}`
 }
 
 function humanizeCatalogFragment(fragment: string): string {

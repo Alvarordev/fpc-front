@@ -1,3 +1,4 @@
+import { apiErrorFromBody } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -7,32 +8,32 @@ export type UpdateReferralInput = components["schemas"]["UpdateReferralDto"]
 
 export const referralsApi = {
   async list(patientId: string): Promise<Referral[]> {
-    const { data, response } = await api.GET("/patients/{patientId}/referrals", {
+    const { data, error, response } = await api.GET("/patients/{patientId}/referrals", {
       params: { path: { patientId } },
     })
     if (!data) {
-      throw new Error(`No se pudieron obtener las derivaciones (${response.status})`)
+      throw apiErrorFromBody(error, response.status, "No se pudieron obtener las derivaciones")
     }
     return data
   },
 
   async route(patientId: string): Promise<Referral[]> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/referrals/route",
       { params: { path: { patientId } } },
     )
     if (!data) {
-      throw new Error(`No se pudo obtener la ruta de atención (${response.status})`)
+      throw apiErrorFromBody(error, response.status, "No se pudo obtener la ruta de atención")
     }
     return data
   },
 
   async create(patientId: string, input: CreateReferralInput): Promise<Referral> {
-    const { data, response } = await api.POST("/patients/{patientId}/referrals", {
+    const { data, error, response } = await api.POST("/patients/{patientId}/referrals", {
       params: { path: { patientId } },
       body: input,
     })
-    if (!data) throw new Error(`No se pudo crear la derivación (${response.status})`)
+    if (!data) throw apiErrorFromBody(error, response.status, "No se pudo crear la derivación")
     return data
   },
 
@@ -41,20 +42,20 @@ export const referralsApi = {
     id: string,
     input: UpdateReferralInput,
   ): Promise<Referral> {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{patientId}/referrals/{id}",
       { params: { path: { patientId, id } }, body: input },
     )
-    if (!data) throw new Error(`No se pudo actualizar la derivación (${response.status})`)
+    if (!data) throw apiErrorFromBody(error, response.status, "No se pudo actualizar la derivación")
     return data
   },
 
   async remove(patientId: string, id: string): Promise<void> {
-    const { response } = await api.DELETE("/patients/{patientId}/referrals/{id}", {
+    const { error, response } = await api.DELETE("/patients/{patientId}/referrals/{id}", {
       params: { path: { patientId, id } },
     })
     if (!response.ok) {
-      throw new Error(`No se pudo eliminar la derivación (${response.status})`)
+      throw apiErrorFromBody(error, response.status, "No se pudo eliminar la derivación")
     }
   },
 }

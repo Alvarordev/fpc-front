@@ -32,7 +32,7 @@ import { catalogQueryKey } from "@/hooks/use-catalog"
 const schema = z.object({
   label: z.string().min(1, "Requerido"),
   sortOrder: z.string().min(1, "Requerido"),
-  isActive: z.enum(["true", "false"]),
+  isActive: z.enum(["true", "false"], { message: "Selecciona el estado" }),
 })
 
 type FormValues = z.infer<typeof schema>

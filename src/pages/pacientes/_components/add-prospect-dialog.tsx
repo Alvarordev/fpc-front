@@ -38,7 +38,7 @@ const schema = z
   .object({
     fullName: z.string().min(1, "Nombre requerido"),
     phone: z.string().min(1, "Celular requerido"),
-    documentType: z.enum(["DNI", "CE", "CPP"]),
+    documentType: z.enum(["DNI", "CE", "CPP"], { message: "Selecciona el tipo de documento" }),
     dni: z.string().optional(),
     email: z.string().email("Correo inválido").optional().or(z.literal("")),
     diagnosisNote: z.string().optional(),

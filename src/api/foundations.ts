@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -8,8 +9,8 @@ export type UpdateFoundationInput = components["schemas"]["UpdateFoundationDto"]
 export class FoundationsApiError extends Error {
   readonly status: number
 
-  constructor(status: number) {
-    super("No se pudo completar la solicitud de fundación")
+  constructor(status: number, body?: unknown) {
+    super(readApiErrorMessage(body) ?? "No se pudo completar la solicitud de fundación")
     this.name = "FoundationsApiError"
     this.status = status
   }
@@ -17,27 +18,27 @@ export class FoundationsApiError extends Error {
 
 export const foundationsApi = {
   async list(): Promise<Foundation[]> {
-    const { data, response } = await api.GET("/foundations")
+    const { data, error, response } = await api.GET("/foundations")
 
     if (!data) {
-      throw new FoundationsApiError(response.status)
+      throw new FoundationsApiError(response.status, error)
     }
 
     return data
   },
 
   async create(input: CreateFoundationInput): Promise<Foundation> {
-    const { data, response } = await api.POST("/foundations", { body: input })
-    if (!data) throw new FoundationsApiError(response.status)
+    const { data, error, response } = await api.POST("/foundations", { body: input })
+    if (!data) throw new FoundationsApiError(response.status, error)
     return data
   },
 
   async update(id: string, input: UpdateFoundationInput): Promise<Foundation> {
-    const { data, response } = await api.PATCH("/foundations/{id}", {
+    const { data, error, response } = await api.PATCH("/foundations/{id}", {
       params: { path: { id } },
       body: input,
     })
-    if (!data) throw new FoundationsApiError(response.status)
+    if (!data) throw new FoundationsApiError(response.status, error)
     return data
   },
 }

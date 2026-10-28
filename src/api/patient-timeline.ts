@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -18,8 +19,8 @@ export type PatientTimelineListParams = {
 export class PatientTimelineApiError extends Error {
   readonly status: number
 
-  constructor(status: number) {
-    super("No se pudo obtener el historial de seguimiento")
+  constructor(status: number, body?: unknown) {
+    super(readApiErrorMessage(body) ?? "No se pudo obtener el historial de seguimiento")
     this.name = "PatientTimelineApiError"
     this.status = status
   }
@@ -30,7 +31,7 @@ export const patientTimelineApi = {
     patientId: string,
     params: PatientTimelineListParams = {},
   ): Promise<PatientTimeline> {
-    const { data, response } = await api.GET("/patients/{id}/timeline", {
+    const { data, error, response } = await api.GET("/patients/{id}/timeline", {
       params: {
         path: { id: patientId },
         // OpenAPI tipa estos ints de Nest como Object; en runtime son number.
@@ -42,7 +43,7 @@ export const patientTimelineApi = {
     })
 
     if (!data) {
-      throw new PatientTimelineApiError(response.status)
+      throw new PatientTimelineApiError(response.status, error)
     }
 
     return data

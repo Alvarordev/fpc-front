@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -8,8 +9,8 @@ export type UpdateAgentInput = components["schemas"]["UpdateAgentDto"]
 export class AgentsApiError extends Error {
   readonly status: number
 
-  constructor(status: number) {
-    super("No se pudo obtener la lista de agentes")
+  constructor(status: number, body?: unknown) {
+    super(readApiErrorMessage(body) ?? "No se pudo obtener la lista de agentes")
     this.name = "AgentsApiError"
     this.status = status
   }
@@ -17,27 +18,27 @@ export class AgentsApiError extends Error {
 
 export const agentsApi = {
   async list(): Promise<Agent[]> {
-    const { data, response } = await api.GET("/agents")
+    const { data, error, response } = await api.GET("/agents")
 
     if (!data) {
-      throw new AgentsApiError(response.status)
+      throw new AgentsApiError(response.status, error)
     }
 
     return data
   },
 
   async create(input: CreateAgentInput): Promise<Agent> {
-    const { data, response } = await api.POST("/agents", { body: input })
-    if (!data) throw new AgentsApiError(response.status)
+    const { data, error, response } = await api.POST("/agents", { body: input })
+    if (!data) throw new AgentsApiError(response.status, error)
     return data
   },
 
   async update(id: string, input: UpdateAgentInput): Promise<Agent> {
-    const { data, response } = await api.PATCH("/agents/{id}", {
+    const { data, error, response } = await api.PATCH("/agents/{id}", {
       params: { path: { id } },
       body: input,
     })
-    if (!data) throw new AgentsApiError(response.status)
+    if (!data) throw new AgentsApiError(response.status, error)
     return data
   },
 }
