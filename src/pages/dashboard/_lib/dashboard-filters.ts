@@ -93,7 +93,7 @@ export function indicatorQuery(
     timezone: "America/Lima",
     population: filters.population,
     ...(customRange
-      ? { from: filters.from, to: filters.to }
+      ? { from: filters.from, to: nextDay(filters.to) }
       : {
           period: filters.period,
           year: filters.year,
@@ -126,6 +126,14 @@ export function summaryQuery(filters: DashboardFilterState): DashboardQuery {
 }
 
 function numberOr(value: string | null, fallback: number) {
+  if (value == null || value.trim() === "") return fallback
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+// La API toma `to` como fecha exclusiva; "Hasta" en la UI es inclusivo.
+function nextDay(date: string) {
+  const [year, month, day] = date.split("-").map(Number)
+  const next = new Date(Date.UTC(year, month - 1, day + 1))
+  return next.toISOString().slice(0, 10)
 }

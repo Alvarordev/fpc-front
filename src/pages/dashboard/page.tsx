@@ -35,6 +35,14 @@ export function DashboardPage() {
   const baseQuery = indicatorQuery(filters)
   const dashboard = useDashboardData(summaryQuery(filters))
   const indicators = useDashboardIndicators(baseQuery)
+  // El mapa compara regiones: no se filtra por el departamento elegido.
+  const mapIndicators = useDashboardIndicators({ ...baseQuery, department: undefined }, {
+    territoryOnly: true,
+    enabled: Boolean(filters.department),
+  })
+  const mapDemographics = filters.department
+    ? mapIndicators.demographics
+    : indicators.demographics
   const data = dashboard.data
   const demographics = indicators.demographics.data
   const epidemiology = indicators.epidemiology.data
@@ -145,10 +153,10 @@ export function DashboardPage() {
         </>
       )}
 
-      {indicators.demographics.isError && (
+      {mapDemographics.isError && (
         <IndicatorError message="No se pudieron cargar los indicadores demográficos." />
       )}
-      {indicators.demographics.data && (
+      {mapDemographics.data && (
         <RegionalIndicatorsMap
           indicators={[
             {
@@ -157,11 +165,11 @@ export function DashboardPage() {
               description:
                 "La distribución usa el departamento de residencia registrado. Los pacientes sin una residencia conocida se muestran en la cobertura y no se asignan a otra ubicación.",
               data: createDepartmentIndicatorMap(
-                indicators.demographics.data.department.items,
+                mapDemographics.data.department.items,
               ),
-              known: indicators.demographics.data.department.known,
-              unknown: indicators.demographics.data.department.unknown,
-              coveragePct: indicators.demographics.data.department.coveragePct,
+              known: mapDemographics.data.department.known,
+              unknown: mapDemographics.data.department.unknown,
+              coveragePct: mapDemographics.data.department.coveragePct,
             },
           ]}
           onDepartmentChange={(department) =>

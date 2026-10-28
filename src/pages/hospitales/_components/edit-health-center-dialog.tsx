@@ -114,11 +114,11 @@ export function EditHealthCenterDialog({
           name,
           department,
           careCategory: values.careCategory as CareCategory,
-          institution: (values.institution || undefined) as
+          institution: (values.institution || null) as
             | HealthCenterInstitution
-            | undefined,
-          renipressCode: values.renipressCode?.trim() || undefined,
-          ubigeoDistrictCode: values.ubigeoDistrictCode?.trim() || undefined,
+            | null,
+          renipressCode: values.renipressCode?.trim() || null,
+          ubigeoDistrictCode: values.ubigeoDistrictCode?.trim() || null,
         },
       });
       toast.success("Centro de salud actualizado");

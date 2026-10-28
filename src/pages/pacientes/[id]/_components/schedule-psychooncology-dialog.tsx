@@ -141,7 +141,9 @@ export function SchedulePsychooncologyDialog({
   const [reminderMode, setReminderMode] = useState<
     (typeof REMINDER_MODE_OPTIONS)[number]["value"]
   >(appointment?.reminderMode ?? "MANUAL")
-  const [remindAt, setRemindAt] = useState("")
+  const [remindAt, setRemindAt] = useState(() =>
+    appointment?.remindAt ? toDateTimeLocal(appointment.remindAt) : "",
+  )
   const [schedulingNotes, setSchedulingNotes] = useState(
     appointment?.schedulingNotes ?? "",
   )
@@ -722,4 +724,10 @@ export function SchedulePsychooncologyDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function toDateTimeLocal(iso: string) {
+  const date = new Date(iso)
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }

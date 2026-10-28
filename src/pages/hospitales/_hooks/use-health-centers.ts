@@ -23,6 +23,8 @@ export function useCreateHealthCenter() {
     mutationFn: healthCentersApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] })
+      queryClient.invalidateQueries({ queryKey: ["health-centers"] })
+      queryClient.invalidateQueries({ queryKey: ["health-center"] })
     },
   })
 }
@@ -39,6 +41,8 @@ export function useUpdateHealthCenter() {
     }) => healthCentersApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] })
+      queryClient.invalidateQueries({ queryKey: ["health-centers"] })
+      queryClient.invalidateQueries({ queryKey: ["health-center"] })
     },
   })
 }
@@ -49,6 +53,8 @@ export function useDeleteHealthCenter() {
     mutationFn: (id: string) => healthCentersApi.update(id, { isActive: false }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] })
+      queryClient.invalidateQueries({ queryKey: ["health-centers"] })
+      queryClient.invalidateQueries({ queryKey: ["health-center"] })
     },
   })
 }
@@ -59,6 +65,8 @@ export function useReactivateHealthCenter() {
     mutationFn: (id: string) => healthCentersApi.update(id, { isActive: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["healthCenters"] })
+      queryClient.invalidateQueries({ queryKey: ["health-centers"] })
+      queryClient.invalidateQueries({ queryKey: ["health-center"] })
     },
   })
 }

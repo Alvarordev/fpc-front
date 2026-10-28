@@ -24,8 +24,10 @@ export function DashboardExportButton({ query }: { query: DashboardIndicatorQuer
       const link = document.createElement("a")
       link.href = url
       link.download = "pacientes.xlsx"
+      document.body.appendChild(link)
       link.click()
-      URL.revokeObjectURL(url)
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
       toast.success("Exportación descargada")
     } catch (error) {
       toast.error("No se pudo exportar", {

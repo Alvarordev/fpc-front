@@ -604,7 +604,10 @@ export function Step5Datos({
       setError("Ya está enrolado, registra un seguimiento")
       return
     }
-    if (dniLookup.state === "prospect") {
+    if (
+      dniLookup.state === "prospect" &&
+      draft.patientId !== dniLookup.match?.id
+    ) {
       setError("Este documento ya tiene una ficha. Ábrela para enrolarlo.")
       return
     }

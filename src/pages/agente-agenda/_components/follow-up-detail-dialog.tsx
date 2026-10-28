@@ -45,7 +45,8 @@ export function FollowUpDetailDialog({
   onCancel,
   isCancelling = false,
 }: FollowUpDetailDialogProps) {
-  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
+  const confirmCancel = Boolean(followUp) && confirmCancelId === followUp?.id
   const canCancel =
     followUp?.status === "SCHEDULED" || followUp?.status === "OVERDUE"
   const canReschedule =
@@ -58,7 +59,7 @@ export function FollowUpDetailDialog({
       open={Boolean(followUp)}
       onOpenChange={(open) => {
         if (!open) {
-          setConfirmCancel(false)
+          setConfirmCancelId(null)
           onClose()
         }
       }}
@@ -170,7 +171,7 @@ export function FollowUpDetailDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setConfirmCancel(true)}
+                    onClick={() => setConfirmCancelId(followUp?.id ?? null)}
                   >
                     Cancelar
                   </Button>
