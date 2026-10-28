@@ -1,6 +1,8 @@
 import { Calendar, CheckCircle2, Pencil, Stethoscope, XCircle } from "lucide-react"
 import { CatalogValue } from "@/components/catalog-select"
+import { ReminderDeliveryActions } from "@/components/reminder-delivery-actions"
 import { Button } from "@/components/ui/button"
+import { reminderDeliveryLabels } from "@/lib/reminder-labels"
 import { cn } from "@/lib/utils"
 import type { Reminder } from "@/api/reminders"
 
@@ -112,15 +114,22 @@ export function ReminderCard({
               </p>
             )}
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
-              statusCfg.className,
-            )}
-          >
-            {statusCfg.label}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
+                statusCfg.className,
+              )}
+            >
+              {statusCfg.label}
+            </span>
+            <span className="text-muted-foreground text-[10px]">
+              Envío {reminderDeliveryLabels[reminder.deliveryStatus]}
+            </span>
+          </div>
         </div>
+
+        <ReminderDeliveryActions reminder={reminder} />
 
         {canManage && isPending && (
           <div className="mt-3 flex items-center gap-1.5 border-t border-border/40 pt-2.5">

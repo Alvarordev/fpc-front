@@ -9,6 +9,7 @@ import { getVolunteerColumns } from "./volunteers-columns"
 import { AvailabilityCalendar } from "./availability-calendar"
 import { CalendarHeader } from "./calendar-header"
 import { CalendarLegend } from "./calendar-legend"
+import { NeedsReassignmentPanel } from "./needs-reassignment-panel"
 import { VolunteerProfileDialog } from "./volunteer-profile-dialog"
 
 const NOW = new Date()
@@ -102,6 +103,8 @@ export function VolunteersContent() {
           {visibleVolunteers.length === 1 ? "" : "s"}
         </p>
       </div>
+
+      <NeedsReassignmentPanel />
 
       <VolunteerCommitmentBanner volunteers={volunteers} />
 

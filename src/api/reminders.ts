@@ -5,7 +5,10 @@ export type CreateReminderInput = components["schemas"]["CreateReminderDto"]
 export type UpdateReminderInput = components["schemas"]["UpdateReminderDto"]
 export type CompleteReminderInput = components["schemas"]["CompleteReminderDto"]
 export type Reminder = components["schemas"]["ReminderResponseDto"]
+export type ReminderMessage = components["schemas"]["ReminderMessageResponseDto"]
 export type ReminderKind = NonNullable<CreateReminderInput["kind"]>
+export type ReminderChannel = NonNullable<CreateReminderInput["channel"]>
+export type ReminderLead = NonNullable<CreateReminderInput["lead"]>
 export type ReminderMedicalAppointmentSummary =
   components["schemas"]["ReminderMedicalAppointmentSummaryDto"]
 
@@ -61,6 +64,33 @@ export const remindersApi = {
 
   async dismiss(id: string): Promise<Reminder> {
     const { data, response } = await api.PATCH("/reminders/{id}/dismiss", {
+      params: { path: { id } },
+    })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async message(id: string): Promise<ReminderMessage> {
+    const { data, response } = await api.GET("/reminders/{id}/message", {
+      params: { path: { id } },
+    })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async sendEmail(id: string): Promise<Reminder> {
+    const { data, response } = await api.POST("/reminders/{id}/send-email", {
+      params: { path: { id } },
+    })
+
+    if (!data) throw new RemindersApiError(response.status)
+    return data
+  },
+
+  async markSent(id: string): Promise<Reminder> {
+    const { data, response } = await api.POST("/reminders/{id}/mark-sent", {
       params: { path: { id } },
     })
 

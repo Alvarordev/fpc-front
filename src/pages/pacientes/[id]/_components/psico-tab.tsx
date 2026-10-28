@@ -34,6 +34,9 @@ import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
 import { AgendaSessionResultDialog } from "@/pages/agenda/_components/agenda-session-result-dialog"
 import { AgendaSessionResultSheet } from "@/pages/agenda/_components/agenda-session-result-sheet"
 import { PsychooncologySessionDetailDialog } from "./psychooncology-session-detail-dialog"
+import { PsychoCyclePanel } from "./psycho-cycle-panel"
+import { PsychoSessionActions } from "./psycho-session-actions"
+import { UnmanagedNoShowsBanner } from "./unmanaged-no-shows-banner"
 import {
   SchedulePsychooncologyDialog,
   type SchedulePsychooncologySubmitInput,
@@ -104,6 +107,7 @@ function ratingLabel(rating: unknown) {
 
 function PsychoSessionCard({
   appointment,
+  patientId,
   volunteerName,
   canManage,
   canRecordResult,
@@ -114,6 +118,7 @@ function PsychoSessionCard({
   onCancel,
 }: {
   appointment: PsychooncologyAppointment
+  patientId: string
   volunteerName: string
   canManage: boolean
   canRecordResult: boolean
@@ -184,7 +189,7 @@ function PsychoSessionCard({
                 {statusLabels[appointment.status]}
               </Badge>
             </div>
-            {(canManage || canRecordResult) && (
+            {canManage && isScheduled && (
               <button
                 type="button"
                 onClick={(event) => {
@@ -192,10 +197,10 @@ function PsychoSessionCard({
                   onEdit()
                 }}
                 className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 shadow-2xs transition-colors hover:bg-red-600 hover:text-white"
-                title="Editar sesión"
+                title="Reprogramar sesión"
               >
                 <Edit className="size-3.5" />
-                <span>Editar</span>
+                <span>Reprogramar</span>
               </button>
             )}
           </div>
@@ -275,7 +280,7 @@ function PsychoSessionCard({
                   No se presentó
                 </Button>
               )}
-              {canRecordResult && isScheduled && (
+              {canManage && isScheduled && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -288,6 +293,9 @@ function PsychoSessionCard({
                 </Button>
               )}
             </div>
+          )}
+          {canManage && (
+            <PsychoSessionActions appointment={appointment} patientId={patientId} />
           )}
         </div>
       </div>
@@ -312,16 +320,13 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   const [noAnswerNote, setNoAnswerNote] = useState("")
   const [beneficiaryTab, setBeneficiaryTab] =
     useState<SessionBeneficiaryTab>("PATIENT")
+  const [additionalSession, setAdditionalSession] = useState(false)
 
   const canSchedule =
     user?.role === "ADMIN" ||
     user?.role === "FOUNDATION" ||
-    user?.role === "AGENT" ||
-    user?.role === "VOLUNTEER"
-  const canManage =
-    user?.role === "ADMIN" ||
-    user?.role === "FOUNDATION" ||
     user?.role === "AGENT"
+  const canManage = canSchedule
 
   const appointmentsQuery = useQuery({
     queryKey: ["psychooncology-appointments", pacienteId],
@@ -331,6 +336,13 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],
     queryFn: volunteersApi.list,
+    enabled: user?.role !== "VOLUNTEER",
+    staleTime: 300_000,
+  })
+  const meQuery = useQuery({
+    queryKey: ["volunteers", "me"],
+    queryFn: volunteersApi.me,
+    enabled: user?.role === "VOLUNTEER",
     staleTime: 300_000,
   })
 
@@ -385,7 +397,13 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
       }),
   })
 
-  const appointments = [...(appointmentsQuery.data ?? [])].sort((a, b) => {
+  const appointments = [...(appointmentsQuery.data ?? [])]
+    .filter((appointment) =>
+      user?.role === "VOLUNTEER"
+        ? meQuery.data != null && appointment.volunteerId === meQuery.data.id
+        : true,
+    )
+    .sort((a, b) => {
     const scheduledDifference = (b.scheduledOn ?? b.scheduledAt ?? "").localeCompare(
       a.scheduledOn ?? a.scheduledAt ?? "",
     )
@@ -399,11 +417,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   )
   const visibleAppointments =
     beneficiaryTab === "PATIENT" ? patientAppointments : companionAppointments
-  const ownVolunteerId =
-    user?.role === "VOLUNTEER"
-      ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)
-          ?.id
-      : undefined
+  const ownVolunteerId = meQuery.data?.id
   const detailVolunteer = detailAppointment
     ? volunteersQuery.data?.find(
         (volunteer) => volunteer.id === detailAppointment.volunteerId,
@@ -480,8 +494,20 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     setNoAnswerNote("")
   }
 
+  function openSchedule(extra: boolean) {
+    setAdditionalSession(extra)
+    setEditingAppointment(null)
+    setScheduleOpen(true)
+  }
+
   return (
     <div className="space-y-5">
+      <UnmanagedNoShowsBanner patientId={pacienteId} canManage={canManage} />
+      <PsychoCyclePanel
+        patientId={pacienteId}
+        canManage={canManage}
+        onScheduleAdditional={() => openSchedule(true)}
+      />
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold">Sesiones de psicooncología</h2>
@@ -494,10 +520,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
           <Button
             size="sm"
             className="gap-1.5"
-            onClick={() => {
-              setEditingAppointment(null)
-              setScheduleOpen(true)
-            }}
+            onClick={() => openSchedule(false)}
           >
             <CalendarPlus className="size-4" />
             Agendar cita
@@ -552,15 +575,22 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
                   const volunteer = volunteersQuery.data?.find(
                     (item) => item.id === appointment.volunteerId,
                   )
+                  const own = meQuery.data?.id === appointment.volunteerId ? meQuery.data : undefined
                   const volunteerName = volunteer
                     ? `${volunteer.firstName} ${volunteer.lastName}`
-                    : "Psicooncólogo"
-                  const canRecordResult = user?.role === "VOLUNTEER"
+                    : own
+                      ? `${own.firstName} ${own.lastName}`
+                      : appointment.volunteerFullName || "Psicooncólogo"
+                  const canRecordResult =
+                    user?.role === "VOLUNTEER" &&
+                    ownVolunteerId != null &&
+                    appointment.volunteerId === ownVolunteerId
 
                   return (
                     <PsychoSessionCard
                       key={appointment.id}
                       appointment={appointment}
+                      patientId={pacienteId}
                       volunteerName={volunteerName}
                       canManage={canManage}
                       canRecordResult={canRecordResult}
@@ -590,6 +620,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         patientId={pacienteId}
         ownVolunteerId={ownVolunteerId}
         appointment={editingAppointment}
+        additionalSession={additionalSession}
         isPending={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleDialogSubmit}
       />

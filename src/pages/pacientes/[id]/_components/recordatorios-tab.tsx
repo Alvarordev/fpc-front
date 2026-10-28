@@ -13,6 +13,7 @@ import {
   resolveSpecialtyLabel,
 } from "@/components/medical-appointment-fields"
 import { useCatalog } from "@/hooks/use-catalog"
+import { reminderScheduleInput } from "@/lib/reminder-labels"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/store/auth-store"
 import { CompleteMedicalReminderDialog } from "./complete-medical-reminder-dialog"
@@ -170,6 +171,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         ? resolveSpecialtyLabel(specialtyItems, values.medicalAppointment)
         : ""
     const dueAt = new Date(values.dueAt).toISOString()
+    const schedule = reminderScheduleInput(values)
 
     if (editingReminder) {
       updateMutation.mutate({
@@ -185,6 +187,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
             values.kind === "MEDICAL_APPOINTMENT"
               ? values.medicalAppointment.healthCenterId || undefined
               : undefined,
+          ...schedule,
         },
       })
       return
@@ -197,6 +200,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         dueAt,
         assignedAgentId,
         kind: "MEDICAL_APPOINTMENT",
+        ...schedule,
         medicalAppointment: {
           specialty,
           healthCenterId:
@@ -213,6 +217,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
       dueAt,
       assignedAgentId,
       kind: "GENERIC",
+      channel: values.channel,
     })
   }
 

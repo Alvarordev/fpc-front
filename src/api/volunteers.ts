@@ -15,6 +15,12 @@ export type CreateVolunteerInput = components["schemas"]["CreateVolunteerDto"]
 export type UpdateVolunteerInput = components["schemas"]["UpdateVolunteerDto"]
 export type CreateAvailabilityInput =
   components["schemas"]["CreateVolunteerAvailabilityDto"]
+export type CreateRecurringAvailabilityInput =
+  components["schemas"]["CreateRecurringAvailabilityDto"]
+export type RecurringAvailability =
+  components["schemas"]["RecurringAvailabilityResponseDto"]
+export type RemoveRecurrence =
+  components["schemas"]["RemoveRecurrenceResponseDto"]
 
 export class VolunteersApiError extends Error {
   readonly status: number
@@ -29,6 +35,13 @@ export class VolunteersApiError extends Error {
 export const volunteersApi = {
   async list(): Promise<Volunteer[]> {
     const { data, response } = await api.GET("/volunteers")
+
+    if (!data) throw new VolunteersApiError(response.status)
+    return data
+  },
+
+  async me(): Promise<Volunteer> {
+    const { data, response } = await api.GET("/volunteers/me")
 
     if (!data) throw new VolunteersApiError(response.status)
     return data
@@ -84,5 +97,29 @@ export const volunteersApi = {
       { params: { path: { volunteerId, id } } },
     )
     if (!response.ok) throw new VolunteersApiError(response.status)
+  },
+
+  async createRecurringAvailability(
+    volunteerId: string,
+    input: CreateRecurringAvailabilityInput,
+  ): Promise<RecurringAvailability> {
+    const { data, response } = await api.POST(
+      "/volunteers/{volunteerId}/availability/recurring",
+      { params: { path: { volunteerId } }, body: input },
+    )
+    if (!data) throw new VolunteersApiError(response.status)
+    return data
+  },
+
+  async deleteRecurrence(
+    volunteerId: string,
+    recurrenceId: string,
+  ): Promise<RemoveRecurrence> {
+    const { data, response } = await api.DELETE(
+      "/volunteers/{volunteerId}/availability/recurrences/{recurrenceId}",
+      { params: { path: { volunteerId, recurrenceId } } },
+    )
+    if (!data) throw new VolunteersApiError(response.status)
+    return data
   },
 }

@@ -123,7 +123,7 @@ export const router = createBrowserRouter([
       {
         path: "alertas",
         element: (
-          <RoleGuard allowedRoles={["ADMIN", "AGENT"]}>
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
             <AlertsPage />
           </RoleGuard>
         ),

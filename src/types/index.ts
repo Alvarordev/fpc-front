@@ -434,4 +434,5 @@ export interface AvailabilitySlot {
   startTime: string
   endTime: string
   status: AvailabilityStatus
+  recurrenceId?: string | null
 }

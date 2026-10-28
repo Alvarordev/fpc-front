@@ -1,14 +1,18 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { TriangleAlert, CheckCircle, Clock, Building2, Sparkles, History, Ticket, Plus, User } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { alertStatusClasses, alertStatusLabels } from "@/lib/alert-status";
+import { useAuthStore } from "@/store/auth-store";
+import { alertsApi, type Alert } from "@/api/alerts";
 import { useAlerts, useResolveAlert } from "../_hooks/use-alerts";
+import { AlertOperations } from "./alert-operations";
 import { AlertTimelineDrawer } from "./alert-timeline-drawer";
 import { CreateAlertDialog } from "./create-alert-dialog";
-import type { Alert } from "@/api/alerts";
 
 type Filter = Alert["status"] | "all";
 
@@ -31,6 +35,9 @@ export function AlertsContent() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+  const canResolve = user?.role === "FOUNDATION";
   const { data: alerts = [] } = useAlerts(filter);
   const resolveAlert = useResolveAlert();
 
@@ -47,7 +54,22 @@ export function AlertsContent() {
       setConfirmId(null);
       setResolutionNotes("");
     } catch (err) {
-      console.error("Error resolving alert:", err);
+      toast.error("No se pudo resolver la alerta", {
+        description: err instanceof Error ? err.message : "Error inesperado",
+      });
+    }
+  }
+
+  async function handleReview(alert: Alert, event: React.MouseEvent) {
+    event.stopPropagation();
+    try {
+      await alertsApi.update(alert.id, { status: "IN_REVIEW" });
+      await queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      toast.success("Alerta en revisión");
+    } catch (err) {
+      toast.error("No se pudo pasar la alerta a revisión", {
+        description: err instanceof Error ? err.message : "Error inesperado",
+      });
     }
   }
 
@@ -209,6 +231,11 @@ export function AlertsContent() {
                     <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
                       {alert.description}
                     </p>
+                    {alert.aiSummary && (
+                      <p className="mt-2 rounded-md border border-indigo-100 bg-indigo-50/60 p-2 text-xs leading-relaxed text-indigo-950">
+                        {alert.aiSummary}
+                      </p>
+                    )}
 
                     <div className="flex items-center justify-between gap-2 mt-3 flex-wrap text-xs text-muted-foreground border-t pt-2.5">
                       <div className="flex items-center gap-1">
@@ -233,7 +260,18 @@ export function AlertsContent() {
                           Línea de Tiempo / Bot IA
                         </Button>
 
-                        {isOpen && (
+                        {alert.status === "REPORTED" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={(event) => handleReview(alert, event)}
+                          >
+                            Pasar a revisión
+                          </Button>
+                        )}
+
+                        {isOpen && canResolve && (
                           <div>
                             {isPending ? (
                               <div
@@ -288,6 +326,7 @@ export function AlertsContent() {
                             )}
                           </div>
                         )}
+                        <AlertOperations alert={alert} />
                       </div>
                     </div>
                   </div>

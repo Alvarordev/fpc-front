@@ -39,12 +39,14 @@ import {
 import { useAuthStore } from "@/store/auth-store"
 import { resolveSpecialtyLabel } from "@/components/medical-appointment-fields"
 import { useCatalog } from "@/hooks/use-catalog"
+import { reminderScheduleInput } from "@/lib/reminder-labels"
 import { CompleteMedicalReminderDialog } from "@/pages/pacientes/[id]/_components/complete-medical-reminder-dialog"
 import {
   ReminderFormDialog,
   type ReminderFormValues,
 } from "@/pages/pacientes/[id]/_components/reminder-form-dialog"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
+import { NeedsReassignmentPanel } from "@/pages/voluntarios/_components/needs-reassignment-panel"
 import { AgentAgendaCalendar } from "./_components/agent-agenda-calendar"
 import { FollowUpDetailDialog } from "./_components/follow-up-detail-dialog"
 import { FollowUpEditDialog } from "./_components/follow-up-edit-dialog"
@@ -356,6 +358,7 @@ export default function AgentAgendaPage() {
           values.kind === "MEDICAL_APPOINTMENT"
             ? values.medicalAppointment.healthCenterId || undefined
             : undefined,
+        ...reminderScheduleInput(values),
       },
     })
   }
@@ -390,6 +393,8 @@ export default function AgentAgendaPage() {
           </ViewButton>
         </div>
       </header>
+
+      <NeedsReassignmentPanel />
 
       <section className="grid gap-3 sm:grid-cols-3">
         <AgendaMetric

@@ -6,6 +6,8 @@ export type UpdatePsychooncologyAppointmentInput = components["schemas"]["Update
 export type ReschedulePsychooncologyAppointmentInput = components["schemas"]["ReschedulePsychooncologyAppointmentDto"]
 export type PsychooncologyAppointment = components["schemas"]["PsychooncologyAppointmentResponseDto"]
 export type PsychooncologyAppointmentFilters = NonNullable<operations["PsychooncologyAppointmentsController_findAll"]["parameters"]["query"]>
+export type AppointmentReminder = components["schemas"]["AppointmentReminderResponseDto"]
+export type UnmanagedNoShows = components["schemas"]["UnmanagedNoShowsResponseDto"]
 
 export class PsychooncologyAppointmentsApiError extends Error {
   readonly status: number
@@ -61,6 +63,52 @@ export const psychooncologyAppointmentsApi = {
     const { data, response } = await api.PATCH("/psychooncology-appointments/{id}/cancel", {
       params: { path: { id } },
     })
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
+    return data
+  },
+
+  async needsReassignment(): Promise<PsychooncologyAppointment[]> {
+    const { data, response } = await api.GET("/psychooncology-appointments/needs-reassignment")
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
+    return data
+  },
+
+  async unmanagedNoShows(patientId: string): Promise<UnmanagedNoShows> {
+    const { data, response } = await api.GET(
+      "/psychooncology-appointments/patients/{patientId}/unmanaged-no-shows",
+      { params: { path: { patientId } } },
+    )
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
+    return data
+  },
+
+  async reminder(id: string): Promise<AppointmentReminder> {
+    const { data, response } = await api.GET("/psychooncology-appointments/{id}/reminder", {
+      params: { path: { id } },
+    })
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
+    return data
+  },
+
+  async markReminderSent(id: string): Promise<AppointmentReminder> {
+    const { data, response } = await api.PATCH(
+      "/psychooncology-appointments/{id}/reminder/sent",
+      { params: { path: { id } } },
+    )
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
+    return data
+  },
+
+  async markNoShowManaged(id: string): Promise<PsychooncologyAppointment> {
+    const { data, response } = await api.PATCH(
+      "/psychooncology-appointments/{id}/no-show-managed",
+      { params: { path: { id } } },
+    )
 
     if (!data) throw new PsychooncologyAppointmentsApiError(response.status)
     return data

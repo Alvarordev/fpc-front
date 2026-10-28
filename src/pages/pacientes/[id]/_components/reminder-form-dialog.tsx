@@ -24,7 +24,16 @@ import {
   type MedicalAppointmentFieldsValue,
 } from "@/components/medical-appointment-fields"
 import type { Agent } from "@/api/agents"
-import type { Reminder, ReminderKind } from "@/api/reminders"
+import type {
+  Reminder,
+  ReminderChannel,
+  ReminderKind,
+  ReminderLead,
+} from "@/api/reminders"
+import {
+  REMINDER_CHANNEL_ITEMS,
+  REMINDER_LEAD_ITEMS,
+} from "@/lib/reminder-labels"
 import { cn } from "@/lib/utils"
 
 function toLocalDateTime(date: string | null) {
@@ -39,6 +48,9 @@ export interface ReminderFormValues {
   description: string
   dueAt: string
   assignedAgentId?: string
+  channel: ReminderChannel
+  lead: ReminderLead
+  remindAt: string
   medicalAppointment: MedicalAppointmentFieldsValue
 }
 
@@ -79,6 +91,9 @@ export function ReminderFormDialog({
         description: "",
         dueAt: "",
         assignedAgentId: undefined,
+        channel: "EMAIL",
+        lead: "ONE_DAY",
+        remindAt: "",
         medicalAppointment: EMPTY_APPOINTMENT,
       },
     })
@@ -92,6 +107,9 @@ export function ReminderFormDialog({
         description: reminder.description,
         dueAt: toLocalDateTime(reminder.dueAt),
         assignedAgentId: reminder.assignedAgentId,
+        channel: reminder.channel ?? "EMAIL",
+        lead: reminder.lead ?? "ONE_DAY",
+        remindAt: toLocalDateTime(reminder.remindAt),
         medicalAppointment: appointment
           ? {
               specialty: appointment.specialty,
@@ -107,14 +125,19 @@ export function ReminderFormDialog({
       description: "",
       dueAt: "",
       assignedAgentId: undefined,
+      channel: "EMAIL",
+      lead: "ONE_DAY",
+      remindAt: "",
       medicalAppointment: EMPTY_APPOINTMENT,
     })
   }, [open, reminder, reset])
 
   const kind = watch("kind")
-  const description = watch("description")
   const dueAt = watch("dueAt")
   const assignedAgentId = watch("assignedAgentId")
+  const channel = watch("channel")
+  const lead = watch("lead")
+  const remindAt = watch("remindAt")
   const medicalAppointment = watch("medicalAppointment")
   const specialty = resolveSpecialty(medicalAppointment)
   const isMedical = kind === "MEDICAL_APPOINTMENT"
@@ -124,12 +147,14 @@ export function ReminderFormDialog({
     label: agent.fullName,
   }))
 
+  const description = watch("description")
   const canSubmit = Boolean(
     dueAt &&
       (isMedical
         ? specialty
         : description.trim()) &&
-      (!requiresAgentSelection || hideAgentSelection || assignedAgentId),
+      (!requiresAgentSelection || hideAgentSelection || assignedAgentId) &&
+      (!isMedical || lead !== "CUSTOM" || remindAt),
   )
 
   return (
@@ -215,6 +240,59 @@ export function ReminderFormDialog({
               {...register("dueAt", { required: true })}
             />
           </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Canal</Label>
+            <Select
+              items={REMINDER_CHANNEL_ITEMS}
+              value={channel}
+              onValueChange={(value) =>
+                setValue("channel", (value as ReminderChannel | null) ?? "EMAIL")
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REMINDER_CHANNEL_ITEMS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isMedical && (
+            <div className="flex flex-col gap-2">
+              <Label>Anticipación</Label>
+              <Select
+                items={REMINDER_LEAD_ITEMS}
+                value={lead}
+                onValueChange={(value) =>
+                  setValue("lead", (value as ReminderLead | null) ?? "ONE_DAY")
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REMINDER_LEAD_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {lead === "CUSTOM" && (
+                <Input
+                  type="datetime-local"
+                  aria-label="Fecha y hora del recordatorio"
+                  {...register("remindAt")}
+                />
+              )}
+            </div>
+          )}
 
           {requiresAgentSelection && !hideAgentSelection && (
             <div className="flex flex-col gap-2">

@@ -8,6 +8,13 @@ export type AlertEvent = components["schemas"]["AlertEventResponseDto"]
 export type CreateAlertEventInput = components["schemas"]["CreateAlertEventDto"]
 export type AlertTicketLookup = components["schemas"]["AlertTicketLookupResponseDto"]
 export type AlertListFilters = NonNullable<paths["/alerts"]["get"]["parameters"]["query"]>
+export type DeriveAlertInput = components["schemas"]["DeriveAlertDto"]
+export type LinkAlertReportInput = components["schemas"]["LinkAlertReportDto"]
+export type AlertReport = components["schemas"]["AlertReportResponseDto"]
+export type AlertAffectedPatients =
+  components["schemas"]["AlertAffectedPatientsResponseDto"]
+export type AlertNotifyPatients =
+  components["schemas"]["AlertNotifyPatientsResponseDto"]
 
 export const alertsApi = {
   async list(filters: AlertListFilters = {}): Promise<Alert[]> {
@@ -69,6 +76,48 @@ export const alertsApi = {
   async generateAISummary(id: string): Promise<Alert> {
     const { data, response } = await api.POST("/alerts/{id}/ai-summary", { params: { path: { id } } })
     if (!data) throw new Error(`No se pudo generar el resumen (${response.status})`)
+    return data
+  },
+
+  async derive(id: string, input: DeriveAlertInput): Promise<Alert> {
+    const { data, response } = await api.PATCH("/alerts/{id}/derive", {
+      params: { path: { id } },
+      body: input,
+    })
+    if (!data) throw new Error(`No se pudo derivar la alerta (${response.status})`)
+    return data
+  },
+
+  async listReports(id: string): Promise<AlertReport[]> {
+    const { data, response } = await api.GET("/alerts/{id}/reports", {
+      params: { path: { id } },
+    })
+    if (!data) throw new Error(`No se pudieron obtener los reportes (${response.status})`)
+    return data
+  },
+
+  async linkReport(id: string, input: LinkAlertReportInput): Promise<AlertReport> {
+    const { data, response } = await api.POST("/alerts/{id}/reports", {
+      params: { path: { id } },
+      body: input,
+    })
+    if (!data) throw new Error(`No se pudo vincular el reporte (${response.status})`)
+    return data
+  },
+
+  async affectedPatients(id: string): Promise<AlertAffectedPatients> {
+    const { data, response } = await api.GET("/alerts/{id}/affected-patients", {
+      params: { path: { id } },
+    })
+    if (!data) throw new Error(`No se pudieron obtener los pacientes afectados (${response.status})`)
+    return data
+  },
+
+  async notifyAffectedPatients(id: string): Promise<AlertNotifyPatients> {
+    const { data, response } = await api.POST("/alerts/{id}/affected-patients/notify", {
+      params: { path: { id } },
+    })
+    if (!data) throw new Error(`No se pudo avisar a los pacientes (${response.status})`)
     return data
   },
 }

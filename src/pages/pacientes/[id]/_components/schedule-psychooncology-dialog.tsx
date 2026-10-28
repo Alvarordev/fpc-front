@@ -49,6 +49,7 @@ interface SchedulePsychooncologyDialogProps {
   followUpId?: string
   ownVolunteerId?: string
   appointment?: PsychooncologyAppointment | null
+  additionalSession?: boolean
   completeIntent?: boolean
   isPending: boolean
   onSubmit: (payload: SchedulePsychooncologySubmitInput) => Promise<void>
@@ -84,6 +85,13 @@ const MODALITY_OPTIONS = [
   { value: "VIDEO_CALL", label: "Videollamada" },
 ] as const
 
+const REMINDER_MODE_OPTIONS = [
+  { value: "TWO_HOURS", label: "2 horas antes" },
+  { value: "ONE_DAY", label: "1 día antes" },
+  { value: "CUSTOM", label: "Personalizado" },
+  { value: "MANUAL", label: "Manual" },
+] as const
+
 const BENEFICIARY_OPTIONS = [
   { value: "PATIENT", label: "Paciente" },
   { value: "COMPANION", label: "Acompañante" },
@@ -102,6 +110,7 @@ export function SchedulePsychooncologyDialog({
   followUpId,
   ownVolunteerId,
   appointment,
+  additionalSession = false,
   completeIntent = false,
   isPending,
   onSubmit,
@@ -129,6 +138,10 @@ export function SchedulePsychooncologyDialog({
     appointment?.modality ?? "CALL",
   )
   const [zoomLink, setZoomLink] = useState(appointment?.zoomLink ?? "")
+  const [reminderMode, setReminderMode] = useState<
+    (typeof REMINDER_MODE_OPTIONS)[number]["value"]
+  >(appointment?.reminderMode ?? "MANUAL")
+  const [remindAt, setRemindAt] = useState("")
   const [schedulingNotes, setSchedulingNotes] = useState(
     appointment?.schedulingNotes ?? "",
   )
@@ -266,6 +279,13 @@ export function SchedulePsychooncologyDialog({
         }
       }
 
+      if (reminderMode === "CUSTOM" && !remindAt) {
+        toast.error("Indicá la fecha del recordatorio personalizado")
+        return
+      }
+      const reminderAt =
+        reminderMode === "CUSTOM" ? new Date(remindAt).toISOString() : undefined
+
       if (isEdit && appointment) {
         const zoom =
           modality === "VIDEO_CALL" && zoomLink.trim() ? zoomLink.trim() : null
@@ -278,6 +298,8 @@ export function SchedulePsychooncologyDialog({
           patch.modality = modality
           patch.zoomLink = zoom
           patch.schedulingNotes = notes
+          patch.reminderMode = reminderMode
+          if (reminderAt) patch.remindAt = reminderAt
         }
 
         const previousBeneficiaryType = appointment.beneficiaryType ?? "PATIENT"
@@ -309,7 +331,8 @@ export function SchedulePsychooncologyDialog({
               modality,
               zoomLink: zoom ?? undefined,
               schedulingNotes: notes ?? undefined,
-              reminderMode: "MANUAL",
+              reminderMode,
+              remindAt: reminderAt,
             },
             update: Object.keys(patch).length > 0 ? patch : undefined,
           })
@@ -329,7 +352,9 @@ export function SchedulePsychooncologyDialog({
           availabilityId: selectedSlotId,
           followUpId,
           modality,
-          reminderMode: "MANUAL",
+          reminderMode,
+          remindAt: reminderAt,
+          isAdditionalSession: additionalSession || undefined,
           zoomLink:
             modality === "VIDEO_CALL" && zoomLink.trim()
               ? zoomLink.trim()
@@ -578,6 +603,43 @@ export function SchedulePsychooncologyDialog({
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Recordatorio</Label>
+            <Select
+              items={[...REMINDER_MODE_OPTIONS]}
+              value={reminderMode}
+              onValueChange={(value) =>
+                setReminderMode(
+                  (value as (typeof REMINDER_MODE_OPTIONS)[number]["value"] | null) ??
+                    "MANUAL",
+                )
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REMINDER_MODE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {reminderMode === "CUSTOM" && (
+              <Input
+                type="datetime-local"
+                value={remindAt}
+                onChange={(event) => setRemindAt(event.target.value)}
+                aria-label="Fecha del recordatorio"
+              />
+            )}
+          </div>
+          {additionalSession && (
+            <p className="text-muted-foreground text-xs">
+              Esta cita se registra como sesión adicional del ciclo.
+            </p>
+          )}
           {modality === "VIDEO_CALL" && (
             <div className="space-y-2">
               <Label htmlFor="zoom-link">Link de Zoom (opcional)</Label>
