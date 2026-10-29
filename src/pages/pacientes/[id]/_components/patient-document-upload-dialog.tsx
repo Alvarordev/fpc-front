@@ -329,7 +329,6 @@ export function PatientDocumentUploadDialog({
                   ? "Ej. resultado de laboratorio enviado por el paciente"
                   : "Descripción opcional"
               }
-              maxLength={1000}
               rows={3}
               disabled={isPending}
             />
