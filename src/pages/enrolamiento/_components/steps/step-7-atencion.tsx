@@ -14,7 +14,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -99,19 +98,6 @@ const MEDICATION_ROUTES: Array<{ value: MedicationRoute; label: string }> = [
   { value: "TOPICAL", label: "Tópica" },
   { value: "OTHER", label: "Otra" },
 ]
-
-const TALK_TOPICS = [
-  "Prevención del cáncer de mama",
-  "Prevención del cáncer de cuello uterino",
-  "Prevención del cáncer de próstata",
-  "Prevención del cáncer de estómago",
-  "Prevención del cáncer de pulmón",
-  "Prevención del cáncer de colon y recto",
-  "Prevención del cáncer de piel",
-  "Prevención general del cáncer",
-] as const
-
-const TALK_OTHER = "TALK_OTHER"
 
 type NewHospitalTarget =
   | "primary"
@@ -216,14 +202,6 @@ export function Step7Atencion({
       ? (dx.waitTimeForDiagnosis ?? undefined)
       : (calculatedWaitTime ?? dx.waitTimeForDiagnosis ?? undefined)
   const [showFamilyTalks, setShowFamilyTalks] = useState(ft.length > 0)
-  const [talkOtherIndices, setTalkOtherIndices] = useState<Set<number>>(() => {
-    const topics = TALK_TOPICS as readonly string[]
-    const others = new Set<number>()
-    ft.forEach((entry, i) => {
-      if (entry.talkName && !topics.includes(entry.talkName)) others.add(i)
-    })
-    return others
-  })
 
   useEffect(() => {
     if (!cancerDiagnosesFetched) return
@@ -439,21 +417,12 @@ export function Step7Atencion({
     })
   }
 
-  function setTalkOther(idx: number, isOther: boolean) {
-    setTalkOtherIndices((prev) => {
-      const next = new Set(prev)
-      if (isOther) next.add(idx)
-      else next.delete(idx)
-      return next
-    })
-  }
-
   function addFamilyTalk() {
     updateDraft({
       familyPreventionTalkInterests: [
         ...ft,
         {
-          talkName: "",
+          talk: "",
           familyMemberName: "",
           familyMemberPhone: "",
           familyMemberEmail: "",
@@ -464,14 +433,6 @@ export function Step7Atencion({
 
   function removeFamilyTalk(idx: number) {
     const updated = ft.filter((_, i) => i !== idx)
-    setTalkOtherIndices((prev) => {
-      const next = new Set<number>()
-      prev.forEach((i) => {
-        if (i < idx) next.add(i)
-        else if (i > idx) next.add(i - 1)
-      })
-      return next
-    })
     updateDraft({ familyPreventionTalkInterests: updated })
     if (updated.length === 0) setShowFamilyTalks(false)
   }
@@ -2648,52 +2609,14 @@ export function Step7Atencion({
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>Charla de prevención</Label>
-                  <Select
-                    items={[
-                      ...TALK_TOPICS.map((value) => ({ value, label: value })),
-                      { value: TALK_OTHER, label: "Otro (especificar)" },
-                    ]}
-                    value={
-                      talkOtherIndices.has(idx)
-                        ? TALK_OTHER
-                        : entry.talkName || ""
-                    }
-                    onValueChange={(v) => {
-                      if (!v) return
-                      if (v === TALK_OTHER) {
-                        setTalkOther(idx, true)
-                        updateFamilyTalk(idx, "talkName", "")
-                      } else {
-                        setTalkOther(idx, false)
-                        updateFamilyTalk(idx, "talkName", v)
-                      }
-                    }}
-                  >
-                    <SelectTrigger className={sc}>
-                      <SelectValue placeholder="Seleccionar charla..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TALK_TOPICS.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                      <SelectSeparator />
-                      <SelectItem value={TALK_OTHER}>
-                        Otro (especificar)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {talkOtherIndices.has(idx) && (
-                    <Input
-                      value={entry.talkName}
-                      onChange={(e) =>
-                        updateFamilyTalk(idx, "talkName", e.target.value)
-                      }
-                      placeholder="Especifique la charla de prevención..."
-                      className="bg-card border"
-                    />
-                  )}
+                  <CatalogSelect
+                    kind="educational_talk"
+                    allowCreate={false}
+                    value={entry.talk}
+                    onValueChange={(code) => updateFamilyTalk(idx, "talk", code ?? "")}
+                    placeholder="Seleccionar charla..."
+                    triggerClassName={sc}
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex flex-col gap-2">

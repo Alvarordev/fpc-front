@@ -447,7 +447,10 @@ function normalizeDraft(
     treatments,
     addresses: migratedAddresses,
     medicalAppointments: raw?.medicalAppointments ?? [],
-    familyPreventionTalkInterests: raw?.familyPreventionTalkInterests ?? [],
+    familyPreventionTalkInterests: (raw?.familyPreventionTalkInterests ?? []).map((item) => {
+      const legacy = item as { talk?: string; talkName?: string }
+      return { ...item, talk: legacy.talk || legacy.talkName || "" }
+    }),
     psychooncologySupportAssessment: raw?.psychooncologySupportAssessment ?? {},
     sisAffiliation: {
       ...DEFAULT_DRAFT.sisAffiliation,

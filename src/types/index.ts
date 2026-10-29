@@ -393,7 +393,8 @@ export interface EnrollmentAddressRequest {
 }
 
 export interface FamilyPreventionTalkInterestRequest {
-  talkName: string
+  /** Código del catálogo `educational_talk`. */
+  talk: string
   familyMemberName: string
   familyMemberPhone: string
   familyMemberEmail: string

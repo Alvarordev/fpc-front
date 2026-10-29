@@ -477,9 +477,9 @@ export function buildEnrollmentPayload({
         address.dniMatchesAddress !== undefined,
     )
   const talks = draft.familyPreventionTalkInterests
-    .filter((item) => value(item.talkName) && value(item.familyMemberName))
+    .filter((item) => value(item.talk) && value(item.familyMemberName))
     .map((item) => ({
-      talkName: item.talkName.trim(),
+      talk: item.talk.trim(),
       familyMemberName: item.familyMemberName.trim(),
       familyMemberPhone: value(item.familyMemberPhone),
       familyMemberEmail: value(item.familyMemberEmail),
