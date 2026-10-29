@@ -43,6 +43,19 @@ para su presentación.
 | `copy-value.tsx` | `CopyValue` | teléfonos y correos copiables |
 | `inline-alert.tsx` | `InlineAlert` | alerta abierta o aviso en línea |
 | `empty-state.tsx` | `EmptyState` | lista vacía: qué falta y la acción para empezar |
+| `form.tsx` | `Field`, `TextInput`, `TextArea`, `SelectField`, `ChoiceGroup`, `ScaleField`, `DurationField` | formularios; `ChoiceGroup` para respuestas cortas de un toque (Sí / No / No sabe); `ScaleField` 0 a 10; `DurationField` cantidad y unidad |
+| `search-select.tsx` | `SearchSelect` | select con buscador para listas largas |
+| `catalog-picker.tsx` | `CatalogPicker` | cualquier select de un catálogo ampliable o de hospitales, con el botón para agregar |
+| `questions.ts` | `Question`, `Group`, `Values`, `yes`, `no`, `is`, `progress` | formularios descritos como datos: tipo, `showIf`, obligatorio |
+| `question-form.tsx` | `QuestionForm` | dibuja los grupos de preguntas; `framed` para usarlo dentro de un modal |
+| `catalog-source.ts` | `CatalogSourceContext`, `useCatalogSource` | de dónde salen las opciones de catálogo y cómo se da de alta una nueva; lo provee cada pantalla |
+| `form-modal.tsx` | `FormModal` | modal con un formulario de datos; habilita el botón cuando están los obligatorios |
+| `record-section.tsx` | `RecordSection`, `RemoveButton` | registros de una sección con los cambios pendientes por guardar |
+| `step-section.tsx` | `StepSection` | paso numerado de un flujo que sí es secuencia |
+| `expandable-line.tsx` | `ExpandableLine` | contexto en una línea que se expande |
+| `action-tile.tsx` | `ActionTile` | acción que abre un formulario, con estado "agregado" |
+| `check-list.tsx` | `CheckList` | lo que se va a guardar o se guardó |
+| `composer-dock.tsx` | `ComposerDock` | texto fijo al pie (nota del seguimiento) con controles alineados y atajo Alt + tecla |
 
 ## Reglas
 
@@ -59,5 +72,20 @@ para su presentación.
 - **Cada vacío guía.** `EmptyState` dice qué falta y ofrece la acción.
 - **Detalle en modal.** Cada registro clínico abre un `Modal` con `Panel`es; la
   tarjeta solo muestra lo que se mira de un vistazo.
-- **Selects:** siguen la regla de `AGENTS.md` (`items` en la raíz).
+- **Selects:** siguen la regla de `AGENTS.md` (`items` en la raíz). `SelectField`
+  ya la cumple.
+- **Catálogos ampliables:** todo select cuyas opciones vienen de un catálogo
+  editable o de hospitales usa `CatalogPicker`, con el botón **+** al lado que
+  abre el alta (ítem de catálogo u hospital). Lo agregado queda seleccionado.
+- **Listas largas con buscador:** hospitales, diagnósticos, tipos de
+  tratamiento y especialidades van con `searchable` (`SearchSelect`). Si otro
+  catálogo crece, se le activa igual.
+- **Formularios como datos.** Los formularios largos se describen con
+  `questions.ts` y se dibujan con `QuestionForm`: la lógica condicional vive en
+  `showIf`, no en JSX. Así un formulario de cientos de preguntas no termina en
+  un archivo de miles de líneas.
+- **Borradores visibles.** Lo que se guardará al confirmar se muestra como
+  pendiente (`RecordSection`, `CheckList`) y se puede quitar antes.
+- **Preguntas como etiquetas.** En la ficha clínica la etiqueta es la pregunta
+  que el agente hace, con el texto actual. No se resumen ni se quitan.
 - **Copy:** tú, sin voseo; frases cortas; errores que dicen qué pasó y cómo seguir.

@@ -15,7 +15,7 @@ export function Button({ variant = "outline", size = "sm", icon: Icon, className
     <button
       type={type}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[10px] text-sm font-medium transition-[background-color,transform,opacity] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[10px] text-sm font-medium whitespace-nowrap transition-[background-color,transform,opacity] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-8 px-3" : "h-9 px-3.5",
         variant === "outline" && "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50",
         variant === "dark" && "bg-zinc-900 text-white hover:bg-zinc-800",

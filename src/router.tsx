@@ -35,6 +35,12 @@ const devRoutes = import.meta.env.DEV
           Component: (await import("@/pages/design-lab/page")).default,
         }),
       },
+      {
+        path: "/lab/seguimiento",
+        lazy: async () => ({
+          Component: (await import("@/pages/design-lab/seguimiento/page")).default,
+        }),
+      },
     ]
   : []
 

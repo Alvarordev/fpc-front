@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
-// Pestañas con un indicador que se desliza a la pestaña activa. El indicador se
+// Pestañas con un indicador que se desliza a la pestaña activa. `marked` pone un
+// punto ámbar: la pestaña tiene cambios sin guardar. El indicador se
 // mide en el DOM, así que sigue funcionando si cambian las etiquetas o contadores.
 
 export function SlidingTabs<T extends string>({
@@ -11,7 +12,7 @@ export function SlidingTabs<T extends string>({
   label,
 }: {
   value: T
-  options: { id: T; label: string; count?: number | null }[]
+  options: { id: T; label: string; count?: number | null; marked?: boolean }[]
   onChange: (id: T) => void
   label: string
 }) {
@@ -57,6 +58,7 @@ export function SlidingTabs<T extends string>({
             >
               {o.label}
               {o.count ? <span className="text-xs text-zinc-400 tabular-nums">{o.count}</span> : null}
+              {o.marked && <span aria-label="Con cambios sin guardar" className="size-1.5 rounded-full bg-amber-500" />}
             </button>
           )
         })}
