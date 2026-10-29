@@ -1,6 +1,11 @@
-import type { AsideContent } from "../_components/enrollment-aside"
 import type { EnrollmentDraft } from "../_store/enrollment-store"
 import type { CategoriaClinica } from "../_store/enrollment-store"
+
+export interface AsideContent {
+  script: string
+  complianceNote?: string
+  reference: string
+}
 
 function step5Conditionals(draft: EnrollmentDraft): string {
   const parts: string[] = []

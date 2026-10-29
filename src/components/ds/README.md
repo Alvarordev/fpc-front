@@ -47,7 +47,7 @@ para su presentación.
 | `search-select.tsx` | `SearchSelect` | select con buscador para listas largas |
 | `catalog-picker.tsx` | `CatalogPicker` | cualquier select de un catálogo ampliable o de hospitales, con el botón para agregar |
 | `questions.ts` | `Question`, `Group`, `Values`, `yes`, `no`, `is`, `progress`, `multiValues` | formularios descritos como datos: tipo, `showIf`, obligatorio; `tri` acepta sus `options` (p. ej. "No menciona"); `duration` usa las unidades de la API (`units` las limita); `multi` guarda varios valores de un catálogo |
-| `question-form.tsx` | `QuestionForm` | dibuja los grupos de preguntas; `framed` para usarlo dentro de un modal |
+| `question-form.tsx` | `QuestionForm` | dibuja los grupos de preguntas; `framed` para usarlo dentro de un modal; `showMissing` marca con un anillo rojo los obligatorios vacíos |
 | `catalog-source.ts` | `CatalogSourceContext`, `useCatalogSource` | de dónde salen las opciones de catálogo y cómo se da de alta una nueva; lo provee cada pantalla |
 | `form-modal.tsx` | `FormModal` | modal con un formulario de datos; habilita el botón cuando están los obligatorios |
 | `record-section.tsx` | `RecordSection`, `RemoveButton` | registros de una sección con los cambios pendientes por guardar; `onOpenPending` abre un pendiente para editarlo |
@@ -90,7 +90,8 @@ para su presentación.
 - **Formularios como datos.** Los formularios largos se describen con
   `questions.ts` y se dibujan con `QuestionForm`: la lógica condicional vive en
   `showIf`, no en JSX. Así un formulario de cientos de preguntas no termina en
-  un archivo de miles de líneas.
+  un archivo de miles de líneas. `showMissing` resalta los obligatorios vacíos
+  sin deshabilitar el botón de continuar; el conteo se avisa aparte.
 - **Sin botón de guardar por sección.** En formularios que se guardan al final
   (la ficha del seguimiento), cada respuesta va directo al borrador; si faltan
   obligatorios, la sección lo avisa y no entra al borrador hasta completarlos.

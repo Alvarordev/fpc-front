@@ -342,6 +342,7 @@ export function Step8Cierre({
         onClick={embedded ? () => mutation.mutate() : undefined}
         isLast
         isLoading={mutation.isPending}
+        sticky={!embedded}
       />
     </StepContainer>
   )

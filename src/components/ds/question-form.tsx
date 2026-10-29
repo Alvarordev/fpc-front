@@ -10,6 +10,8 @@ import { multiValues, type Group, type Question, type Values } from "./questions
 // Dibuja grupos de preguntas (`questions.ts`). Las respuestas cortas son botones
 // de un toque para registrar rápido mientras se conversa. `framed` pone cada
 // grupo en un bloque blanco, para usarlo dentro de un `Modal`.
+// `showMissing` marca con un anillo rojo las preguntas `required` que siguen
+// vacías. No deshabilita el envío: el aviso de cuántas faltan vive fuera.
 
 const YES_NO = [
   { value: "yes", label: "Sí" },
@@ -17,7 +19,20 @@ const YES_NO = [
 ]
 const TRI = [...YES_NO, { value: "unknown", label: "No sabe" }]
 
-export function QuestionForm({ groups, values, onChange, framed = false }: { groups: Group[]; values: Values; onChange: (id: string, value: string | null) => void; framed?: boolean }) {
+export function QuestionForm({
+  groups,
+  values,
+  onChange,
+  framed = false,
+  showMissing = false,
+}: {
+  groups: Group[]
+  values: Values
+  onChange: (id: string, value: string | null) => void
+  framed?: boolean
+  /** Anillo rojo en cada obligatorio visible que sigue vacío. */
+  showMissing?: boolean
+}) {
   const visible = groups.filter((g) => !g.showIf || g.showIf(values))
   return (
     <div className={cn(framed ? "space-y-3" : "space-y-6")}>
@@ -27,7 +42,14 @@ export function QuestionForm({ groups, values, onChange, framed = false }: { gro
             {g.questions
               .filter((q) => !q.showIf || q.showIf(values))
               .map((q) => (
-                <QuestionField key={q.id} question={q} value={values[q.id] ?? null} values={values} onChange={onChange} />
+                <QuestionField
+                  key={q.id}
+                  question={q}
+                  value={values[q.id] ?? null}
+                  values={values}
+                  onChange={onChange}
+                  showMissing={showMissing}
+                />
               ))}
           </div>
         )
@@ -45,43 +67,63 @@ export function QuestionForm({ groups, values, onChange, framed = false }: { gro
   )
 }
 
-function QuestionField({ question: q, value, values, onChange }: { question: Question; value: string | null; values: Values; onChange: (id: string, value: string | null) => void }) {
+function QuestionField({
+  question: q,
+  value,
+  values,
+  onChange,
+  showMissing,
+}: {
+  question: Question
+  value: string | null
+  values: Values
+  onChange: (id: string, value: string | null) => void
+  showMissing: boolean
+}) {
   const wide = q.wide ?? (q.type === "textarea" || q.type === "scale")
+  const missing = showMissing && !!q.required && !value
   const set = (v: string | null) => onChange(q.id, v)
   const options = q.optionsFrom?.(values) ?? q.options ?? []
   const text = (type: string) => (id: string) => <TextInput id={id} type={type} value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} />
   return (
     <Field label={q.required ? `${q.label} *` : q.label} hint={q.hint} className={cn("animate-in fade-in-0 duration-200 motion-reduce:animate-none", wide && "md:col-span-2")}>
       {(id) => {
-        switch (q.type) {
-          case "yesno":
-            return <ChoiceGroup label={q.label} value={value} onChange={set} options={YES_NO} />
-          case "tri":
-            return <ChoiceGroup label={q.label} value={value} onChange={set} options={q.options ?? TRI} />
-          case "choice":
-            return options.length ? <ChoiceGroup label={q.label} value={value} onChange={set} options={options} /> : <p className="text-[13px] text-zinc-500">No hay opciones disponibles.</p>
-          case "select":
-            if (q.catalog) return <CatalogQuestion id={id} catalog={q.catalog} placeholder={q.placeholder} value={value} onChange={set} />
-            return <SelectField id={id} value={value} onChange={set} options={options} placeholder={q.placeholder ?? "Seleccionar"} />
-          case "textarea":
-            return <TextArea id={id} value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} className="min-h-20" />
-          case "scale":
-            return <ScaleField value={value} onChange={set} label={q.label} />
-          case "duration":
-            return <DurationField id={id} value={value} onChange={set} units={q.units} />
-          case "multi":
-            return q.catalog ? <MultiCatalogQuestion id={id} catalog={q.catalog} placeholder={q.placeholder} value={value} onChange={set} /> : null
-          case "number":
-            return <TextInput id={id} type="number" min={0} inputMode="numeric" value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} />
-          case "date":
-            return text("date")(id)
-          case "time":
-            return text("time")(id)
-          case "datetime":
-            return text("datetime-local")(id)
-          default:
-            return text("text")(id)
-        }
+        const control = (() => {
+          switch (q.type) {
+            case "yesno":
+              return <ChoiceGroup label={q.label} value={value} onChange={set} options={YES_NO} />
+            case "tri":
+              return <ChoiceGroup label={q.label} value={value} onChange={set} options={q.options ?? TRI} />
+            case "choice":
+              return options.length ? <ChoiceGroup label={q.label} value={value} onChange={set} options={options} /> : <p className="text-[13px] text-zinc-500">No hay opciones disponibles.</p>
+            case "select":
+              if (q.catalog) return <CatalogQuestion id={id} catalog={q.catalog} placeholder={q.placeholder} value={value} onChange={set} />
+              return <SelectField id={id} value={value} onChange={set} options={options} placeholder={q.placeholder ?? "Seleccionar"} />
+            case "textarea":
+              return <TextArea id={id} value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} className="min-h-20" />
+            case "scale":
+              return <ScaleField value={value} onChange={set} label={q.label} />
+            case "duration":
+              return <DurationField id={id} value={value} onChange={set} units={q.units} />
+            case "multi":
+              return q.catalog ? <MultiCatalogQuestion id={id} catalog={q.catalog} placeholder={q.placeholder} value={value} onChange={set} /> : null
+            case "number":
+              return <TextInput id={id} type="number" min={0} inputMode="numeric" value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} />
+            case "date":
+              return text("date")(id)
+            case "time":
+              return text("time")(id)
+            case "datetime":
+              return text("datetime-local")(id)
+            default:
+              return text("text")(id)
+          }
+        })()
+        return (
+          <div className={cn(missing && "rounded-[12px] ring-2 ring-red-500")} aria-invalid={missing || undefined}>
+            {control}
+          </div>
+        )
       }}
     </Field>
   )
