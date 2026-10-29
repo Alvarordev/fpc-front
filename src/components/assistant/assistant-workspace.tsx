@@ -4,6 +4,7 @@ import { AssistantContext, useAssistantContext } from "./assistant-context"
 import { AssistantPanel } from "./assistant-panel"
 import { useAssistant } from "./use-assistant"
 import "./assistant.css"
+import type { AssistantMode } from "@/api/assistant"
 
 export function AssistantWorkspace({
   children,
@@ -11,10 +12,14 @@ export function AssistantWorkspace({
   children: React.ReactNode
 }) {
   const user = useAuthStore((state) => state.user)
-  if (!user || !["ADMIN", "FOUNDATION"].includes(user.role))
+  if (!user || !["ADMIN", "FOUNDATION", "AGENT"].includes(user.role))
     return <>{children}</>
   return (
-    <AuthorizedWorkspace key={user.id} userId={user.id}>
+    <AuthorizedWorkspace
+      key={`${user.id}:${user.role}`}
+      userId={user.id}
+      documentsOnly={user.role === "AGENT"}
+    >
       {children}
     </AuthorizedWorkspace>
   )
@@ -34,13 +39,28 @@ export function AssistantContent({ children }: { children: React.ReactNode }) {
 function AuthorizedWorkspace({
   userId,
   children,
+  documentsOnly,
 }: {
   userId: string
   children: React.ReactNode
+  documentsOnly: boolean
 }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const chat = useAssistant(userId, open)
+  const [mode, setMode] = useState<AssistantMode>(
+    documentsOnly ? "DOCUMENTS" : "DATA",
+  )
+  const dataChat = useAssistant(
+    userId,
+    open && mode === "DATA" && !documentsOnly,
+    "DATA",
+  )
+  const documentChat = useAssistant(
+    userId,
+    open && mode === "DOCUMENTS",
+    "DOCUMENTS",
+  )
+  const chat = mode === "DOCUMENTS" ? documentChat : dataChat
   return (
     <AssistantContext value={{ open, setOpen, triggerRef }}>
       {children}
@@ -49,6 +69,9 @@ function AuthorizedWorkspace({
         onOpenChange={setOpen}
         triggerRef={triggerRef}
         chat={chat}
+        mode={mode}
+        onModeChange={setMode}
+        documentsOnly={documentsOnly}
       />
     </AssistantContext>
   )

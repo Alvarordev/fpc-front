@@ -18,12 +18,33 @@ export function AssistantMarkdown({ message }: { message: AssistantMessage }) {
         disallowedElements={["img"]}
         components={{
           // Solo los enlaces de fichas que la API identifica son navegables.
-          a: ({ href, children }) =>
-            href && patients.has(href) ? (
+          a: ({ href, children }) => {
+            const citation = message.citations?.find(
+              (source) => href === `#source-${source.number}`,
+            )
+            if (citation)
+              return (
+                <button
+                  type="button"
+                  className="font-medium text-sky-700 underline underline-offset-2"
+                  onClick={() => {
+                    const source = document.getElementById(
+                      `source-${message.id}-${citation.number}`,
+                    )
+                    source?.setAttribute("open", "")
+                    source?.scrollIntoView({ block: "nearest" })
+                    source?.querySelector("summary")?.focus()
+                  }}
+                >
+                  {children}
+                </button>
+              )
+            return href && patients.has(href) ? (
               <Link to={href}>{children}</Link>
             ) : (
               <span>{children}</span>
-            ),
+            )
+          },
           table: ({ children }) => (
             <div
               className="overflow-x-auto"

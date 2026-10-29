@@ -2547,6 +2547,119 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/knowledge/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["KnowledgeController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["KnowledgeController_list"];
+        put?: never;
+        /** Upload a draft knowledge document; indexing runs in the background */
+        post: operations["KnowledgeController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/documents/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["KnowledgeController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/documents/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["KnowledgeController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/documents/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["KnowledgeController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["KnowledgeController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/documents/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["KnowledgeController_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/follow-ups/{id}/reenrollment": {
         parameters: {
             query?: never;
@@ -6584,6 +6697,11 @@ export interface components {
             daysSinceEnrollment: number;
         };
         AskAssistantDto: {
+            /**
+             * @default DATA
+             * @enum {string}
+             */
+            mode: "DATA" | "DOCUMENTS";
             /** @example ¿Cuántos pacientes activos hay en Lima? */
             message: string;
             /**
@@ -6609,6 +6727,16 @@ export interface components {
             patientId: string;
             name: string;
         };
+        AssistantDocumentCitationDto: {
+            number: number;
+            /** Format: uuid */
+            documentId: string;
+            title: string;
+            version: string;
+            originalName: string;
+            page: number | null;
+            excerpt: string;
+        };
         AssistantMessageResponseDto: {
             /** Format: uuid */
             id: string;
@@ -6618,6 +6746,8 @@ export interface components {
             content: string;
             sources: components["schemas"]["AssistantSourceDto"][];
             patients: components["schemas"]["AssistantPatientMentionDto"][];
+            citations: components["schemas"]["AssistantDocumentCitationDto"][];
+            unanswered: boolean;
             isError: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -6629,6 +6759,8 @@ export interface components {
             answer: components["schemas"]["AssistantMessageResponseDto"];
         };
         AssistantConversationSummaryDto: {
+            /** @enum {string} */
+            mode: "DATA" | "DOCUMENTS";
             /** Format: uuid */
             id: string;
             title: string;
@@ -6638,6 +6770,8 @@ export interface components {
             updatedAt: string;
         };
         AssistantConversationResponseDto: {
+            /** @enum {string} */
+            mode: "DATA" | "DOCUMENTS";
             /** Format: uuid */
             id: string;
             title: string;
@@ -6646,6 +6780,33 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             messages: components["schemas"]["AssistantMessageResponseDto"][];
+        };
+        KnowledgeLibraryStatusDto: {
+            publishedCount: number;
+        };
+        KnowledgeDocumentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            version: string;
+            originalName: string;
+            mediaType: string;
+            size: number;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+            /** @enum {string} */
+            indexStatus: "PENDING" | "PROCESSING" | "READY" | "FAILED";
+            indexError: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        KnowledgeDocumentListDto: {
+            data: components["schemas"]["KnowledgeDocumentResponseDto"][];
+            total: number;
         };
         CreateReenrollmentDto: {
             /** @description Código del catálogo reenrollment_reason */
@@ -14894,7 +15055,9 @@ export interface operations {
     };
     AssistantController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                mode?: "DATA" | "DOCUMENTS";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -15001,6 +15164,181 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    KnowledgeController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeLibraryStatusDto"];
+                };
+            };
+        };
+    };
+    KnowledgeController_list: {
+        parameters: {
+            query?: {
+                search?: string;
+                status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocumentListDto"];
+                };
+            };
+        };
+    };
+    KnowledgeController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    title: string;
+                    /** @default 1 */
+                    version?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocumentResponseDto"];
+                };
+            };
+        };
+    };
+    KnowledgeController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocumentResponseDto"];
+                };
+            };
+        };
+    };
+    KnowledgeController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocumentResponseDto"];
+                };
+            };
+        };
+    };
+    KnowledgeController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeDocumentResponseDto"];
+                };
+            };
+        };
+    };
+    KnowledgeController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    KnowledgeController_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
             };
         };
     };

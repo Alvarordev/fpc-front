@@ -69,6 +69,8 @@ para su presentación.
   superior como panel derecho, conserva la consulta al navegar y usa pantalla
   completa en móvil. Sus componentes viven en `src/components/assistant` y
   reutilizan los controles y tokens de este sistema.
+  Su modo Documentos usa el tono azul existente y una etiqueta textual. Los
+  modos comparten el panel y conservan sus historiales por separado.
 - **Orden cronológico.** Una lista con fechas se ordena por fecha aunque algo
   sea prioritario; lo urgente se distingue con `highlight`, no reordenando.
 - **Hover sin fondos añadidos.** Basta el cursor y, si aplica, el ícono que

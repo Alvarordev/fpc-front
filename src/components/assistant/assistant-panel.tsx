@@ -1,3 +1,9 @@
+import { Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { knowledgeApi } from "@/api/knowledge"
+import type { AssistantMode } from "@/api/assistant"
+import { Chip } from "@/components/ds/badge"
+import { ChoiceGroup } from "@/components/ds/form"
 import { useEffect, useRef, useState } from "react"
 import type { RefObject } from "react"
 import { Dialog } from "@base-ui/react/dialog"
@@ -7,6 +13,7 @@ import {
   ArrowUp,
   ArrowUpRight,
   History,
+  BookOpen,
   Loader2,
   Maximize2,
   Minimize2,
@@ -23,7 +30,7 @@ import { AssistantHistory } from "./assistant-history"
 import { AssistantMessage } from "./assistant-message"
 import type { useAssistant } from "./use-assistant"
 
-const suggestions = [
+const dataSuggestions = [
   "¿Cuántos pacientes activos hay en Lima este año?",
   "¿Qué alertas de gravedad alta están pendientes de resolver?",
   "¿Qué agentes tienen más seguimientos vencidos?",
@@ -34,13 +41,33 @@ export function AssistantPanel({
   onOpenChange,
   triggerRef,
   chat,
+  mode,
+  onModeChange,
+  documentsOnly,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   triggerRef: RefObject<HTMLButtonElement | null>
   chat: ReturnType<typeof useAssistant>
+  mode: AssistantMode
+  onModeChange: (mode: AssistantMode) => void
+  documentsOnly: boolean
 }) {
   const mobile = useIsMobile()
+  const documents = mode === "DOCUMENTS"
+  const library = useQuery({
+    queryKey: ["knowledge", "status"],
+    queryFn: ({ signal }) => knowledgeApi.status(signal),
+    enabled: open && documents,
+    staleTime: 0,
+  })
+  const suggestions = documents
+    ? [
+        "¿Qué documentos debo solicitar para el enrolamiento?",
+        "¿Qué debo registrar si no logro contactar al paciente?",
+        "¿Cuál es el procedimiento para solicitar apoyo de psicooncología?",
+      ]
+    : dataSuggestions
   const [expanded, setExpanded] = useState(false)
   const [awayFromBottom, setAwayFromBottom] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -89,6 +116,7 @@ export function AssistantPanel({
           id="assistant-panel"
           aria-modal={mobile ? true : undefined}
           className="assistant-panel font-ds"
+          data-mode={mode}
           data-expanded={expanded && !mobile ? "" : undefined}
           initialFocus={mobile ? false : inputRef}
           finalFocus={triggerRef}
@@ -97,10 +125,13 @@ export function AssistantPanel({
             <AiMark icon={Sparkles} />
             <div className="min-w-0 flex-1">
               <Dialog.Title className="truncate text-[15px] font-semibold">
-                Asistente de datos
+                Asistente SEPA
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 truncate text-[13px] text-zinc-500">
-                {conversation.data?.title ?? "Consulta los datos del programa"}
+                {conversation.data?.title ??
+                  (documents
+                    ? "Consulta la biblioteca del programa"
+                    : "Consulta los datos del programa")}
               </Dialog.Description>
             </div>
             <div className="flex items-center gap-0.5">
@@ -135,6 +166,42 @@ export function AssistantPanel({
             </div>
           </header>
 
+          <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-100 px-5 py-3">
+            {documentsOnly ? (
+              <Chip tone="blue">Consulta de documentos</Chip>
+            ) : (
+              <fieldset disabled={busy} className="min-w-0">
+                <legend className="sr-only">Modo del asistente</legend>
+                <ChoiceGroup
+                  value={mode}
+                  label="Modo del asistente"
+                  onChange={onModeChange}
+                  options={[
+                    { value: "DATA", label: "Datos del CRM" },
+                    { value: "DOCUMENTS", label: "Documentos" },
+                  ]}
+                />
+              </fieldset>
+            )}
+            {documents && (
+              <span className="ml-auto text-xs text-sky-700">
+                Solo fuentes publicadas
+              </span>
+            )}
+          </div>
+          {documents && library.data?.publishedCount === 0 && (
+            <div className="border-b border-sky-100 bg-sky-50 px-5 py-3 text-[13px] leading-relaxed text-sky-800">
+              Todavía no hay documentos publicados.
+              {!documentsOnly && (
+                <Link
+                  to="/biblioteca"
+                  className="ml-1 underline underline-offset-2"
+                >
+                  Gestionar biblioteca
+                </Link>
+              )}
+            </div>
+          )}
           {view === "history" ? (
             <div className="assistant-scroll min-h-0 flex-1 overflow-y-auto p-5">
               <Button
@@ -181,17 +248,24 @@ export function AssistantPanel({
                   !ask.isError && (
                     <div className="flex min-h-full flex-col justify-center pb-8">
                       <AiMark
-                        icon={Sparkles}
+                        icon={documents ? BookOpen : Sparkles}
                         className="mb-5 [&>svg:last-child]:size-8"
                       />
                       <h2 className="text-xl leading-snug font-semibold">
-                        ¿Qué necesitas saber
-                        <br />
-                        del programa?
+                        {documents ? (
+                          "¿Qué necesitas consultar?"
+                        ) : (
+                          <>
+                            ¿Qué necesitas saber
+                            <br />
+                            del programa?
+                          </>
+                        )}
                       </h2>
                       <p className="mt-3 max-w-sm text-sm leading-relaxed text-zinc-500">
-                        Consulta indicadores, pacientes, alertas y la carga del
-                        equipo. Cada respuesta muestra los datos consultados.
+                        {documents
+                          ? "Encuentra orientación en los archivos publicados por la fundación. Las respuestas incluyen el fragmento que las respalda."
+                          : "Consulta indicadores, pacientes, alertas y la carga del equipo. Cada respuesta muestra los datos consultados."}
                       </p>
                       <div
                         className="mt-7 space-y-2"
@@ -233,7 +307,9 @@ export function AssistantPanel({
                         className="flex items-center gap-2 text-[13px] text-zinc-500"
                       >
                         <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-                        Consultando los datos…
+                        {documents
+                          ? "Buscando en los documentos…"
+                          : "Consultando los datos…"}
                       </p>
                     </>
                   )}
@@ -273,7 +349,9 @@ export function AssistantPanel({
               >
                 <div className="rounded-[20px] bg-white p-3 ring-1 ring-zinc-200 focus-within:ring-2 focus-within:ring-zinc-900/20">
                   <label htmlFor="assistant-question" className="sr-only">
-                    Tu pregunta sobre los datos del programa
+                    {documents
+                      ? "Tu pregunta sobre los documentos del programa"
+                      : "Tu pregunta sobre los datos del programa"}
                   </label>
                   <TextArea
                     ref={inputRef}
@@ -284,7 +362,11 @@ export function AssistantPanel({
                     disabled={loading || loadError}
                     maxLength={2000}
                     rows={3}
-                    placeholder="Pregunta sobre los datos del programa…"
+                    placeholder={
+                      documents
+                        ? "Pregunta sobre los documentos del programa…"
+                        : "Pregunta sobre los datos del programa…"
+                    }
                     className="assistant-scroll max-h-44 min-h-20 resize-none rounded-none px-1 py-1 ring-0 placeholder:text-zinc-500 focus-visible:ring-0"
                     aria-describedby="assistant-question-help"
                     onKeyDown={(event) => {
@@ -304,7 +386,9 @@ export function AssistantPanel({
                       {draft.length > 1700
                         ? `${draft.length}/2000`
                         : mobile
-                          ? "Datos del programa"
+                          ? documents
+                            ? "Biblioteca del programa"
+                            : "Datos del programa"
                           : "Enter para enviar"}
                     </span>
                     <Button
@@ -326,7 +410,7 @@ export function AssistantPanel({
                   id="assistant-question-help"
                   className="mt-3 px-1 text-center text-xs leading-relaxed text-zinc-500"
                 >
-                  Evita incluir nombres, documentos o teléfonos en tu pregunta.
+                  Escribe tu consulta sin datos personales del paciente.
                 </p>
               </form>
             </>

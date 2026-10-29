@@ -1,18 +1,26 @@
 import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { assistantApi, type AssistantConversation } from "@/api/assistant"
+import {
+  assistantApi,
+  type AssistantConversation,
+  type AssistantMode,
+} from "@/api/assistant"
 import { useAuthStore } from "@/store/auth-store"
 
-export function useAssistant(userId: string, open: boolean) {
+export function useAssistant(
+  userId: string,
+  open: boolean,
+  mode: AssistantMode = "DATA",
+) {
   const client = useQueryClient()
   const [conversationId, setConversationId] = useState<string>()
   const [draft, setDraft] = useState("")
   const [view, setView] = useState<"chat" | "history">("chat")
   const sending = useRef(false)
-  const baseKey = ["assistant", userId]
+  const baseKey = ["assistant", userId, mode]
   const history = useQuery({
     queryKey: [...baseKey, "conversations"],
-    queryFn: ({ signal }) => assistantApi.list(signal),
+    queryFn: ({ signal }) => assistantApi.list(mode, signal),
     enabled: open && view === "history",
   })
   const conversation = useQuery({
@@ -29,6 +37,7 @@ export function useAssistant(userId: string, open: boolean) {
       const key = [...baseKey, "conversation", result.conversationId]
       client.setQueryData<AssistantConversation>(key, (previous) => ({
         id: result.conversationId,
+        mode,
         title: previous?.title ?? result.question.content.slice(0, 200),
         createdAt: previous?.createdAt ?? result.question.createdAt,
         updatedAt: result.answer.createdAt,
@@ -82,7 +91,7 @@ export function useAssistant(userId: string, open: boolean) {
     )
       return
     sending.current = true
-    ask.mutate({ message: draft.trim(), conversationId })
+    ask.mutate({ message: draft.trim(), conversationId, mode })
   }
 
   function select(id?: string) {

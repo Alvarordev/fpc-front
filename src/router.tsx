@@ -38,7 +38,8 @@ const devRoutes = import.meta.env.DEV
       {
         path: "/lab/seguimiento",
         lazy: async () => ({
-          Component: (await import("@/pages/design-lab/seguimiento/page")).default,
+          Component: (await import("@/pages/design-lab/seguimiento/page"))
+            .default,
         }),
       },
     ]
@@ -76,6 +77,20 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <HomePage /> },
+      {
+        path: "biblioteca",
+        lazy: async () => {
+          const { default: LibraryPage } =
+            await import("@/pages/biblioteca/page")
+          return {
+            Component: () => (
+              <RoleGuard allowedRoles={["ADMIN", "FOUNDATION"]}>
+                <LibraryPage />
+              </RoleGuard>
+            ),
+          }
+        },
+      },
       {
         path: "agenda",
         element: (

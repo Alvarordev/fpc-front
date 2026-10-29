@@ -7,6 +7,7 @@ import { IconButton } from "@/components/ds/button"
 import { InlineAlert } from "@/components/ds/inline-alert"
 import { AssistantMarkdown } from "./assistant-markdown"
 import { AssistantSources } from "./assistant-sources"
+import { AssistantCitations } from "./assistant-citations"
 
 export function AssistantMessage({ message }: { message: Message }) {
   const [copied, setCopied] = useState(false)
@@ -40,6 +41,10 @@ export function AssistantMessage({ message }: { message: Message }) {
     <article aria-label="Respuesta del asistente" className="min-w-0">
       <AssistantSources sources={message.sources} />
       <AssistantMarkdown message={message} />
+      <AssistantCitations
+        citations={message.citations}
+        messageId={message.id}
+      />
       {message.patients.length > 0 && (
         <div
           className="mt-4 flex flex-wrap gap-2"

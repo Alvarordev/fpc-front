@@ -1,7 +1,9 @@
 # Asistente de datos en el frontend
 
-Acceso global desde **Consultar IA**, en la barra superior de todas las rutas
-autenticadas para ADMIN y FOUNDATION. El panel usa el sistema de diseño de
+El modo **Datos del CRM** está disponible para ADMIN y FOUNDATION desde
+**Consultar IA**, en la barra superior de las rutas autenticadas. El mismo panel
+ofrece el modo **Documentos** a esos roles y a AGENT, descrito en
+`asistente-documental.md`. El panel usa el sistema de diseño de
 `src/components/ds/README.md`: Onest, superficies blancas y zinc, radios de
 20/14/10 px, botones oscuros y `AiMark`.
 
@@ -26,15 +28,15 @@ autenticadas para ADMIN y FOUNDATION. El panel usa el sistema de diseño de
 
 `src/api/assistant.ts` consume el contrato OpenAPI existente mediante el cliente
 autenticado compartido. `src/components/assistant/use-assistant.ts` administra las
-consultas y mutaciones con TanStack Query, separando la caché por usuario.
+consultas y mutaciones con TanStack Query, separando la caché por usuario y modo.
 `AssistantWorkspace` vive en `DashboardLayout`, por encima de las rutas; el
 botón se integra en ambas variantes de `AppTopbar`.
 
 No se envía automáticamente la ficha ni el contexto de la página actual. El
-backend solo admite `message` y `conversationId`; tampoco tiene streaming ni
+backend admite `message`, `conversationId` y `mode`; tampoco tiene streaming ni
 cancelación de la generación. La interfaz muestra una espera general sin
 inventar pasos intermedios. Los nombres escritos en la pregunta llegan tal cual
-al modelo: el compositor recuerda evitar nombres, documentos y teléfonos.
+al modelo: el compositor recuerda no incluir datos personales del paciente.
 
 ## Verificación manual
 
@@ -45,7 +47,9 @@ al modelo: el compositor recuerda evitar nombres, documentos y teléfonos.
 5. Abrir el historial, retomar una conversación y verificar sus mensajes.
 6. Eliminar una conversación propia, primero cancelando y luego confirmando.
 7. En móvil, comprobar encabezado, compositor, scroll y cierre; con teclado,
-   comprobar foco y Escape. El botón no se ofrece a AGENT ni VOLUNTEER.
+   comprobar foco y Escape. El botón no se ofrece a VOLUNTEER.
+8. Entrar como AGENT: el botón abre únicamente Documentos, sin acceso al modo
+   Datos del CRM ni a la gestión de `/biblioteca`.
 
 Validación de implementación: TypeScript, ESLint de archivos modificados,
 build de producción y recorrido en navegador contra la API local. Se verificó

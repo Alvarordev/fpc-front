@@ -19,6 +19,9 @@
 .assistant-panel[data-expanded] {
   --assistant-panel-width: 680px;
 }
+.assistant-panel[data-mode="DOCUMENTS"] {
+  outline-color: var(--color-sky-300);
+}
 .assistant-panel[data-starting-style],
 .assistant-panel[data-ending-style] {
   transform: translateX(24px);

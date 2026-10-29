@@ -11,6 +11,8 @@ export type AssistantConversationSummary =
   components["schemas"]["AssistantConversationSummaryDto"]
 export type AssistantQuestion = components["schemas"]["AskAssistantDto"]
 
+export type AssistantMode = "DATA" | "DOCUMENTS"
+
 export const assistantApi = {
   async ask(body: AssistantQuestion) {
     const { data, error, response } = await api.POST("/assistant/messages", {
@@ -26,10 +28,10 @@ export const assistantApi = {
       )
     return data
   },
-  async list(signal?: AbortSignal) {
+  async list(mode: AssistantMode, signal?: AbortSignal) {
     const { data, error, response } = await api.GET(
       "/assistant/conversations",
-      { signal },
+      { signal, params: { query: { mode } } },
     )
     if (!data)
       throw apiErrorFromBody(

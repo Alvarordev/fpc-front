@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Archive,
   BookMarked,
+  Library,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -59,6 +60,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Gestión",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Biblioteca del programa", url: "/biblioteca", icon: Library },
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
@@ -87,6 +89,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Gestión",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Biblioteca del programa", url: "/biblioteca", icon: Library },
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
@@ -121,4 +124,5 @@ export const pathTitles: Record<string, string> = {
   "/catalogos": "Catálogos",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",
+  "/biblioteca": "Biblioteca del programa",
 }
