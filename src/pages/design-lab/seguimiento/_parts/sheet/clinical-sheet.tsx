@@ -62,7 +62,7 @@ function initialValues(p: MockPatient): Values {
     phase: "CANCER_DIAGNOSIS",
     subcategory: p.health.subcategory,
     translation: yn(p.origin.requiresTranslation),
-    travelTime: "90 minutes",
+    travelTime: "90 MINUTE",
     discomfort: "yes",
     signs: "Náuseas y cansancio después de cada ciclo de quimioterapia.",
     painNow: "no",

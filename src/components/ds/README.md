@@ -46,11 +46,11 @@ para su presentación.
 | `form.tsx` | `Field`, `TextInput`, `TextArea`, `SelectField`, `ChoiceGroup`, `ScaleField`, `DurationField` | formularios; `ChoiceGroup` para respuestas cortas de un toque (Sí / No / No sabe); `ScaleField` 0 a 10; `DurationField` cantidad y unidad |
 | `search-select.tsx` | `SearchSelect` | select con buscador para listas largas |
 | `catalog-picker.tsx` | `CatalogPicker` | cualquier select de un catálogo ampliable o de hospitales, con el botón para agregar |
-| `questions.ts` | `Question`, `Group`, `Values`, `yes`, `no`, `is`, `progress` | formularios descritos como datos: tipo, `showIf`, obligatorio |
+| `questions.ts` | `Question`, `Group`, `Values`, `yes`, `no`, `is`, `progress`, `multiValues` | formularios descritos como datos: tipo, `showIf`, obligatorio; `tri` acepta sus `options` (p. ej. "No menciona"); `duration` usa las unidades de la API (`units` las limita); `multi` guarda varios valores de un catálogo |
 | `question-form.tsx` | `QuestionForm` | dibuja los grupos de preguntas; `framed` para usarlo dentro de un modal |
 | `catalog-source.ts` | `CatalogSourceContext`, `useCatalogSource` | de dónde salen las opciones de catálogo y cómo se da de alta una nueva; lo provee cada pantalla |
 | `form-modal.tsx` | `FormModal` | modal con un formulario de datos; habilita el botón cuando están los obligatorios |
-| `record-section.tsx` | `RecordSection`, `RemoveButton` | registros de una sección con los cambios pendientes por guardar |
+| `record-section.tsx` | `RecordSection`, `RemoveButton` | registros de una sección con los cambios pendientes por guardar; `onOpenPending` abre un pendiente para editarlo |
 | `step-section.tsx` | `StepSection` | paso numerado de un flujo que sí es secuencia |
 | `expandable-line.tsx` | `ExpandableLine` | contexto en una línea que se expande |
 | `action-tile.tsx` | `ActionTile` | acción que abre un formulario, con estado "agregado" |
@@ -90,6 +90,9 @@ para su presentación.
   `questions.ts` y se dibujan con `QuestionForm`: la lógica condicional vive en
   `showIf`, no en JSX. Así un formulario de cientos de preguntas no termina en
   un archivo de miles de líneas.
+- **Sin botón de guardar por sección.** En formularios que se guardan al final
+  (la ficha del seguimiento), cada respuesta va directo al borrador; si faltan
+  obligatorios, la sección lo avisa y no entra al borrador hasta completarlos.
 - **Borradores visibles.** Lo que se guardará al confirmar se muestra como
   pendiente (`RecordSection`, `CheckList`) y se puede quitar antes.
 - **Preguntas como etiquetas.** En la ficha clínica la etiqueta es la pregunta

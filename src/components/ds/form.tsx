@@ -145,23 +145,27 @@ export function ScaleField({ value, onChange, label, max = 10 }: { value: string
 }
 
 const DURATION_UNITS = [
-  { value: "minutes", label: "minutos" },
-  { value: "hours", label: "horas" },
-  { value: "days", label: "días" },
-  { value: "weeks", label: "semanas" },
-  { value: "months", label: "meses" },
-  { value: "years", label: "años" },
+  { value: "MINUTE", label: "minutos" },
+  { value: "HOUR", label: "horas" },
+  { value: "DAY", label: "días" },
+  { value: "WEEK", label: "semanas" },
+  { value: "MONTH", label: "meses" },
+  { value: "YEAR", label: "años" },
 ]
 
-/** Duración como cantidad y unidad. El valor es "2 months"; `null` si no hay cantidad. */
-export function DurationField({ id, value, onChange }: { id?: string; value: string | null; onChange: (value: string | null) => void }) {
-  const [amount = "", unit = "months"] = (value ?? "").split(" ")
+/**
+ * Duración como cantidad y unidad, con las unidades de la API. El valor es
+ * "2 MONTH"; `null` si no hay cantidad. `units` limita las unidades ofrecidas.
+ */
+export function DurationField({ id, value, onChange, units }: { id?: string; value: string | null; onChange: (value: string | null) => void; units?: string[] }) {
+  const options = units ? DURATION_UNITS.filter((u) => units.includes(u.value)) : DURATION_UNITS
+  const [amount = "", unit = options.find((u) => u.value === "MONTH")?.value ?? options[0].value] = (value ?? "").split(" ")
   const set = (a: string, u: string) => onChange(a ? `${a} ${u}` : null)
   return (
     <div className="flex gap-2">
       <TextInput id={id} type="number" min={0} inputMode="numeric" value={amount} onChange={(e) => set(e.target.value, unit)} placeholder="Cantidad" className="w-28" />
       <div className="flex-1">
-        <SelectField value={unit} onChange={(u) => set(amount, u)} options={DURATION_UNITS} />
+        <SelectField value={unit} onChange={(u) => set(amount, u)} options={options} />
       </div>
     </div>
   )

@@ -3,7 +3,9 @@ import { CatalogPicker } from "./catalog-picker"
 import { useCatalogSource } from "./catalog-source"
 import { ChoiceGroup, DurationField, Field, ScaleField, SelectField, TextArea, TextInput } from "./form"
 import { cn } from "@/lib/utils"
-import type { Group, Question, Values } from "./questions"
+import { Chip } from "./badge"
+import { RemoveButton } from "./record-section"
+import { multiValues, type Group, type Question, type Values } from "./questions"
 
 // Dibuja grupos de preguntas (`questions.ts`). Las respuestas cortas son botones
 // de un toque para registrar rápido mientras se conversa. `framed` pone cada
@@ -55,7 +57,7 @@ function QuestionField({ question: q, value, values, onChange }: { question: Que
           case "yesno":
             return <ChoiceGroup label={q.label} value={value} onChange={set} options={YES_NO} />
           case "tri":
-            return <ChoiceGroup label={q.label} value={value} onChange={set} options={TRI} />
+            return <ChoiceGroup label={q.label} value={value} onChange={set} options={q.options ?? TRI} />
           case "choice":
             return options.length ? <ChoiceGroup label={q.label} value={value} onChange={set} options={options} /> : <p className="text-[13px] text-zinc-500">No hay opciones disponibles.</p>
           case "select":
@@ -66,7 +68,9 @@ function QuestionField({ question: q, value, values, onChange }: { question: Que
           case "scale":
             return <ScaleField value={value} onChange={set} label={q.label} />
           case "duration":
-            return <DurationField id={id} value={value} onChange={set} />
+            return <DurationField id={id} value={value} onChange={set} units={q.units} />
+          case "multi":
+            return q.catalog ? <MultiCatalogQuestion id={id} catalog={q.catalog} placeholder={q.placeholder} value={value} onChange={set} /> : null
           case "number":
             return <TextInput id={id} type="number" min={0} inputMode="numeric" value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} />
           case "date":
@@ -100,5 +104,41 @@ function CatalogQuestion({ id, catalog, placeholder, value, onChange }: { id: st
       addLabel={`Agregar ${source.singular(catalog)}`}
       onAdd={source.canAdd(catalog) ? () => source.requestAdd(catalog, onChange) : undefined}
     />
+  )
+}
+
+/** Varias opciones de un catálogo: se agregan con el selector y se quitan de la lista. */
+function MultiCatalogQuestion({ id, catalog, placeholder, value, onChange }: { id: string; catalog: string; placeholder?: string; value: string | null; onChange: (v: string | null) => void }) {
+  const source = useCatalogSource()
+  const [query, setQuery] = useState("")
+  const selected = multiValues(value)
+  const { options, loading } = source.useOptions(catalog, query, null)
+  const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? v
+  const add = (v: string) => !selected.includes(v) && onChange([...selected, v].join(","))
+  return (
+    <div className="space-y-2">
+      <CatalogPicker
+        id={id}
+        value={null}
+        onChange={add}
+        options={options.filter((o) => !selected.includes(o.value))}
+        onQueryChange={setQuery}
+        loading={loading}
+        searchable={source.searchable(catalog)}
+        placeholder={placeholder ?? "Agregar"}
+        addLabel={`Agregar ${source.singular(catalog)}`}
+        onAdd={source.canAdd(catalog) ? () => source.requestAdd(catalog, add) : undefined}
+      />
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((v) => (
+            <span key={v} className="inline-flex items-center gap-0.5">
+              <Chip tone="blue">{labelOf(v)}</Chip>
+              <RemoveButton label={`Quitar ${labelOf(v)}`} onClick={() => onChange(selected.filter((x) => x !== v).join(",") || null)} />
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

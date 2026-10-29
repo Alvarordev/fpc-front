@@ -22,6 +22,7 @@ export function RecordSection({
   pending = [],
   pendingLabel = "Por guardar",
   onRemovePending,
+  onOpenPending,
   empty = "Nada registrado.",
   children,
 }: {
@@ -32,6 +33,8 @@ export function RecordSection({
   pending?: PendingRecord[]
   pendingLabel?: string
   onRemovePending?: (id: string) => void
+  /** Abre un pendiente para editarlo antes de guardar. */
+  onOpenPending?: (id: string) => void
   empty?: string
   children?: React.ReactNode
 }) {
@@ -56,6 +59,8 @@ export function RecordSection({
                 title={p.title}
                 tags={<Chip tone={KIND_TONE[p.kind]}>{p.kind}</Chip>}
                 meta={p.detail}
+                onOpen={onOpenPending && (() => onOpenPending(p.id))}
+                openLabel={`Editar ${p.title}`}
                 actions={onRemovePending && <RemoveButton label={`Quitar ${p.title}`} onClick={() => onRemovePending(p.id)} />}
               />
             ))}
