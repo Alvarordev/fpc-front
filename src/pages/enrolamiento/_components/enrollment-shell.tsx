@@ -19,9 +19,9 @@ import { Step1Inicio } from "./steps/inicio"
 import { Step2Consent } from "./steps/datos"
 import { Step3Identificacion } from "./steps/identificacion"
 import { Step4Consentimiento } from "./steps/consentimiento"
-import { Step5Datos } from "./steps/step-5-datos"
+import { Step5Datos } from "./steps/paciente"
 import { Step6Categoria } from "./steps/categoria"
-import { Step7Atencion } from "./steps/step-7-atencion"
+import { Step7Atencion } from "./steps/atencion"
 import { Step8Cierre } from "./steps/cierre"
 
 interface CurrentStepProps {
