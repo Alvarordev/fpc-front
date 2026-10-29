@@ -58,3 +58,11 @@ export function isClosedTreatment(treatment: PatientTreatment) {
     CLOSED_TREATMENT_SITUATIONS.has(treatment.treatmentSituation ?? "")
   )
 }
+
+/** Situación del tratamiento; sin dato, se deduce de si está vigente. */
+export function treatmentStatus(treatment: PatientTreatment) {
+  if (treatment.treatmentSituation) {
+    return treatment.treatmentSituation
+  }
+  return treatment.isCurrent ? "EN_PROCESO" : "CULMINADO"
+}

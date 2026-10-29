@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 import { Link } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { FamilyTalkInterest } from "@/api/family-talk-interests"
+import type { TalkInterest } from "@/api/talk-interests"
 
 function formatDate(value: string) {
   const date = new Date(value)
@@ -13,41 +13,41 @@ function formatDate(value: string) {
   })
 }
 
-export function useFamilyTalkInterestColumns(): ColumnDef<FamilyTalkInterest>[] {
+export function useTalkInterestColumns(): ColumnDef<TalkInterest>[] {
   return useMemo(
     () => [
       {
-        accessorKey: "familyMemberName",
-        header: "Familiar",
+        accessorKey: "companionFullName",
+        header: "Acompañante",
         cell: ({ row }) => (
           <span className="text-sm font-medium">
-            {row.original.familyMemberName}
+            {row.original.companionFullName}
           </span>
         ),
       },
       {
-        accessorKey: "familyMemberPhone",
+        accessorKey: "companionPhone",
         header: "Teléfono",
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
-            {row.original.familyMemberPhone ?? "—"}
+            {row.original.companionPhone ?? "—"}
           </span>
         ),
       },
       {
-        accessorKey: "familyMemberEmail",
+        accessorKey: "companionEmail",
         header: "Email",
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
-            {row.original.familyMemberEmail ?? "—"}
+            {row.original.companionEmail ?? "—"}
           </span>
         ),
       },
       {
-        accessorKey: "talkName",
+        accessorKey: "talkLabel",
         header: "Charla",
         cell: ({ row }) => (
-          <span className="text-sm">{row.original.talkName}</span>
+          <span className="text-sm">{row.original.talkLabel}</span>
         ),
       },
       {

@@ -41,7 +41,25 @@ Generado desde openapi/openapi.json. Fuente de verdad para adaptar el front.
 - DELETE /volunteers/{volunteerId}/availability/recurrences/{recurrenceId}
 - POST /volunteers/{volunteerId}/availability/recurring
 
+- POST /assistant/messages
+- GET /assistant/conversations
+- GET /assistant/conversations/{id}
+- DELETE /assistant/conversations/{id}
+
+- POST /follow-ups/{id}/reenrollment
+- GET /follow-ups/{id}/reenrollment
+
+- PATCH /patients/{id}/companions/{companionId}/person
+- POST /patients/{id}/companions/{companionId}/convert-to-patient
+
+- GET /talk-interests
+- GET /patients/{id}/talk-interests
+- POST /patients/{id}/companions/{companionId}/talk-interests
+- DELETE /patients/{id}/talk-interests/{interestId}
+
 ## Endpoints eliminados
+- GET /family-talk-interests (reemplazado por GET /talk-interests)
+- PATCH /patients/{id}/reactivate (se reactiva solo con POST /follow-ups/{id}/reenrollment)
 
 ## Schemas con propiedades cambiadas
 - AlertEventResponseDto: +['actorName', 'actorUserId'] -[] enum cambiado en ['eventType']
@@ -62,7 +80,8 @@ Generado desde openapi/openapi.json. Fuente de verdad para adaptar el front.
 - CreatePatientMedicalAppointmentDto: +['reminderAt', 'reminderChannel', 'reminderLead'] -[]
 - CreatePsychooncologyAppointmentDto: +['remindAt', 'reminderMode'] -[]
 - CreateReminderDto: +['channel', 'lead', 'remindAt'] -[]
-- DashboardAbandonmentResponseDto: +['dropoutsInPeriod', 'transferredOut'] -[]
+- DashboardAbandonmentResponseDto: +['dropoutsInPeriod', 'transferredOut', 'reenrolledInPeriod'] -[]
+- FollowUpPurpose: +REENROLLMENT; catálogo nuevo reenrollment_reason; POST /enrollments y la carga histórica con un paciente ya enrolado responden 409 (PATIENT_REENROLL_VIA_FOLLOW_UP si está inactivo, PATIENT_ALREADY_ENROLLED si no); patientId + patient juntos ya no se admiten
 - DashboardAdherenceResponseDto: +['treatmentAbandonmentReasons'] -[]
 - DashboardDemographicsResponseDto: +['insuranceTypeAtEnrollment'] -[]
 - DashboardEpidemiologyResponseDto: +['diagnosisByDepartment', 'diagnosisByStage'] -[]
@@ -91,6 +110,10 @@ Generado desde openapi/openapi.json. Fuente de verdad para adaptar el front.
 - UpsertPatientDetailsDto: +[] -['programDropoutDate', 'programDropoutReason', 'programDropoutReasonCode']
 - VolunteerAvailabilityResponseDto: +['recurrenceId'] -[]
 - VolunteerCalendarAppointmentDto: +[] -[] enum cambiado en ['status']
+
+- POST /patients/{id}/companions devuelve CompanionResponseDto (antes PatientResponseDto); CompanionPatientResponseDto.companion es CompanionResponseDto. PatientRole ya no tiene COMPANION. relationship es un código del catálogo companion_relationship.
+
+- CreateEnrollmentFamilyTalkInterestDto: talkName → talk (código o nombre del catálogo educational_talk).
 
 ## Schemas nuevos
 - AlertAffectedPatientDto

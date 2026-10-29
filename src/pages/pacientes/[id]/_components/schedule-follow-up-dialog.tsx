@@ -30,6 +30,9 @@ import {
   type ScheduleFollowUpFormValues,
 } from "./schedule-follow-up-schema"
 
+// El reenrolamiento se inicia desde la ficha de un paciente inactivo, no aquí.
+const purposeEntries = Object.entries(followUpPurposeLabels).filter(([value]) => value !== "REENROLLMENT")
+
 interface ScheduleFollowUpDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -124,19 +127,17 @@ export function ScheduleFollowUpDialog({
             <div className="space-y-2">
               <Label>Propósito</Label>
               <Select
-                items={Object.entries(followUpPurposeLabels).map(
-                  ([value, label]) => ({ value, label }),
-                )}
+                items={purposeEntries.map(([value, label]) => ({ value, label }))}
                 value={selectedPurpose}
                 onValueChange={(v) =>
-                  setValue("purpose", v as CreateFollowUpInput["purpose"])
+                  setValue("purpose", v as ScheduleFollowUpFormValues["purpose"])
                 }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Seleccionar propósito" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(followUpPurposeLabels).map(([k, v]) => (
+                  {purposeEntries.map(([k, v]) => (
                     <SelectItem key={k} value={k}>
                       {v}
                     </SelectItem>

@@ -1,13 +1,13 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ClipboardCheck, Loader2, Plus } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { enrollmentsApi } from "@/api/enrollments"
 import { surveysApi, type Survey } from "@/api/surveys"
 import { CopySurveyScript } from "@/components/copy-survey-script"
 import { RegisterSurveyDialog } from "@/components/register-survey-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ds/button"
+import { Card } from "@/components/ds/card"
+import { Chip, Status } from "@/components/ds/badge"
 import {
   SURVEY_CHANNEL_LABELS,
   SURVEY_RATING_ITEMS,
@@ -60,102 +60,56 @@ export function PatientSurveysSection({
   if (!enabled) return null
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <ClipboardCheck className="size-4" />
-            Encuestas
-          </CardTitle>
+    <Card title="Encuestas" action={canManage ? <Button onClick={() => setDialogOpen(true)}>Registrar encuesta</Button> : undefined}>
+      {surveysQuery.isLoading ? (
+        <p className="flex items-center gap-2 text-[13px] text-zinc-500">
+          <Loader2 className="size-3.5 animate-spin" />
+          Cargando encuestas...
+        </p>
+      ) : surveysQuery.isError ? (
+        <p className="text-[13px] text-zinc-500">No se pudieron cargar las encuestas.</p>
+      ) : (
+        <div className="space-y-3 text-[13px]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-zinc-500">Calificación del enrolamiento</span>
+            {enrollmentSurvey ? (
+              <Chip tone="green">{ratingLabel(enrollmentSurvey.rating)}</Chip>
+            ) : legacyRating != null ? (
+              <span className="text-right text-zinc-600">Anterior: {ratingLabel(legacyRating)}. Regístrala como encuesta para que cuente en el dashboard.</span>
+            ) : (
+              <Chip tone="amber">Pendiente</Chip>
+            )}
+          </div>
+          {surveys.length === 0 ? (
+            <p className="text-zinc-500">Todavía no hay encuestas registradas.</p>
+          ) : (
+            <ul className="space-y-3 border-t border-zinc-100 pt-3">
+              {surveys
+                .slice()
+                .sort((a, b) => b.answeredAt.localeCompare(a.answeredAt))
+                .map((survey) => (
+                  <li key={survey.id}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium">{SURVEY_TYPE_LABELS[survey.type]}</span>
+                      <Status tone="green">{ratingLabel(survey.rating)}</Status>
+                    </div>
+                    <p className="text-zinc-500">
+                      {SURVEY_CHANNEL_LABELS[survey.channel]}, {new Date(survey.answeredAt).toLocaleDateString("es-PE")}
+                    </p>
+                    {survey.comment && <p className="mt-0.5 text-zinc-600">{survey.comment}</p>}
+                  </li>
+                ))}
+            </ul>
+          )}
           {canManage && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 text-xs"
-              onClick={() => setDialogOpen(true)}
-            >
-              <Plus className="size-3" />
-              Registrar encuesta
-            </Button>
+            <div className="pt-1">
+              <CopySurveyScript type="ENROLLMENT" patientId={patientId} />
+            </div>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {surveysQuery.isLoading ? (
-          <p className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 className="size-3.5 animate-spin" />
-            Cargando encuestas...
-          </p>
-        ) : surveysQuery.isError ? (
-          <p className="text-muted-foreground text-sm">
-            No se pudieron cargar las encuestas.
-          </p>
-        ) : (
-          <>
-            <div className="space-y-1 text-sm">
-              <p className="text-muted-foreground text-xs">
-                Calificación del enrolamiento
-              </p>
-              {enrollmentSurvey ? (
-                <Badge variant="secondary">
-                  {ratingLabel(enrollmentSurvey.rating)}
-                </Badge>
-              ) : legacyRating != null ? (
-                <p className="text-muted-foreground">
-                  Calificación anterior: {ratingLabel(legacyRating)}. Regístrala
-                  como encuesta para que entre al dashboard.
-                </p>
-              ) : (
-                <p className="text-muted-foreground">
-                  Pendiente de calificación.
-                </p>
-              )}
-            </div>
-            {surveys.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Todavía no hay encuestas registradas.
-              </p>
-            ) : (
-              <ul className="divide-y rounded-md border">
-                {surveys
-                  .slice()
-                  .sort((a, b) => b.answeredAt.localeCompare(a.answeredAt))
-                  .map((survey) => (
-                    <li key={survey.id} className="space-y-1 px-3 py-2 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">
-                          {SURVEY_TYPE_LABELS[survey.type]}
-                        </span>
-                        <Badge variant="outline">{ratingLabel(survey.rating)}</Badge>
-                        <span className="text-muted-foreground text-xs">
-                          {SURVEY_CHANNEL_LABELS[survey.channel]} ·{" "}
-                          {new Date(survey.answeredAt).toLocaleDateString("es-PE")}
-                        </span>
-                      </div>
-                      {survey.comment && (
-                        <p className="text-muted-foreground text-xs">
-                          {survey.comment}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </>
-        )}
-        {canManage && (
-          <CopySurveyScript type="ENROLLMENT" patientId={patientId} />
-        )}
-      </CardContent>
+      )}
       {canManage && (
-        <RegisterSurveyDialog
-          key={`${dialogOpen}`}
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          patientId={patientId}
-          defaultType="ENROLLMENT"
-        />
+        <RegisterSurveyDialog key={`${dialogOpen}`} open={dialogOpen} onOpenChange={setDialogOpen} patientId={patientId} defaultType="ENROLLMENT" />
       )}
     </Card>
   )

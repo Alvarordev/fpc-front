@@ -17,6 +17,8 @@ export function CatalogPicker({
   onAdd,
   placeholder,
   disabled,
+  onQueryChange,
+  loading,
 }: {
   id?: string
   value: string | null
@@ -26,19 +28,23 @@ export function CatalogPicker({
   searchable?: boolean
   /** Ej. "Agregar especialidad". Se usa como etiqueta accesible y tooltip. */
   addLabel: string
-  onAdd: () => void
+  /** Sin `onAdd` no se muestra el botón (el usuario no puede ampliar este catálogo). */
+  onAdd?: () => void
   placeholder?: string
   disabled?: boolean
+  onQueryChange?: (query: string) => void
+  loading?: boolean
 }) {
   return (
     <div className="flex gap-2">
       <div className="min-w-0 flex-1">
         {searchable ? (
-          <SearchSelect id={id} value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} searchPlaceholder={`Buscar en ${options.length} opciones`} />
+          <SearchSelect id={id} value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} searchPlaceholder="Buscar" onQueryChange={onQueryChange} loading={loading} />
         ) : (
           <SelectField id={id} value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} />
         )}
       </div>
+      {onAdd && (
       <button
         type="button"
         onClick={onAdd}
@@ -49,6 +55,7 @@ export function CatalogPicker({
       >
         <Plus className="size-4" />
       </button>
+      )}
     </div>
   )
 }

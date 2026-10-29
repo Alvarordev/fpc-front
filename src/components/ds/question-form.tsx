@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { CatalogPicker } from "./catalog-picker"
 import { useCatalogSource } from "./catalog-source"
 import { ChoiceGroup, DurationField, Field, ScaleField, SelectField, TextArea, TextInput } from "./form"
@@ -84,16 +85,20 @@ function QuestionField({ question: q, value, values, onChange }: { question: Que
 
 function CatalogQuestion({ id, catalog, placeholder, value, onChange }: { id: string; catalog: string; placeholder?: string; value: string | null; onChange: (v: string) => void }) {
   const source = useCatalogSource()
+  const [query, setQuery] = useState("")
+  const { options, loading } = source.useOptions(catalog, query, value)
   return (
     <CatalogPicker
       id={id}
       value={value}
       onChange={onChange}
-      options={source.options(catalog)}
+      options={options}
+      onQueryChange={setQuery}
+      loading={loading}
       searchable={source.searchable(catalog)}
       placeholder={placeholder ?? "Seleccionar"}
       addLabel={`Agregar ${source.singular(catalog)}`}
-      onAdd={() => source.requestAdd(catalog, onChange)}
+      onAdd={source.canAdd(catalog) ? () => source.requestAdd(catalog, onChange) : undefined}
     />
   )
 }

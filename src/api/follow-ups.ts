@@ -14,6 +14,8 @@ export type FollowUpFilters = NonNullable<
 export type FollowUpAttempt = components["schemas"]["FollowUpAttemptResponseDto"]
 export type CreateFollowUpAttemptInput =
   components["schemas"]["CreateFollowUpAttemptDto"]
+export type CreateReenrollmentInput = components["schemas"]["CreateReenrollmentDto"]
+export type Reenrollment = components["schemas"]["ReenrollmentResponseDto"]
 export type RescheduleFollowUpInput =
   components["schemas"]["RescheduleFollowUpDto"]
 
@@ -137,6 +139,24 @@ export const followUpsApi = {
       throw new FollowUpsApiError(response.status, error)
     }
 
+    return data
+  },
+
+  /** Registra el reenrolamiento: actualiza los datos, reactiva al paciente y completa el seguimiento. */
+  async createReenrollment(id: string, input: CreateReenrollmentInput): Promise<Reenrollment> {
+    const { data, error, response } = await api.POST("/follow-ups/{id}/reenrollment", {
+      params: { path: { id } },
+      body: input,
+    })
+    if (!data) throw new FollowUpsApiError(response.status, error)
+    return data
+  },
+
+  async getReenrollment(id: string): Promise<Reenrollment> {
+    const { data, error, response } = await api.GET("/follow-ups/{id}/reenrollment", {
+      params: { path: { id } },
+    })
+    if (!data) throw new FollowUpsApiError(response.status, error)
     return data
   },
 }

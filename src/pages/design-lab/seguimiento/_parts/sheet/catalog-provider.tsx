@@ -54,7 +54,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   const source = useMemo<CatalogSource>(
     () => ({
-      options: (key) => [...CATALOGS[key as CatalogKey].options, ...(extra[key as CatalogKey] ?? [])],
+      useOptions: (key) => ({ options: [...CATALOGS[key as CatalogKey].options, ...(extra[key as CatalogKey] ?? [])] }),
+      canAdd: () => true,
       singular: (key) => CATALOGS[key as CatalogKey].singular,
       searchable: (key) => Boolean(CATALOGS[key as CatalogKey].searchable),
       requestAdd: (key, onCreated) => setRequest({ key: key as CatalogKey, onCreated }),

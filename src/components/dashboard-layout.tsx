@@ -11,7 +11,8 @@ export function DashboardLayout() {
         <AppSidebar />
         <SidebarInset>
           <AppTopbar />
-          <div className="min-w-0 flex-1 p-6">
+          {/* Fondo único del sistema de diseño (src/components/ds/README.md). */}
+          <div className="min-w-0 flex-1 bg-[#f6f6f6] p-6">
             <div className="mx-auto max-w-7xl">
               <Outlet />
             </div>

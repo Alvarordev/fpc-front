@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { changeLogApi, type ChangeLogEntry } from "@/api/change-log"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ds/card"
 import {
   changeLogContextLabels,
   describeChangeLogEntry,
@@ -60,57 +60,38 @@ export function PatientChangeLog({
   const groups = groupChanges(items)
 
   return (
-    <Card className="ring-foreground/5 ring-1">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{title}</CardTitle>
-        <p className="text-muted-foreground text-sm">{description}</p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {query.isLoading ? (
-          <p className="text-muted-foreground text-sm">Cargando historial...</p>
-        ) : query.isError ? (
-          <p className="text-destructive text-sm">
-            No se pudo cargar el historial. {query.error.message}
-          </p>
-        ) : groups.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Todavía no hay cambios registrados.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {groups.map((group) => {
-              const head = group[0]
-              const when = new Date(head.changedAt).toLocaleString("es-PE", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })
-              return (
-                <li key={head.changeSetId} className="rounded-xl border p-3">
-                  <p className="text-sm font-medium">
-                    {head.actorEmail ?? "Sistema"} · {when}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {changeLogContextLabels[head.context]}
-                  </p>
-                  <ul className="mt-2 space-y-1">
-                    {group.map((entry) => (
-                      <li key={entry.id} className="text-sm">
-                        {describeChangeLogEntry(entry)}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-        {query.data && query.data.total > query.data.items.length && (
-          <p className="text-muted-foreground text-xs">
-            Se muestran los primeros {query.data.items.length} de{" "}
-            {query.data.total} cambios.
-          </p>
-        )}
-      </CardContent>
+    <Card title={title} description={description}>
+      {query.isLoading ? (
+        <p className="text-[13px] text-zinc-500">Cargando historial...</p>
+      ) : query.isError ? (
+        <p className="text-[13px] text-red-700">No se pudo cargar el historial. {query.error.message}</p>
+      ) : groups.length === 0 ? (
+        <p className="text-[13px] text-zinc-500">Todavía no hay cambios registrados.</p>
+      ) : (
+        <ul className="grid gap-x-8 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
+          {groups.map((group) => {
+            const head = group[0]
+            const when = new Date(head.changedAt).toLocaleString("es-PE", { dateStyle: "medium", timeStyle: "short" })
+            return (
+              <li key={head.changeSetId} className="text-[13px]">
+                <ul className="space-y-0.5 font-medium text-zinc-900">
+                  {group.map((entry) => (
+                    <li key={entry.id}>{describeChangeLogEntry(entry)}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-zinc-500">
+                  {head.actorEmail ?? "Sistema"}, {when}, {changeLogContextLabels[head.context].toLowerCase()}
+                </p>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {query.data && query.data.total > query.data.items.length && (
+        <p className="mt-4 text-xs text-zinc-500">
+          Se muestran los primeros {query.data.items.length} de {query.data.total} cambios.
+        </p>
+      )}
     </Card>
   )
 }

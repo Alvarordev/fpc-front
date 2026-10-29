@@ -609,7 +609,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/family-talk-interests": {
+    "/talk-interests": {
         parameters: {
             query?: never;
             header?: never;
@@ -617,13 +617,64 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List family members interested in cancer prevention talks
-         * @description Returns interests collected during enrollment, with the related patient.
+         * List companions interested in prevention talks
+         * @description CH1. Filter by talk (catalog code) or by companion/patient name.
          */
-        get: operations["FamilyTalkInterestsController_findAll"];
+        get: operations["TalkInterestsController_findAll"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{id}/talk-interests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Talk interests of a patient's companions */
+        get: operations["TalkInterestsController_findForPatient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{id}/companions/{companionId}/talk-interests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a companion as interested in a talk */
+        post: operations["TalkInterestsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{id}/talk-interests/{interestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a talk interest */
+        delete: operations["TalkInterestsController_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -995,6 +1046,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{id}/companions/{companionId}/person": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a companion's personal data
+         * @description Companions are edited from the record of a patient they accompany; the change applies to every patient they accompany.
+         */
+        patch: operations["PatientsController_updateCompanion"];
+        trace?: never;
+    };
+    "/patients/{id}/companions/{companionId}/convert-to-patient": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a companion as a patient (prospect)
+         * @description A1 "enroll from this contact": creates an unenrolled patient with the companion data; enroll it afterwards with POST /enrollments. The companion keeps accompanying their patients.
+         */
+        post: operations["PatientsController_convertCompanion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patients/{id}/companions/link": {
         parameters: {
             query?: never;
@@ -1139,23 +1230,6 @@ export interface paths {
         head?: never;
         /** Deactivate a patient */
         patch: operations["PatientsController_deactivate"];
-        trace?: never;
-    };
-    "/patients/{id}/reactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Reactivate a patient */
-        patch: operations["PatientsController_reactivate"];
         trace?: never;
     };
     "/patients/{id}/details": {
@@ -2418,6 +2492,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assistant/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the data assistant
+         * @description Runs the agent with read-only tool calls and stores the question and answer. Patients are pseudonymised for the model and rehydrated in the response.
+         */
+        post: operations["AssistantController_ask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assistant/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current user's assistant conversations */
+        get: operations["AssistantController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assistant/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an assistant conversation with its messages */
+        get: operations["AssistantController_get"];
+        put?: never;
+        post?: never;
+        /** Delete an assistant conversation */
+        delete: operations["AssistantController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/follow-ups/{id}/reenrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the re-enrollment recorded in a follow-up */
+        get: operations["ReenrollmentsController_find"];
+        put?: never;
+        /**
+         * Re-enroll an inactive patient from a REENROLLMENT follow-up
+         * @description Stores reason, entry source and health situation, updates the health phase, reactivates the patient linked to the follow-up and marks it completed.
+         */
+        post: operations["ReenrollmentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2641,7 +2791,7 @@ export interface components {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             /** Format: date-time */
             scheduledAt: string | null;
             /** Format: date */
@@ -2788,6 +2938,8 @@ export interface components {
             other: number;
             /** @description Patients whose deactivation happened inside the period. */
             dropoutsInPeriod: number;
+            /** @description Patients re-enrolled inside the period (REENROLLMENT follow-up). Not counted as enrolled. */
+            reenrolledInPeriod: number;
         };
         DashboardCrossItemDto: {
             /** @example Cáncer de mama */
@@ -3366,7 +3518,8 @@ export interface components {
             status?: "ACTIVE" | "DISCHARGED";
         };
         CreateEnrollmentFamilyTalkInterestDto: {
-            talkName: string;
+            /** @description Código (o nombre) del catálogo educational_talk */
+            talk: string;
             familyMemberName: string;
             familyMemberPhone?: string;
             familyMemberEmail?: string;
@@ -3461,24 +3614,36 @@ export interface components {
             /** @description 0 = No indica */
             followUpQualityRating: number;
         };
-        FamilyTalkInterestResponseDto: {
+        TalkInterestResponseDto: {
             /** Format: uuid */
             id: string;
-            talkName: string;
-            familyMemberName: string;
-            familyMemberPhone: string | null;
-            familyMemberEmail: string | null;
+            talk: string;
+            talkLabel: string;
+            /** Format: uuid */
+            companionId: string;
+            companionFullName: string;
+            companionPhone?: string | null;
+            companionEmail?: string | null;
             /** Format: uuid */
             patientId: string;
             patientFullName: string;
             /** Format: uuid */
-            enrollmentId: string;
+            followUpId?: string | null;
             /** Format: date-time */
             createdAt: string;
         };
-        FamilyTalkInterestListResponseDto: {
-            data: components["schemas"]["FamilyTalkInterestResponseDto"][];
+        TalkInterestListResponseDto: {
+            data: components["schemas"]["TalkInterestResponseDto"][];
             total: number;
+        };
+        CreateTalkInterestDto: {
+            /** @description Código (o nombre) del catálogo educational_talk */
+            talk: string;
+            /**
+             * Format: uuid
+             * @description Seguimiento en que se registró
+             */
+            followUpId?: string;
         };
         CreateFollowUpDto: {
             /** Format: uuid */
@@ -3490,7 +3655,7 @@ export interface components {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             notes?: string;
             scheduledAt?: string;
             completedAt?: string;
@@ -3527,7 +3692,7 @@ export interface components {
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             /** @enum {string} */
-            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             /** Format: date-time */
             scheduledAt: string | null;
             /** Format: date */
@@ -3557,7 +3722,7 @@ export interface components {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             notes?: string;
             scheduledAt: string;
         };
@@ -3781,7 +3946,7 @@ export interface components {
         };
         CreateCatalogItemDto: {
             /** @enum {string} */
-            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity";
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity" | "reenrollment_reason" | "companion_relationship" | "educational_talk";
             code: string;
             label: string;
             parentCode?: string | null;
@@ -3937,7 +4102,7 @@ export interface components {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             notes: string | null;
             outcomes: components["schemas"]["PatientTimelineOutcomeDto"][];
         };
@@ -4033,7 +4198,7 @@ export interface components {
             secondaryPhone: string | null;
             hasWhatsapp: boolean;
             /** @enum {string} */
-            role: "UNKNOWN" | "PATIENT" | "COMPANION";
+            role: "UNKNOWN" | "PATIENT";
             /** @enum {string} */
             status: "UNENROLLED" | "ENROLLED";
             /** @enum {string} */
@@ -4049,6 +4214,43 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CompanionResponseDto: {
+            /** Format: uuid */
+            id: string;
+            fullName: string;
+            /** @enum {string|null} */
+            documentType?: "DNI" | "CE" | "CPP" | null;
+            dni?: string | null;
+            /** Format: date */
+            birthDate?: string | null;
+            gender?: string | null;
+            primaryPhone?: string | null;
+            secondaryPhone?: string | null;
+            hasWhatsapp: boolean;
+            email?: string | null;
+            /**
+             * Format: uuid
+             * @description Paciente creado desde este contacto
+             */
+            convertedPatientId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateCompanionDto: {
+            fullName?: string;
+            primaryPhone?: string;
+            secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
+            dni?: string;
+            birthDate?: string;
+            gender?: string;
+            hasWhatsapp?: boolean;
+            /** Format: email */
+            email?: string;
         };
         LinkCompanionDto: {
             /** Format: uuid */
@@ -4076,7 +4278,7 @@ export interface components {
             companionDisplayName: string | null;
             /** Format: date-time */
             createdAt: string;
-            companion?: components["schemas"]["PatientResponseDto"];
+            companion?: components["schemas"]["CompanionResponseDto"];
             patient?: components["schemas"]["PatientResponseDto"];
         };
         UpdateCompanionLinkDto: {
@@ -4127,7 +4329,7 @@ export interface components {
             secondaryPhone: string | null;
             hasWhatsapp: boolean;
             /** @enum {string} */
-            role: "UNKNOWN" | "PATIENT" | "COMPANION";
+            role: "UNKNOWN" | "PATIENT";
             /** @enum {string} */
             status: "UNENROLLED" | "ENROLLED";
             /** @enum {string} */
@@ -4560,7 +4762,7 @@ export interface components {
             secondaryPhone: string | null;
             hasWhatsapp: boolean;
             /** @enum {string} */
-            role: "UNKNOWN" | "PATIENT" | "COMPANION";
+            role: "UNKNOWN" | "PATIENT";
             /** @enum {string} */
             status: "UNENROLLED" | "ENROLLED";
             /** @enum {string} */
@@ -4610,13 +4812,6 @@ export interface components {
             /**
              * Format: uuid
              * @description Follow-up in which the deactivation was decided
-             */
-            followUpId?: string;
-        };
-        ReactivatePatientDto: {
-            /**
-             * Format: uuid
-             * @description Follow-up in which the patient came back
              */
             followUpId?: string;
         };
@@ -5682,7 +5877,7 @@ export interface components {
             /** @enum {string} */
             type: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             /** @enum {string} */
             status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             notes?: string;
@@ -5932,7 +6127,7 @@ export interface components {
             /** @enum {string} */
             type?: "WHATSAPP" | "CALL" | "VIDEO_CALL" | "EMAIL" | "IN_PERSON" | "FACEBOOK";
             /** @enum {string} */
-            purpose?: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "OTHER";
+            purpose?: "FIRST_CONTACT" | "ENROLLMENT" | "FOLLOW_UP" | "PSYCHOONCOLOGY_REFERRAL" | "REENROLLMENT" | "OTHER";
             /** @enum {string} */
             status?: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_ANSWER" | "OVERDUE";
             notes?: string;
@@ -6387,6 +6582,111 @@ export interface components {
             /** Format: date */
             enrolledOn: string;
             daysSinceEnrollment: number;
+        };
+        AskAssistantDto: {
+            /** @example ¿Cuántos pacientes activos hay en Lima? */
+            message: string;
+            /**
+             * Format: uuid
+             * @description Omitir para empezar una conversación nueva.
+             */
+            conversationId?: string;
+        };
+        AssistantSourceDto: {
+            tool: string;
+            /** @description Nombre legible de la fuente */
+            label: string;
+            args: {
+                [key: string]: unknown;
+            };
+            ok: boolean;
+            error?: string;
+        };
+        AssistantPatientMentionDto: {
+            /** @example P-001 */
+            token: string;
+            /** Format: uuid */
+            patientId: string;
+            name: string;
+        };
+        AssistantMessageResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            role: "USER" | "ASSISTANT";
+            /** @description Markdown con los nombres reales ya rehidratados */
+            content: string;
+            sources: components["schemas"]["AssistantSourceDto"][];
+            patients: components["schemas"]["AssistantPatientMentionDto"][];
+            isError: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AskAssistantResponseDto: {
+            /** Format: uuid */
+            conversationId: string;
+            question: components["schemas"]["AssistantMessageResponseDto"];
+            answer: components["schemas"]["AssistantMessageResponseDto"];
+        };
+        AssistantConversationSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AssistantConversationResponseDto: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            messages: components["schemas"]["AssistantMessageResponseDto"][];
+        };
+        CreateReenrollmentDto: {
+            /** @description Código del catálogo reenrollment_reason */
+            reason: string;
+            /** @description Código del catálogo entry_source */
+            entrySource: string;
+            /** @description Código del catálogo entry_sub_source */
+            entrySubSource?: string;
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "SIGNS_AND_SYMPTOMS";
+            /** @enum {string} */
+            healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT";
+            /**
+             * @description El agente revisó teléfono, dirección, seguro y contacto principal (se editan con sus endpoints).
+             * @example true
+             */
+            contactDataConfirmed: boolean;
+            notes?: string;
+        };
+        ReenrollmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            patientId: string;
+            reason: string;
+            reasonLabel: string;
+            entrySource: string;
+            entrySubSource?: string | null;
+            /** @enum {string} */
+            healthPhase: "CANCER_DIAGNOSIS" | "ANNUAL_CHECKUP" | "SIGNS_AND_SYMPTOMS";
+            /** @enum {string|null} */
+            healthSubcategory?: "SIGNS_AND_SYMPTOMS_PATIENT" | "ACTIVE_TREATMENT" | "UNDER_CONTROLS" | "TREATMENT_ABANDONED" | "PALLIATIVE_NO_ACTIVE_TREATMENT" | "CANCER_RULED_OUT" | null;
+            /** Format: date-time */
+            contactDataConfirmedAt: string;
+            notes?: string | null;
+            /** Format: uuid */
+            createdById?: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;
@@ -8242,10 +8542,12 @@ export interface operations {
             };
         };
     };
-    FamilyTalkInterestsController_findAll: {
+    TalkInterestsController_findAll: {
         parameters: {
             query?: {
-                /** @description Search by family member name or patient name */
+                /** @description Código del catálogo educational_talk */
+                talk?: string;
+                /** @description Nombre del acompañante o del paciente */
                 search?: string;
                 limit?: number;
                 offset?: number;
@@ -8261,10 +8563,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FamilyTalkInterestListResponseDto"];
+                    "application/json": components["schemas"]["TalkInterestListResponseDto"];
                 };
             };
-            /** @description JWT missing, invalid, or expired */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8272,6 +8573,130 @@ export interface operations {
                 content?: never;
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TalkInterestsController_findForPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TalkInterestResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TalkInterestsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                companionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTalkInterestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TalkInterestResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Companion not linked, or follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already interested in that talk */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TalkInterestsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                interestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Interest not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8885,7 +9310,7 @@ export interface operations {
         parameters: {
             query?: {
                 includeInactive?: boolean;
-                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity";
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity" | "reenrollment_reason" | "companion_relationship" | "educational_talk";
             };
             header?: never;
             path?: never;
@@ -9427,7 +9852,7 @@ export interface operations {
     PatientsController_findAll: {
         parameters: {
             query?: {
-                role?: "UNKNOWN" | "PATIENT" | "COMPANION";
+                role?: "UNKNOWN" | "PATIENT";
                 status?: "UNENROLLED" | "ENROLLED";
                 activityStatus?: "ACTIVE" | "INACTIVE" | "REACTIVE";
                 healthPhase?: string;
@@ -9553,7 +9978,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PatientResponseDto"];
+                    "application/json": components["schemas"]["CompanionResponseDto"];
                 };
             };
             401: {
@@ -9575,7 +10000,107 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Patient cannot have companions */
+            /** @description Patient cannot have companions, or the companion document already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_updateCompanion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                companionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Companion not linked to this patient */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The companion document already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_convertCompanion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                companionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Companion not linked to this patient */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already converted, or a patient with this document exists */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9933,50 +10458,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DeactivatePatientDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PatientResponseDto"];
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description No se encontró el paciente. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PatientsController_reactivate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReactivatePatientDto"];
             };
         };
         responses: {
@@ -14354,6 +14835,256 @@ export interface operations {
             };
             /** @description Volunteers cannot see pending surveys */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssistantController_ask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskAssistantDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskAssistantResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No se encontró la conversación. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Model not configured or unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssistantController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantConversationSummaryDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssistantController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantConversationResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No se encontró la conversación. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssistantController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator or foundation role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No se encontró la conversación. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReenrollmentsController_find: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Follow-up id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReenrollmentResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No reenrollment for this follow-up */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReenrollmentsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Follow-up id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReenrollmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReenrollmentResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agents can only use their own follow-ups */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No se encontró el seguimiento. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already re-enrolled, or the patient is not inactive */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

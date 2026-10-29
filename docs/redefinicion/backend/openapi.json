@@ -2978,17 +2978,28 @@
         ]
       }
     },
-    "/family-talk-interests": {
+    "/talk-interests": {
       "get": {
-        "description": "Returns interests collected during enrollment, with the related patient.",
-        "operationId": "FamilyTalkInterestsController_findAll",
+        "description": "CH1. Filter by talk (catalog code) or by companion/patient name.",
+        "operationId": "TalkInterestsController_findAll",
         "parameters": [
+          {
+            "name": "talk",
+            "required": false,
+            "in": "query",
+            "description": "Código del catálogo educational_talk",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
           {
             "name": "search",
             "required": false,
             "in": "query",
-            "description": "Search by family member name or patient name",
+            "description": "Nombre del acompañante o del paciente",
             "schema": {
+              "maxLength": 255,
               "type": "string"
             }
           },
@@ -3020,13 +3031,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FamilyTalkInterestListResponseDto"
+                  "$ref": "#/components/schemas/TalkInterestListResponseDto"
                 }
               }
             }
           },
           "401": {
-            "description": "JWT missing, invalid, or expired"
+            "description": ""
           },
           "403": {
             "description": ""
@@ -3037,9 +3048,171 @@
             "bearer": []
           }
         ],
-        "summary": "List family members interested in cancer prevention talks",
+        "summary": "List companions interested in prevention talks",
         "tags": [
-          "family-talk-interests"
+          "talk-interests"
+        ]
+      }
+    },
+    "/patients/{id}/talk-interests": {
+      "get": {
+        "operationId": "TalkInterestsController_findForPatient",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TalkInterestResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Talk interests of a patient's companions",
+        "tags": [
+          "talk-interests"
+        ]
+      }
+    },
+    "/patients/{id}/companions/{companionId}/talk-interests": {
+      "post": {
+        "operationId": "TalkInterestsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "companionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTalkInterestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalkInterestResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Companion not linked, or follow-up not found"
+          },
+          "409": {
+            "description": "Already interested in that talk"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a companion as interested in a talk",
+        "tags": [
+          "talk-interests"
+        ]
+      }
+    },
+    "/patients/{id}/talk-interests/{interestId}": {
+      "delete": {
+        "operationId": "TalkInterestsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "interestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Interest not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a talk interest",
+        "tags": [
+          "talk-interests"
         ]
       }
     },
@@ -3814,7 +3987,10 @@
                 "location_share_status",
                 "temporary_housing_type",
                 "alert_category",
-                "alert_derivation_entity"
+                "alert_derivation_entity",
+                "reenrollment_reason",
+                "companion_relationship",
+                "educational_talk"
               ],
               "type": "string"
             }
@@ -4583,8 +4759,7 @@
               "type": "string",
               "enum": [
                 "UNKNOWN",
-                "PATIENT",
-                "COMPANION"
+                "PATIENT"
               ]
             }
           },
@@ -4732,7 +4907,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PatientResponseDto"
+                  "$ref": "#/components/schemas/CompanionResponseDto"
                 }
               }
             }
@@ -4747,7 +4922,7 @@
             "description": "No se encontró el paciente."
           },
           "409": {
-            "description": "Patient cannot have companions"
+            "description": "Patient cannot have companions, or the companion document already exists"
           }
         },
         "security": [
@@ -4800,6 +4975,134 @@
           }
         ],
         "summary": "List companions linked to a patient",
+        "tags": [
+          "Patients"
+        ]
+      }
+    },
+    "/patients/{id}/companions/{companionId}/person": {
+      "patch": {
+        "description": "Companions are edited from the record of a patient they accompany; the change applies to every patient they accompany.",
+        "operationId": "PatientsController_updateCompanion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "companionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCompanionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Companion not linked to this patient"
+          },
+          "409": {
+            "description": "The companion document already exists"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a companion's personal data",
+        "tags": [
+          "Patients"
+        ]
+      }
+    },
+    "/patients/{id}/companions/{companionId}/convert-to-patient": {
+      "post": {
+        "description": "A1 \"enroll from this contact\": creates an unenrolled patient with the companion data; enroll it afterwards with POST /enrollments. The companion keeps accompanying their patients.",
+        "operationId": "PatientsController_convertCompanion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "companionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Companion not linked to this patient"
+          },
+          "409": {
+            "description": "Already converted, or a patient with this document exists"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a companion as a patient (prospect)",
         "tags": [
           "Patients"
         ]
@@ -5296,62 +5599,6 @@
           }
         ],
         "summary": "Deactivate a patient",
-        "tags": [
-          "Patients"
-        ]
-      }
-    },
-    "/patients/{id}/reactivate": {
-      "patch": {
-        "operationId": "PatientsController_reactivate",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReactivatePatientDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PatientResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": "No se encontró el paciente."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Reactivate a patient",
         "tags": [
           "Patients"
         ]
@@ -10713,6 +10960,276 @@
           "surveys"
         ]
       }
+    },
+    "/assistant/messages": {
+      "post": {
+        "description": "Runs the agent with read-only tool calls and stores the question and answer. Patients are pseudonymised for the model and rehydrated in the response.",
+        "operationId": "AssistantController_ask",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskAssistantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskAssistantResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": "Administrator or foundation role required"
+          },
+          "404": {
+            "description": "No se encontró la conversación."
+          },
+          "503": {
+            "description": "Model not configured or unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the data assistant",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/assistant/conversations": {
+      "get": {
+        "operationId": "AssistantController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssistantConversationSummaryDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": "Administrator or foundation role required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the current user's assistant conversations",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/assistant/conversations/{id}": {
+      "get": {
+        "operationId": "AssistantController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantConversationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": "Administrator or foundation role required"
+          },
+          "404": {
+            "description": "No se encontró la conversación."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get an assistant conversation with its messages",
+        "tags": [
+          "assistant"
+        ]
+      },
+      "delete": {
+        "operationId": "AssistantController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": "Administrator or foundation role required"
+          },
+          "404": {
+            "description": "No se encontró la conversación."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete an assistant conversation",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/follow-ups/{id}/reenrollment": {
+      "post": {
+        "description": "Stores reason, entry source and health situation, updates the health phase, reactivates the patient linked to the follow-up and marks it completed.",
+        "operationId": "ReenrollmentsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Follow-up id",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReenrollmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReenrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": "Agents can only use their own follow-ups"
+          },
+          "404": {
+            "description": "No se encontró el seguimiento."
+          },
+          "409": {
+            "description": "Already re-enrolled, or the patient is not inactive"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Re-enroll an inactive patient from a REENROLLMENT follow-up",
+        "tags": [
+          "follow-ups"
+        ]
+      },
+      "get": {
+        "operationId": "ReenrollmentsController_find",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Follow-up id",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReenrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": "No reenrollment for this follow-up"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the re-enrollment recorded in a follow-up",
+        "tags": [
+          "follow-ups"
+        ]
+      }
     }
   },
   "info": {
@@ -11408,6 +11925,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ],
             "type": "string"
@@ -11905,6 +12423,10 @@
           "dropoutsInPeriod": {
             "type": "number",
             "description": "Patients whose deactivation happened inside the period."
+          },
+          "reenrolledInPeriod": {
+            "type": "number",
+            "description": "Patients re-enrolled inside the period (REENROLLMENT follow-up). Not counted as enrolled."
           }
         },
         "required": [
@@ -11915,7 +12437,8 @@
           "deceased",
           "transferredOut",
           "other",
-          "dropoutsInPeriod"
+          "dropoutsInPeriod",
+          "reenrolledInPeriod"
         ]
       },
       "DashboardCrossItemDto": {
@@ -12799,7 +13322,7 @@
           },
           "relationship": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 100
           }
         },
         "required": [
@@ -13809,9 +14332,10 @@
       "CreateEnrollmentFamilyTalkInterestDto": {
         "type": "object",
         "properties": {
-          "talkName": {
+          "talk": {
             "type": "string",
-            "maxLength": 255
+            "maxLength": 255,
+            "description": "Código (o nombre) del catálogo educational_talk"
           },
           "familyMemberName": {
             "type": "string",
@@ -13827,7 +14351,7 @@
           }
         },
         "required": [
-          "talkName",
+          "talk",
           "familyMemberName"
         ]
       },
@@ -14159,24 +14683,31 @@
           "followUpQualityRating"
         ]
       },
-      "FamilyTalkInterestResponseDto": {
+      "TalkInterestResponseDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "talkName": {
+          "talk": {
             "type": "string"
           },
-          "familyMemberName": {
+          "talkLabel": {
             "type": "string"
           },
-          "familyMemberPhone": {
+          "companionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companionFullName": {
+            "type": "string"
+          },
+          "companionPhone": {
             "type": "string",
             "nullable": true
           },
-          "familyMemberEmail": {
+          "companionEmail": {
             "type": "string",
             "nullable": true
           },
@@ -14187,8 +14718,9 @@
           "patientFullName": {
             "type": "string"
           },
-          "enrollmentId": {
+          "followUpId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "createdAt": {
@@ -14198,23 +14730,22 @@
         },
         "required": [
           "id",
-          "talkName",
-          "familyMemberName",
-          "familyMemberPhone",
-          "familyMemberEmail",
+          "talk",
+          "talkLabel",
+          "companionId",
+          "companionFullName",
           "patientId",
           "patientFullName",
-          "enrollmentId",
           "createdAt"
         ]
       },
-      "FamilyTalkInterestListResponseDto": {
+      "TalkInterestListResponseDto": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/FamilyTalkInterestResponseDto"
+              "$ref": "#/components/schemas/TalkInterestResponseDto"
             }
           },
           "total": {
@@ -14224,6 +14755,24 @@
         "required": [
           "data",
           "total"
+        ]
+      },
+      "CreateTalkInterestDto": {
+        "type": "object",
+        "properties": {
+          "talk": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Código (o nombre) del catálogo educational_talk"
+          },
+          "followUpId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Seguimiento en que se registró"
+          }
+        },
+        "required": [
+          "talk"
         ]
       },
       "CreateFollowUpDto": {
@@ -14258,6 +14807,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ],
             "type": "string"
@@ -14389,6 +14939,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ],
             "type": "string"
@@ -14494,6 +15045,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ]
           },
@@ -15367,7 +15919,10 @@
               "location_share_status",
               "temporary_housing_type",
               "alert_category",
-              "alert_derivation_entity"
+              "alert_derivation_entity",
+              "reenrollment_reason",
+              "companion_relationship",
+              "educational_talk"
             ],
             "type": "string"
           },
@@ -15875,6 +16430,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ],
             "type": "string"
@@ -16178,8 +16734,7 @@
           "role": {
             "enum": [
               "UNKNOWN",
-              "PATIENT",
-              "COMPANION"
+              "PATIENT"
             ],
             "type": "string"
           },
@@ -16254,6 +16809,120 @@
           "updatedAt"
         ]
       },
+      "CompanionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "documentType": {
+            "nullable": true,
+            "enum": [
+              "DNI",
+              "CE",
+              "CPP"
+            ],
+            "type": "string"
+          },
+          "dni": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true
+          },
+          "primaryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasWhatsapp": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "convertedPatientId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Paciente creado desde este contacto"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "hasWhatsapp",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateCompanionDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "primaryPhone": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "documentType": {
+            "enum": [
+              "DNI",
+              "CE",
+              "CPP"
+            ],
+            "type": "string"
+          },
+          "dni": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "hasWhatsapp": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email"
+          }
+        }
+      },
       "LinkCompanionDto": {
         "type": "object",
         "properties": {
@@ -16280,7 +16949,7 @@
           },
           "relationship": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 100
           }
         },
         "required": [
@@ -16332,7 +17001,7 @@
             "format": "date-time"
           },
           "companion": {
-            "$ref": "#/components/schemas/PatientResponseDto"
+            "$ref": "#/components/schemas/CompanionResponseDto"
           },
           "patient": {
             "$ref": "#/components/schemas/PatientResponseDto"
@@ -16373,7 +17042,7 @@
           },
           "relationship": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 100
           }
         }
       },
@@ -16507,8 +17176,7 @@
           "role": {
             "enum": [
               "UNKNOWN",
-              "PATIENT",
-              "COMPANION"
+              "PATIENT"
             ],
             "type": "string"
           },
@@ -18180,8 +18848,7 @@
           "role": {
             "enum": [
               "UNKNOWN",
-              "PATIENT",
-              "COMPANION"
+              "PATIENT"
             ],
             "type": "string"
           },
@@ -18410,16 +19077,6 @@
         "required": [
           "reason"
         ]
-      },
-      "ReactivatePatientDto": {
-        "type": "object",
-        "properties": {
-          "followUpId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Follow-up in which the patient came back"
-          }
-        }
       },
       "CreatePatientDiagnosisDto": {
         "type": "object",
@@ -21773,6 +22430,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ],
             "type": "string"
@@ -22511,6 +23169,7 @@
               "ENROLLMENT",
               "FOLLOW_UP",
               "PSYCHOONCOLOGY_REFERRAL",
+              "REENROLLMENT",
               "OTHER"
             ],
             "type": "string"
@@ -23933,6 +24592,331 @@
           "primaryPhone",
           "enrolledOn",
           "daysSinceEnrollment"
+        ]
+      },
+      "AskAssistantDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "example": "¿Cuántos pacientes activos hay en Lima?"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Omitir para empezar una conversación nueva."
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "AssistantSourceDto": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Nombre legible de la fuente"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "label",
+          "args",
+          "ok"
+        ]
+      },
+      "AssistantPatientMentionDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "P-001"
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "patientId",
+          "name"
+        ]
+      },
+      "AssistantMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "enum": [
+              "USER",
+              "ASSISTANT"
+            ],
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "Markdown con los nombres reales ya rehidratados"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantSourceDto"
+            }
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantPatientMentionDto"
+            }
+          },
+          "isError": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "sources",
+          "patients",
+          "isError",
+          "createdAt"
+        ]
+      },
+      "AskAssistantResponseDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question": {
+            "$ref": "#/components/schemas/AssistantMessageResponseDto"
+          },
+          "answer": {
+            "$ref": "#/components/schemas/AssistantMessageResponseDto"
+          }
+        },
+        "required": [
+          "conversationId",
+          "question",
+          "answer"
+        ]
+      },
+      "AssistantConversationSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AssistantConversationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantMessageResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "createdAt",
+          "updatedAt",
+          "messages"
+        ]
+      },
+      "CreateReenrollmentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Código del catálogo reenrollment_reason"
+          },
+          "entrySource": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Código del catálogo entry_source"
+          },
+          "entrySubSource": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Código del catálogo entry_sub_source"
+          },
+          "healthPhase": {
+            "enum": [
+              "CANCER_DIAGNOSIS",
+              "SIGNS_AND_SYMPTOMS"
+            ],
+            "type": "string"
+          },
+          "healthSubcategory": {
+            "enum": [
+              "SIGNS_AND_SYMPTOMS_PATIENT",
+              "ACTIVE_TREATMENT",
+              "UNDER_CONTROLS",
+              "TREATMENT_ABANDONED",
+              "PALLIATIVE_NO_ACTIVE_TREATMENT",
+              "CANCER_RULED_OUT"
+            ],
+            "type": "string"
+          },
+          "contactDataConfirmed": {
+            "type": "boolean",
+            "description": "El agente revisó teléfono, dirección, seguro y contacto principal (se editan con sus endpoints).",
+            "example": true
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "reason",
+          "entrySource",
+          "healthPhase",
+          "contactDataConfirmed"
+        ]
+      },
+      "ReenrollmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "followUpId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "reasonLabel": {
+            "type": "string"
+          },
+          "entrySource": {
+            "type": "string"
+          },
+          "entrySubSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "healthPhase": {
+            "enum": [
+              "CANCER_DIAGNOSIS",
+              "ANNUAL_CHECKUP",
+              "SIGNS_AND_SYMPTOMS"
+            ],
+            "type": "string"
+          },
+          "healthSubcategory": {
+            "nullable": true,
+            "enum": [
+              "SIGNS_AND_SYMPTOMS_PATIENT",
+              "ACTIVE_TREATMENT",
+              "UNDER_CONTROLS",
+              "TREATMENT_ABANDONED",
+              "PALLIATIVE_NO_ACTIVE_TREATMENT",
+              "CANCER_RULED_OUT"
+            ],
+            "type": "string"
+          },
+          "contactDataConfirmedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdById": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "followUpId",
+          "patientId",
+          "reason",
+          "reasonLabel",
+          "entrySource",
+          "healthPhase",
+          "contactDataConfirmedAt",
+          "createdAt"
         ]
       }
     }

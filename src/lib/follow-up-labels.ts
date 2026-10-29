@@ -14,6 +14,7 @@ export const followUpPurposeLabels: Record<FollowUp["purpose"], string> = {
   ENROLLMENT: "Enrolamiento",
   FOLLOW_UP: "Seguimiento",
   PSYCHOONCOLOGY_REFERRAL: "Derivación a psicooncología",
+  REENROLLMENT: "Reenrolamiento",
   OTHER: "Otro",
 }
 

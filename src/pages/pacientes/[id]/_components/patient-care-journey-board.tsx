@@ -10,13 +10,8 @@ import { careLevelLabel } from "@/lib/health-center-labels"
 import { collectJourneyHealthCenterIds } from "../_lib/patient-care-journey"
 import { CatalogValue } from "@/components/catalog-select"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card } from "@/components/ds/card"
+import { Chip } from "@/components/ds/badge"
 import { cn } from "@/lib/utils"
 import { buildPatientCareJourney } from "../_lib/patient-care-journey"
 import type { PatientCareJourneyEvent } from "../_lib/patient-care-journey"
@@ -89,26 +84,13 @@ export function PatientCareJourneyBoard({
       : `${journey.departmentCodes.length} regiones`
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 border-b pb-5">
-        <div className="min-w-0">
-          <CardTitle>Recorrido de atención</CardTitle>
-          <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-relaxed">
-            Hospitales y departamentos donde se registró cita, diagnóstico o
-            tratamiento.
-          </p>
-        </div>
-        {journey.events.length > 0 ? (
-          <CardAction className="static justify-self-end">
-            <Badge variant="outline">
-              {hospitalLabel} · {regionLabel}
-            </Badge>
-          </CardAction>
-        ) : null}
-      </CardHeader>
-
-      <CardContent className="grid p-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
-        <div className="bg-muted/20 flex min-h-[32rem] flex-col justify-between p-4 sm:p-6">
+    <Card
+      title="Recorrido de atención"
+      description="Hospitales y departamentos donde se registró una cita, un diagnóstico o un tratamiento"
+      action={journey.events.length > 0 ? <Chip>{hospitalLabel}, {regionLabel}</Chip> : undefined}
+    >
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
+        <div className="flex min-h-[28rem] flex-col justify-between rounded-[14px] bg-zinc-50 p-4 ring-1 ring-zinc-200/60">
           <PatientCareJourneyMap
             departmentCodes={journey.departmentCodes}
             hops={journey.hops}
@@ -118,31 +100,22 @@ export function PatientCareJourneyBoard({
           />
           <PatientCareJourneyMapLegend className="mt-3" />
         </div>
-
-        <div className="border-t p-4 sm:p-6 xl:max-h-[38rem] xl:overflow-y-auto xl:border-t-0 xl:border-l">
+        <div className="xl:max-h-[32rem] xl:overflow-y-auto">
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">
-              Cargando hospitales…
-            </p>
+            <p className="text-[13px] text-zinc-500">Cargando hospitales...</p>
           ) : journey.events.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Todavía no hay atenciones con hospital registrado.
-            </p>
+            <p className="text-[13px] text-zinc-500">Todavía no hay atenciones con hospital registrado.</p>
           ) : (
             <ol className="space-y-2" aria-label="Atenciones por hospital">
               {journey.events.map((event) => (
                 <li key={event.id}>
-                  <JourneyEventRow
-                    event={event}
-                    highlighted={highlightedCode === event.departmentCode}
-                    onHighlight={setHighlightedCode}
-                  />
+                  <JourneyEventRow event={event} highlighted={highlightedCode === event.departmentCode} onHighlight={setHighlightedCode} />
                 </li>
               ))}
             </ol>
           )}
         </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }

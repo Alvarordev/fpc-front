@@ -10,7 +10,6 @@ import {
 import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
 import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -29,6 +28,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Trash2 } from "lucide-react"
+import { Chip } from "@/components/ds/badge"
+import { Button as DsButton, IconButton } from "@/components/ds/button"
+import { Card as DsCard, Item } from "@/components/ds/card"
+import { Modal } from "@/components/ds/modal"
+import type { Tone } from "@/components/ds/tone"
 import { useAuthStore } from "@/store/auth-store"
 
 const TYPE_ITEMS: { value: CreateReferralInput["type"]; label: string }[] = [
@@ -99,128 +104,104 @@ export function PatientReferralsSection({
   const items = routeQuery.data ?? []
 
   return (
-    <Card className="ring-foreground/5 ring-1">
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
-        <div>
-          <CardTitle className="text-base">Ruta de atención</CardTitle>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Derivaciones del paciente, del origen al destino.
-          </p>
-        </div>
-        {canEdit && (
-          <Button
-            type="button"
-            size="sm"
+    <DsCard
+      title="Derivaciones"
+      description="Ruta de atención del paciente, del origen al destino"
+      action={
+        canEdit ? (
+          <DsButton
             onClick={() => {
               setEditing(null)
               setFormOpen(true)
             }}
           >
             Nueva derivación
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {!showRoute ? null : routeQuery.isLoading ? (
-          <p className="text-muted-foreground text-sm">Cargando derivaciones...</p>
-        ) : routeQuery.isError ? (
-          <p className="text-destructive text-sm">
-            No se pudo cargar la ruta. {routeQuery.error.message}
+          </DsButton>
+        ) : undefined
+      }
+    >
+      {!showRoute ? null : routeQuery.isLoading ? (
+        <p className="text-[13px] text-zinc-500">Cargando derivaciones...</p>
+      ) : routeQuery.isError ? (
+        <p className="text-[13px] text-red-700">No se pudo cargar la ruta. {routeQuery.error.message}</p>
+      ) : items.length === 0 ? (
+        <p className="text-[13px] text-zinc-500">Todavía no hay derivaciones.</p>
+      ) : (
+        <ol className="space-y-2">
+          {items.map((referral) => (
+            <li key={referral.id}>
+              <Item
+                title={`${centerName(referral.originHealthCenter)} → ${centerName(referral.destinationHealthCenter)}`}
+                tags={
+                  <>
+                    <Chip tone={REFERRAL_TONE[referral.status] ?? "gray"}>{statusLabel[referral.status]}</Chip>
+                    {referral.viaSepa && <Chip tone="violet">SEPA intervino</Chip>}
+                  </>
+                }
+                meta={[typeLabel[referral.type], referral.requestedOn, referral.referralSheetDocumentId ? "con hoja de referencia" : null].filter(Boolean).join(", ")}
+                body={
+                  referral.specialty || referral.notes ? (
+                    <>
+                      {referral.specialty && (
+                        <span className="block">
+                          Especialidad: <CatalogValue kind="medical_specialty" code={referral.specialty} />
+                        </span>
+                      )}
+                      {referral.notes && <span className="block">{referral.notes}</span>}
+                    </>
+                  ) : undefined
+                }
+                actions={
+                  canEdit ? (
+                    <>
+                      <DsButton
+                        onClick={() => {
+                          setEditing(referral)
+                          setFormOpen(true)
+                        }}
+                      >
+                        Editar
+                      </DsButton>
+                      <IconButton icon={Trash2} label="Eliminar derivación" onClick={() => setPendingDelete(referral)} />
+                    </>
+                  ) : undefined
+                }
+              />
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <ReferralFormDialog open={formOpen} patientId={patientId} followUpId={followUpId} referral={editing} onOpenChange={setFormOpen} onSaved={refresh} />
+
+      {pendingDelete && (
+        <Modal
+          open
+          onClose={() => !removeMutation.isPending && setPendingDelete(null)}
+          icon={Trash2}
+          title="Eliminar derivación"
+          description="Sale de la ruta de atención. El documento ya cargado permanece en Documentos."
+          footer={
+            <>
+              <DsButton onClick={() => setPendingDelete(null)} disabled={removeMutation.isPending}>
+                Volver
+              </DsButton>
+              <DsButton variant="dark" disabled={removeMutation.isPending} onClick={() => removeMutation.mutate(pendingDelete)}>
+                {removeMutation.isPending ? "Eliminando..." : "Eliminar"}
+              </DsButton>
+            </>
+          }
+        >
+          <p className="px-1 text-sm text-zinc-600">
+            {centerName(pendingDelete.originHealthCenter)} → {centerName(pendingDelete.destinationHealthCenter)}
           </p>
-        ) : items.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Todavía no hay derivaciones.</p>
-        ) : (
-          <ol className="space-y-3">
-            {items.map((referral) => (
-              <li key={referral.id} className="rounded-xl border p-3">
-                <p className="text-sm font-medium">
-                  {centerName(referral.originHealthCenter)} →{" "}
-                  {centerName(referral.destinationHealthCenter)}
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {typeLabel[referral.type]} · {statusLabel[referral.status]} ·{" "}
-                  {referral.requestedOn}
-                  {referral.viaSepa ? " · SEPA intervino" : ""}
-                  {referral.referralSheetDocumentId ? " · con hoja de referencia" : ""}
-                </p>
-                {referral.specialty && (
-                  <p className="mt-1 text-xs">
-                    Especialidad:{" "}
-                    <CatalogValue kind="medical_specialty" code={referral.specialty} />
-                  </p>
-                )}
-                {referral.notes && <p className="mt-1 text-sm">{referral.notes}</p>}
-                {canEdit && (
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditing(referral)
-                        setFormOpen(true)
-                      }}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPendingDelete(referral)}
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </CardContent>
-
-      <ReferralFormDialog
-        open={formOpen}
-        patientId={patientId}
-        followUpId={followUpId}
-        referral={editing}
-        onOpenChange={setFormOpen}
-        onSaved={refresh}
-      />
-
-      <Dialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => !open && !removeMutation.isPending && setPendingDelete(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar derivación</DialogTitle>
-            <DialogDescription>
-              La derivación sale de la ruta de atención. El documento ya cargado permanece en Documentos.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPendingDelete(null)}
-              disabled={removeMutation.isPending}
-            >
-              Volver
-            </Button>
-            <Button
-              type="button"
-              disabled={removeMutation.isPending || !pendingDelete}
-              onClick={() => pendingDelete && removeMutation.mutate(pendingDelete)}
-            >
-              {removeMutation.isPending ? "Eliminando..." : "Eliminar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+        </Modal>
+      )}
+    </DsCard>
   )
 }
+
+const REFERRAL_TONE: Record<string, Tone> = { REQUESTED: "amber", ISSUED: "blue", ATTENDED: "green" }
 
 function ReferralFormDialog({
   open,

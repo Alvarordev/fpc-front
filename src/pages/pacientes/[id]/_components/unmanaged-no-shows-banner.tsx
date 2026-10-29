@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ds/button"
 
 export function UnmanagedNoShowsBanner({
   patientId,
@@ -36,7 +36,7 @@ export function UnmanagedNoShowsBanner({
   const ids = query.data.appointmentIds.flat()
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+    <div className="rounded-[20px] bg-amber-50 p-4 text-sm text-amber-950 ring-1 ring-amber-200/70">
       <p className="font-medium">
         {query.data.count} inasistencia{query.data.count === 1 ? "" : "s"} sin gestionar
       </p>
@@ -51,7 +51,7 @@ export function UnmanagedNoShowsBanner({
               type="button"
               size="sm"
               variant="outline"
-              className="h-7 bg-white text-xs"
+              
               disabled={markManaged.isPending}
               onClick={() => markManaged.mutate(id)}
             >

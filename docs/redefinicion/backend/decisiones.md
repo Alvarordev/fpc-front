@@ -42,11 +42,34 @@ extraer del código y validar.
 - **E6** Si el paciente estaba dado de baja o con cáncer descartado → se reactiva y sus datos se
   actualizan con los nuevos (los anteriores quedan en el historial por campo).
 - **Pendiente:** definir datos obligatorios del enrolamiento.
+- **E-R (2026-10-28) Reenrolamiento.** Un paciente **inactivo** vuelve al programa con un seguimiento
+  de propósito `REENROLLMENT`, no repitiendo el enrolamiento. El seguimiento pide motivo (catálogo
+  `reenrollment_reason`), canal de ingreso (`entry_source`/`entry_sub_source`), situación de salud
+  (fase y subcategoría) y la confirmación de que se revisaron teléfono, dirección, seguro y contacto
+  principal (se corrigen con sus pantallas de siempre). Al registrarlo
+  (`POST /follow-ups/:id/reenrollment`) se actualiza la fase, se reactiva al paciente ligado al
+  seguimiento y este queda realizado. Los pacientes con cáncer descartado no se reenrolan: siguen con
+  sus seguimientos. Es el **único** camino para reactivar: se quitó `PATCH /patients/:id/reactivate`, y
+  ni el wizard ni la carga histórica reenrolan (enrolar a un paciente ya enrolado responde 409); si el
+  DNI es de un inactivo, el wizard lleva a este seguimiento. En indicadores se cuenta aparte (`reenrolledInPeriod`, grupo
+  abandono); "enrolados" sigue siendo el primer enrolamiento.
 
 ## 3. Acompañantes
 
 - **A1** Entidad propia (no paciente con flag), relacionada con uno o varios pacientes, con parentesco
   (familiares y amigos). Un acompañante puede convertirse en paciente ("enrolar desde este contacto").
+  - **Implementado (2026-10-28).** Tabla `companions` (migración `1784930000000`): los `patients` con
+    rol COMPANION pasan con su mismo UUID y el rol desaparece. `companion_patient`, `enrollments` y
+    `psychooncology_appointments` apuntan a `companions`. El seguimiento guarda
+    `interlocutor_companion_id` (null = se habló con el paciente); la API mantiene `interlocutorId`
+    = acompañante o el propio paciente. La migración se detiene si algún acompañante tiene datos
+    clínicos, y no tiene vuelta atrás (respaldo).
+  - Parentesco = catálogo `companion_relationship` (abierto a agentes). Los códigos del front se
+    conservan y cada texto libre distinto se agregó al catálogo.
+  - Solo se ve y edita desde la ficha del paciente: `PATCH /patients/:id/companions/:companionId/person`
+    (datos personales; aplica a todos los pacientes que acompaña). Documento único entre acompañantes.
+  - "Enrolar desde este contacto": `POST /patients/:id/companions/:companionId/convert-to-patient`
+    crea un prospecto con sus datos (`companions.converted_patient_id`); se enrola con el wizard.
 
 ## 4. Seguimientos
 
@@ -121,6 +144,15 @@ extraer del código y validar.
 
 - **CH1** Catálogo de charlas (solo nombre, sin fecha ni lugar). Se registra qué **acompañantes**
   están interesados. No se registra asistencia.
+  - **Implementado (2026-10-28).** Catálogo `educational_talk` (lo editan fundación y admin) y tabla
+    `companion_talk_interests` (acompañante, charla, paciente desde el que se registró, seguimiento,
+    autor; un interés por acompañante y charla). Reemplaza `enrollment_family_talk_interests`: cada
+    familiar se emparejó por nombre con un acompañante del paciente o se creó y vinculó; cada nombre de
+    charla pasó al catálogo. El enrolamiento sigue recibiendo `familyPreventionTalkInterests` con
+    nombre/teléfono/correo del familiar y `talk` (código o nombre del catálogo) y aplica la misma regla.
+  - Endpoints: `GET /talk-interests` (filtros charla y nombre), `GET /patients/:id/talk-interests`,
+    `POST /patients/:id/companions/:companionId/talk-interests`,
+    `DELETE /patients/:id/talk-interests/:interestId`. Se quitó `GET /family-talk-interests`.
 
 ## 10. Alertas
 
@@ -188,6 +220,24 @@ extraer del código y validar.
 - **IA6** Material en PDF y Word, cargado y actualizado por fundación desde el sistema. Volumen
   desconocido: la indexación debe escalar.
 - **IA7** Solo da información al agente; no redacta respuestas para el paciente.
+
+### Implementado: asistente de datos (IA2, IA4, IA5) — 2026-10-28
+- Módulo `src/modules/assistant/`. Endpoints (solo ADMIN y FOUNDATION, 15 preguntas/min):
+  `POST /assistant/messages` (`{ message, conversationId? }`), `GET /assistant/conversations`,
+  `GET /assistant/conversations/:id`, `DELETE /assistant/conversations/:id`.
+- Bucle de Gemini con function calling, máximo 8 pasos. Las herramientas son de solo lectura y
+  validan sus argumentos con los DTO de la API: `get_indicators` (los 7 grupos del dashboard),
+  `search_health_centers`, `search_patients`, `list_alerts` y `get_call_center_workload`. Cada
+  herramienta declara sus roles. Herramienta nueva = una entrada más en `assistant-tools.service.ts`.
+- IA4: los pacientes viajan al modelo como `P-001…`. El mapa vive en
+  `assistant_conversations.pseudonyms`; la API rehidrata el nombre y devuelve `patients`
+  (token, id, nombre) para enlazar a la ficha. Lo que el usuario escribe en la pregunta sí llega al
+  modelo tal cual.
+- Registro: `assistant_messages` guarda pregunta, respuesta (con seudónimos), herramientas usadas
+  con sus argumentos y resultado, modelo y tokens. La respuesta trae `sources` para citarlas.
+- Modelos: `GEMINI_ASSISTANT_MODELS` (lista en orden; default
+  `gemini-3-flash-preview,gemini-2.5-flash`). Ante 429/5xx reintenta y pasa al siguiente.
+- Pendiente: pantalla en el front; respuesta en streaming si la latencia molesta.
 
 ## 17. Hallazgos del código (para la auditoría)
 
@@ -299,6 +349,9 @@ Revisión de fórmula (D4) pendiente para todos los ✅.
 - **H5** Fuente de establecimientos: el archivo local de la carpeta "Establecimientos de Salud CENEPRED…".
   La importación debe **conciliar** con los hospitales ya creados en prod (ligados a pacientes,
   diagnósticos, tratamientos, citas): emparejar, no duplicar ni romper referencias.
+- **H5b (2026-10-28) En pausa.** No se corre `scripts/import-health-centers.ts` ni el emparejamiento
+  con CENEPRED; se retoma con una revisión más cuidadosa (simulacro en prod, planilla de revisión,
+  categoría MINSA desde RENIPRESS). Mientras tanto los hospitales se mantienen como hoy, cargados a mano.
 
 ## 17c. Permisos por rol (validado 2026-10-27)
 

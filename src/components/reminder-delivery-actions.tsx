@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Check, Copy, Mail, Send } from "lucide-react"
 import { toast } from "sonner"
 import { remindersApi, type Reminder } from "@/api/reminders"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ds/button"
 import {
   reminderChannelLabels,
   reminderDeliveryLabels,
@@ -64,7 +64,7 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
   const leadLabel = reminder.lead ? reminderLeadLabels[reminder.lead] : null
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="space-y-2">
       <p className="text-muted-foreground text-[11px]">
         Canal {reminderChannelLabels[reminder.channel]}
         {leadLabel ? ` · ${leadLabel}` : ""}
@@ -77,7 +77,7 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 gap-1 text-xs"
+          className="h-7"
           disabled={copyMessage.isPending}
           onClick={() => copyMessage.mutate()}
         >
@@ -90,7 +90,7 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 gap-1 text-xs"
+              className="h-7"
               disabled={sendEmail.isPending}
               onClick={() => sendEmail.mutate()}
             >
@@ -101,7 +101,7 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 gap-1 text-xs"
+              className="h-7"
               disabled={markSent.isPending}
               onClick={() => markSent.mutate()}
             >

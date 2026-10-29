@@ -5,7 +5,7 @@ import {
   psychooncologyAppointmentsApi,
   type PsychooncologyAppointment,
 } from "@/api/psychooncology-appointments"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ds/button"
 
 const reminderModeLabels: Record<PsychooncologyAppointment["reminderMode"], string> = {
   TWO_HOURS: "2 horas antes",
@@ -84,7 +84,7 @@ export function PsychoSessionActions({
   if (!pending && appointment.status !== "NO_SHOW") return null
 
   return (
-    <div className="mt-3 space-y-2" onClick={(event) => event.stopPropagation()}>
+    <div className="space-y-2" onClick={(event) => event.stopPropagation()}>
       {pending && (
         <p className="text-muted-foreground text-xs">
           Recordatorio: {reminderModeLabels[appointment.reminderMode]}

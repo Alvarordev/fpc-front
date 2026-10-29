@@ -13,8 +13,8 @@ export type UpdateCompanionLinkInput =
 export type UpdatePatientInput = components["schemas"]["UpdatePatientDto"]
 export type DeactivatePatientInput =
   components["schemas"]["DeactivatePatientDto"]
-export type ReactivatePatientInput =
-  components["schemas"]["ReactivatePatientDto"]
+export type UpdateCompanionInput = components["schemas"]["UpdateCompanionDto"]
+export type Companion = components["schemas"]["CompanionResponseDto"]
 export type PatientDetailsInput =
   components["schemas"]["UpsertPatientDetailsDto"]
 export type PatientResponse = components["schemas"]["PatientResponseDto"]
@@ -169,19 +169,6 @@ export const patientsApi = {
     return data
   },
 
-  async reactivate(id: string, input: ReactivatePatientInput = {}) {
-    const { data, error, response } = await api.PATCH("/patients/{id}/reactivate", {
-      params: { path: { id } },
-      body: input,
-    })
-
-    if (!data) {
-      throw new PatientsApiError(response.status, error)
-    }
-
-    return data
-  },
-
   async updateDetails(id: string, input: PatientDetailsInput) {
     const { data, error, response } = await api.PUT("/patients/{id}/details", {
       params: { path: { id } },
@@ -227,6 +214,25 @@ export const patientsApi = {
       },
     )
 
+    if (!data) throw new PatientsApiError(response.status, error)
+    return data
+  },
+
+  /** Datos personales del acompañante; aplica a todos los pacientes que acompaña. */
+  async updateCompanionPerson(patientId: string, companionId: string, input: UpdateCompanionInput) {
+    const { data, error, response } = await api.PATCH("/patients/{id}/companions/{companionId}/person", {
+      params: { path: { id: patientId, companionId } },
+      body: input,
+    })
+    if (!data) throw new PatientsApiError(response.status, error)
+    return data
+  },
+
+  /** Crea un prospecto con los datos del acompañante; se enrola después con el wizard. */
+  async convertCompanionToPatient(patientId: string, companionId: string) {
+    const { data, error, response } = await api.POST("/patients/{id}/companions/{companionId}/convert-to-patient", {
+      params: { path: { id: patientId, companionId } },
+    })
     if (!data) throw new PatientsApiError(response.status, error)
     return data
   },

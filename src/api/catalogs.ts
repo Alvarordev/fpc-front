@@ -52,6 +52,9 @@ export const CATALOG_KIND_LABELS: Record<CatalogKind, string> = {
   temporary_housing_type: "Tipo de vivienda provisional",
   alert_category: "Categoría de alerta",
   alert_derivation_entity: "Entidad de derivación de alerta",
+  reenrollment_reason: "Motivo de reenrolamiento",
+  companion_relationship: "Parentesco del acompañante",
+  educational_talk: "Charla educativa",
 }
 
 /** Labels as they appear on enrollment / clinical forms, for error copy. */

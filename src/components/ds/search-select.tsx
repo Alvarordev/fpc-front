@@ -25,6 +25,8 @@ export function SearchSelect({
   searchPlaceholder = "Buscar",
   emptyMessage = "No hay coincidencias",
   disabled,
+  onQueryChange,
+  loading,
 }: {
   id?: string
   value: string | null
@@ -34,6 +36,9 @@ export function SearchSelect({
   searchPlaceholder?: string
   emptyMessage?: string
   disabled?: boolean
+  /** Para buscar en el servidor: recibe lo que se escribe. */
+  onQueryChange?: (query: string) => void
+  loading?: boolean
 }) {
   const selected = options.find((o) => o.value === value) ?? null
   const [open, setOpen] = useState(false)
@@ -64,7 +69,10 @@ export function SearchSelect({
       filter={(item: SearchOption, q) => matches(item, q)}
       open={open}
       onOpenChange={setOpen}
-      onInputValueChange={setQuery}
+      onInputValueChange={(q) => {
+        setQuery(q)
+        onQueryChange?.(q)
+      }}
       disabled={disabled}
     >
       <Combobox.Trigger
@@ -81,7 +89,7 @@ export function SearchSelect({
               <Search className="size-4 shrink-0 text-zinc-400" />
               <Combobox.Input placeholder={searchPlaceholder} onKeyDown={onInputKeyDown} className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-zinc-400" />
             </div>
-            <Combobox.Empty className="px-3 py-6 text-center text-[13px] text-zinc-500 empty:hidden">{emptyMessage}</Combobox.Empty>
+            <Combobox.Empty className="px-3 py-6 text-center text-[13px] text-zinc-500 empty:hidden">{loading ? "Buscando..." : emptyMessage}</Combobox.Empty>
             <Combobox.List className="max-h-64 overflow-y-auto p-1.5 empty:hidden">
               {(item: SearchOption) => (
                 <Combobox.Item

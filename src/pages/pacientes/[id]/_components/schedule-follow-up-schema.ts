@@ -14,6 +14,7 @@ export const scheduleFollowUpSchema = z.object({
     "ENROLLMENT",
     "FOLLOW_UP",
     "PSYCHOONCOLOGY_REFERRAL",
+    "REENROLLMENT",
     "OTHER",
   ] as const, { message: "Selecciona el motivo" }),
   date: z.string().min(1, "Fecha requerida"),

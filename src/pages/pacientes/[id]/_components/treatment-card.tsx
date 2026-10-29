@@ -1,3 +1,4 @@
+import { treatmentStatus } from "../_lib/treatment-series"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -58,12 +59,6 @@ function durationLabel(value: DurationValue | null | undefined) {
   return `${range} ${DURATION_UNIT_LABELS[value.unit].toLowerCase()}`
 }
 
-function treatmentStatus(treatment: PatientTreatment) {
-  if (treatment.treatmentSituation) {
-    return treatment.treatmentSituation
-  }
-  return treatment.isCurrent ? "EN_PROCESO" : "CULMINADO"
-}
 
 function statusClass(status: ReturnType<typeof treatmentStatus>) {
   switch (status) {
@@ -319,7 +314,7 @@ function centerLabel(treatment: PatientTreatment) {
     : (treatment.receivingHealthCenterName ?? treatment.sourceHealthCenterName)
 }
 
-function TreatmentVersionHistory({
+export function TreatmentVersionHistory({
   current,
   previousVersions,
 }: {
@@ -428,7 +423,7 @@ function Detail({
   )
 }
 
-function TreatmentMedications({
+export function TreatmentMedications({
   patientId,
   treatment,
   canManage,
