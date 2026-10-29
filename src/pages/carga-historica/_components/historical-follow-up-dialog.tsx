@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ClinicalDataTabs } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-data-tabs"
+import { ClinicalSheet } from "@/pages/pacientes/[id]/seguimientos/_components/ficha/clinical-sheet"
 import type { ClinicalDrafts } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-drafts"
 import { usePatient } from "@/pages/pacientes/[id]/_hooks/use-patient"
 import {
@@ -322,12 +322,12 @@ function HistoricalFollowUpForm({
           </div>
         </div>
 
-        <div className="rounded-xl border p-3">
-          <p className="text-muted-foreground mb-3 text-xs">
+        <div className="font-ds rounded-[20px] border border-zinc-200 bg-white p-4 text-zinc-900">
+          <p className="mb-3 text-[13px] text-zinc-500">
             Ficha clínica del seguimiento. Cada sección se guarda junto con el
             seguimiento.
           </p>
-          <ClinicalDataTabs
+          <ClinicalSheet
             patientId={patientId}
             followUpId={followUpId ?? undefined}
             variant="historical"
