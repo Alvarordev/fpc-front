@@ -1,10 +1,36 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
+import type { CreateFollowUpAttemptInput } from "@/api/follow-ups"
 import type { CreatePsychooncologyAppointmentInput } from "@/api/psychooncology-appointments"
 import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
 import type { ClinicalDrafts } from "../_components/clinical-drafts"
-import type { CreateAlertFormValues } from "../_components/create-alert-dialog"
-import type { ReminderDraft } from "../_components/follow-up-aside"
+import type { ReminderKind } from "@/api/reminders"
+
+/** Incidencia hospitalaria que se reporta al completar. */
+export interface CreateAlertFormValues {
+  healthCenterId: string
+  title: string
+  description: string
+  severity: "HIGH" | "MEDIUM" | "LOW"
+  category: string
+}
+
+export interface ReminderDraft {
+  kind: ReminderKind
+  description: string
+  dueAt: string
+  medicalAppointment?: {
+    specialty: string
+    healthCenterId?: string
+    isFirstConsultation?: boolean
+  }
+}
+
+/** Intento Contactado: se registra al completar, porque en el backend completa el seguimiento. */
+export interface ContactDraft {
+  channel: CreateFollowUpAttemptInput["channel"]
+  notes?: string
+}
 
 export function followUpNotesKey(
   userId: string | undefined,
@@ -18,16 +44,21 @@ interface FollowUpDraftState {
   notesDrafts: Record<string, string>
   clinical: ClinicalDrafts
   psico: CreatePsychooncologyAppointmentInput | null
+  /** Horario y psicooncólogo en texto, para mostrar la sesión en borrador. */
+  psicoSummary: string | null
   alert: CreateAlertFormValues | null
   nextFollowUp: ScheduleFollowUpFormValues | null
   reminders: ReminderDraft[]
+  contact: ContactDraft | null
+  /** Con quién se habló: el paciente o un acompañante. null = el del seguimiento. */
+  interlocutorId: string | null
 
   /** Scopes the draft to a follow-up; resets it if navigating to a different one. */
   ensureFollowUp: (followUpId: string) => void
   setNotes: (key: string, value: string) => void
   clearNotes: (key: string) => void
   updateClinical: (updater: (prev: ClinicalDrafts) => ClinicalDrafts) => void
-  setPsico: (value: CreatePsychooncologyAppointmentInput) => void
+  setPsico: (value: CreatePsychooncologyAppointmentInput, summary?: string) => void
   clearPsico: () => void
   setAlert: (value: CreateAlertFormValues) => void
   clearAlert: () => void
@@ -35,15 +66,20 @@ interface FollowUpDraftState {
   clearNextFollowUp: () => void
   addReminder: (reminder: ReminderDraft) => void
   removeReminder: (index: number) => void
+  setContact: (value: ContactDraft | null) => void
+  setInterlocutor: (value: string) => void
   reset: (notesKey?: string) => void
 }
 
 const EMPTY_DRAFT = {
   clinical: {} as ClinicalDrafts,
   psico: null,
+  psicoSummary: null as string | null,
   alert: null,
   nextFollowUp: null,
   reminders: [] as ReminderDraft[],
+  contact: null as ContactDraft | null,
+  interlocutorId: null as string | null,
 }
 
 export const useFollowUpDraftStore = create<FollowUpDraftState>()(
@@ -73,8 +109,8 @@ export const useFollowUpDraftStore = create<FollowUpDraftState>()(
       updateClinical: (updater) =>
         set((s) => ({ clinical: updater(s.clinical) })),
 
-      setPsico: (value) => set({ psico: value }),
-      clearPsico: () => set({ psico: null }),
+      setPsico: (value, summary) => set({ psico: value, psicoSummary: summary ?? null }),
+      clearPsico: () => set({ psico: null, psicoSummary: null }),
 
       setAlert: (value) => set({ alert: value }),
       clearAlert: () => set({ alert: null }),
@@ -86,6 +122,9 @@ export const useFollowUpDraftStore = create<FollowUpDraftState>()(
         set((s) => ({ reminders: [...s.reminders, reminder] })),
       removeReminder: (index) =>
         set((s) => ({ reminders: s.reminders.filter((_, i) => i !== index) })),
+
+      setContact: (value) => set({ contact: value }),
+      setInterlocutor: (value) => set({ interlocutorId: value }),
 
       reset: (notesKey) =>
         set((state) => {

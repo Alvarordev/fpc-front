@@ -1,102 +1,64 @@
-import { CheckCircle2, PhoneOff, XCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { CheckCircle2, PhoneOff, XCircle, type LucideIcon } from "lucide-react"
+import { Button } from "@/components/ds/button"
+import { Panel } from "@/components/ds/card"
+import { CheckList } from "@/components/ds/check-list"
+import { Modal } from "@/components/ds/modal"
+
+// Confirmación del cierre del seguimiento: qué se guarda al completar y qué se
+// descarta al marcarlo como no contestó o cancelado.
 
 export type FollowUpStatusAction = "COMPLETED" | "NO_ANSWER" | "CANCELLED"
 
-const ACTION_DETAILS: Record<
-  FollowUpStatusAction,
-  {
-    title: string
-    description: string
-    confirmLabel: string
-    variant: "default" | "destructive"
-    Icon: typeof CheckCircle2
-  }
-> = {
-  COMPLETED: {
-    title: "¿Completar seguimiento?",
-    description:
-      "Se guardarán las notas, los cambios de la ficha clínica y las acciones pendientes. Después de completar no podrás volver a editar esta ficha clínica desde este seguimiento.",
-    confirmLabel: "Completar seguimiento",
-    variant: "default",
-    Icon: CheckCircle2,
-  },
-  NO_ANSWER: {
-    title: "¿Marcar como no contestó?",
-    description:
-      "Se guardarán las notas del seguimiento, pero se descartarán los cambios clínicos y las acciones pendientes.",
-    confirmLabel: "Marcar no contestó",
-    variant: "destructive",
-    Icon: PhoneOff,
-  },
-  CANCELLED: {
-    title: "¿Cancelar seguimiento?",
-    description:
-      "Se guardarán las notas del seguimiento, pero se descartarán los cambios clínicos y las acciones pendientes.",
-    confirmLabel: "Cancelar seguimiento",
-    variant: "destructive",
-    Icon: XCircle,
-  },
+const ACTIONS: Record<FollowUpStatusAction, { title: string; description: string; confirm: string; icon: LucideIcon }> = {
+  COMPLETED: { title: "Completar seguimiento", description: "Se guardará todo lo registrado en este contacto:", confirm: "Completar", icon: CheckCircle2 },
+  NO_ANSWER: { title: "Marcar como no contestó", description: "Se guardan la nota y los intentos. Los cambios de la ficha y las acciones en borrador se descartan.", confirm: "Marcar no contestó", icon: PhoneOff },
+  CANCELLED: { title: "Cancelar seguimiento", description: "Se guarda la nota. Los cambios de la ficha y las acciones en borrador se descartan.", confirm: "Cancelar seguimiento", icon: XCircle },
 }
 
 export function FollowUpStatusConfirmationDialog({
   action,
-  open,
+  pending,
   isPending,
-  onOpenChange,
+  onClose,
   onConfirm,
 }: {
   action: FollowUpStatusAction | null
-  open: boolean
+  /** Lo que se guardaría al completar, en frases cortas. */
+  pending: string[]
   isPending: boolean
-  onOpenChange: (open: boolean) => void
+  onClose: () => void
   onConfirm: () => void
 }) {
-  const details = action ? ACTION_DETAILS[action] : ACTION_DETAILS.COMPLETED
-  const Icon = details.Icon
-
+  if (!action) return null
+  const a = ACTIONS[action]
+  const completing = action === "COMPLETED"
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen)
-      }}
-    >
-      <DialogContent showCloseButton={!isPending}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 pr-8">
-            <Icon className="text-primary size-5" />
-            {details.title}
-          </DialogTitle>
-          <DialogDescription>{details.description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
+    <Modal
+      open
+      onClose={() => !isPending && onClose()}
+      icon={a.icon}
+      title={a.title}
+      description={a.description}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={isPending}>
             Volver
           </Button>
-          <Button
-            type="button"
-            variant={details.variant}
-            onClick={onConfirm}
-            disabled={isPending || !action}
-          >
-            {isPending ? "Guardando..." : details.confirmLabel}
+          <Button variant={completing ? "brand" : "dark"} onClick={onConfirm} disabled={isPending}>
+            {isPending ? "Guardando…" : a.confirm}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <Panel>
+        {completing ? (
+          <CheckList items={pending} empty="Solo se guardará el intento de contacto." />
+        ) : (
+          <p className="text-sm text-zinc-600">
+            {pending.length ? `Se descartarán ${pending.length} ${pending.length === 1 ? "elemento" : "elementos"} en borrador.` : "No hay borradores que descartar."}
+          </p>
+        )}
+      </Panel>
+    </Modal>
   )
 }

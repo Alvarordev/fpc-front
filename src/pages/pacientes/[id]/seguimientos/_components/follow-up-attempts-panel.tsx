@@ -1,186 +1,159 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Mail, MessageCircle, Phone, PhoneMissed, Users, Video, type LucideIcon } from "lucide-react"
 import { toast } from "sonner"
-import {
-  followUpsApi,
-  type CreateFollowUpAttemptInput,
-  type FollowUp,
-  type FollowUpAttempt,
-} from "@/api/follow-ups"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { followUpsApi, type CreateFollowUpAttemptInput, type FollowUp } from "@/api/follow-ups"
+import { Chip } from "@/components/ds/badge"
+import { Button } from "@/components/ds/button"
+import { Card, Item } from "@/components/ds/card"
+import { RemoveButton } from "@/components/ds/record-section"
+import { ChoiceGroup, Field, TextInput } from "@/components/ds/form"
+import type { Tone } from "@/components/ds/tone"
 import { followUpTypeLabels } from "@/lib/follow-up-labels"
+import { formatTime } from "../../_lib/ficha-format"
+import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 
-const CHANNELS = (
-  Object.entries(followUpTypeLabels) as [CreateFollowUpAttemptInput["channel"], string][]
-).map(([value, label]) => ({ value, label }))
+// Intentos de contacto: canal, resultado, hora y autor. Los fallidos se guardan
+// al momento. En el backend un intento Contactado completa el seguimiento, así
+// que mientras se registra queda en borrador: habilita Completar, que lo guarda
+// junto con la nota, la ficha y las acciones.
 
-const OUTCOMES: { value: CreateFollowUpAttemptInput["outcome"]; label: string }[] = [
-  { value: "CONTACTED", label: "Contactado" },
-  { value: "NO_ANSWER", label: "No contestó" },
-  { value: "WRONG_NUMBER", label: "Número equivocado" },
-  { value: "REJECTED", label: "Rechazó" },
-]
+type Channel = CreateFollowUpAttemptInput["channel"]
+type Outcome = CreateFollowUpAttemptInput["outcome"]
 
-const outcomeLabels = Object.fromEntries(OUTCOMES.map((item) => [item.value, item.label]))
+const CHANNEL_ICONS: Partial<Record<Channel, LucideIcon>> = {
+  CALL: Phone,
+  WHATSAPP: MessageCircle,
+  VIDEO_CALL: Video,
+  EMAIL: Mail,
+  IN_PERSON: Users,
+  FACEBOOK: MessageCircle,
+}
 
-export function FollowUpAttemptsPanel({
-  followUp,
-  canRegister,
-}: {
-  followUp: FollowUp
-  canRegister: boolean
-}) {
+const OUTCOMES: Record<Outcome, { label: string; tone: Tone }> = {
+  CONTACTED: { label: "Contactado", tone: "green" },
+  NO_ANSWER: { label: "No contestó", tone: "amber" },
+  WRONG_NUMBER: { label: "Número equivocado", tone: "red" },
+  REJECTED: { label: "Rechazó la llamada", tone: "red" },
+}
+
+const CHANNEL_OPTIONS = (Object.keys(followUpTypeLabels) as Channel[]).map((c) => ({ value: c, label: followUpTypeLabels[c], icon: CHANNEL_ICONS[c] }))
+const OUTCOME_OPTIONS = (Object.keys(OUTCOMES) as Outcome[]).map((o) => ({ value: o, label: OUTCOMES[o].label }))
+
+export function FollowUpAttemptsPanel({ followUp, canRegister, registering }: { followUp: FollowUp; canRegister: boolean; registering: boolean }) {
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [channel, setChannel] = useState<CreateFollowUpAttemptInput["channel"]>("CALL")
-  const [outcome, setOutcome] = useState<CreateFollowUpAttemptInput["outcome"]>("NO_ANSWER")
-  const [notes, setNotes] = useState("")
   const attempts = followUp.attempts ?? []
+  const last = attempts.at(-1)
+  const contactDraft = useFollowUpDraftStore((s) => (registering ? s.contact : null))
+  const setContact = useFollowUpDraftStore((s) => s.setContact)
+  const contacted = Boolean(contactDraft) || attempts.some((a) => a.outcome === "CONTACTED")
+  const lastFailed = Boolean(last && last.outcome !== "CONTACTED")
+  const [channel, setChannel] = useState<Channel>(lastFailed && last?.channel === "CALL" ? "WHATSAPP" : "CALL")
+  const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [notes, setNotes] = useState("")
+  const editable = canRegister && followUp.status !== "CANCELLED" && followUp.status !== "COMPLETED"
 
   const mutation = useMutation({
-    mutationFn: () =>
-      followUpsApi.recordAttempt(followUp.id, {
-        channel,
-        outcome,
-        notes: notes.trim() || undefined,
-      }),
-    onSuccess: async () => {
+    mutationFn: (input: CreateFollowUpAttemptInput) => followUpsApi.recordAttempt(followUp.id, input),
+    onSuccess: async (_, input) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["follow-up", followUp.id] }),
         queryClient.invalidateQueries({ queryKey: ["patient-follow-ups"] }),
         queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
         queryClient.invalidateQueries({ queryKey: ["agent-follow-ups"] }),
       ])
+      setOutcome(null)
       setNotes("")
-      setOpen(false)
-      toast.success(
-        outcome === "CONTACTED"
-          ? "Contacto registrado. El seguimiento quedó completado."
-          : "Intento registrado",
-      )
+      toast.success(input.outcome === "CONTACTED" ? "Contacto registrado" : "Intento registrado")
     },
-    onError: (error: Error) =>
-      toast.error("No se pudo registrar el intento", { description: error.message }),
+    onError: (error: Error) => toast.error("No se pudo registrar el intento", { description: error.message }),
   })
 
-  return (
-    <section className="space-y-3 rounded-xl border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">Intentos de contacto</h3>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {followUp.status === "NO_ANSWER"
-              ? "No contestó. Puedes registrar otro intento, por ejemplo por WhatsApp. Si el resultado es Contactado, el seguimiento pasa a Completado."
-              : "Cada intento guarda canal, resultado, hora y autor."}
-          </p>
-        </div>
-        {canRegister &&
-          followUp.status !== "CANCELLED" &&
-          followUp.status !== "COMPLETED" && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setOpen((value) => !value)}>
-            Registrar intento
-          </Button>
-        )}
-      </div>
+  const description = !editable
+    ? `${attempts.length} ${attempts.length === 1 ? "intento registrado" : "intentos registrados"}`
+    : contacted
+      ? "Ya hubo contacto: escribe la nota y actualiza la ficha clínica"
+      : lastFailed
+        ? "No contestó. Prueba con otro canal, por ejemplo WhatsApp"
+        : "Registra cada intento con su canal y resultado"
 
-      {attempts.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Todavía no hay intentos.</p>
+  return (
+    <Card title="Intentos de contacto" description={description}>
+      {attempts.length || contactDraft ? (
+        <div className="space-y-2">
+          {attempts.map((a, i) => {
+            const Icon = a.outcome === "CONTACTED" ? (CHANNEL_ICONS[a.channel] ?? Phone) : PhoneMissed
+            const result = OUTCOMES[a.outcome as Outcome]
+            return (
+              <Item
+                key={a.id}
+                leading={
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-white ring-1 ring-zinc-200">
+                    <Icon className="size-[18px] text-zinc-600" strokeWidth={1.75} />
+                  </span>
+                }
+                title={`Intento ${i + 1}, ${followUpTypeLabels[a.channel]?.toLowerCase() ?? a.channel}`}
+                tags={result ? <Chip tone={result.tone}>{result.label}</Chip> : null}
+                meta={`A las ${formatTime(a.occurredAt)}`}
+                body={a.notes}
+              />
+            )
+          })}
+          {contactDraft && (
+            <Item
+              leading={
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-white ring-1 ring-zinc-200">
+                  {(() => {
+                    const Icon = CHANNEL_ICONS[contactDraft.channel] ?? Phone
+                    return <Icon className="size-[18px] text-zinc-600" strokeWidth={1.75} />
+                  })()}
+                </span>
+              }
+              title={`Intento ${attempts.length + 1}, ${followUpTypeLabels[contactDraft.channel]?.toLowerCase() ?? contactDraft.channel}`}
+              tags={<Chip tone="green">Contactado</Chip>}
+              meta="Se guarda al completar el seguimiento"
+              body={contactDraft.notes}
+              actions={<RemoveButton label="Quitar el contacto" onClick={() => setContact(null)} />}
+            />
+          )}
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {attempts.map((attempt) => (
-            <AttemptRow key={attempt.id} attempt={attempt} />
-          ))}
-        </ul>
+        <p className="rounded-[14px] bg-zinc-50 px-4 py-3 text-[13px] text-zinc-500">Todavía no hay intentos. Registra el primero al contactar al paciente.</p>
       )}
 
-      {open && (
+      {editable && !contacted && (
         <form
-          className="grid gap-3 border-t pt-3 sm:grid-cols-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            mutation.mutate()
+          className="mt-4 space-y-4 rounded-[14px] p-4 ring-1 ring-zinc-200"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!outcome) return
+            if (registering && outcome === "CONTACTED") {
+              setContact({ channel, notes: notes.trim() || undefined })
+              setOutcome(null)
+              setNotes("")
+              return
+            }
+            mutation.mutate({ channel, outcome, notes: notes.trim() || undefined })
           }}
         >
-          <div className="space-y-1.5">
-            <Label>Canal</Label>
-            <Select
-              items={CHANNELS}
-              value={channel}
-              onValueChange={(value) =>
-                value && setChannel(value as CreateFollowUpAttemptInput["channel"])
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CHANNELS.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Resultado</Label>
-            <Select
-              items={OUTCOMES}
-              value={outcome}
-              onValueChange={(value) =>
-                value && setOutcome(value as CreateFollowUpAttemptInput["outcome"])
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {OUTCOMES.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Nota</Label>
-            <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} />
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? "Guardando..." : "Guardar intento"}
+          <p className="text-sm font-semibold">Nuevo intento</p>
+          <Field label="Canal">{() => <ChoiceGroup label="Canal" value={channel} options={CHANNEL_OPTIONS} onChange={setChannel} />}</Field>
+          <Field label="Resultado">{() => <ChoiceGroup label="Resultado" value={outcome} options={OUTCOME_OPTIONS} onChange={setOutcome} />}</Field>
+          <Field label="Nota del intento" hint="Opcional. Por ejemplo, a qué hora pidió que lo llamen.">
+            {(id) => <TextInput id={id} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Qué pasó en este intento" />}
+          </Field>
+          {outcome === "CONTACTED" && (
+            <p className="text-[13px] text-zinc-500">
+              {registering ? "El contacto se guarda al completar, junto con la nota y la ficha." : "Al registrar el contacto, el seguimiento queda completado."}
+            </p>
+          )}
+          <div className="flex justify-end">
+            <Button type="submit" variant="dark" disabled={!outcome || mutation.isPending}>
+              {mutation.isPending ? "Registrando…" : "Registrar intento"}
             </Button>
           </div>
         </form>
       )}
-    </section>
-  )
-}
-
-function AttemptRow({ attempt }: { attempt: FollowUpAttempt }) {
-  const when = new Date(attempt.occurredAt).toLocaleString("es-PE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  })
-  return (
-    <li className="rounded-lg border px-3 py-2 text-sm">
-      <p className="font-medium">
-        {followUpTypeLabels[attempt.channel]} · {outcomeLabels[attempt.outcome] ?? attempt.outcome}
-      </p>
-      <p className="text-muted-foreground text-xs">
-        {when}
-      </p>
-      {attempt.notes && <p className="mt-1 text-xs">{attempt.notes}</p>}
-    </li>
+    </Card>
   )
 }
