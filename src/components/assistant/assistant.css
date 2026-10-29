@@ -1,0 +1,121 @@
+.assistant-panel {
+  --assistant-panel-width: 480px;
+  position: fixed;
+  z-index: 40;
+  inset: 68px 12px 12px auto;
+  display: flex;
+  width: min(var(--assistant-panel-width), calc(100vw - 24px));
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  background: white;
+  color: var(--color-zinc-900);
+  box-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.15);
+  outline: 1px solid var(--color-zinc-200);
+  transition:
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 150ms ease-out;
+}
+.assistant-panel[data-expanded] {
+  --assistant-panel-width: 680px;
+}
+.assistant-panel[data-starting-style],
+.assistant-panel[data-ending-style] {
+  transform: translateX(24px);
+  opacity: 0;
+}
+.assistant-panel :is(button, a, summary, [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--color-zinc-700);
+  outline-offset: 3px;
+}
+.assistant-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.assistant-panel ::selection {
+  background: var(--color-zinc-200);
+  color: var(--color-zinc-900);
+}
+.assistant-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-zinc-300) transparent;
+}
+.assistant-markdown {
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.assistant-markdown > :first-child {
+  margin-top: 0;
+}
+.assistant-markdown :is(p, ul, ol, blockquote, pre, table) {
+  margin-block: 12px;
+}
+.assistant-markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: 20px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.assistant-markdown :is(ul, ol) {
+  padding-left: 22px;
+}
+.assistant-markdown ul {
+  list-style: disc;
+}
+.assistant-markdown ol {
+  list-style: decimal;
+}
+.assistant-markdown li {
+  padding-left: 3px;
+  margin-block: 6px;
+}
+.assistant-markdown a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.assistant-markdown table {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+.assistant-markdown :is(th, td) {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-zinc-200);
+  min-width: 100px;
+}
+.assistant-markdown th {
+  background: var(--color-zinc-50);
+  font-weight: 600;
+}
+.assistant-markdown pre {
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--color-zinc-50);
+}
+.assistant-markdown code {
+  font-size: 12px;
+}
+.assistant-markdown blockquote {
+  padding-left: 12px;
+  border-left: 1px solid var(--color-zinc-300);
+  color: var(--color-zinc-600);
+}
+@media (max-width: 767px) {
+  .assistant-panel {
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    z-index: 50;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-panel {
+    transition: none;
+  }
+}

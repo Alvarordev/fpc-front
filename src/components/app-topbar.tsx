@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { pathTitles } from "@/lib/navigation"
 import { patientsApi } from "@/api/patients"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
+import { AssistantTrigger } from "@/components/assistant/assistant-trigger"
 
 function PatientBreadcrumbs({ patientId }: { patientId: string }) {
   const { data: patient } = useQuery({
@@ -63,6 +64,7 @@ export function AppTopbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+          <AssistantTrigger />
           <Button
             variant="ghost"
             size="icon"
@@ -85,6 +87,7 @@ export function AppTopbar() {
       <span className="text-sm font-medium">{title}</span>
 
       <div className="ml-auto flex items-center gap-1">
+        <AssistantTrigger />
         <Button
           variant="ghost"
           size="icon"
