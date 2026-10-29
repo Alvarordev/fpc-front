@@ -26,7 +26,20 @@ import HistoricalRecordsPage from "@/pages/carga-historica/page"
 import HistoricalEnrollmentPage from "@/pages/carga-historica/new/page"
 import HistoricalPatientPage from "@/pages/carga-historica/pacientes/[id]/page"
 
+// Laboratorio de diseño: solo en desarrollo, sin sesión ni roles.
+const devRoutes = import.meta.env.DEV
+  ? [
+      {
+        path: "/lab/paciente",
+        lazy: async () => ({
+          Component: (await import("@/pages/design-lab/page")).default,
+        }),
+      },
+    ]
+  : []
+
 export const router = createBrowserRouter([
+  ...devRoutes,
   {
     path: "/login",
     element: (
