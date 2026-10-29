@@ -13,6 +13,8 @@ interface Props {
   isLoading?: boolean
   /** Obligatorios vacíos. El botón sigue habilitado; el aviso va sobre la barra. */
   missingCount?: number
+  /** Regla que no cabe en `required` (formato, fechas, un dato de otro paso). */
+  alert?: string | null
   /** En el modo continuo el cierre queda en el flujo, sin pegarse al pie. */
   sticky?: boolean
 }
@@ -26,6 +28,7 @@ export function StepNav({
   nextLabel,
   isLoading,
   missingCount = 0,
+  alert,
   sticky = true,
 }: Props) {
   const prevStepLabel = STEP_LABELS[currentStep - 1]
@@ -34,11 +37,15 @@ export function StepNav({
 
   return (
     <div className={cn(sticky && "sticky bottom-4 z-20", "mt-6")}>
-      {missingCount > 0 && (
-        <div className="mb-2">
-          <InlineAlert>
-            {missingCount === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingCount} datos obligatorios`}
-          </InlineAlert>
+      {(missingCount > 0 || alert) && (
+        <div className="mb-2 space-y-2">
+          {alert ? (
+            <InlineAlert>{alert}</InlineAlert>
+          ) : (
+            <InlineAlert>
+              {missingCount === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingCount} datos obligatorios`}
+            </InlineAlert>
+          )}
         </div>
       )}
       <div className="flex items-center justify-between gap-3 rounded-[20px] bg-white p-3 shadow-[0_12px_40px_-12px_rgb(0_0_0/0.3)] ring-1 ring-zinc-200">
