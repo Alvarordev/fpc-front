@@ -1,5 +1,7 @@
 import { useState } from "react"
-import { Activity, Building2, CalendarDays, Clock, FileText, HeartPulse, Pill, Repeat, Share2, Stethoscope, Syringe } from "lucide-react"
+import { SITUATION } from "../../_lib/treatment-situation"
+import { DiagnosisDetailModal, TreatmentDetailModal } from "../clinical-record-modals"
+import { CalendarDays, HeartPulse, Pill, Repeat, Stethoscope } from "lucide-react"
 import type { PatientDetailsResponse, PatientDiagnosis, PatientTreatment } from "@/api/patients"
 import { CatalogValue } from "@/components/catalog-select"
 import { Chip } from "@/components/ds/badge"
@@ -13,27 +15,12 @@ import type { Tone } from "@/components/ds/tone"
 import { collectActiveComorbidities, type ActiveComorbidity } from "../../_lib/active-comorbidities"
 import { formatDate, formatDuration, yesNo } from "../../_lib/ficha-format"
 import { groupTreatmentSeries, isClosedTreatment, treatmentStatus, type TreatmentSeries } from "../../_lib/treatment-series"
-import { TreatmentMedications, TreatmentVersionHistory } from "../treatment-card"
 
 // Diagnósticos, tratamientos y comorbilidades en tarjetas separadas. Cada
 // registro abre un modal con su información completa. Las correcciones se
 // hacen desde un seguimiento, que es donde quedan trazadas.
 
 type Props = { patient: PatientDetailsResponse }
-
-const SITUATION: Record<string, { label: string; tone: Tone }> = {
-  EN_PROCESO: { label: "En curso", tone: "blue" },
-  EN_ESPERA: { label: "En espera", tone: "amber" },
-  SUSPENDIDO: { label: "Suspendido", tone: "amber" },
-  CULMINADO: { label: "Terminado", tone: "gray" },
-  EN_BUSQUEDA: { label: "En búsqueda", tone: "blue" },
-  ABANDONADO: { label: "Abandonado", tone: "red" },
-  FALLECIDO: { label: "Fallecido", tone: "gray" },
-  NO_APLICA: { label: "No aplica", tone: "gray" },
-  REMISION: { label: "Remisión", tone: "violet" },
-}
-
-const CORRECTION_HINT = "Para corregirlo, hazlo desde un seguimiento: así queda registrado quién lo cambió y por qué."
 
 export function DiagnosesCard({ patient }: Props) {
   const [open, setOpen] = useState<PatientDiagnosis | null>(null)
@@ -73,63 +60,8 @@ export function DiagnosesCard({ patient }: Props) {
       ) : (
         <EmptyState title="Sin diagnóstico" body="Se registra desde un seguimiento, con su informe médico cuando lo tenga." />
       )}
-      {open && <DiagnosisModal diagnosis={open} onClose={() => setOpen(null)} />}
+      {open && <DiagnosisDetailModal diagnosis={open} onClose={() => setOpen(null)} />}
     </Card>
-  )
-}
-
-function DiagnosisModal({ diagnosis: d, onClose }: { diagnosis: PatientDiagnosis; onClose: () => void }) {
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      icon={Stethoscope}
-      title="Diagnóstico"
-      description={d.diagnosisDate ? `Diagnosticado el ${formatDate(d.diagnosisDate)}` : undefined}
-      tags={
-        <>
-          <Chip tone="blue"><CatalogValue kind="cancer_diagnosis" code={d.diagnosis} /></Chip>
-          <Chip tone={d.isCurrent ? "green" : "gray"}>{d.isCurrent ? "Actual" : "Histórico"}</Chip>
-          {d.cancerStage && <Chip tone="violet"><CatalogValue kind="cancer_stage" code={d.cancerStage} /></Chip>}
-        </>
-      }
-      footer={<><span className="mr-auto self-center text-[13px] text-zinc-500">{CORRECTION_HINT}</span><Button onClick={onClose}>Cerrar</Button></>}
-    >
-      {d.changeReason && (
-        <Panel title="Motivo del cambio">
-          <p className="text-sm text-zinc-700">{d.changeReason}</p>
-        </Panel>
-      )}
-      <Panel title="Diagnóstico">
-        <FieldGrid
-          items={[
-            ["Etapa", d.cancerStage ? <CatalogValue kind="cancer_stage" code={d.cancerStage} /> : "Sin estadio"],
-            ["Fecha de diagnóstico", formatDate(d.diagnosisDate)],
-            ["Centro de salud", d.healthCenterName ?? null],
-            ["Especialidad", d.diagnosisSpecialty ? <CatalogValue kind="medical_specialty" code={d.diagnosisSpecialty} /> : null],
-          ]}
-        />
-      </Panel>
-      <Panel title="Cómo llegó al diagnóstico">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <InsetRow icon={Activity} label="Síntoma que llevó al chequeo" value={d.symptomLeadingToCheckup ?? "Sin registrar"} />
-          <InsetRow icon={CalendarDays} label="Primeros síntomas" value={formatDate(d.firstSymptomsDate) ?? "Sin registrar"} />
-          <InsetRow
-            icon={Clock}
-            label="Tiempo de espera"
-            value={formatDuration(d.waitTimeForDiagnosis) ?? (d.waitTimeSource === null && d.diagnosisDate && d.firstSymptomsDate ? "No recuerda" : "Sin registrar")}
-          />
-          <InsetRow icon={Building2} label="Referido a" value={d.referredHealthCenterName ?? (d.hasReferral === false ? "Sin referencia" : "Sin registrar")} />
-        </div>
-      </Panel>
-      <Panel title="Respaldo y evolución">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <InsetRow icon={FileText} label="Informe médico" value={d.hasMedicalReport ? "Presentado" : "No presentado"} trailing={<Chip tone={d.hasMedicalReport ? "green" : "amber"}>{d.hasMedicalReport ? "Sí" : "Falta"}</Chip>} />
-          <InsetRow icon={Share2} label="Derivación activa de SEPA" value={yesNo(d.isSepaActiveReferral) ?? "Sin registrar"} />
-        </div>
-        {d.diseaseEvolution && <p className="mt-3 rounded-[14px] bg-zinc-50 p-3 text-sm text-zinc-700 ring-1 ring-zinc-200/60">{d.diseaseEvolution}</p>}
-      </Panel>
-    </Modal>
   )
 }
 
@@ -173,77 +105,8 @@ export function TreatmentsCard({ patient }: Props) {
       ) : (
         <EmptyState title="Sin tratamientos" body="Se registran desde un seguimiento: quimioterapia, cirugía u otro tratamiento." />
       )}
-      {open && <TreatmentModal patientId={patient.id} series={open} onClose={() => setOpen(null)} />}
+      {open && <TreatmentDetailModal patientId={patient.id} series={open} onClose={() => setOpen(null)} />}
     </Card>
-  )
-}
-
-function TreatmentModal({ patientId, series, onClose }: { patientId: string; series: TreatmentSeries; onClose: () => void }) {
-  const t = series.current
-  const situation = SITUATION[treatmentStatus(t)]
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      icon={Syringe}
-      title="Tratamiento"
-      description={[t.startDate && `Desde el ${formatDate(t.startDate)}`, t.endDate && `hasta el ${formatDate(t.endDate)}`].filter(Boolean).join(" ") || undefined}
-      tags={
-        <>
-          <Chip tone="blue"><CatalogValue kind="treatment_type" code={t.treatmentType} /></Chip>
-          {situation && <Chip tone={situation.tone}>{situation.label}</Chip>}
-          {t.diagnosisSummary?.diagnosis && <Chip><CatalogValue kind="cancer_diagnosis" code={t.diagnosisSummary.diagnosis} /></Chip>}
-        </>
-      }
-      footer={<><span className="mr-auto self-center text-[13px] text-zinc-500">{CORRECTION_HINT}</span><Button onClick={onClose}>Cerrar</Button></>}
-    >
-      {t.scheduledSessions ? (
-        <Panel title="Avance">
-          <p className="flex items-baseline gap-2">
-            <span className="text-[28px] leading-none font-semibold tabular-nums">{t.completedSessions ?? 0}</span>
-            <span className="text-[13px] text-zinc-500">de {t.scheduledSessions} sesiones realizadas</span>
-          </p>
-          <div className="mt-3">
-            <SegmentedProgress done={Math.min(t.completedSessions ?? 0, t.scheduledSessions)} total={t.scheduledSessions} />
-          </div>
-        </Panel>
-      ) : null}
-      <Panel title="Tratamiento">
-        <FieldGrid
-          items={[
-            ["Frecuencia", formatDuration(t.treatmentFrequency)],
-            ["Programa de atención", t.careProgram],
-            ["Vía de quimioterapia", t.chemotherapyRoute ? <CatalogValue kind="chemotherapy_route" code={t.chemotherapyRoute} /> : null],
-            ["Procedimiento quirúrgico", t.operationName ? <CatalogValue kind="surgical_procedure" code={t.operationName} /> : null],
-            ["Tratamiento desde SEPA", yesNo(t.treatmentViaSepa)],
-            ["Tratamiento hormonal cumplido", yesNo(t.hormonalTreatmentCompleted)],
-          ]}
-        />
-      </Panel>
-      <Panel title="Dónde y cómo">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <InsetRow icon={Building2} label={t.isReferred ? "Hospital de origen" : "Centro de atención"} value={(t.isReferred ? t.sourceHealthCenterName : (t.receivingHealthCenterName ?? t.sourceHealthCenterName)) ?? "Sin registrar"} />
-          {t.isReferred && <InsetRow icon={Building2} label="Centro receptor" value={t.receivingHealthCenterName ?? "Sin registrar"} />}
-          <InsetRow icon={Repeat} label="Teleconsulta" value={yesNo(t.receivesTeleconsultation) ?? "Sin registrar"} />
-          <InsetRow icon={Share2} label="Barrera de acceso" value={t.accessBarrierCode ? <CatalogValue kind="access_barrier" code={t.accessBarrierCode} /> : (t.accessBarrierOther ?? "Ninguna")} />
-        </div>
-        {[t.teleconsultationNote, t.treatmentAbandonmentReason && `Motivo de abandono: ${t.treatmentAbandonmentReason}`, t.notReceivingReason && `Motivo de no recibir: ${t.notReceivingReason}`, t.changeReason && `Motivo de cambio: ${t.changeReason}`]
-          .filter(Boolean)
-          .map((text) => (
-            <p key={text as string} className="mt-3 rounded-[14px] bg-zinc-50 p-3 text-sm text-zinc-700 ring-1 ring-zinc-200/60">
-              {text}
-            </p>
-          ))}
-      </Panel>
-      <Panel title="Medicamentos">
-        <TreatmentMedications patientId={patientId} treatment={t} canManage expanded />
-      </Panel>
-      {series.previousVersions.length > 0 && (
-        <Panel>
-          <TreatmentVersionHistory current={t} previousVersions={series.previousVersions} />
-        </Panel>
-      )}
-    </Modal>
   )
 }
 
