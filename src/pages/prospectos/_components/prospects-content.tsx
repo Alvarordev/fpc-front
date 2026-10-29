@@ -89,7 +89,8 @@ export function ProspectsContent() {
         data={prospects}
         columns={patientColumns}
         isLoading={isLoading}
-        emptyMessage="No se encontraron prospectos"
+        emptyTitle="Sin prospectos"
+        emptyBody="No hay prospectos con esta búsqueda."
         onRowClick={(prospect) => navigate(`/pacientes/${prospect.id}`)}
       />
 

@@ -1,151 +1,65 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { Badge } from "@/components/ui/badge"
-import { CatalogValue } from "@/components/catalog-select"
-import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { formatCatalogValue, useCatalog } from "@/hooks/use-catalog"
-import { cn } from "@/lib/utils"
-import type { PatientListItem, PatientHealthPhase } from "@/api/patients"
+import type { PatientListItem } from "@/api/patients"
 import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
-import { formatIdentityDocument } from "@/types/identity-document"
+import { followUpSortTime } from "../_lib/follow-up-moment"
+import {
+  ActivityCell,
+  DepartmentCell,
+  DiagnosisCell,
+  FollowUpCell,
+  HealthCell,
+  PatientCell,
+} from "./patients-column-cells"
 
-function TruncatedDiagnosis({ code }: { code: string }) {
-  const { data: items = [] } = useCatalog("cancer_diagnosis")
-  const label = formatCatalogValue(items, code)
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <span
-            tabIndex={0}
-            className="text-muted-foreground block max-w-64 cursor-default truncate text-sm"
-          >
-            {label}
-          </span>
-        }
-      />
-      <TooltipContent
-        side="top"
-        align="start"
-        className="max-w-sm text-left leading-snug"
-      >
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  )
+function departmentLabel(code: string | null) {
+  if (!code) return ""
+  return DEPARTMENT_LABELS[code] ?? code
 }
 
-const healthPhaseStyles: Record<PatientHealthPhase, string> = {
-  CANCER_DIAGNOSIS: "bg-rose-50 text-rose-700 border-rose-200",
-  ANNUAL_CHECKUP: "bg-sky-50 text-sky-700 border-sky-200",
-  SIGNS_AND_SYMPTOMS: "bg-amber-50 text-amber-700 border-amber-200",
-}
-
-export const patientColumns: ColumnDef<PatientListItem>[] = [
+export const patientColumns: ColumnDef<PatientListItem, unknown>[] = [
   {
+    id: "fullName",
     accessorKey: "fullName",
     header: "Paciente",
-    cell: ({ row }) => {
-      const patient = row.original
-      const initials = patient.fullName
-        .split(" ")
-        .slice(0, 2)
-        .map((word) => word[0])
-        .join("")
-      return (
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-full text-xs font-semibold">
-            {initials}
-          </div>
-          <div>
-            <p className="text-sm font-medium">{patient.fullName}</p>
-            <p className="text-muted-foreground text-xs">
-              {patient.dni
-                ? formatIdentityDocument(patient.documentType, patient.dni)
-                : "Sin documento"}
-            </p>
-          </div>
-        </div>
-      )
-    },
+    enableSorting: true,
+    sortingFn: (a, b) => a.original.fullName.localeCompare(b.original.fullName, "es"),
+    cell: ({ row }) => <PatientCell patient={row.original} />,
   },
   {
-    accessorKey: "currentDiagnosis",
+    id: "diagnosis",
     header: "Diagnóstico",
-    size: 256,
-    cell: ({ row }) => {
-      const diagnosis = row.original.currentDiagnosis?.diagnosis
-      if (!diagnosis) {
-        return <span className="text-muted-foreground text-sm">-</span>
-      }
-      return <TruncatedDiagnosis code={diagnosis} />
-    },
+    cell: ({ row }) => <DiagnosisCell patient={row.original} />,
   },
   {
     id: "currentDepartment",
+    accessorFn: (row) => departmentLabel(row.currentDepartment) || undefined,
     header: "Departamento",
-    cell: ({ row }) => {
-      const department = row.original.currentDepartment
-      if (!department) {
-        return <span className="text-muted-foreground text-sm">-</span>
-      }
-      return (
-        <span className="text-muted-foreground text-sm">
-          {DEPARTMENT_LABELS[department] ?? department}
-        </span>
-      )
-    },
+    enableSorting: true,
+    sortUndefined: "last",
+    sortingFn: (a, b) =>
+      departmentLabel(a.original.currentDepartment).localeCompare(
+        departmentLabel(b.original.currentDepartment),
+        "es",
+      ),
+    cell: ({ row }) => <DepartmentCell patient={row.original} />,
   },
   {
-    id: "healthPhase",
-    header: "Fase de salud",
-    cell: ({ row }) => {
-      const phase = row.original.healthPhase
-      if (!phase) {
-        return (
-          <span className="text-muted-foreground text-sm">Sin clasificar</span>
-        )
-      }
-      return (
-        <Badge className={cn("border font-medium", healthPhaseStyles[phase])}>
-          <CatalogValue kind="patient_health_phase" code={phase} />
-        </Badge>
-      )
-    },
+    id: "health",
+    header: "Situación de salud",
+    cell: ({ row }) => <HealthCell patient={row.original} />,
   },
   {
-    id: "healthSubcategory",
-    header: "Subcategoría",
-    cell: ({ row }) => (
-      <PatientHealthSubcategoryBadge
-        subcategory={row.original.healthSubcategory}
-      />
-    ),
+    id: "latestFollowUp",
+    accessorFn: (row) => followUpSortTime(row),
+    header: "Último seguimiento",
+    enableSorting: true,
+    sortUndefined: "last",
+    sortDescFirst: true,
+    cell: ({ row }) => <FollowUpCell patient={row.original} />,
   },
   {
-    id: "status",
+    id: "activityStatus",
     header: "Estado",
-    cell: ({ row }) => {
-      const patient = row.original
-      const activityClass =
-        patient.activityStatus === "ACTIVE"
-          ? "bg-emerald-50 text-emerald-700"
-          : patient.activityStatus === "INACTIVE"
-            ? "bg-zinc-100 text-zinc-600"
-            : "bg-orange-50 text-orange-700"
-      const activityLabel =
-        patient.activityStatus === "ACTIVE"
-          ? "Activo"
-          : patient.activityStatus === "INACTIVE"
-            ? "Inactivo"
-            : "Reactivo"
-      return (
-        <Badge className={cn("border", activityClass)}>{activityLabel}</Badge>
-      )
-    },
+    cell: ({ row }) => <ActivityCell patient={row.original} />,
   },
 ]

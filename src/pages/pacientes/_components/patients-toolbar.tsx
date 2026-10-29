@@ -1,14 +1,6 @@
-import { Search, SlidersHorizontal, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Search, X } from "lucide-react"
+import { Button } from "@/components/ds/button"
+import { SelectField, TextInput } from "@/components/ds/form"
 import type {
   PatientActivityStatus,
   PatientHealthPhase,
@@ -33,35 +25,20 @@ interface PatientsToolbarProps {
   ) => void
 }
 
-const ALL_FILTER_VALUE = "ALL"
+const ALL = "ALL"
 
-const activityStatusOptions: {
-  value: PatientActivityStatus
-  label: string
-}[] = [
+const activityStatusOptions: { value: PatientActivityStatus | typeof ALL; label: string }[] = [
+  { value: ALL, label: "Todos los estados" },
   { value: "ACTIVE", label: "Activo" },
+  { value: "REACTIVE", label: "Reenrolado" },
   { value: "INACTIVE", label: "Inactivo" },
-  { value: "REACTIVE", label: "Reactivo" },
 ]
 
 const activityStatusLabels: Record<PatientActivityStatus, string> = {
   ACTIVE: "Activo",
   INACTIVE: "Inactivo",
-  REACTIVE: "Reactivo",
+  REACTIVE: "Reenrolado",
 }
-
-const healthPhaseOptions = Object.entries(patientHealthPhaseLabels).map(
-  ([value, label]) => ({ value, label }),
-)
-
-const healthSubcategoryOptions = [
-  { value: ALL_FILTER_VALUE, label: "Todas las subcategorías" },
-  { value: "UNASSIGNED", label: "Sin subcategoría" },
-  ...patientHealthSubcategoryOptions.map(({ value, label }) => ({
-    value,
-    label,
-  })),
-]
 
 export function PatientsToolbar({
   search,
@@ -73,122 +50,98 @@ export function PatientsToolbar({
   healthSubcategoryFilter,
   onHealthSubcategoryFilterChange,
 }: PatientsToolbarProps) {
-  const hasFilters = Boolean(
-    search ||
-      activityStatusFilter ||
-      healthPhaseFilter ||
-      healthSubcategoryFilter,
-  )
+  const phaseOptions = [
+    { value: ALL, label: "Todas las fases" },
+    ...Object.entries(patientHealthPhaseLabels).map(([value, label]) => ({ value, label })),
+  ]
+  const subcategoryOptions = [
+    { value: ALL, label: "Todas las subcategorías" },
+    { value: "UNASSIGNED", label: "Sin subcategoría" },
+    ...patientHealthSubcategoryOptions.map(({ value, label }) => ({ value, label })),
+  ]
+  const chips = [
+    activityStatusFilter
+      ? { key: "status", label: activityStatusLabels[activityStatusFilter], clear: () => onActivityStatusFilterChange(null) }
+      : null,
+    healthPhaseFilter
+      ? { key: "phase", label: patientHealthPhaseLabels[healthPhaseFilter], clear: () => onHealthPhaseFilterChange(null) }
+      : null,
+    healthSubcategoryFilter
+      ? {
+          key: "sub",
+          label:
+            healthSubcategoryFilter === "UNASSIGNED"
+              ? "Sin subcategoría"
+              : (patientHealthSubcategoryLabels[
+                  healthSubcategoryFilter as keyof typeof patientHealthSubcategoryLabels
+                ] ?? healthSubcategoryFilter),
+          clear: () => onHealthSubcategoryFilterChange(null),
+        }
+      : null,
+  ].filter((chip) => chip !== null)
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative max-w-xs flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
-          <Input
-            placeholder="Buscar por nombre o DNI..."
+        <div className="relative min-w-52 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
+          <TextInput
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="bg-background h-8 pl-8 text-sm"
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Buscar por nombre, documento o celular"
+            aria-label="Buscar pacientes"
+            className="pl-9"
           />
         </div>
+        <div className="w-44">
+          <SelectField
+            value={activityStatusFilter ?? ALL}
+            onChange={(value) =>
+              onActivityStatusFilterChange(value === ALL ? null : (value as PatientActivityStatus))
+            }
+            options={activityStatusOptions}
+            placeholder="Todos los estados"
+          />
+        </div>
+        <div className="w-48">
+          <SelectField
+            value={healthPhaseFilter ?? ALL}
+            onChange={(value) =>
+              onHealthPhaseFilterChange(value === ALL ? null : (value as PatientHealthPhase))
+            }
+            options={phaseOptions}
+            placeholder="Todas las fases"
+          />
+        </div>
+        <div className="w-64">
+          <SelectField
+            value={healthSubcategoryFilter ?? ALL}
+            onChange={(value) =>
+              onHealthSubcategoryFilterChange(
+                value === ALL ? null : (value as PatientHealthSubcategoryFilter),
+              )
+            }
+            options={subcategoryOptions}
+            placeholder="Todas las subcategorías"
+          />
+        </div>
+      </div>
 
-        <Select
-          items={[
-            { value: ALL_FILTER_VALUE, label: "Todos los estados" },
-            ...activityStatusOptions,
-          ]}
-          value={activityStatusFilter ?? ALL_FILTER_VALUE}
-          onValueChange={(value) =>
-            onActivityStatusFilterChange(
-              value === ALL_FILTER_VALUE
-                ? null
-                : (value as PatientActivityStatus),
-            )
-          }
-        >
-          <SelectTrigger
-            aria-label="Filtrar por estado"
-            className="bg-background h-8 w-40 text-xs"
-          >
-            <SlidersHorizontal className="text-muted-foreground size-3.5" />
-            <SelectValue placeholder="Todos los estados" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_FILTER_VALUE}>Todos los estados</SelectItem>
-            {activityStatusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          items={[
-            { value: ALL_FILTER_VALUE, label: "Todas las fases" },
-            ...healthPhaseOptions,
-          ]}
-          value={healthPhaseFilter ?? ALL_FILTER_VALUE}
-          onValueChange={(value) =>
-            onHealthPhaseFilterChange(
-              value === ALL_FILTER_VALUE
-                ? null
-                : (value as PatientHealthPhase),
-            )
-          }
-        >
-          <SelectTrigger
-            aria-label="Filtrar por fase de salud"
-            className="bg-background h-8 w-44 text-xs"
-          >
-            <SelectValue placeholder="Todas las fases" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_FILTER_VALUE}>Todas las fases</SelectItem>
-            {healthPhaseOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          items={healthSubcategoryOptions}
-          value={healthSubcategoryFilter ?? ALL_FILTER_VALUE}
-          onValueChange={(value) =>
-            onHealthSubcategoryFilterChange(
-              value === ALL_FILTER_VALUE
-                ? null
-                : (value as PatientHealthSubcategoryFilter),
-            )
-          }
-        >
-          <SelectTrigger
-            aria-label="Filtrar por subcategoría"
-            className="bg-background h-8 w-56 text-xs"
-          >
-            <SelectValue placeholder="Todas las subcategorías" />
-          </SelectTrigger>
-          <SelectContent className="max-h-72">
-            <SelectItem value={ALL_FILTER_VALUE}>
-              Todas las subcategorías
-            </SelectItem>
-            <SelectItem value="UNASSIGNED">Sin subcategoría</SelectItem>
-            {patientHealthSubcategoryOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {hasFilters && (
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.clear}
+              className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
+            >
+              {chip.label}
+              <X className="size-3" />
+            </button>
+          ))}
           <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground h-8 text-xs"
+            variant="outline"
             onClick={() => {
               onSearchChange("")
               onActivityStatusFilterChange(null)
@@ -196,47 +149,8 @@ export function PatientsToolbar({
               onHealthSubcategoryFilterChange(null)
             }}
           >
-            <X className="size-3.5" />
             Limpiar
           </Button>
-        )}
-      </div>
-
-      {hasFilters && (
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">Filtros:</span>
-          {activityStatusFilter && (
-            <Badge
-              variant="outline"
-              className="hover:bg-muted h-6 cursor-pointer gap-1 px-2 text-xs font-normal"
-              onClick={() => onActivityStatusFilterChange(null)}
-            >
-              {activityStatusLabels[activityStatusFilter]}
-              <X className="size-3" />
-            </Badge>
-          )}
-          {healthPhaseFilter && (
-            <Badge
-              variant="outline"
-              className="hover:bg-muted h-6 cursor-pointer gap-1 px-2 text-xs font-normal"
-              onClick={() => onHealthPhaseFilterChange(null)}
-            >
-              {patientHealthPhaseLabels[healthPhaseFilter]}
-              <X className="size-3" />
-            </Badge>
-          )}
-          {healthSubcategoryFilter && (
-            <Badge
-              variant="outline"
-              className="hover:bg-muted h-6 cursor-pointer gap-1 px-2 text-xs font-normal"
-              onClick={() => onHealthSubcategoryFilterChange(null)}
-            >
-              {healthSubcategoryFilter === "UNASSIGNED"
-                ? "Sin subcategoría"
-                : patientHealthSubcategoryLabels[healthSubcategoryFilter]}
-              <X className="size-3" />
-            </Badge>
-          )}
         </div>
       )}
     </div>

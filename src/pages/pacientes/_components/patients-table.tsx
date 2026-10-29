@@ -1,13 +1,14 @@
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/ds/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { PatientListItem } from "@/api/patients"
 
 interface PatientsTableProps {
   data: PatientListItem[]
-  columns: ColumnDef<PatientListItem>[]
+  columns: ColumnDef<PatientListItem, unknown>[]
   isLoading?: boolean
   onRowClick?: (patient: PatientListItem) => void
-  emptyMessage?: string
+  emptyTitle?: string
+  emptyBody?: string
 }
 
 export function PatientsTable({
@@ -15,7 +16,8 @@ export function PatientsTable({
   columns,
   isLoading,
   onRowClick,
-  emptyMessage = "No se encontraron pacientes",
+  emptyTitle = "Sin pacientes",
+  emptyBody = "No hay pacientes con estos criterios.",
 }: PatientsTableProps) {
   return (
     <DataTable
@@ -23,7 +25,8 @@ export function PatientsTable({
       columns={columns}
       isLoading={isLoading}
       onRowClick={onRowClick}
-      emptyMessage={emptyMessage}
+      emptyTitle={emptyTitle}
+      emptyBody={emptyBody}
     />
   )
 }
