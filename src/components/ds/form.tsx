@@ -1,4 +1,5 @@
-import { useId } from "react"
+import { useId, useRef } from "react"
+import { FileUp, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
@@ -167,6 +168,51 @@ export function DurationField({ id, value, onChange, units }: { id?: string; val
       <div className="flex-1">
         <SelectField value={unit} onChange={(u) => set(amount, u)} options={options} />
       </div>
+    </div>
+  )
+}
+
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${Math.ceil(value / 1024)} KB`
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Archivo elegido con su nombre y peso; se quita con la X. `accept` limita los tipos. */
+export function FileField({ id, file, onChange, accept, disabled }: { id?: string; file: File | null; onChange: (file: File | null) => void; accept?: string; disabled?: boolean }) {
+  const input = useRef<HTMLInputElement>(null)
+  return (
+    <div>
+      <input ref={input} id={id} type="file" accept={accept} disabled={disabled} className="sr-only" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
+      {file ? (
+        <div className="flex h-9 items-center gap-2 rounded-[10px] bg-white px-3 text-sm ring-1 ring-zinc-200">
+          <FileUp className="size-4 shrink-0 text-zinc-500" />
+          <span className="min-w-0 flex-1 truncate font-medium text-zinc-900">{file.name}</span>
+          <span className="shrink-0 text-[13px] text-zinc-500 tabular-nums">{formatBytes(file.size)}</span>
+          <button
+            type="button"
+            aria-label="Quitar archivo"
+            disabled={disabled}
+            onClick={() => {
+              onChange(null)
+              if (input.current) input.current.value = ""
+            }}
+            className="-mr-1 flex size-6 items-center justify-center rounded-md text-zinc-500 hover:text-zinc-900"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => input.current?.click()}
+          className="flex h-9 w-full items-center gap-2 rounded-[10px] border border-dashed border-zinc-300 bg-white px-3 text-sm text-zinc-500 transition-[color,box-shadow] hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-zinc-900/20 focus-visible:outline-none disabled:opacity-50"
+        >
+          <FileUp className="size-4" />
+          Elegir archivo
+        </button>
+      )}
     </div>
   )
 }

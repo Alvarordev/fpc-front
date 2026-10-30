@@ -54,11 +54,13 @@ export function QuestionForm({
           </div>
         )
         return (
-          <section key={g.title} className={framed ? "rounded-[18px] bg-white p-4 ring-1 ring-zinc-200/70" : "border-t border-zinc-100 pt-5 first:border-0 first:pt-0"}>
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-zinc-900">{g.title}</h4>
-              {g.description && <p className="mt-0.5 text-[13px] text-zinc-500">{g.description}</p>}
-            </div>
+          <section key={g.title || "group"} className={framed ? "rounded-[18px] bg-white p-4 ring-1 ring-zinc-200/70" : "border-t border-zinc-100 pt-5 first:border-0 first:pt-0"}>
+            {g.title && (
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-zinc-900">{g.title}</h4>
+                {g.description && <p className="mt-0.5 text-[13px] text-zinc-500">{g.description}</p>}
+              </div>
+            )}
             {body}
           </section>
         )

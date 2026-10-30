@@ -18,6 +18,9 @@ export function FormModal({
   initial = {},
   submitLabel,
   footnote,
+  pending = false,
+  derive,
+  children,
   onClose,
   onSubmit,
 }: {
@@ -29,6 +32,12 @@ export function FormModal({
   submitLabel: string
   /** Qué pasa al confirmar, p. ej. "Se guardará al completar el seguimiento". */
   footnote?: string
+  /** Mientras se guarda: bloquea el envío y el cierre. */
+  pending?: boolean
+  /** Ajusta las demás respuestas cuando cambia una (p. ej. limpiar la subcategoría al cambiar la fase). */
+  derive?: (id: string, next: Values) => Values
+  /** Contenido extra bajo el formulario (un archivo, un aviso). */
+  children?: React.ReactNode
   onClose: () => void
   onSubmit: (values: Values) => void
 }) {
@@ -37,7 +46,7 @@ export function FormModal({
   return (
     <Modal
       open
-      onClose={onClose}
+      onClose={() => !pending && onClose()}
       icon={icon}
       title={title}
       description={description}
@@ -46,14 +55,27 @@ export function FormModal({
           <span className="mr-auto self-center text-[13px] text-zinc-500">
             {missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : footnote}
           </span>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="dark" disabled={missingRequired > 0} onClick={() => onSubmit(values)}>
-            {submitLabel}
+          <Button onClick={onClose} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button variant="dark" disabled={missingRequired > 0 || pending} onClick={() => onSubmit(values)}>
+            {pending ? "Guardando…" : submitLabel}
           </Button>
         </>
       }
     >
-      <QuestionForm framed groups={groups} values={values} onChange={(id, v) => setValues((prev) => ({ ...prev, [id]: v }))} />
+      <QuestionForm
+        framed
+        groups={groups}
+        values={values}
+        onChange={(id, v) =>
+          setValues((prev) => {
+            const next = { ...prev, [id]: v }
+            return derive ? derive(id, next) : next
+          })
+        }
+      />
+      {children}
     </Modal>
   )
 }

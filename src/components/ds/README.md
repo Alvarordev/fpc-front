@@ -43,13 +43,13 @@ para su presentación.
 | `copy-value.tsx` | `CopyValue` | teléfonos y correos copiables |
 | `inline-alert.tsx` | `InlineAlert` | alerta abierta o aviso en línea |
 | `empty-state.tsx` | `EmptyState` | lista vacía: qué falta y la acción para empezar |
-| `form.tsx` | `Field`, `TextInput`, `TextArea`, `SelectField`, `ChoiceGroup`, `ScaleField`, `DurationField` | formularios; `ChoiceGroup` para respuestas cortas de un toque (Sí / No / No sabe); `ScaleField` 0 a 10; `DurationField` cantidad y unidad |
+| `form.tsx` | `Field`, `TextInput`, `TextArea`, `SelectField`, `ChoiceGroup`, `ScaleField`, `DurationField`, `FileField` | formularios; `ChoiceGroup` para respuestas cortas de un toque (Sí / No / No sabe); `ScaleField` 0 a 10; `DurationField` cantidad y unidad; `FileField` un archivo con nombre y peso |
 | `search-select.tsx` | `SearchSelect` | select con buscador para listas largas |
 | `catalog-picker.tsx` | `CatalogPicker` | cualquier select de un catálogo ampliable o de hospitales, con el botón para agregar |
 | `questions.ts` | `Question`, `Group`, `Values`, `yes`, `no`, `is`, `progress`, `multiValues` | formularios descritos como datos: tipo, `showIf`, obligatorio; `tri` acepta sus `options` (p. ej. "No menciona"); `duration` usa las unidades de la API (`units` las limita); `multi` guarda varios valores de un catálogo |
 | `question-form.tsx` | `QuestionForm` | dibuja los grupos de preguntas; `framed` para usarlo dentro de un modal; `showMissing` marca con un anillo rojo los obligatorios vacíos |
 | `catalog-source.ts` | `CatalogSourceContext`, `useCatalogSource` | de dónde salen las opciones de catálogo y cómo se da de alta una nueva; lo provee cada pantalla |
-| `form-modal.tsx` | `FormModal` | modal con un formulario de datos; habilita el botón cuando están los obligatorios |
+| `form-modal.tsx` | `FormModal` | modal con un formulario de datos; habilita el botón cuando están los obligatorios; `pending` mientras guarda; `derive` ajusta respuestas dependientes; `children` va bajo el formulario |
 | `record-section.tsx` | `RecordSection`, `RemoveButton` | registros de una sección con los cambios pendientes por guardar; `onOpenPending` abre un pendiente para editarlo |
 | `step-section.tsx` | `StepSection` | paso numerado de un flujo que sí es secuencia |
 | `expandable-line.tsx` | `ExpandableLine` | contexto en una línea que se expande |
