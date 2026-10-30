@@ -157,22 +157,28 @@ function toDraft(v: Values): AddressDraft | string {
 const place = (a: { district?: string | null; province?: string | null; department?: string | null }) => [a.district, a.province, a.department].filter(Boolean).join(", ")
 
 export function DireccionesTab({ drafts, onDraftsChange, addresses }: SheetTabProps & { addresses: PatientAddress[] }) {
-  const [open, setOpen] = useState(false)
-  const draft = drafts.address
-  const pending = draft
-    ? [{ id: "address", kind: "Nuevo" as const, title: draft.address ?? draft.shelterName ?? (draft.type === "TEMPORARY" ? "Vivienda provisional" : "Dirección"), detail: place(draft) || (draft.type === "TEMPORARY" ? "Provisional" : "Permanente") }]
-    : []
+  // Un borrador por tipo: en un mismo contacto se puede registrar la dirección
+  // permanente y la vivienda provisional (con su costo).
+  const [open, setOpen] = useState<"address" | "temporaryAddress" | "new" | null>(null)
+  const editing = open === "address" || open === "temporaryAddress" ? drafts[open] : undefined
+  const pending = (["address", "temporaryAddress"] as const).flatMap((key) => {
+    const draft = drafts[key]
+    if (!draft) return []
+    const temporary = key === "temporaryAddress"
+    return [{ id: key, kind: "Nuevo" as const, title: draft.address ?? draft.shelterName ?? (temporary ? "Vivienda provisional" : "Dirección"), detail: place(draft) || (temporary ? "Provisional" : "Permanente") }]
+  })
   return (
     <>
       <RecordSection
         title="Direcciones"
         description="Si se mudó o se queda en otro lugar mientras se atiende, registra la dirección nueva."
-        addLabel={draft ? "Cambiar dirección nueva" : "Nueva dirección"}
-        onAdd={() => setOpen(true)}
+        addLabel="Nueva dirección"
+        onAdd={() => setOpen("new")}
         empty="No hay direcciones registradas."
         pending={pending}
         pendingLabel="Por guardar al completar"
-        onRemovePending={() => onDraftsChange((prev) => ({ ...prev, address: undefined }))}
+        onRemovePending={(id) => onDraftsChange((prev) => ({ ...prev, [id]: undefined }))}
+        onOpenPending={(id) => setOpen(id as "address" | "temporaryAddress")}
       >
         {addresses.map((a) => (
           <Item
@@ -198,20 +204,21 @@ export function DireccionesTab({ drafts, onDraftsChange, addresses }: SheetTabPr
       {open && (
         <FormModal
           icon={Home}
-          title={draft ? "Cambiar dirección nueva" : "Nueva dirección"}
+          title={editing ? "Cambiar dirección nueva" : "Nueva dirección"}
           groups={groups}
-          initial={fromDraft(draft)}
+          initial={fromDraft(editing)}
           submitLabel="Agregar a la ficha"
           footnote="Se guardará al completar el seguimiento"
-          onClose={() => setOpen(false)}
+          onClose={() => setOpen(null)}
           onSubmit={(v) => {
             const result = toDraft(v)
             if (typeof result === "string") {
               toast.error(result)
               return
             }
-            onDraftsChange((prev) => ({ ...prev, address: result }))
-            setOpen(false)
+            const key = result.type === "TEMPORARY" ? "temporaryAddress" : "address"
+            onDraftsChange((prev) => ({ ...prev, ...(open === "address" || open === "temporaryAddress" ? { [open]: undefined } : {}), [key]: result }))
+            setOpen(null)
           }}
         />
       )}

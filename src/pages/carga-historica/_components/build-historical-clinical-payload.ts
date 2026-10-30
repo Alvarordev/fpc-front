@@ -376,12 +376,12 @@ export function buildHistoricalClinicalPayload({
     }
   }
 
-  if (drafts.address) {
+  if (drafts.address || drafts.temporaryAddress) {
     payload.addresses = [
-      {
-        ...drafts.address,
-        ...(recordIds.addressId ? { id: recordIds.addressId } : {}),
-      },
+      ...(drafts.address
+        ? [{ ...drafts.address, ...(recordIds.addressId ? { id: recordIds.addressId } : {}) }]
+        : []),
+      ...(drafts.temporaryAddress ? [drafts.temporaryAddress] : []),
     ]
   }
 

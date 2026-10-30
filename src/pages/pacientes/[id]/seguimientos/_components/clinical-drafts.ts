@@ -146,6 +146,8 @@ export interface ClinicalDrafts {
   sisAffiliation?: SisAffiliationDraft
   healthBackground?: HealthBackgroundAssessmentDraft
   address?: Omit<CreatePatientAddressInput, "followUpId">
+  /** Vivienda provisional nueva, aparte de la dirección permanente (`address`). */
+  temporaryAddress?: Omit<CreatePatientAddressInput, "followUpId">
   contact?: ContactDraft
 }
 
@@ -163,6 +165,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.sisAffiliation ||
     drafts.healthBackground ||
     drafts.address ||
+    drafts.temporaryAddress ||
     drafts.contact,
   )
 }

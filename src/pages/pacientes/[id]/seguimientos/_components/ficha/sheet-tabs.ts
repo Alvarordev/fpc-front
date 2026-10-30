@@ -8,7 +8,7 @@ export const SHEET_TABS = [
   { id: "tratamiento", label: "Tratamientos", changed: (d: ClinicalDrafts) => Boolean(d.treatments?.length) },
   { id: "antecedentes", label: "Antecedentes", changed: (d: ClinicalDrafts) => Boolean(d.healthBackground) },
   { id: "contacto", label: "Contacto", changed: (d: ClinicalDrafts) => Boolean(d.contact) },
-  { id: "direcciones", label: "Direcciones", changed: (d: ClinicalDrafts) => Boolean(d.address) },
+  { id: "direcciones", label: "Direcciones", changed: (d: ClinicalDrafts) => Boolean(d.address || d.temporaryAddress) },
   { id: "seguro", label: "Seguro", changed: (d: ClinicalDrafts) => Boolean(d.insurance) },
   { id: "social", label: "Social", changed: (d: ClinicalDrafts) => Boolean(d.social || d.socialNotes?.length) },
 ] as const

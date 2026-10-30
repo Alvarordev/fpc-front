@@ -333,11 +333,8 @@ export async function commitFollowUpDrafts({ patientId, followUp, drafts, nextFo
       followUpId: followUpId,
     })
   }
-  if (clinicalDrafts.address) {
-    await patientsApi.createAddress(patientId, {
-      ...clinicalDrafts.address,
-      followUpId: followUpId,
-    })
+  for (const address of [clinicalDrafts.address, clinicalDrafts.temporaryAddress]) {
+    if (address) await patientsApi.createAddress(patientId, { ...address, followUpId })
   }
 
   if (alertDraft) {
