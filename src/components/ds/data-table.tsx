@@ -24,6 +24,18 @@ interface DataTableProps<TData> {
   onRowClick?: (row: TData) => void
   emptyTitle?: string
   emptyBody?: string
+  emptyAction?: string
+  onEmptyAction?: () => void
+}
+
+type ColumnMeta = { align?: "right" }
+
+function columnAlign(column: { columnDef: { meta?: unknown } }) {
+  return (column.columnDef.meta as ColumnMeta | undefined)?.align === "right"
+}
+
+function isRowAction(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("button, a, input, textarea, select, [role='menuitem']"))
 }
 
 /**
@@ -37,8 +49,13 @@ export function DataTable<TData>({
   onRowClick,
   emptyTitle = "Sin resultados",
   emptyBody = "No hay registros con estos criterios.",
+  emptyAction,
+  onEmptyAction,
 }: DataTableProps<TData>) {
+  "use no memo"
   const [sorting, setSorting] = useState<SortingState>([])
+  // Esta versión del plugin avisa igual con "use no memo". La directiva ya omite el compilador.
+  // eslint-disable-next-line react-hooks/incompatible-library -- useReactTable no se puede memoizar
   const table = useReactTable({
     data,
     columns,
@@ -69,7 +86,7 @@ export function DataTable<TData>({
                     key={header.id}
                     scope="col"
                     aria-sort={ariaSort(header.column.getIsSorted())}
-                    className="px-4 py-3 text-left text-[13px] font-medium text-zinc-500"
+                    className={cn("px-4 py-3 text-[13px] font-medium text-zinc-500", columnAlign(header.column) ? "text-right" : "text-left")}
                   >
                     {header.isPlaceholder ? null : <SortHeader header={header} />}
                   </th>
@@ -91,7 +108,7 @@ export function DataTable<TData>({
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="p-4">
-                  <EmptyState title={emptyTitle} body={emptyBody} />
+                  <EmptyState title={emptyTitle} body={emptyBody} action={emptyAction} onAction={onEmptyAction} />
                 </td>
               </tr>
             ) : (
@@ -103,16 +120,19 @@ export function DataTable<TData>({
                     "border-b border-zinc-100 transition-colors last:border-0 motion-reduce:transition-none",
                     onRowClick && "cursor-pointer hover:bg-zinc-50 focus-visible:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-zinc-900",
                   )}
-                  onClick={() => onRowClick?.(row.original)}
+                  onClick={(event) => {
+                    if (!onRowClick || isRowAction(event.target)) return
+                    onRowClick(row.original)
+                  }}
                   onKeyDown={(event) => {
-                    if (!onRowClick) return
+                    if (!onRowClick || event.target !== event.currentTarget) return
                     if (event.key !== "Enter" && event.key !== " ") return
                     event.preventDefault()
                     onRowClick(row.original)
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3 align-top text-sm text-zinc-900">
+                    <td key={cell.id} className={cn("px-4 py-3 align-top text-sm text-zinc-900", columnAlign(cell.column) && "text-right")}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

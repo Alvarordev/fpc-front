@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Building2, ListPlus } from "lucide-react"
 import { toast } from "sonner"
@@ -10,6 +10,7 @@ import type { Group } from "@/components/ds/questions"
 import type { SearchOption } from "@/components/ds/search-select"
 import { catalogQueryKey, catalogSelectItems } from "@/hooks/use-catalog"
 import { slugifyCatalogCode } from "@/lib/catalog-code"
+import { catalogItemGroups } from "@/lib/catalog-item-questions"
 import { CARE_CATEGORIES, HEALTH_CENTER_INSTITUTIONS, HEALTH_CENTER_INSTITUTION_LABELS } from "@/lib/health-center-labels"
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
 import { useAuthStore } from "@/store/auth-store"
@@ -78,25 +79,16 @@ const hospitalGroups: Group[] = [
   },
 ]
 
-function catalogGroups(singular: string): Group[] {
-  return [
-    {
-      title: singular.charAt(0).toUpperCase() + singular.slice(1),
-      questions: [
-        { id: "label", label: "Etiqueta", type: "text", required: true, wide: true, placeholder: "Como aparecerá en las listas" },
-        { id: "code", label: "Código", type: "text", hint: "Si lo dejas vacío se genera a partir de la etiqueta." },
-        { id: "sortOrder", label: "Orden en listas", type: "number", hint: "Opcional. Los menores aparecen primero." },
-      ],
-    },
-  ]
-}
-
 const singularOf = (key: string) => (key === HEALTH_CENTER ? "establecimiento de salud" : (CATALOG_KIND_LABELS[key as CatalogKind] ?? "opción").toLowerCase())
 
 export function AppCatalogProvider({ children }: { children: React.ReactNode }) {
   const role = useAuthStore((s) => s.user?.role)
   const queryClient = useQueryClient()
   const [request, setRequest] = useState<{ key: string; onCreated: (value: string) => void } | null>(null)
+  const codeTouched = useRef(false)
+  useEffect(() => {
+    codeTouched.current = false
+  }, [request])
   const staff = role === "ADMIN" || role === "FOUNDATION" || role === "AGENT"
 
   const source = useMemo<CatalogSource>(
@@ -146,9 +138,19 @@ export function AppCatalogProvider({ children }: { children: React.ReactNode }) 
           icon={isHospital ? Building2 : ListPlus}
           title={`Agregar ${singularOf(request.key)}`}
           description={isHospital ? "Queda disponible para todos los pacientes" : "Se agrega al catálogo para todos los usuarios"}
-          groups={isHospital ? hospitalGroups : catalogGroups(singularOf(request.key))}
-          submitLabel={create.isPending ? "Guardando..." : isHospital ? "Agregar establecimiento" : "Agregar al catálogo"}
+          groups={isHospital ? hospitalGroups : catalogItemGroups()}
+          submitLabel={isHospital ? "Agregar establecimiento" : "Agregar al catálogo"}
+          pending={create.isPending}
           footnote="Se guarda al instante y queda seleccionado"
+          derive={
+            isHospital
+              ? undefined
+              : (id, next) => {
+                  if (id === "code") codeTouched.current = true
+                  if (id === "label" && !codeTouched.current) return { ...next, code: slugifyCatalogCode(next.label ?? "") }
+                  return next
+                }
+          }
           onClose={() => !create.isPending && setRequest(null)}
           onSubmit={(v) => create.mutate({ key: request.key, v })}
         />

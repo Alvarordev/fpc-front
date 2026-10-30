@@ -56,7 +56,8 @@ para su presentación.
 | `action-tile.tsx` | `ActionTile` | acción que abre un formulario, con estado "agregado" |
 | `check-list.tsx` | `CheckList` | lo que se va a guardar o se guardó |
 | `composer-dock.tsx` | `ComposerDock` | texto fijo al pie (nota del seguimiento) con controles alineados y atajo Alt + tecla |
-| `data-table.tsx` | `DataTable` | tabla con orden, paginación de 25 y fila que se abre; carga con esqueleto y vacío con `EmptyState` |
+| `data-table.tsx` | `DataTable` | tabla con orden, paginación de 25 y fila que se abre; carga con esqueleto y vacío con `EmptyState`. El clic en un botón de la fila no abre la fila |
+| `row-menu.tsx` | `RowMenu` | menú de una fila cuando hay más de dos acciones. Con una o dos, `IconButton`s |
 
 ## Reglas
 
