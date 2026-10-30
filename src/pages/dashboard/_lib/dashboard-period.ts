@@ -13,9 +13,7 @@ export function periodTitle(
   year: number,
   month: number,
 ) {
-  return period === "month"
-    ? `${monthName(month)} de ${year}`
-    : `Año ${year}`
+  return period === "month" ? `${monthName(month)} de ${year}` : `Año ${year}`
 }
 
 /**
@@ -25,9 +23,15 @@ export function periodTitle(
  * a 2026. Si la URL trae un año fuera de la ventana, se agrega para que el
  * select nunca muestre un valor sin etiqueta.
  */
+/** Primer año elegible: la carga histórica trae pacientes enrolados desde años atrás. */
+export const FIRST_DASHBOARD_YEAR = 2015
+
 export function yearOptions(selected: number, today = new Date()) {
   const current = today.getFullYear()
-  const years = Array.from({ length: 7 }, (_, index) => current - index)
+  const years = Array.from(
+    { length: Math.max(current - FIRST_DASHBOARD_YEAR + 1, 1) },
+    (_, index) => current - index,
+  )
   if (!years.includes(selected)) years.push(selected)
   return years.sort((a, b) => b - a)
 }
