@@ -24,6 +24,7 @@ import CallcenterPage from "@/pages/callcenter/page"
 import CharlasPage from "@/pages/charlas/page"
 import HistoricalRecordsPage from "@/pages/carga-historica/page"
 import HistoricalEnrollmentPage from "@/pages/carga-historica/new/page"
+import TicketsPage from "@/pages/tickets/page"
 import HistoricalPatientPage from "@/pages/carga-historica/pacientes/[id]/page"
 
 // Laboratorio de diseño: solo en desarrollo, sin sesión ni roles.
@@ -158,6 +159,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
             <HealthCentersPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "tickets",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
+            <TicketsPage />
           </RoleGuard>
         ),
       },

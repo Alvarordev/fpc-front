@@ -1,8 +1,8 @@
 import { useLocation, Link } from "react-router-dom"
-import { Bell, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
+import { SupportButton } from "@/components/support-button"
 import { pathTitles } from "@/lib/navigation"
 import { patientsApi } from "@/api/patients"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
@@ -65,14 +65,7 @@ export function AppTopbar() {
 
         <div className="ml-auto flex items-center gap-1">
           <AssistantTrigger />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground relative size-8"
-          >
-            <Bell className="size-4" />
-            <span className="bg-primary absolute top-1 right-1.5 flex size-2 rounded-full" />
-          </Button>
+          <SupportButton />
         </div>
       </header>
     )
@@ -88,14 +81,7 @@ export function AppTopbar() {
 
       <div className="ml-auto flex items-center gap-1">
         <AssistantTrigger />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-foreground relative size-8"
-        >
-          <Bell className="size-4" />
-          <span className="bg-primary absolute top-1 right-1.5 flex size-2 rounded-full" />
-        </Button>
+        <SupportButton />
       </div>
     </header>
   )

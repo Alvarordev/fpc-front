@@ -2681,6 +2681,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/support-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tickets (admins see all, others only their own) */
+        get: operations["SupportTicketsController_findAll"];
+        put?: never;
+        /** Open a support ticket */
+        post: operations["SupportTicketsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support-tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportTicketsController_findOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the status of a ticket */
+        patch: operations["SupportTicketsController_update"];
+        trace?: never;
+    };
+    "/support-tickets/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply in the ticket thread (reopens it if the reporter replies) */
+        post: operations["SupportTicketsController_addMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support-tickets/{id}/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the ticket updates as seen */
+        post: operations["SupportTicketsController_markSeen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support-tickets/{id}/attachments/{attachmentId}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportTicketsController_attachmentContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6848,6 +6933,61 @@ export interface components {
             createdById?: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        SupportTicketUserDto: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            /** @enum {string} */
+            role: "ADMIN" | "FOUNDATION" | "AGENT" | "VOLUNTEER";
+        };
+        SupportTicketAttachmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            originalFileName: string;
+            mediaType: string;
+            sizeBytes: number;
+        };
+        SupportTicketMessageResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "COMMENT" | "STATUS_CHANGE";
+            body: string | null;
+            /** @enum {string|null} */
+            status: "PENDING" | "IN_REVIEW" | "NEEDS_MEETING" | "COMPLETED" | "DISMISSED" | null;
+            author: components["schemas"]["SupportTicketUserDto"];
+            attachments: components["schemas"]["SupportTicketAttachmentResponseDto"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SupportTicketResponseDto: {
+            /** Format: uuid */
+            id: string;
+            ticketNumber: number;
+            /** @enum {string} */
+            type: "CHANGE_REQUEST" | "NEW_FEATURE" | "VISUAL_BUG" | "FUNCTIONAL_BUG" | "BLOCKING_BUG" | "QUESTION";
+            /** @enum {string} */
+            status: "PENDING" | "IN_REVIEW" | "NEEDS_MEETING" | "COMPLETED" | "DISMISSED";
+            title: string;
+            description: string;
+            pagePath: string | null;
+            createdBy: components["schemas"]["SupportTicketUserDto"];
+            /** @description Images sent with the ticket itself */
+            attachments: components["schemas"]["SupportTicketAttachmentResponseDto"][];
+            messages: components["schemas"]["SupportTicketMessageResponseDto"][];
+            /** @description There are changes the current user has not seen yet */
+            hasUpdates: boolean;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateSupportTicketDto: {
+            /** @enum {string} */
+            status: "PENDING" | "IN_REVIEW" | "NEEDS_MEETING" | "COMPLETED" | "DISMISSED";
         };
     };
     responses: never;
@@ -15427,6 +15567,175 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    SupportTicketsController_findAll: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "IN_REVIEW" | "NEEDS_MEETING" | "COMPLETED" | "DISMISSED";
+                type?: "CHANGE_REQUEST" | "NEW_FEATURE" | "VISUAL_BUG" | "FUNCTIONAL_BUG" | "BLOCKING_BUG" | "QUESTION";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"][];
+                };
+            };
+        };
+    };
+    SupportTicketsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @enum {unknown} */
+                    type: "CHANGE_REQUEST" | "NEW_FEATURE" | "VISUAL_BUG" | "FUNCTIONAL_BUG" | "BLOCKING_BUG" | "QUESTION";
+                    title: string;
+                    description: string;
+                    pagePath?: string;
+                    images?: string[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportTicketsController_findOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportTicketsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSupportTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportTicketsController_addMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    body?: string;
+                    images?: string[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportTicketsController_markSeen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportTicketsController_attachmentContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
             };
         };
     };
