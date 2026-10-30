@@ -95,6 +95,17 @@ export const psychooncologyAppointmentsApi = {
     return data
   },
 
+  /** Guarda el texto del recordatorio de la sesión; null vuelve al sugerido. */
+  async setReminderMessage(id: string, text: string | null): Promise<AppointmentReminder> {
+    const { data, error, response } = await api.PUT("/psychooncology-appointments/{id}/reminder/message", {
+      params: { path: { id } },
+      body: { text },
+    })
+
+    if (!data) throw new PsychooncologyAppointmentsApiError(response.status, error)
+    return data
+  },
+
   async markReminderSent(id: string): Promise<AppointmentReminder> {
     const { data, error, response } = await api.PATCH(
       "/psychooncology-appointments/{id}/reminder/sent",

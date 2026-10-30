@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Check, Copy, Mail, Send } from "lucide-react"
+import { Check, Copy, Mail, PenLine, Send } from "lucide-react"
 import { toast } from "sonner"
 import { remindersApi, type Reminder } from "@/api/reminders"
 import { Button } from "@/components/ds/button"
+import { ReminderMessageDialog } from "@/components/reminder-message-dialog"
 import {
   reminderChannelLabels,
   reminderDeliveryLabels,
@@ -13,6 +14,7 @@ import {
 export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
+  const [editingText, setEditingText] = useState(false)
   const pendingDelivery =
     reminder.status === "PENDING" && reminder.deliveryStatus !== "SENT"
 
@@ -84,6 +86,12 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
           {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
           {copied ? "Copiado" : "Copiar mensaje"}
         </Button>
+        {reminder.status === "PENDING" && (
+          <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setEditingText(true)}>
+            <PenLine className="size-3" />
+            Editar texto
+          </Button>
+        )}
         {pendingDelivery && (
           <>
             <Button
@@ -111,6 +119,14 @@ export function ReminderDeliveryActions({ reminder }: { reminder: Reminder }) {
           </>
         )}
       </div>
+      {editingText && (
+        <ReminderMessageDialog
+          queryKey={["reminder-message", reminder.id]}
+          load={() => remindersApi.message(reminder.id)}
+          save={(text) => remindersApi.setMessage(reminder.id, text)}
+          onClose={() => setEditingText(false)}
+        />
+      )}
       {copied && (
         <p className="text-[11px] text-emerald-700">
           El texto quedó en el portapapeles.

@@ -5,7 +5,9 @@ import {
   psychooncologyAppointmentsApi,
   type PsychooncologyAppointment,
 } from "@/api/psychooncology-appointments"
+import { PenLine } from "lucide-react"
 import { Button } from "@/components/ds/button"
+import { ReminderMessageDialog } from "@/components/reminder-message-dialog"
 
 const reminderModeLabels: Record<PsychooncologyAppointment["reminderMode"], string> = {
   TWO_HOURS: "2 horas antes",
@@ -24,6 +26,7 @@ export function PsychoSessionActions({
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
   const [blocked, setBlocked] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState(false)
   const pending =
     appointment.status === "SCHEDULED" || appointment.status === "OVERDUE"
   const videoWithoutZoom =
@@ -104,6 +107,9 @@ export function PsychoSessionActions({
             >
               {copied ? "Copiado" : "Copiar recordatorio"}
             </Button>
+            <Button type="button" size="sm" variant="outline" icon={PenLine} disabled={videoWithoutZoom} onClick={() => setEditingText(true)}>
+              Editar texto
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -127,6 +133,17 @@ export function PsychoSessionActions({
           </Button>
         )}
       </div>
+      {editingText && (
+        <ReminderMessageDialog
+          queryKey={["psychooncology-reminder", appointment.id]}
+          load={async () => {
+            const reminder = await psychooncologyAppointmentsApi.reminder(appointment.id)
+            return { text: reminder.message, defaultText: reminder.defaultMessage, isCustom: reminder.isCustom }
+          }}
+          save={(text) => psychooncologyAppointmentsApi.setReminderMessage(appointment.id, text)}
+          onClose={() => setEditingText(false)}
+        />
+      )}
       {videoWithoutZoom && pending && (
         <p className="text-xs text-amber-800">
           Esta videollamada no tiene link de Zoom. Agrégalo antes de copiar o marcar el recordatorio.

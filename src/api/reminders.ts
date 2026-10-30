@@ -81,6 +81,17 @@ export const remindersApi = {
     return data
   },
 
+  /** Guarda el texto del correo del recordatorio; null vuelve al sugerido. */
+  async setMessage(id: string, text: string | null): Promise<ReminderMessage> {
+    const { data, error, response } = await api.PUT("/reminders/{id}/message", {
+      params: { path: { id } },
+      body: { text },
+    })
+
+    if (!data) throw new RemindersApiError(response.status, error)
+    return data
+  },
+
   async sendEmail(id: string): Promise<Reminder> {
     const { data, error, response } = await api.POST("/reminders/{id}/send-email", {
       params: { path: { id } },

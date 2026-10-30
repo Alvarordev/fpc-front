@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/ds/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthStore } from "@/store/auth-store"
 import { CompleteMedicalReminderDialog } from "./complete-medical-reminder-dialog"
-import { ReminderCard } from "./reminder-card"
+import { ReminderCard, ReminderDetailModal } from "./reminder-card"
 import {
   ReminderFormDialog,
   type ReminderFormValues,
@@ -34,6 +34,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [detail, setDetail] = useState<Reminder | null>(null)
   const [completingReminder, setCompletingReminder] = useState<Reminder | null>(
     null,
   )
@@ -249,7 +250,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         <Card title="Anteriores" description={`${completados.length} completados o descartados`}>
           <div className="space-y-2">
             {[...completados].reverse().map((reminder) => (
-              <ReminderCard key={reminder.id} reminder={reminder} canManage={false} onEdit={() => {}} onComplete={() => {}} onDismiss={() => {}} />
+              <ReminderCard key={reminder.id} reminder={reminder} canManage={false} onEdit={() => {}} onComplete={() => {}} onDismiss={() => {}} onOpen={setDetail} />
             ))}
           </div>
         </Card>
@@ -280,6 +281,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
           })
         }}
       />
+      {detail && <ReminderDetailModal reminder={detail} onClose={() => setDetail(null)} />}
     </div>
   )
 }
