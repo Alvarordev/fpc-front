@@ -6,13 +6,11 @@ import { CATALOG_KIND_LABELS, OPEN_CATALOG_KINDS, catalogsApi, type CatalogKind 
 import { healthCentersApi, type CreateHealthCenterInput } from "@/api/health-centers"
 import { CatalogSourceContext, type CatalogSource } from "@/components/ds/catalog-source"
 import { FormModal } from "@/components/ds/form-modal"
-import type { Group } from "@/components/ds/questions"
 import type { SearchOption } from "@/components/ds/search-select"
 import { catalogQueryKey, catalogSelectItems } from "@/hooks/use-catalog"
 import { slugifyCatalogCode } from "@/lib/catalog-code"
 import { catalogItemGroups } from "@/lib/catalog-item-questions"
-import { CARE_CATEGORIES, HEALTH_CENTER_INSTITUTIONS, HEALTH_CENTER_INSTITUTION_LABELS } from "@/lib/health-center-labels"
-import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
+import { hospitalGroups } from "@/lib/health-center-questions"
 import { useAuthStore } from "@/store/auth-store"
 
 // Fuente de catálogos de la app para los formularios del sistema de diseño
@@ -64,20 +62,6 @@ function useAppOptions(key: string, query: string, selected: string | null): { o
     loading: hospitals.isFetching,
   }
 }
-
-const hospitalGroups: Group[] = [
-  {
-    title: "Establecimiento",
-    questions: [
-      { id: "name", label: "Nombre del establecimiento", type: "text", required: true, wide: true },
-      { id: "department", label: "Departamento", type: "select", options: DEPARTMENTS.map((d) => ({ value: d.value, label: d.label })), required: true },
-      { id: "careCategory", label: "Categoría de atención", type: "select", options: CARE_CATEGORIES.map((c) => ({ value: c, label: c })) },
-      { id: "institution", label: "Institución", type: "select", options: HEALTH_CENTER_INSTITUTIONS.map((i) => ({ value: i, label: HEALTH_CENTER_INSTITUTION_LABELS[i] })) },
-      { id: "renipressCode", label: "Código RENIPRESS", type: "text" },
-      { id: "ubigeoDistrictCode", label: "Ubigeo del distrito", type: "text" },
-    ],
-  },
-]
 
 const singularOf = (key: string) => (key === HEALTH_CENTER ? "establecimiento de salud" : (CATALOG_KIND_LABELS[key as CatalogKind] ?? "opción").toLowerCase())
 

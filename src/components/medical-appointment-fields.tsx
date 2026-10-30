@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CreateHealthCenterDialog } from "@/pages/hospitales/_components/create-health-center-dialog"
+import { HospitalFormModal } from "@/pages/hospitales/_components/hospital-form-modal"
 import { Building2, Plus, Stethoscope } from "lucide-react"
 import type { CatalogItem } from "@/api/catalogs"
 import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
@@ -95,12 +95,10 @@ export function MedicalAppointmentFields({
         </div>
       </div>
 
-      <CreateHealthCenterDialog
+      <HospitalFormModal
         open={createHealthCenterOpen}
-        onOpenChange={setCreateHealthCenterOpen}
-        onCreated={(center) =>
-          onChange({ ...value, healthCenterId: center.id })
-        }
+        onClose={() => setCreateHealthCenterOpen(false)}
+        onSaved={(center) => onChange({ ...value, healthCenterId: center.id })}
       />
 
       <label className="flex items-center gap-2 pt-1">

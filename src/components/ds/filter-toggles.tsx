@@ -18,7 +18,9 @@ export function FilterToggles<T extends string>({ value, options, onChange }: { 
             )}
           >
             {o.label}
-            {o.count !== undefined && <span className="text-xs text-zinc-400 tabular-nums">{o.count}</span>}
+            {o.count !== undefined && (
+              <span className={cn("text-xs tabular-nums", active ? "text-zinc-300" : "text-zinc-400")}>{o.count}</span>
+            )}
           </button>
         )
       })}
