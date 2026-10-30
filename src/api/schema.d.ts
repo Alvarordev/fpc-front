@@ -2982,6 +2982,7 @@ export interface components {
             /** Format: uuid */
             subjectPatientId: string;
             subjectPatientName: string;
+            patientHasEmail: boolean;
             /** Format: uuid */
             agentId: string;
             /** @enum {string} */
@@ -3001,6 +3002,7 @@ export interface components {
             /** Format: uuid */
             subjectPatientId: string;
             subjectPatientName: string;
+            patientHasEmail: boolean;
             /** Format: uuid */
             assignedAgentId: string;
             description: string;
@@ -10159,6 +10161,39 @@ export interface operations {
     PatientsController_findAll: {
         parameters: {
             query?: {
+                /** @description Registered primary or secondary phone. */
+                hasPhone?: boolean;
+                /** @description At least one linked companion. */
+                hasCompanion?: boolean;
+                /** @description Scheduled or overdue follow-up not superseded by a reschedule. */
+                hasPendingFollowUps?: boolean;
+                minAge?: number;
+                maxAge?: number;
+                gender?: "M" | "F" | "OTHER";
+                /** @description Current primary residence department, case insensitive. */
+                department?: string;
+                /** @description Primary health center. */
+                healthCenterId?: string;
+                /** @description Current diagnosis code; combined with cancerStage on the same diagnosis. */
+                diagnosis?: string;
+                /** @description Current cancer stage catalog code. */
+                cancerStage?: string;
+                /** @description Current insurance catalog code. */
+                insuranceType?: string;
+                /** @description Current treatment type; combined with treatmentSituation on the same treatment. */
+                treatmentType?: string;
+                /** @description Current treatment situation catalog code. */
+                treatmentSituation?: string;
+                /** @description First enrollment on or after this date (inclusive). */
+                enrolledFrom?: string;
+                /** @description First enrollment before this date (exclusive). */
+                enrolledTo?: string;
+                /** @description Last completed contact before this date (exclusive). Excludes patients with no completed contact. */
+                lastContactBefore?: string;
+                /** @description Whether a non-empty email is registered. */
+                hasEmail?: boolean;
+                /** @description Whether the patient has at least one pending reminder, including historical records. */
+                hasPendingReminders?: boolean;
                 role?: "UNKNOWN" | "PATIENT";
                 status?: "UNENROLLED" | "ENROLLED";
                 activityStatus?: "ACTIVE" | "INACTIVE" | "REACTIVE";

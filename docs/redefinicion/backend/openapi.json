@@ -4752,6 +4752,184 @@
         "operationId": "PatientsController_findAll",
         "parameters": [
           {
+            "name": "hasPhone",
+            "required": false,
+            "in": "query",
+            "description": "Registered primary or secondary phone.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "hasCompanion",
+            "required": false,
+            "in": "query",
+            "description": "At least one linked companion.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "hasPendingFollowUps",
+            "required": false,
+            "in": "query",
+            "description": "Scheduled or overdue follow-up not superseded by a reschedule.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "minAge",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 130,
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxAge",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 130,
+              "type": "number"
+            }
+          },
+          {
+            "name": "gender",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "M",
+                "F",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "department",
+            "required": false,
+            "in": "query",
+            "description": "Current primary residence department, case insensitive.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "healthCenterId",
+            "required": false,
+            "in": "query",
+            "description": "Primary health center.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "diagnosis",
+            "required": false,
+            "in": "query",
+            "description": "Current diagnosis code; combined with cancerStage on the same diagnosis.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          },
+          {
+            "name": "cancerStage",
+            "required": false,
+            "in": "query",
+            "description": "Current cancer stage catalog code.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "insuranceType",
+            "required": false,
+            "in": "query",
+            "description": "Current insurance catalog code.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "treatmentType",
+            "required": false,
+            "in": "query",
+            "description": "Current treatment type; combined with treatmentSituation on the same treatment.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          },
+          {
+            "name": "treatmentSituation",
+            "required": false,
+            "in": "query",
+            "description": "Current treatment situation catalog code.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "enrolledFrom",
+            "required": false,
+            "in": "query",
+            "description": "First enrollment on or after this date (inclusive).",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "enrolledTo",
+            "required": false,
+            "in": "query",
+            "description": "First enrollment before this date (exclusive).",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "lastContactBefore",
+            "required": false,
+            "in": "query",
+            "description": "Last completed contact before this date (exclusive). Excludes patients with no completed contact.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasEmail",
+            "required": false,
+            "in": "query",
+            "description": "Whether a non-empty email is registered.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "hasPendingReminders",
+            "required": false,
+            "in": "query",
+            "description": "Whether the patient has at least one pending reminder, including historical records.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "role",
             "required": false,
             "in": "query",
@@ -12583,6 +12761,9 @@
           "subjectPatientName": {
             "type": "string"
           },
+          "patientHasEmail": {
+            "type": "boolean"
+          },
           "agentId": {
             "type": "string",
             "format": "uuid"
@@ -12631,6 +12812,7 @@
           "id",
           "subjectPatientId",
           "subjectPatientName",
+          "patientHasEmail",
           "agentId",
           "status",
           "type",
@@ -12652,6 +12834,9 @@
           },
           "subjectPatientName": {
             "type": "string"
+          },
+          "patientHasEmail": {
+            "type": "boolean"
           },
           "assignedAgentId": {
             "type": "string",
@@ -12675,6 +12860,7 @@
           "id",
           "subjectPatientId",
           "subjectPatientName",
+          "patientHasEmail",
           "assignedAgentId",
           "description",
           "dueAt",
