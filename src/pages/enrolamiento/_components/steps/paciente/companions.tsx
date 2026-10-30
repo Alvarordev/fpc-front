@@ -26,6 +26,7 @@ export function CompanionsSection({
   draft,
   callerReady,
   minor,
+  tried,
   groups,
   values,
   showMissing,
@@ -36,6 +37,8 @@ export function CompanionsSection({
   draft: EnrollmentDraft
   callerReady: boolean
   minor: boolean
+  /** Ya se intentó continuar: muestra el aviso de contacto secundario. */
+  tried: boolean
   groups: Group[]
   values: Values
   showMissing: boolean
@@ -46,12 +49,14 @@ export function CompanionsSection({
   const people = draft.contactPeople
   const askSecondary = draft.secondaryContactEnabled === true
   const candidates = secondaryCandidates(draft, callerReady)
+  const missingSecondary = askSecondary && !candidates.some((item) => item.person.isSecondaryContact)
 
   function answer(id: string, value: string | null) {
     if (id === "primarySource" && value === NEW_PERSON) return setTarget({ kind: "new", role: "primary" })
     onChange(id, value)
-    // Sin nadie a quien marcar, el contacto secundario se crea al momento.
-    if (id === "secondaryEnabled" && value === "yes" && candidates.length === 0) setTarget({ kind: "new", role: "secondary" })
+    // Sin ningún acompañante, el contacto secundario se crea al momento. Si ya
+    // hay alguno, se marca en su fila.
+    if (id === "secondaryEnabled" && value === "yes" && people.length === 0 && !callerReady) setTarget({ kind: "new", role: "secondary" })
   }
 
   function save(next: Values) {
@@ -94,7 +99,13 @@ export function CompanionsSection({
       <div className="mt-5">
         <RecordSection
           title="Personas cercanas al paciente"
-          description={askSecondary ? "Marca quiénes son contactos secundarios." : undefined}
+          description={
+            askSecondary
+              ? candidates.length
+                ? "Marca al menos uno como contacto secundario."
+                : "El contacto principal no puede ser secundario. Agrega otro acompañante."
+              : undefined
+          }
           addLabel="Agregar acompañante"
           onAdd={() => setTarget({ kind: "new", role: "none" })}
           empty="Todavía no hay acompañantes."
@@ -133,6 +144,11 @@ export function CompanionsSection({
             )
           })}
         </RecordSection>
+        {missingSecondary && tried && (
+          <p data-missing className="mt-2 text-xs text-red-700">
+            {candidates.length ? "Marca al menos un acompañante como contacto secundario." : "Agrega un acompañante para tenerlo como contacto secundario."}
+          </p>
+        )}
         {minor && <p className="mt-3 text-[13px] text-zinc-500">El paciente es menor de edad: el contacto principal debe ser un acompañante o tutor.</p>}
       </div>
       {target && (

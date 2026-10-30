@@ -63,6 +63,7 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
         draft={draft}
         callerReady={callerReady}
         minor={minor}
+        tried={gate.tried}
         groups={companions}
         values={values}
         showMissing={gate.showMissing}

@@ -25,6 +25,8 @@ export function useStepGate(groups: Group[], values: Values, validate?: (values:
 
   return {
     showMissing: armed && missing > 0,
+    /** Ya se intentó continuar: para avisos de reglas propias del paso. */
+    tried: armed,
     missingCount: armed && !message ? missing : 0,
     alert: armed ? message : null,
     blocked,

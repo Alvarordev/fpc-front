@@ -85,7 +85,9 @@ export function contactsError(draft: EnrollmentDraft, minor: boolean, callerRead
   const incomplete = draft.contactPeople.find((person) => !personReady(person))
   if (incomplete) return `Completa nombre, parentesco y teléfono de ${incomplete.fullName.trim() || "un acompañante"}`
   if (draft.secondaryContactEnabled && secondaryCount(draft, callerReady) === 0) {
-    return "Marca al menos un acompañante como contacto secundario o agrega uno"
+    return secondaryCandidates(draft, callerReady).length
+      ? "Marca al menos un acompañante como contacto secundario"
+      : "Agrega un acompañante para tenerlo como contacto secundario"
   }
   return null
 }
