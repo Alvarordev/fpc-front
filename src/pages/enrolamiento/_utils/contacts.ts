@@ -75,6 +75,15 @@ export function toggleSecondary(draft: EnrollmentDraft, key: string, on: boolean
   return { contactPeople: draft.contactPeople.map((person, i) => (i === index ? { ...person, isSecondaryContact: on } : person)) }
 }
 
+/** Marca o desmarca a una persona como cuidador. Solo hay un cuidador: marcar a uno desmarca a los demás. */
+export function toggleCaregiver(draft: EnrollmentDraft, key: string, on: boolean): Partial<EnrollmentDraft> {
+  const index = personIndex(key)
+  return {
+    companion: { ...draft.companion, isCaregiver: key === CALLER ? on : on ? false : draft.companion.isCaregiver },
+    contactPeople: draft.contactPeople.map((person, i) => ({ ...person, isCaregiver: i === index ? on : on ? false : person.isCaregiver })),
+  }
+}
+
 /** Primer problema de los contactos, o `null`. */
 export function contactsError(draft: EnrollmentDraft, minor: boolean, callerReady: boolean, patientPhone: string): string | null {
   const primary = primaryValue(draft, minor, callerReady)

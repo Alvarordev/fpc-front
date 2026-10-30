@@ -38,6 +38,10 @@ const schema = z
   .object({
     fullName: z.string().min(1, "Nombre requerido"),
     phone: z.string().min(1, "Celular requerido"),
+    birthDate: z
+      .string()
+      .min(1, "Fecha de nacimiento requerida")
+      .refine((value) => value <= new Date().toLocaleDateString("en-CA"), "La fecha no puede ser futura"),
     documentType: z.enum(["DNI", "CE", "CPP"], { message: "Selecciona el tipo de documento" }),
     dni: z.string().optional(),
     email: z.string().email("Correo inválido").optional().or(z.literal("")),
@@ -93,6 +97,7 @@ export function AddProspectDialog({
     defaultValues: {
       fullName: "",
       phone: "",
+      birthDate: "",
       documentType: "DNI",
       dni: "",
       email: "",
@@ -186,6 +191,23 @@ export function AddProspectDialog({
                   }}
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Fecha de nacimiento <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="date"
+                max={new Date().toLocaleDateString("en-CA")}
+                className={ic}
+                {...register("birthDate")}
+              />
+              {errors.birthDate && (
+                <p className="text-xs text-destructive">
+                  {errors.birthDate.message}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">

@@ -22,11 +22,11 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
   const callerReady = Boolean(caller.fullName.trim() && caller.primaryPhone.trim() && caller.relationship?.trim())
   const minor = isMinor(draft.patientData.birthDate)
   const values = pacienteValues(draft, { historical, minor, callerReady })
-  const phoneRequired = values.primarySource === "PATIENT" || !historical
+  const phoneRequired = values.primarySource === "PATIENT"
   const phones = contactGroups(phoneRequired)
   const companions = companionGroups(primaryOptions(draft, minor, callerReady))
   const groups = [...identityGroups, ...phones, ...residenceGroups, ...profileGroups, ...companions]
-  const gate = useStepGate(groups, values, () => validatePaciente(draft, historical, { state: lookup.state, matchId: lookup.match?.id }, callerReady, minor))
+  const gate = useStepGate(groups, values, () => validatePaciente(draft, { state: lookup.state, matchId: lookup.match?.id }, callerReady, minor))
 
   function onChange(id: string, value: string | null) {
     updateDraft(applyPaciente(draft, id, value))

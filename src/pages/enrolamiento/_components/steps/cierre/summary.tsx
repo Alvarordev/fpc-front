@@ -7,7 +7,7 @@ export function CierreSummary() {
   const meta = draft.enrollmentMetadata
   const items: [string, React.ReactNode][] = [
     ["Paciente", draft.patientData.fullName || "—"],
-    ["DNI", draft.patientData.dni || "—"],
+    [draft.patientData.documentType ?? "DNI", draft.patientData.dni || "—"],
     ["Teléfono", draft.patientData.primaryPhone || "—"],
     ...(draft.patientData.email ? [["Correo", draft.patientData.email] as [string, string]] : []),
   ]

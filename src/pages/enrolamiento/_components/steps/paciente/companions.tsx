@@ -9,7 +9,7 @@ import type { Group, Values } from "@/components/ds/questions"
 import { RecordSection, RemoveButton } from "@/components/ds/record-section"
 import { cn } from "@/lib/utils"
 import type { CompanionDraft, EnrollmentDraft } from "../../../_store/enrollment-store"
-import { CALLER, NEW_PERSON, personValue, secondaryCandidates, toggleSecondary } from "../../../_utils/contacts"
+import { CALLER, NEW_PERSON, personValue, secondaryCandidates, toggleCaregiver, toggleSecondary } from "../../../_utils/contacts"
 import { SectionBlock } from "../section-block"
 import { companionValues, toCompanion } from "./adapter"
 import { personGroups } from "./config"
@@ -100,11 +100,13 @@ export function CompanionsSection({
         <RecordSection
           title="Personas cercanas al paciente"
           description={
-            askSecondary
-              ? candidates.length
-                ? "Marca al menos uno como contacto secundario."
-                : "El contacto principal no puede ser secundario. Agrega otro acompañante."
-              : undefined
+            [
+              askSecondary &&
+                (candidates.length ? "Marca al menos uno como contacto secundario." : "El contacto principal no puede ser secundario. Agrega otro acompañante."),
+              rows.length > 0 && !rows.some((row) => row.person.isCaregiver) && "Si alguno cuida al paciente, márcalo como cuidador.",
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
           addLabel="Agregar acompañante"
           onAdd={() => setTarget({ kind: "new", role: "none" })}
@@ -121,6 +123,7 @@ export function CompanionsSection({
                   <>
                     {primary && <Chip tone="blue">Contacto principal</Chip>}
                     {row.caller && <Chip>Quien llamó</Chip>}
+                    {row.person.isCaregiver && <Chip tone="green">Cuidador</Chip>}
                   </>
                 }
                 meta={
@@ -134,8 +137,9 @@ export function CompanionsSection({
                 openLabel={`Editar a ${row.person.fullName}`}
                 actions={
                   <>
+                    <MarkToggle label="Cuidador" on={row.person.isCaregiver === true} onChange={(on) => onPeople(toggleCaregiver(draft, row.key, on))} />
                     {askSecondary && !primary && (
-                      <SecondaryToggle on={secondary} onChange={(on) => onPeople(toggleSecondary(draft, row.key, on))} />
+                      <MarkToggle label="Contacto secundario" on={secondary} onChange={(on) => onPeople(toggleSecondary(draft, row.key, on))} />
                     )}
                     {!row.caller && <RemoveButton label={`Quitar a ${row.person.fullName}`} onClick={() => remove(row.index)} />}
                   </>
@@ -167,8 +171,8 @@ export function CompanionsSection({
   )
 }
 
-/** Marca de contacto secundario en la fila del acompañante. */
-function SecondaryToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+/** Marca en la fila del acompañante: contacto secundario o cuidador. */
+function MarkToggle({ label, on, onChange }: { label: string; on: boolean; onChange: (on: boolean) => void }) {
   return (
     <button
       type="button"
@@ -180,7 +184,7 @@ function SecondaryToggle({ on, onChange }: { on: boolean; onChange: (on: boolean
       )}
     >
       {on && <Check className="size-3.5" />}
-      Contacto secundario
+      {label}
     </button>
   )
 }

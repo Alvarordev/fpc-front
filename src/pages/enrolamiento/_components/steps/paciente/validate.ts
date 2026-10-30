@@ -16,7 +16,6 @@ function isValidLocationUrl(value: string | undefined) {
 
 export function validatePaciente(
   draft: EnrollmentDraft,
-  historical: boolean,
   lookup: { state: DniLookupState; matchId?: string },
   callerReady: boolean,
   minor: boolean,
@@ -32,7 +31,8 @@ export function validatePaciente(
 
   const pd = draft.patientData
   const selected = primaryValue(draft, minor, callerReady)
-  const phoneRequired = selected === "PATIENT" || !historical
+  // El teléfono del paciente solo es obligatorio si él es el contacto principal.
+  const phoneRequired = selected === "PATIENT"
   const basicsMissing = !pd.fullName.trim() || !pd.birthDate || (phoneRequired && !pd.primaryPhone.trim())
   if (basicsMissing || !selected) return null
 

@@ -78,6 +78,7 @@ export function contactPerson(person: CompanionDraft) {
     gender: value(person.gender),
     hasWhatsapp: person.hasWhatsapp,
     relationship,
+    isCaregiver: person.isCaregiver === true,
   }
 }
 
@@ -140,13 +141,6 @@ export function buildEnrollmentPayload({
   ) {
     throw new Error("Completa el teléfono principal del paciente")
   }
-  if (
-    !historical &&
-    !draft.patientId &&
-    !value(draft.patientData.primaryPhone)
-  ) {
-    throw new Error("Completa el teléfono principal del paciente")
-  }
   if (isMinorPatient && primaryContactSource === "PATIENT") {
     throw new Error(
       "Un paciente menor debe tener un acompañante como contacto principal",
@@ -173,20 +167,20 @@ export function buildEnrollmentPayload({
       diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
       symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
       diseaseEvolution: value(diagnosis.diseaseEvolution),
-      waitTimeForDiagnosis: (diagnosis.remembersWaitTimeForDiagnosis ?? true) ===
-      false
-        ? fixedWaitTime(diagnosis.waitTimeRecall)
-        : diagnosis.waitTimeForDiagnosisManuallyEdited
-          ? duration(
-              diagnosis.waitTimeForDiagnosis,
-              `tiempo de espera para el diagnóstico ${index + 1}`,
-            )
-          : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
-            ? undefined
-            : duration(
+      waitTimeForDiagnosis:
+        (diagnosis.remembersWaitTimeForDiagnosis ?? true) === false
+          ? fixedWaitTime(diagnosis.waitTimeRecall)
+          : diagnosis.waitTimeForDiagnosisManuallyEdited
+            ? duration(
                 diagnosis.waitTimeForDiagnosis,
                 `tiempo de espera para el diagnóstico ${index + 1}`,
-              ),
+              )
+            : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
+              ? undefined
+              : duration(
+                  diagnosis.waitTimeForDiagnosis,
+                  `tiempo de espera para el diagnóstico ${index + 1}`,
+                ),
       hasMedicalReport: diagnosis.hasMedicalReport ?? undefined,
     }
   })
@@ -502,32 +496,34 @@ export function buildEnrollmentPayload({
       ? { ...contact, person: contactPerson(contact.person) }
       : contact,
   )
-  const hasCaller = isFamily || linked.callerIsContact
+  // Quien llama también se registra si es el cuidador, aunque no sea contacto.
+  const hasCaller =
+    isFamily ||
+    linked.callerIsContact ||
+    (callerIsComplete && draft.companion.isCaregiver === true)
   if (hasCaller && !callerIsComplete)
     throw new Error("Completa los datos de quien llama")
 
   const payload = {
-    ...(draft.patientId
-      ? { patientId: draft.patientId }
-      : {
-          patient: {
-            fullName: draft.patientData.fullName.trim(),
-            ...(value(draft.patientData.primaryPhone)
-              ? { primaryPhone: value(draft.patientData.primaryPhone) }
-              : {}),
-            secondaryPhone: value(draft.patientData.secondaryPhone),
-            email: value(draft.patientData.email),
-            ...(value(draft.patientData.dni)
-              ? {
-                  documentType: draft.patientData.documentType ?? "DNI",
-                  dni: value(draft.patientData.dni),
-                }
-              : {}),
-            birthDate: value(draft.patientData.birthDate),
-            gender: value(draft.patientData.gender),
-            hasWhatsapp: draft.patientData.hasWhatsapp,
-          },
-        }),
+    // Con un prospecto se manda su id y lo registrado en el asistente, que completa su ficha.
+    ...(draft.patientId ? { patientId: draft.patientId } : {}),
+    patient: {
+      fullName: draft.patientData.fullName.trim(),
+      ...(value(draft.patientData.primaryPhone)
+        ? { primaryPhone: value(draft.patientData.primaryPhone) }
+        : {}),
+      secondaryPhone: value(draft.patientData.secondaryPhone),
+      email: value(draft.patientData.email),
+      ...(value(draft.patientData.dni)
+        ? {
+            documentType: draft.patientData.documentType ?? "DNI",
+            dni: value(draft.patientData.dni),
+          }
+        : {}),
+      birthDate: value(draft.patientData.birthDate),
+      gender: value(draft.patientData.gender),
+      hasWhatsapp: draft.patientData.hasWhatsapp,
+    },
     followUp: {
       type: "CALL",
       agentId,
@@ -556,7 +552,7 @@ export function buildEnrollmentPayload({
             relationship: value(draft.companion.relationship),
             isPrimaryInformant: isFamily,
             isPrimaryContact: false,
-            isCaregiver: false,
+            isCaregiver: draft.companion.isCaregiver === true,
           },
         }
       : {}),

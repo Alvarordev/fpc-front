@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
@@ -27,7 +27,7 @@ import { unlinkedPeople } from "../../../_utils/contacts"
 async function registerUnlinked(patientId: string, draft: EnrollmentDraft) {
   const people = unlinkedPeople(draft)
   const results = await Promise.allSettled(
-    people.map((person) => patientsApi.createCompanion(patientId, { ...contactPerson(person), isPrimaryContact: false, isCaregiver: false })),
+    people.map((person) => patientsApi.createCompanion(patientId, { ...contactPerson(person), isPrimaryContact: false })),
   )
   const failed = results.filter((result) => result.status === "rejected").length
   if (failed) toast.warning(failed === 1 ? "No se pudo registrar un acompañante" : `No se pudieron registrar ${failed} acompañantes`, { description: "Agrégalo desde la ficha del paciente, en Acompañantes." })
@@ -44,6 +44,7 @@ export function Step8Cierre({ historical = false, embedded = false }: { historic
   const historicalPatientId = useEnrollmentStore((state) => state.historicalPatientId)
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const isAgent = user?.role === "AGENT"
 
   const { data: agents = [] } = useQuery({
@@ -95,8 +96,15 @@ export function Step8Cierre({ historical = false, embedded = false }: { historic
         buildEnrollmentPayload({ draft: current, agentId, categoriaClinica: state.categoriaClinica }),
       )
       await registerUnlinked(enrollment.patientId, current)
+      return enrollment
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      // Un prospecto ya tiene su ficha en caché: que se vea enrolado al abrirla.
+      const patientId = result && "patientId" in result ? result.patientId : useEnrollmentStore.getState().draft.patientId
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["patients"] }),
+        ...(patientId ? [queryClient.invalidateQueries({ queryKey: ["patient-profile", patientId] })] : []),
+      ])
       completeEnrollment()
       toast.success(historical ? "Enrolamiento histórico guardado" : "Paciente enrolado correctamente")
       if (historical && result && "patientId" in result) navigate(`/carga-historica/pacientes/${result.patientId}`)

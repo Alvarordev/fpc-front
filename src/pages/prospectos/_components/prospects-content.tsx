@@ -42,6 +42,7 @@ export function ProspectsContent() {
           ? { documentType: values.documentType, dni: values.dni }
           : {}),
         primaryPhone: values.phone,
+        birthDate: values.birthDate,
         email: values.email || undefined,
         hasWhatsapp: true,
       })
