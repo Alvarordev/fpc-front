@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { UserRound } from "lucide-react"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
+import { Card, Item } from "@/components/ds/card"
+import { InlineAlert } from "@/components/ds/inline-alert"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 
 export function NeedsReassignmentPanel() {
@@ -10,40 +13,28 @@ export function NeedsReassignmentPanel() {
     staleTime: 30_000,
   })
   const sessions = query.data ?? []
+  if (query.isLoading || query.isError || sessions.length === 0) return null
 
   return (
-    <section className="rounded-xl border p-4">
-      <h2 className="text-sm font-semibold">Sesiones por reasignar</h2>
-      <p className="text-muted-foreground mt-0.5 text-xs">
-        Sesiones pendientes de voluntarios que ya no están activos.
-      </p>
-      {query.isLoading ? (
-        <p className="text-muted-foreground mt-3 text-sm">Cargando sesiones...</p>
-      ) : query.isError ? (
-        <p className="text-destructive mt-3 text-sm">No se pudo cargar la lista.</p>
-      ) : sessions.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-sm">No hay sesiones por reasignar.</p>
-      ) : (
-        <ul className="mt-3 divide-y">
-          {sessions.map((session) => (
-            <li key={session.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-              <div>
-                <p className="font-medium">Sesión {session.sessionNumber}</p>
-                <p className="text-muted-foreground text-xs">
-                  {session.volunteerFullName}
-                  {session.scheduledOn ? ` · ${session.scheduledOn}` : ""}
-                </p>
-              </div>
+    <Card title="Sesiones por reasignar" icon={UserRound} tone="amber">
+      <InlineAlert tone="warning">{sessions.length === 1 ? "1 sesión" : `${sessions.length} sesiones`} de voluntarios que ya no están activos.</InlineAlert>
+      <div className="mt-3 space-y-2">
+        {sessions.map((session) => (
+          <Item
+            key={session.id}
+            title={`Sesión ${session.sessionNumber}`}
+            meta={`${session.volunteerFullName}${session.scheduledOn ? ` · ${session.scheduledOn}` : ""}`}
+            actions={
               <Link
                 to={patientTabUrl(session.patientId, "psicooncologia")}
-                className="text-primary text-xs underline"
+                className="relative z-10 text-[13px] font-medium text-zinc-800 underline decoration-zinc-300 underline-offset-2"
               >
                 Reprogramar
               </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+            }
+          />
+        ))}
+      </div>
+    </Card>
   )
 }
