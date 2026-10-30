@@ -140,8 +140,8 @@ export function OriginCard({ patient }: Props) {
         <p className="text-[13px] text-zinc-500">Sin datos de procedencia. Se registran en el enrolamiento o en un seguimiento.</p>
       )}
       <GroupLabel>Direcciones</GroupLabel>
-      <div className="px-1 pt-1">
-        <PatientRecordsSection patientId={patient.id} embedded />
+      <div className="pt-1">
+        <PatientRecordsSection patientId={patient.id} />
       </div>
     </Card>
   )

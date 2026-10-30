@@ -34,7 +34,7 @@ export function AppTopbar() {
 
   if (patientId) {
     return (
-      <header className="border-border/60 bg-background/95 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
+      <header className="border-border/60 bg-background/95 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground -ml-1" />
 
         <nav className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
@@ -74,7 +74,7 @@ export function AppTopbar() {
   const title = pathTitles[baseSegment] ?? "Dashboard"
 
   return (
-    <header className="border-border/60 bg-background/95 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
+    <header className="border-border/60 bg-background/95 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
       <SidebarTrigger className="text-muted-foreground hover:text-foreground -ml-1" />
 
       <span className="text-sm font-medium">{title}</span>
