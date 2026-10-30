@@ -79,7 +79,6 @@ type Props = SheetTabProps & {
   current: PatientDiagnosticStatusEvent | null | undefined
   /** Enrolado ya con diagnóstico de cáncer: no hay búsqueda que cerrar. */
   locked: boolean
-  readOnly: boolean
   /** Evento de descarte ya guardado al que se asocia el diagnóstico no oncológico. */
   ruledOutEventId: string | null
   /** Diagnóstico no oncológico que contó en Síntomas, para no volver a escribirlo. */
@@ -146,7 +145,7 @@ function nonOncologicalDraft(v: Values, previous: NonOncologicalFollowUpDraft | 
   }
 }
 
-export function BusquedaSection({ drafts, onDraftsChange, current, locked, readOnly, ruledOutEventId, reportedOther }: Props) {
+export function BusquedaSection({ drafts, onDraftsChange, current, locked, ruledOutEventId, reportedOther }: Props) {
   const { values, answer } = useAnswers(
     () => initialValues(drafts, current, reportedOther),
     (v, changed) =>
@@ -170,21 +169,17 @@ export function BusquedaSection({ drafts, onDraftsChange, current, locked, readO
           {current.supportedBySepa !== null ? `. Soporte SEPA: ${current.supportedBySepa ? "sí" : "no"}` : ""}.
         </TabNote>
       )}
-      {!readOnly && (
-        <>
-          <QuestionForm groups={statusGroups} values={values} onChange={answer} />
-          {values.dsStatus && (
-            <TabNote>
-              Al completar el seguimiento el paciente pasará a{" "}
-              {values.dsStatus === "CONFIRMED"
-                ? `diagnóstico de cáncer, ${patientHealthSubcategoryLabels[values.dsSubcategory as keyof typeof patientHealthSubcategoryLabels]?.toLowerCase()}`
-                : "control anual, en la subcategoría de pacientes con descarte"}
-              .
-            </TabNote>
-          )}
-          <MissingNote groups={statusGroups} values={values} what="el resultado de la búsqueda" />
-        </>
+      <QuestionForm groups={statusGroups} values={values} onChange={answer} />
+      {values.dsStatus && (
+        <TabNote>
+          Al guardar el seguimiento el paciente pasará a{" "}
+          {values.dsStatus === "CONFIRMED"
+            ? `diagnóstico de cáncer, ${patientHealthSubcategoryLabels[values.dsSubcategory as keyof typeof patientHealthSubcategoryLabels]?.toLowerCase()}`
+            : "control anual, en la subcategoría de pacientes con descarte"}
+          .
+        </TabNote>
       )}
+      <MissingNote groups={statusGroups} values={values} what="el resultado de la búsqueda" />
       {status === "RULED_OUT" && (
         <>
           <QuestionForm groups={nonOncologicalGroups} values={values} onChange={answer} />

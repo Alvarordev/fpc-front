@@ -178,13 +178,12 @@ type Props = SheetTabProps & {
   enrollmentReport: PatientSymptomReport | undefined
   current: PatientDiagnosticStatusEvent | null | undefined
   locked: boolean
-  readOnly: boolean
   ruledOutEventId: string | null
   /** Solo si en el último enrolamiento no se atendía ni recibía tratamiento. */
   primaryCareQuestions: boolean
 }
 
-export function SintomasTab({ drafts, onDraftsChange, enrollmentReport, primaryCareQuestions, current, locked, readOnly, ruledOutEventId }: Props) {
+export function SintomasTab({ drafts, onDraftsChange, enrollmentReport, primaryCareQuestions, current, locked, ruledOutEventId }: Props) {
   const groups = symptomGroups(primaryCareQuestions)
   const { values, answer } = useAnswers(
     () => initialValues(drafts.symptomReport, enrollmentReport),
@@ -200,7 +199,6 @@ export function SintomasTab({ drafts, onDraftsChange, enrollmentReport, primaryC
         onDraftsChange={onDraftsChange}
         current={current}
         locked={locked}
-        readOnly={readOnly}
         ruledOutEventId={ruledOutEventId}
         reportedOther={values.diagnosed === "yes" && values.diagnosisKind === "other" ? (values.reportedOther ?? null) : null}
       />

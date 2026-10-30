@@ -61,7 +61,6 @@ export function ClinicalSheet({ patientId, followUpId = "", drafts, onDraftsChan
         primaryCareQuestions={primaryCareQuestions}
         current={current}
         locked={locked}
-        readOnly={historical}
         ruledOutEventId={drafts.diagnosticStatus ? null : current?.status === "RULED_OUT" ? current.id : null}
       />
     ),

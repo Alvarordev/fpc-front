@@ -9,7 +9,11 @@ import {
   type CreateHistoricalFollowUpInput,
   type HistoricalFollowUp,
 } from "@/api/historical-records"
-import type { PatientDetailsResponse } from "@/api/patients"
+import {
+  patientsApi,
+  type PatientDetailsResponse,
+  type PatientDiagnosticStatusEvent,
+} from "@/api/patients"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -34,6 +38,7 @@ import {
   FOLLOW_UP_PURPOSE_OPTIONS,
   FOLLOW_UP_STATUS_OPTIONS,
   FOLLOW_UP_TYPE_OPTIONS,
+  formatHistoricalDate,
   toDateInputValue,
 } from "./historical-record-options"
 
@@ -188,13 +193,76 @@ function HistoricalFollowUpForm({
       if (!scheduledOn && !completedOn)
         throw new Error("Indica la fecha programada o la fecha de realización")
 
-      const clinical = buildHistoricalClinicalPayload({
-        drafts,
-        patientId,
-        recordIds,
-      })
+      // El resultado de la búsqueda se registra con la fecha del seguimiento,
+      // no con la de la carga. Al editar va antes del guardado para que el
+      // diagnóstico no oncológico quede enlazado al evento de descarte.
+      const recordDiagnosticStatus = async (id: string) => {
+        const draft = drafts.diagnosticStatus
+        if (!draft || draft.eventId) return draft?.eventId
+        if (draft.status === "CONFIRMED" && !draft.diagnosis?.trim())
+          throw new Error("Indica el diagnóstico formal")
+        const occurredOn = completedOn || scheduledOn
+        // El estado vigente es el evento más reciente: un resultado fechado
+        // antes del último estado registrado quedaría oculto tras él.
+        const current =
+          queryClient.getQueryData<PatientDiagnosticStatusEvent | null>([
+            "patient-diagnostic-status-current",
+            patientId,
+          ])
+        if (current?.occurredAt && occurredOn < current.occurredAt.slice(0, 10))
+          throw new Error(
+            `El resultado de la búsqueda no puede ser anterior al ${formatHistoricalDate(current.occurredAt)}, fecha del último estado de la búsqueda`,
+          )
+        const event = await patientsApi.transitionDiagnosticStatus(patientId, {
+          status: draft.status,
+          followUpId: id,
+          occurredAt: `${occurredOn}T12:00:00.000Z`,
+          ...(draft.status === "CONFIRMED"
+            ? {
+                diagnosis: {
+                  diagnosis: draft.diagnosis!.trim(),
+                  mode: "PARALLEL",
+                },
+                healthSubcategory:
+                  draft.healthSubcategory ?? "ACTIVE_TREATMENT",
+              }
+            : {}),
+          supportedBySepa: draft.supportedBySepa,
+          notes: draft.notes?.trim() || undefined,
+        })
+        // Si el guardado falla después, reintentar no repite la transición.
+        setDrafts((prev) =>
+          prev.diagnosticStatus
+            ? {
+                ...prev,
+                diagnosticStatus: {
+                  ...prev.diagnosticStatus,
+                  eventId: event.id,
+                },
+              }
+            : prev,
+        )
+        return event.id
+      }
 
       if (followUpId) {
+        const eventId = await recordDiagnosticStatus(followUpId)
+        const clinical = buildHistoricalClinicalPayload({
+          drafts:
+            eventId &&
+            drafts.nonOncologicalFollowUp &&
+            drafts.diagnosticStatus?.status === "RULED_OUT"
+              ? {
+                  ...drafts,
+                  nonOncologicalFollowUp: {
+                    ...drafts.nonOncologicalFollowUp,
+                    diagnosticStatusEventId: eventId,
+                  },
+                }
+              : drafts,
+          patientId,
+          recordIds,
+        })
         return historicalRecordsApi.updateFollowUp(followUpId, {
           ...clinical,
           agentId,
@@ -207,8 +275,8 @@ function HistoricalFollowUpForm({
         })
       }
 
-      return historicalRecordsApi.createFollowUp({
-        ...clinical,
+      const created = await historicalRecordsApi.createFollowUp({
+        ...buildHistoricalClinicalPayload({ drafts, patientId, recordIds }),
         subjectPatientId: patientId,
         agentId,
         type,
@@ -218,6 +286,8 @@ function HistoricalFollowUpForm({
         ...(scheduledOn ? { scheduledOn } : {}),
         ...(completedOn ? { completedOn } : {}),
       })
+      await recordDiagnosticStatus(created.id)
+      return created
     },
     onSuccess: async (followUp) => {
       await Promise.all([
@@ -237,6 +307,9 @@ function HistoricalFollowUpForm({
           queryKey: ["patient-social-notes", patientId],
         }),
         queryClient.invalidateQueries({ queryKey: ["follow-up", followUp.id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-diagnostic-status-current", patientId],
+        }),
       ])
       toast.success(
         followUpId
