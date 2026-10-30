@@ -8,6 +8,7 @@ import { AlertDetailModal } from "./alert-detail-modal"
 import { alertColumns } from "./alerts-columns"
 import { AlertsFilters } from "./alerts-filters"
 import { ReportAlertModal } from "./report-alert-modal"
+import { useAuthStore } from "@/store/auth-store"
 
 export function AlertsContent() {
   const [params] = useSearchParams()
@@ -25,6 +26,8 @@ export function AlertsContent() {
   const selected = alerts.find((alert) => alert.id === selectedId) ?? null
   const columns = useMemo(() => alertColumns(), [])
   const empty = alerts.length === 0
+  // Solo el agente puede reportar: la API responde 403 a los demás roles.
+  const canReport = useAuthStore((state) => state.user?.role) === "AGENT"
 
   return (
     <div className="font-ds space-y-5">
@@ -35,7 +38,7 @@ export function AlertsContent() {
             {visible.length === alerts.length ? `${visible.length} alertas` : `${visible.length} de ${alerts.length}`}
           </p>
         </div>
-        <AddButton onClick={() => setCreating(true)}>Reportar incidencia</AddButton>
+        {canReport && <AddButton onClick={() => setCreating(true)}>Reportar incidencia</AddButton>}
       </header>
 
       <AlertsFilters alerts={alerts} />
@@ -51,8 +54,8 @@ export function AlertsContent() {
             ? "Reporta la primera cuando un hospital no entrega un tratamiento, una cita o un trámite."
             : "Prueba con otro estado, otra severidad o quita el establecimiento."
         }
-        emptyAction={empty ? "Reportar incidencia" : undefined}
-        onEmptyAction={empty ? () => setCreating(true) : undefined}
+        emptyAction={empty && canReport ? "Reportar incidencia" : undefined}
+        onEmptyAction={empty && canReport ? () => setCreating(true) : undefined}
       />
 
       <AlertDetailModal alert={selected} onClose={() => setSelectedId(null)} />

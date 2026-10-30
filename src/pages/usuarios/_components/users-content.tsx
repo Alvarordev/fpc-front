@@ -117,6 +117,7 @@ export function UsersContent() {
         data={visible}
         columns={columns}
         isLoading={isLoading}
+        onRowClick={setEditing}
         emptyTitle={empty ? "Todavía no hay usuarios" : "Ningún usuario coincide"}
         emptyBody={empty ? "Crea el primero para dar acceso al equipo." : "Prueba con otro nombre, rol o estado."}
         emptyAction={empty ? "Nuevo usuario" : undefined}

@@ -8,7 +8,7 @@ export type Values = Record<string, string | null>
 
 export type Option = { value: string; label: string; sublabel?: string }
 
-export type QuestionType = "yesno" | "tri" | "choice" | "select" | "text" | "textarea" | "date" | "time" | "datetime" | "number" | "scale" | "duration" | "multi"
+export type QuestionType = "yesno" | "tri" | "choice" | "select" | "text" | "password" | "textarea" | "date" | "time" | "datetime" | "number" | "scale" | "duration" | "multi"
 
 /**
  * Tipos de respuesta. `tri` es Sí / No / No sabe (o las `options` que se le

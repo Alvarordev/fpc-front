@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Search, X } from "lucide-react"
+import { Search } from "lucide-react"
 import { DataTable } from "@/components/ds/data-table"
-import { Field, TextInput } from "@/components/ds/form"
+import { TextInput } from "@/components/ds/form"
 import { SearchSelect } from "@/components/ds/search-select"
 import { useCatalog } from "@/hooks/use-catalog"
 import { useTalkInterests } from "../_hooks/use-talk-interests"
@@ -32,7 +32,6 @@ export function TalkInterestsContent() {
   }, [searchInput, filters.search, setParams])
 
   const { data: talks = [] } = useCatalog("educational_talk")
-  const talkLabel = talks.find((item) => item.code === filters.talk)?.label
   const list = useTalkInterests({
     search: filters.search.trim() || undefined,
     talk: filters.talk ?? undefined,
@@ -54,7 +53,7 @@ export function TalkInterestsContent() {
         </p>
       </header>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
           <TextInput
@@ -66,60 +65,18 @@ export function TalkInterestsContent() {
           />
         </div>
         <div className="w-full sm:w-72">
-          <Field label="Charla">
-            {(id) => (
-              <SearchSelect
-                id={id}
+          <SearchSelect
                 value={filters.talk ?? "all"}
                 onChange={(value) =>
                   setParams(writeTalkFilters(params, { ...filters, talk: value === "all" ? null : value }), { replace: true })
                 }
-                options={[{ value: "all", label: "Todas" }, ...talks.map((item) => ({ value: item.code, label: item.label }))]}
-                placeholder="Todas"
+                options={[{ value: "all", label: "Todas las charlas" }, ...talks.map((item) => ({ value: item.code, label: item.label }))]}
+                placeholder="Todas las charlas"
                 searchPlaceholder="Buscar charla"
               />
-            )}
-          </Field>
         </div>
       </div>
 
-      {(filters.search.trim() || filters.talk) && (
-        <div className="flex flex-wrap items-center gap-2">
-          {filters.search.trim() && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput("")
-                setParams(writeTalkFilters(params, { ...filters, search: "" }), { replace: true })
-              }}
-              className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
-            >
-              “{filters.search.trim()}”
-              <X className="size-3" />
-            </button>
-          )}
-          {filters.talk && (
-            <button
-              type="button"
-              onClick={() => setParams(writeTalkFilters(params, { ...filters, talk: null }), { replace: true })}
-              className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
-            >
-              {talkLabel ?? "Charla"}
-              <X className="size-3" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setSearchInput("")
-              setParams(writeTalkFilters(params, { search: "", talk: null }), { replace: true })
-            }}
-            className="text-[13px] text-zinc-600 underline decoration-zinc-300 underline-offset-2"
-          >
-            Limpiar filtros
-          </button>
-        </div>
-      )}
 
       <DataTable
         data={rows}

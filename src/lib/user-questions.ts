@@ -22,7 +22,7 @@ export function userCreateGroups(): Group[] {
       title: "Cuenta",
       questions: [
         { id: "email", label: "Correo", type: "text", required: true, wide: true, placeholder: "nombre@fpc.pe" },
-        { id: "password", label: "Contraseña", type: "text", required: true, wide: true, hint: "Mínimo 8 caracteres" },
+        { id: "password", label: "Contraseña", type: "password", required: true, wide: true, hint: "Mínimo 8 caracteres" },
         { id: "role", label: "Rol", type: "choice", required: true, wide: true, options: roleOptions },
       ],
     },

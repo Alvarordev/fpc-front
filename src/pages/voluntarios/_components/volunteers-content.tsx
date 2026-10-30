@@ -110,8 +110,6 @@ export function VolunteersContent() {
 
       <NeedsReassignmentPanel />
       <VolunteerCommitmentBanner volunteers={volunteers} />
-      <VolunteersFilters volunteers={volunteers} />
-
       <SlidingTabs
         label="Secciones de voluntarios"
         value={filters.tab}
@@ -122,6 +120,8 @@ export function VolunteersContent() {
           { id: "sepa", label: "Equipo SEPA" },
         ]}
       />
+
+      {filters.tab !== "sepa" && <VolunteersFilters volunteers={volunteers} />}
 
       {filters.tab === "calendario" && (
         <div className="space-y-4">

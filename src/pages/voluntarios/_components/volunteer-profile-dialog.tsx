@@ -139,9 +139,6 @@ export function VolunteerProfileDialog({
           ]}
         />
       </Panel>
-      <Panel title="Especialidad">
-        <p className="text-sm text-zinc-800">{volunteer.specialty}</p>
-      </Panel>
       <Panel title="Pacientes">
         {patients.length === 0 ? (
           <p className="text-[13px] text-zinc-500">No hay pacientes en el mes en curso.</p>

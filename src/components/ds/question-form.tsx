@@ -129,6 +129,8 @@ function QuestionField({
               return text("time")(id)
             case "datetime":
               return text("datetime-local")(id)
+            case "password":
+              return text("password")(id)
             default:
               return text("text")(id)
           }
