@@ -32,10 +32,7 @@ export function RowMenu({ label = "Acciones", items }: { label?: string; items: 
           return (
             <DropdownMenuItem
               key={item.label}
-              onClick={(event) => {
-                event.stopPropagation()
-                item.onSelect()
-              }}
+              onClick={() => item.onSelect()}
               className={cn(
                 "cursor-pointer rounded-[9px] px-2.5 py-2 text-[13px] font-medium text-zinc-800 focus:bg-zinc-100 focus:text-zinc-900",
                 item.destructive && "text-red-700 focus:bg-red-50 focus:text-red-700",

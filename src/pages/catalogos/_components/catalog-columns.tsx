@@ -1,88 +1,70 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Pencil, Archive, RotateCcw, GitMerge } from "lucide-react"
+import { Archive, GitMerge, Pencil, RotateCcw } from "lucide-react"
 import type { CatalogItem } from "@/api/catalogs"
-import { cn } from "@/lib/utils"
-
-interface CatalogColumnsOptions {
-  onEdit: (item: CatalogItem) => void
-  onArchive: (item: CatalogItem) => void
-  onReactivate: (item: CatalogItem) => void
-  onMerge?: (item: CatalogItem) => void
-}
+import { Chip } from "@/components/ds/badge"
+import { CopyValue } from "@/components/ds/copy-value"
+import { RowMenu } from "@/components/ds/row-menu"
 
 export function catalogColumns({
+  hierarchical,
+  parentLabel,
+  canMerge,
   onEdit,
-  onArchive,
-  onReactivate,
   onMerge,
-}: CatalogColumnsOptions): ColumnDef<CatalogItem>[] {
-  return [
+  onDeactivate,
+  onReactivate,
+}: {
+  hierarchical: boolean
+  parentLabel: (code: string) => string
+  canMerge: boolean
+  onEdit: (item: CatalogItem) => void
+  onMerge: (item: CatalogItem) => void
+  onDeactivate: (item: CatalogItem) => void
+  onReactivate: (item: CatalogItem) => void
+}): ColumnDef<CatalogItem, unknown>[] {
+  const columns: ColumnDef<CatalogItem, unknown>[] = [
     {
       accessorKey: "label",
       header: "Etiqueta",
-      cell: ({ row }) => (
-        <p className="max-w-[280px] truncate text-sm font-medium">
-          {row.original.label}
-        </p>
-      ),
+      enableSorting: true,
+      cell: ({ row }) => <p className="font-medium text-zinc-900">{row.original.label}</p>,
     },
     {
       accessorKey: "code",
       header: "Código",
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground font-mono text-xs">
-          {getValue() as string}
-        </span>
+      cell: ({ row }) => (
+        <CopyValue value={row.original.code} label="Código" className="text-[13px] text-zinc-500" />
       ),
     },
-    {
-      accessorKey: "parentCode",
+  ]
+
+  if (hierarchical) {
+    columns.push({
+      id: "parent",
       header: "Padre",
-      cell: ({ row }) =>
-        row.original.parentCode ? (
-          <span className="text-muted-foreground font-mono text-xs">
-            {row.original.parentCode}
-          </span>
-        ) : (
-          <span className="text-muted-foreground/50">—</span>
-        ),
-    },
+      accessorFn: (item) => (item.parentCode ? parentLabel(item.parentCode) : ""),
+      cell: ({ row }) => (
+        <span className="text-zinc-700">{row.original.parentCode ? parentLabel(row.original.parentCode) : "Sin padre"}</span>
+      ),
+    })
+  }
+
+  columns.push(
     {
       accessorKey: "sortOrder",
-      header: "Orden en listas",
-      cell: ({ getValue }) => (
-        <span className="tabular-nums text-sm">{getValue() as number}</span>
-      ),
+      header: "Orden",
+      enableSorting: true,
+      meta: { align: "right" },
+      cell: ({ row }) => <span className="tabular-nums">{row.original.sortOrder}</span>,
     },
     {
-      accessorKey: "isActive",
+      id: "status",
       header: "Estado",
       cell: ({ row }) => (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge
-            className={cn(
-              "border font-medium",
-              row.original.isActive
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-zinc-200 bg-zinc-100 text-zinc-600",
-            )}
-          >
-            {row.original.isActive ? "Activo" : "Archivado"}
-          </Badge>
-          {row.original.isSystem && (
-            <Badge variant="outline" className="text-[10px]">
-              Sistema
-            </Badge>
-          )}
-        </div>
+        <span className="inline-flex flex-wrap gap-1.5">
+          {row.original.isActive ? <Chip tone="green">Activo</Chip> : <Chip tone="gray">Inactivo</Chip>}
+          {row.original.isSystem && <Chip tone="gray">Sistema</Chip>}
+        </span>
       ),
     },
     {
@@ -92,49 +74,25 @@ export function catalogColumns({
         const item = row.original
         return (
           <div className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button variant="ghost" size="icon" className="size-8" />
-                }
-              >
-                <MoreHorizontal className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={4}>
-                <DropdownMenuItem onClick={() => onEdit(item)}>
-                  <Pencil className="size-4" />
-                  Editar
-                </DropdownMenuItem>
-                {onMerge && item.isActive && (
-                  <DropdownMenuItem
-                    disabled={item.isSystem}
-                    onClick={() => {
-                      if (!item.isSystem) onMerge(item)
-                    }}
-                  >
-                    <GitMerge className="size-4" />
-                    Fusionar con…
-                  </DropdownMenuItem>
-                )}
-                {item.isActive ? (
-                  <DropdownMenuItem
-                    disabled={item.isSystem}
-                    onClick={() => onArchive(item)}
-                  >
-                    <Archive className="size-4" />
-                    Archivar
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onClick={() => onReactivate(item)}>
-                    <RotateCcw className="size-4" />
-                    Reactivar
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <RowMenu
+              label={`Acciones de ${item.label}`}
+              items={[
+                { label: "Editar", icon: Pencil, onSelect: () => onEdit(item) },
+                ...(canMerge && item.isActive && !item.isSystem
+                  ? [{ label: "Fusionar con otro", icon: GitMerge, onSelect: () => onMerge(item) }]
+                  : []),
+                ...(item.isSystem
+                  ? []
+                  : item.isActive
+                    ? [{ label: "Desactivar", icon: Archive, destructive: true, onSelect: () => onDeactivate(item) }]
+                    : [{ label: "Reactivar", icon: RotateCcw, onSelect: () => onReactivate(item) }]),
+              ]}
+            />
           </div>
         )
       },
     },
-  ]
+  )
+
+  return columns
 }

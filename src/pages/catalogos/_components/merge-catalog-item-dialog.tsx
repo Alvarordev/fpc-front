@@ -1,146 +1,84 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { GitMerge } from "lucide-react"
 import { toast } from "sonner"
 import { catalogsApi, type CatalogItem, type CatalogKind } from "@/api/catalogs"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Button } from "@/components/ds/button"
+import { Field } from "@/components/ds/form"
+import { Modal } from "@/components/ds/modal"
+import { SearchSelect } from "@/components/ds/search-select"
 import { catalogQueryKey } from "@/hooks/use-catalog"
 
 export function MergeCatalogItemDialog({
   source,
   items,
   kind,
-  open,
-  onOpenChange,
+  onClose,
 }: {
   source: CatalogItem | null
   items: CatalogItem[]
   kind: CatalogKind
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  onClose: () => void
 }) {
   const queryClient = useQueryClient()
-  const [targetId, setTargetId] = useState("")
-  const [confirming, setConfirming] = useState(false)
-  const targets = items.filter((item) => item.id !== source?.id && item.isActive)
-  const targetItems = targets.map((item) => ({
-    value: item.id,
-    label: `${item.label} (${item.code})`,
-  }))
+  const [targetId, setTargetId] = useState<string | null>(null)
+  const targets = items.filter((item) => item.id !== source?.id && item.isActive && !item.isSystem)
   const target = targets.find((item) => item.id === targetId) ?? null
-  const mutation = useMutation({
+  const merge = useMutation({
     mutationFn: () => {
-      if (!source || !targetId) throw new Error("Elige el ítem que se conserva")
-      return catalogsApi.mergeInto(source.id, targetId)
+      if (!source || !target) throw new Error("Elige la opción que se conserva")
+      return catalogsApi.mergeInto(source.id, target.id)
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: catalogQueryKey(kind) }),
         queryClient.invalidateQueries({ queryKey: ["catalog-merges"] }),
       ])
-      toast.success("Ítems fusionados", {
-        description: source
-          ? `Los registros que usaban «${source.label}» ahora usan el ítem destino. El origen quedó inactivo.`
-          : undefined,
+      const moved = Object.values(result.affectedRows).reduce((sum, count) => sum + count, 0)
+      toast.success("Opciones fusionadas", {
+        description: moved === 1 ? "1 registro pasó a la opción que se conserva." : `${moved} registros pasaron a la opción que se conserva.`,
       })
-      onOpenChange(false)
+      onClose()
     },
-    onError: (error: Error) =>
-      toast.error("No se pudo fusionar", { description: error.message }),
+    onError: (error: Error) => toast.error("No se pudo fusionar", { description: error.message }),
   })
+  if (!source) return null
 
+  const kept = target?.label ?? "la opción que elijas"
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Fusionar con…</DialogTitle>
-          <DialogDescription>
-            {source
-              ? `«${source.label}» es el duplicado. Elige el ítem que se conserva.`
-              : "Elige el ítem que se conserva."}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="merge-target">Ítem destino</Label>
-            <Select
-              items={targetItems}
-              value={targetId}
-              onValueChange={(value) => {
-                setTargetId(value ?? "")
-                setConfirming(false)
-              }}
-            >
-              <SelectTrigger id="merge-target" className="w-full">
-                <SelectValue placeholder="Seleccionar ítem" />
-              </SelectTrigger>
-              <SelectContent>
-                {targetItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {targets.length === 0 && (
-              <p className="text-muted-foreground text-xs">
-                No hay otro ítem activo en este catálogo.
-              </p>
-            )}
-          </div>
-          {source && target && (
-            <p className="bg-muted/40 rounded-md border px-3 py-2 text-sm">
-              Esta fusión reapunta todos los registros que usan «{source.label}»{" "}
-              ({source.code}) hacia «{target.label}» ({target.code}). «
-              {source.label}» queda inactivo.
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              confirming ? setConfirming(false) : onOpenChange(false)
-            }
-            disabled={mutation.isPending}
-          >
-            {confirming ? "Volver" : "Cancelar"}
+    <Modal
+      open
+      onClose={() => !merge.isPending && onClose()}
+      icon={GitMerge}
+      title="Fusionar opción"
+      description={source.label}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={merge.isPending}>
+            Cancelar
           </Button>
-          {confirming ? (
-            <Button
-              type="button"
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending || !target}
-            >
-              {mutation.isPending ? "Fusionando..." : "Confirmar fusión"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => setConfirming(true)}
-              disabled={!target}
-            >
-              Fusionar
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <Button variant="brand" disabled={!target || merge.isPending} onClick={() => merge.mutate()}>
+            {merge.isPending ? "Guardando…" : "Fusionar"}
+          </Button>
+        </>
+      }
+    >
+      <p className="px-1 text-sm text-zinc-700">
+        Los registros que usan {source.label} pasan a usar {kept} y {source.label} queda inactivo. No se puede deshacer.
+      </p>
+      <Field label="Se conserva">
+        {(id) => (
+          <SearchSelect
+            id={id}
+            value={targetId}
+            onChange={setTargetId}
+            options={targets.map((item) => ({ value: item.id, label: item.label, sublabel: item.code }))}
+            placeholder="Elegir opción"
+            searchPlaceholder="Buscar por nombre"
+            emptyMessage={targets.length === 0 ? "No hay otra opción activa" : "No hay coincidencias"}
+          />
+        )}
+      </Field>
+    </Modal>
   )
 }

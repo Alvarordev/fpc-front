@@ -6,15 +6,10 @@ import { CATALOG_KIND_LABELS, catalogsApi, type CatalogItem, type CatalogKind } 
 import { FormModal } from "@/components/ds/form-modal"
 import { catalogQueryKey, catalogSelectItems } from "@/hooks/use-catalog"
 import { isReservedCatalogCode, slugifyCatalogCode } from "@/lib/catalog-code"
-import { catalogItemGroups } from "@/lib/catalog-item-questions"
+import { CATALOG_PARENT_KIND, CATALOG_PARENT_LABEL, catalogItemGroups } from "@/lib/catalog-item-questions"
 
-const PARENT_KIND_BY_KIND: Partial<Record<CatalogKind, CatalogKind>> = {
-  entry_sub_source: "entry_source",
-}
-
-const PARENT_LABEL: Partial<Record<CatalogKind, string>> = {
-  entry_sub_source: "Fuente de ingreso",
-}
+const PARENT_KIND_BY_KIND = CATALOG_PARENT_KIND
+const PARENT_LABEL = CATALOG_PARENT_LABEL
 
 interface CreateCatalogItemDialogProps {
   kind: CatalogKind
