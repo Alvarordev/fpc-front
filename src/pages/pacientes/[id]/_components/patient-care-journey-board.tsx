@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ds/card"
 import { Chip } from "@/components/ds/badge"
 import { cn } from "@/lib/utils"
+import { formatDate } from "../_lib/ficha-format"
 import { buildPatientCareJourney } from "../_lib/patient-care-journey"
 import type { PatientCareJourneyEvent } from "../_lib/patient-care-journey"
 import {
@@ -196,11 +197,8 @@ function formatJourneyDate(
   value: string,
   kind: PatientCareJourneyEvent["dateKind"],
 ) {
-  const formatted = new Date(value).toLocaleDateString("es-PE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+  // Las fechas de calendario (YYYY-MM-DD) se leen en hora local, no en UTC.
+  const formatted = formatDate(value) ?? value
   return kind === "registered" ? `Registrado el ${formatted}` : formatted
 }
 

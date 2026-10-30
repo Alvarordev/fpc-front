@@ -8,6 +8,7 @@ import { useVolunteerProfile } from "@/hooks/use-volunteer-profile"
 import { isToday } from "@/pages/agente-agenda/_lib/agenda"
 import { PsychooncologySessionDetailDialog } from "@/pages/pacientes/[id]/_components/psychooncology-session-detail-dialog"
 import { useAgenda } from "../_hooks/use-agenda"
+import { canRegisterResult } from "./agenda-status"
 import { AgendaSessionResultDialog } from "./agenda-session-result-dialog"
 import { AgendaSessionResultSheet } from "./agenda-session-result-sheet"
 import {
@@ -183,9 +184,7 @@ export function AgendaContent() {
         }
         volunteerName={volunteerName}
         onRegister={
-          (detailAppointment?.status === "SCHEDULED" ||
-            detailAppointment?.status === "OVERDUE" ||
-            detailAppointment?.status === "NO_SHOW")
+          detailAppointment && canRegisterResult(detailAppointment)
             ? () => openResult(detailAppointment)
             : undefined
         }

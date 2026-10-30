@@ -81,7 +81,7 @@ export function VolunteerAgendaTable({
       enableSorting: false,
       meta: { align: "right" },
       cell: ({ row }) =>
-        canRegisterResult(row.original.status) ? (
+        canRegisterResult(row.original) ? (
           <Button
             variant={row.original.status === "OVERDUE" ? "brand" : "outline"}
             onClick={() => onRegister(row.original)}

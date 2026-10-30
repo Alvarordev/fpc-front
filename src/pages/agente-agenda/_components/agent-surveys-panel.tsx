@@ -68,7 +68,7 @@ export function AgentSurveysPanel({
             <Item
               key={item.patientId}
               title={item.fullName}
-              meta={`${item.documentNumber ?? "Sin documento"}${item.primaryPhone ? ` · ${item.primaryPhone}` : ""} · ${item.daysSinceEnrollment} días desde el ${new Date(item.enrolledOn).toLocaleDateString("es-PE")}`}
+              meta={`${item.documentNumber ?? "Sin documento"}${item.primaryPhone ? ` · ${item.primaryPhone}` : ""} · ${item.daysSinceEnrollment} días desde el ${new Date(`${item.enrolledOn}T00:00:00`).toLocaleDateString("es-PE")}`}
               onOpen={() => navigate(patientTabUrl(item.patientId, "resumen"))}
               openLabel={`Abrir ficha de ${item.fullName}`}
               actions={

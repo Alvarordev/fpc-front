@@ -37,6 +37,15 @@ type Filter = (typeof FILTERS)[number]["id"]
 
 const isOpen = (f: FollowUp) => f.status === "SCHEDULED" || f.status === "OVERDUE"
 const dateOf = (f: FollowUp) => f.completedAt ?? f.completedOn ?? f.scheduledAt ?? f.scheduledOn ?? f.createdAt
+/**
+ * Cuándo se habló (o se intentó) con el paciente. Un No contestó no tiene fecha de
+ * realización: vale su último intento, nunca la fecha agendada, que puede ser futura.
+ */
+const contactDateOf = (f: FollowUp) => {
+  if (f.completedAt ?? f.completedOn) return (f.completedAt ?? f.completedOn)!
+  const lastAttempt = f.attempts?.map((attempt) => attempt.occurredAt).sort().at(-1)
+  return f.status === "NO_ANSWER" ? (lastAttempt ?? f.updatedAt) : dateOf(f)
+}
 
 function matches(f: FollowUp, filter: Filter) {
   if (filter === "pendientes") return isOpen(f)
@@ -111,7 +120,9 @@ export function SeguimientoTab({ pacienteId }: { pacienteId: string }) {
   const all = useMemo(() => [...(followUpsQuery.data ?? [])].sort((a, b) => dateOf(b).localeCompare(dateOf(a))), [followUpsQuery.data])
   const pending = all.filter(isOpen)
   const nextPending = [...pending].sort((a, b) => dateOf(a).localeCompare(dateOf(b)))[0]
-  const last = all.find((f) => f.status === "COMPLETED" || f.status === "NO_ANSWER")
+  const last = all
+    .filter((f) => f.status === "COMPLETED" || f.status === "NO_ANSWER")
+    .sort((a, b) => contactDateOf(b).localeCompare(contactDateOf(a)))[0]
   const list = all.filter((f) => matches(f, filter))
   const agentName = (id: string) => agentsQuery.data?.find((a) => a.id === id)?.fullName
 
@@ -133,7 +144,7 @@ export function SeguimientoTab({ pacienteId }: { pacienteId: string }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <StatTile icon={CalendarClock} label="Pendientes" value={pending.length} hint={nextPending ? `El próximo ${relativeDay(dateOf(nextPending))}` : "Ninguno agendado"} />
         <StatTile icon={CheckCircle2} label="Completados" value={all.filter((f) => f.status === "COMPLETED").length} hint={`De ${all.length} registrados`} />
-        <StatTile icon={History} label="Último contacto" value={last ? formatDate(dateOf(last), false) : "Ninguno"} hint={last ? capitalize(relativeDay(dateOf(last))) : "Aún no se contacta"} />
+        <StatTile icon={History} label="Último contacto" value={last ? formatDate(contactDateOf(last), false) : "Ninguno"} hint={last ? capitalize(relativeDay(contactDateOf(last))) : "Aún no se contacta"} />
       </div>
       <Card title="Seguimientos" description="Incluye los de todos los agentes; cada tarjeta dice quién lo tiene" action={canManage ? <AddButton onClick={() => setScheduleOpen(true)}>Agendar seguimiento</AddButton> : undefined}>
         {followUpsQuery.isError ? (

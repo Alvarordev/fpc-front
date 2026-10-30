@@ -17,7 +17,11 @@ export function sessionLabel(sessionNumber: number | null | undefined) {
   return sessionNumber ? `Sesión ${sessionNumber}` : "Sesión extra"
 }
 
-/** Sesiones a las que todavía se les puede registrar el resultado. */
-export function canRegisterResult(status: PsychooncologyAppointment["status"]) {
-  return status === "SCHEDULED" || status === "OVERDUE" || status === "NO_SHOW"
+/**
+ * Sesiones a las que ya se les puede registrar el resultado: abiertas y que ya
+ * empezaron (el backend rechaza registrar una sesión antes de su hora).
+ */
+export function canRegisterResult(appointment: Pick<PsychooncologyAppointment, "status" | "scheduledAt">, now = new Date()) {
+  const open = appointment.status === "SCHEDULED" || appointment.status === "OVERDUE" || appointment.status === "NO_SHOW"
+  return open && (!appointment.scheduledAt || new Date(appointment.scheduledAt) <= now)
 }
