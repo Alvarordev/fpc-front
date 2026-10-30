@@ -3,6 +3,8 @@ import { AuthGuard, GuestGuard } from "@/components/auth-guard"
 import { RoleGuard } from "@/components/role-guard"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { LoginPage } from "@/pages/login/page"
+import { ForgotPasswordPage } from "@/pages/recuperar-contrasena/page"
+import { ResetPasswordPage } from "@/pages/restablecer-contrasena/page"
 import { HomePage } from "@/pages/home/page"
 import PatientsPage from "@/pages/pacientes/page"
 import ProspectsPage from "@/pages/prospectos/page"
@@ -22,9 +24,30 @@ import CallcenterPage from "@/pages/callcenter/page"
 import CharlasPage from "@/pages/charlas/page"
 import HistoricalRecordsPage from "@/pages/carga-historica/page"
 import HistoricalEnrollmentPage from "@/pages/carga-historica/new/page"
+import TicketsPage from "@/pages/tickets/page"
 import HistoricalPatientPage from "@/pages/carga-historica/pacientes/[id]/page"
 
+// Laboratorio de diseño: solo en desarrollo, sin sesión ni roles.
+const devRoutes = import.meta.env.DEV
+  ? [
+      {
+        path: "/lab/paciente",
+        lazy: async () => ({
+          Component: (await import("@/pages/design-lab/page")).default,
+        }),
+      },
+      {
+        path: "/lab/seguimiento",
+        lazy: async () => ({
+          Component: (await import("@/pages/design-lab/seguimiento/page"))
+            .default,
+        }),
+      },
+    ]
+  : []
+
 export const router = createBrowserRouter([
+  ...devRoutes,
   {
     path: "/login",
     element: (
@@ -32,6 +55,19 @@ export const router = createBrowserRouter([
         <LoginPage />
       </GuestGuard>
     ),
+  },
+  {
+    path: "/recuperar-contrasena",
+    element: (
+      <GuestGuard>
+        <ForgotPasswordPage />
+      </GuestGuard>
+    ),
+  },
+  {
+    // Sin guard: el enlace del correo debe abrir aunque haya una sesión iniciada.
+    path: "/restablecer-contrasena",
+    element: <ResetPasswordPage />,
   },
   {
     path: "/",
@@ -42,6 +78,20 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <HomePage /> },
+      {
+        path: "biblioteca",
+        lazy: async () => {
+          const { default: LibraryPage } =
+            await import("@/pages/biblioteca/page")
+          return {
+            Component: () => (
+              <RoleGuard allowedRoles={["ADMIN", "FOUNDATION"]}>
+                <LibraryPage />
+              </RoleGuard>
+            ),
+          }
+        },
+      },
       {
         path: "agenda",
         element: (
@@ -99,7 +149,7 @@ export const router = createBrowserRouter([
       {
         path: "callcenter",
         element: (
-          <RoleGuard allowedRoles={["ADMIN"]}>
+          <RoleGuard allowedRoles={["ADMIN", "FOUNDATION"]}>
             <CallcenterPage />
           </RoleGuard>
         ),
@@ -113,9 +163,17 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "tickets",
+        element: (
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
+            <TicketsPage />
+          </RoleGuard>
+        ),
+      },
+      {
         path: "catalogos",
         element: (
-          <RoleGuard allowedRoles={["ADMIN"]}>
+          <RoleGuard allowedRoles={["ADMIN", "FOUNDATION", "AGENT"]}>
             <CatalogsPage />
           </RoleGuard>
         ),
@@ -123,7 +181,7 @@ export const router = createBrowserRouter([
       {
         path: "alertas",
         element: (
-          <RoleGuard allowedRoles={["ADMIN", "AGENT"]}>
+          <RoleGuard allowedRoles={["ADMIN", "AGENT", "FOUNDATION"]}>
             <AlertsPage />
           </RoleGuard>
         ),

@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { IdentityDocumentInput } from "@/components/identity-document-input";
+import { documentNumberError } from "@/types/identity-document";
 
 const ENTRY_POINTS = [
   "Llamada directa",
@@ -36,6 +38,11 @@ const schema = z
   .object({
     fullName: z.string().min(1, "Nombre requerido"),
     phone: z.string().min(1, "Celular requerido"),
+    birthDate: z
+      .string()
+      .min(1, "Fecha de nacimiento requerida")
+      .refine((value) => value <= new Date().toLocaleDateString("en-CA"), "La fecha no puede ser futura"),
+    documentType: z.enum(["DNI", "CE", "CPP"], { message: "Selecciona el tipo de documento" }),
     dni: z.string().optional(),
     email: z.string().email("Correo inválido").optional().or(z.literal("")),
     diagnosisNote: z.string().optional(),
@@ -45,6 +52,11 @@ const schema = z
     scheduledDate: z.string().optional(),
     scheduledTime: z.string().optional(),
     additionalNotes: z.string().optional(),
+  })
+  .superRefine((values, context) => {
+    const error = documentNumberError(values.documentType, values.dni);
+    if (error)
+      context.addIssue({ code: "custom", path: ["dni"], message: error });
   })
   .refine((values) => !values.scheduledDate || !!values.scheduledTime, {
     path: ["scheduledTime"],
@@ -85,6 +97,8 @@ export function AddProspectDialog({
     defaultValues: {
       fullName: "",
       phone: "",
+      birthDate: "",
+      documentType: "DNI",
       dni: "",
       email: "",
       diagnosisNote: "",
@@ -121,7 +135,7 @@ export function AddProspectDialog({
         <DialogHeader>
           <DialogTitle>Agregar prospecto</DialogTitle>
           <DialogDescription>
-            Registrá un nuevo paciente como prospecto y agendá un primer
+            Registra un nuevo paciente como prospecto y agenda un primer
             contacto.
           </DialogDescription>
         </DialogHeader>
@@ -166,13 +180,34 @@ export function AddProspectDialog({
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <Label className={fl}>DNI</Label>
-                <Input
-                  placeholder="74829304"
+                <Label className={fl}>Documento de identidad</Label>
+                <IdentityDocumentInput
+                  type={watch("documentType")}
+                  number={watch("dni") ?? ""}
                   className={ic}
-                  {...register("dni")}
+                  onChange={({ type, number }) => {
+                    setValue("documentType", type);
+                    setValue("dni", number);
+                  }}
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className={fl}>
+                Fecha de nacimiento <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="date"
+                max={new Date().toLocaleDateString("en-CA")}
+                className={ic}
+                {...register("birthDate")}
+              />
+              {errors.birthDate && (
+                <p className="text-xs text-destructive">
+                  {errors.birthDate.message}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -270,7 +305,7 @@ export function AddProspectDialog({
                 Agendamiento del primer contacto
               </p>
               <p className="text-xs text-muted-foreground/70">
-                Opcional. Completá fecha y hora solo si querés dejar un contacto posterior programado.
+                Opcional. Completa fecha y hora solo si quieres dejar un contacto posterior programado.
               </p>
             </div>
 

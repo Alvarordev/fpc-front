@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Archive, MapPin, Pencil, Plus } from "lucide-react"
+import { Archive, Pencil } from "lucide-react"
+import { Chip } from "@/components/ds/badge"
+import { AddButton, Button, IconButton } from "@/components/ds/button"
+import { Item } from "@/components/ds/card"
+import { Modal } from "@/components/ds/modal"
 import {
   patientsApi,
   type CreatePatientAddressInput,
@@ -13,55 +14,53 @@ import { usePatientAddresses } from "../_hooks/use-patient-records"
 import { PatientAddressDialog } from "./patient-address-dialog"
 import { useAuthStore } from "@/store/auth-store"
 import { DEPARTMENT_LABELS } from "@/pages/hospitales/_utils/departments"
-
-function RecordStatus({ active }: { active: boolean }) {
-  return (
-    <Badge variant={active ? "secondary" : "outline"} className="text-[10px]">
-      {active ? "Activo" : "Histórico"}
-    </Badge>
-  )
-}
+import { CatalogValue } from "@/components/catalog-select"
+import { formatLodgingCost } from "@/pages/enrolamiento/_utils/address-housing"
+import { capitalize } from "../_lib/ficha-format"
 
 const addressTypeLabels: Record<PatientAddress["type"], string> = {
   PERMANENT: "Permanente",
-  TEMPORARY: "Temporal",
+  TEMPORARY: "Provisional",
 }
 
-function AddressLocation({ address }: { address: PatientAddress }) {
-  const location = [
-    address.district,
-    address.province,
-    address.department
-      ? (DEPARTMENT_LABELS[address.department] ?? address.department)
-      : null,
-  ]
+function locationOf(address: PatientAddress) {
+  return [address.district, address.province, address.department ? (DEPARTMENT_LABELS[address.department] ?? address.department) : null]
     .filter(Boolean)
     .join(", ")
+}
 
+/** Vivienda, gasto, referencia y ubicación web: lo que no cabe en el título. */
+function AddressDetails({ address }: { address: PatientAddress }) {
+  const lodging = [
+    address.travelTimeToHospital?.label && `${address.travelTimeToHospital.label} al hospital`,
+    address.averageLodgingCost != null && `gasto promedio ${formatLodgingCost(address.averageLodgingCost, address.averageLodgingCostPeriod)}`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+  const shareIssue = address.locationShareStatus && address.locationShareStatus !== "SHARES"
+  const hasUrl = Boolean(address.locationUrl && isHttpUrl(address.locationUrl))
+  if (!address.housingType && !lodging && !address.reference && !shareIssue && !hasUrl) return null
   return (
-    <>
-      <p className="text-sm font-semibold">
-        {address.address ?? "Sin dirección registrada"}
-      </p>
-      <p className="text-muted-foreground mt-1">
-        {location || "Sin ubicación detallada"}
-      </p>
-      {address.reference && (
-        <p className="text-muted-foreground mt-1">
-          Referencia: {address.reference}
+    <div className="space-y-0.5">
+      {address.housingType && (
+        <p>
+          <CatalogValue kind="temporary_housing_type" code={address.housingType} other={address.housingTypeOther} />
+          {address.shelterName && `, ${address.shelterName}`}
         </p>
       )}
-      {address.locationUrl && isHttpUrl(address.locationUrl) && (
-        <a
-          href={address.locationUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-primary mt-2 inline-block text-xs underline underline-offset-4"
-        >
+      {lodging && <p className="text-zinc-500">{capitalize(lodging)}</p>}
+      {address.reference && <p className="text-zinc-500">Referencia: {address.reference}</p>}
+      {shareIssue && (
+        <p className="text-zinc-500">
+          Ubicación web: <CatalogValue kind="location_share_status" code={address.locationShareStatus} other={address.locationShareStatusOther} />
+        </p>
+      )}
+      {hasUrl && (
+        <a href={address.locationUrl!} target="_blank" rel="noreferrer" className="relative z-10 inline-block font-medium text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline">
           Abrir ubicación
         </a>
       )}
-    </>
+    </div>
   )
 }
 
@@ -74,76 +73,50 @@ function isHttpUrl(value: string) {
   }
 }
 
-function AddressEntry({
+function AddressItem({
   address,
-  title,
+  label,
   canManage,
   isPending,
   onEdit,
   onDeactivate,
 }: {
   address: PatientAddress
-  title: string
+  label: string
   canManage: boolean
   isPending: boolean
   onEdit: () => void
   onDeactivate: () => void
 }) {
   return (
-    <div className="rounded-md border p-3 text-sm">
-      <div className="flex flex-wrap items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <p className="text-muted-foreground text-xs font-medium uppercase">
-              {title}
-            </p>
-            {address.isPrimary && (
-              <Badge className="text-[10px]">Principal</Badge>
-            )}
-            <RecordStatus active={address.isActive} />
-          </div>
-          <AddressLocation address={address} />
-        </div>
-        {canManage && (
-          <span className="flex shrink-0 items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              title="Editar dirección"
-              onClick={onEdit}
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-            {address.isActive && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                title="Desactivar dirección"
-                onClick={onDeactivate}
-                disabled={isPending}
-              >
-                <Archive className="size-3.5" />
-              </Button>
-            )}
-          </span>
-        )}
-      </div>
-    </div>
+    <Item
+      title={address.address ?? "Sin dirección registrada"}
+      tags={
+        <>
+          <Chip tone={address.isActive ? (address.type === "TEMPORARY" ? "amber" : "green") : "gray"}>{label}</Chip>
+          {address.isPrimary && <Chip tone="blue">Principal</Chip>}
+        </>
+      }
+      meta={locationOf(address) || "Sin ubicación detallada"}
+      body={<AddressDetails address={address} />}
+      actions={
+        canManage ? (
+          <>
+            <IconButton icon={Pencil} label="Editar dirección" onClick={onEdit} />
+            {address.isActive && <IconButton icon={Archive} label="Pasar a anteriores" onClick={onDeactivate} disabled={isPending} />}
+          </>
+        ) : undefined
+      }
+    />
   )
 }
 
 export function PatientRecordsSection({
   patientId,
   enabled = true,
-  embedded = false,
 }: {
   patientId: string
   enabled?: boolean
-  embedded?: boolean
 }) {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
@@ -153,6 +126,8 @@ export function PatientRecordsSection({
     user?.role === "AGENT"
   const { data: addresses = [] } = usePatientAddresses(patientId, enabled)
   const [addressDialogOpen, setAddressDialogOpen] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [deactivating, setDeactivating] = useState<PatientAddress | null>(null)
   const [editingAddress, setEditingAddress] = useState<PatientAddress | null>(
     null,
   )
@@ -179,10 +154,12 @@ export function PatientRecordsSection({
     mutationFn: async (address: PatientAddress) => {
       await patientsApi.deactivateAddress(patientId, address.id)
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
         queryKey: ["patient-addresses", patientId],
-      }),
+      })
+      setDeactivating(null)
+    },
   })
 
   function openNewAddress() {
@@ -214,71 +191,35 @@ export function PatientRecordsSection({
 
   if (!enabled) return null
 
+  const itemProps = (address: PatientAddress) => ({
+    canManage,
+    isPending: addressStatusMutation.isPending,
+    onEdit: () => openEditAddress(address),
+    onDeactivate: () => setDeactivating(address),
+  })
   const content = (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1 text-sm font-medium">
-          <MapPin className="size-3.5" />
-          Residencia actual y temporal
-        </p>
-        {canManage && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1 text-xs"
-            onClick={openNewAddress}
-          >
-            <Plus className="size-3" />
-            Agregar
-          </Button>
-        )}
-      </div>
+    <div className="space-y-2">
       {currentAddress ? (
-        <AddressEntry
-          address={currentAddress}
-          title="Residencia actual"
-          canManage={canManage}
-          isPending={addressStatusMutation.isPending}
-          onEdit={() => openEditAddress(currentAddress)}
-          onDeactivate={() => addressStatusMutation.mutate(currentAddress)}
-        />
+        <AddressItem address={currentAddress} label="Residencia actual" {...itemProps(currentAddress)} />
       ) : (
-        <p className="text-muted-foreground text-sm">
-          No hay una residencia actual registrada.
-        </p>
+        <p className="px-1 text-[13px] text-zinc-500">No hay una residencia actual registrada.</p>
       )}
-
-      {temporaryAddress && (
-        <AddressEntry
-          address={temporaryAddress}
-          title="Residencia temporal"
-          canManage={canManage}
-          isPending={addressStatusMutation.isPending}
-          onEdit={() => openEditAddress(temporaryAddress)}
-          onDeactivate={() => addressStatusMutation.mutate(temporaryAddress)}
-        />
-      )}
-
-      {historicalAddresses.length > 0 && (
-        <div className="space-y-2 border-t pt-3">
-          <p className="text-muted-foreground text-xs font-medium uppercase">
-            Historial de direcciones
-          </p>
-          {historicalAddresses.map((address) => (
-            <AddressEntry
-              key={address.id}
-              address={address}
-              title={addressTypeLabels[address.type]}
-              canManage={canManage}
-              isPending={addressStatusMutation.isPending}
-              onEdit={() => openEditAddress(address)}
-              onDeactivate={() => addressStatusMutation.mutate(address)}
-            />
-          ))}
-        </div>
-      )}
-    </section>
+      {temporaryAddress && <AddressItem address={temporaryAddress} label="Vivienda provisional" {...itemProps(temporaryAddress)} />}
+      {showHistory &&
+        historicalAddresses.map((address) => (
+          <AddressItem key={address.id} address={address} label={`${addressTypeLabels[address.type]}, anterior`} {...itemProps(address)} />
+        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        {historicalAddresses.length > 0 ? (
+          <button type="button" onClick={() => setShowHistory((open) => !open)} className="cursor-pointer px-1 text-[13px] font-medium text-zinc-500 transition-colors hover:text-zinc-900">
+            {showHistory ? "Ocultar anteriores" : `Ver ${historicalAddresses.length} ${historicalAddresses.length === 1 ? "dirección anterior" : "direcciones anteriores"}`}
+          </button>
+        ) : (
+          <span />
+        )}
+        {canManage && <AddButton onClick={openNewAddress}>Agregar dirección</AddButton>}
+      </div>
+    </div>
   )
   const dialog = (
     <PatientAddressDialog
@@ -295,21 +236,34 @@ export function PatientRecordsSection({
     />
   )
 
-  if (embedded)
-    return (
-      <div className="border-t pt-4">
-        {content}
-        {dialog}
-      </div>
-    )
+  const confirmDeactivate = deactivating && (
+    <Modal
+      open
+      onClose={() => !addressStatusMutation.isPending && setDeactivating(null)}
+      icon={Archive}
+      title="¿Pasar esta dirección a anteriores?"
+      description="Deja de ser vigente y se conserva en el historial del paciente. Para volver a usarla, regístrala de nuevo."
+      footer={
+        <>
+          <Button onClick={() => setDeactivating(null)} disabled={addressStatusMutation.isPending}>
+            Volver
+          </Button>
+          <Button variant="dark" onClick={() => addressStatusMutation.mutate(deactivating)} disabled={addressStatusMutation.isPending}>
+            {addressStatusMutation.isPending ? "Guardando…" : "Pasar a anteriores"}
+          </Button>
+        </>
+      }
+    >
+      <Item title={deactivating.address ?? "Sin dirección registrada"} meta={locationOf(deactivating) || "Sin ubicación detallada"} />
+      {addressStatusMutation.isError && <p className="px-1 text-[13px] text-red-700">{addressStatusMutation.error.message}</p>}
+    </Modal>
+  )
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Direcciones de residencia</CardTitle>
-      </CardHeader>
-      <CardContent>{content}</CardContent>
+    <>
+      {content}
       {dialog}
-    </Card>
+      {confirmDeactivate}
+    </>
   )
 }

@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { BellPlus, ClipboardList } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import {
@@ -13,10 +12,14 @@ import {
   resolveSpecialtyLabel,
 } from "@/components/medical-appointment-fields"
 import { useCatalog } from "@/hooks/use-catalog"
-import { Button } from "@/components/ui/button"
+import { reminderScheduleInput } from "@/lib/reminder-labels"
+import { AddButton } from "@/components/ds/button"
+import { Card } from "@/components/ds/card"
+import { EmptyState } from "@/components/ds/empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthStore } from "@/store/auth-store"
 import { CompleteMedicalReminderDialog } from "./complete-medical-reminder-dialog"
-import { ReminderCard } from "./reminder-card"
+import { ReminderCard, ReminderDetailModal } from "./reminder-card"
 import {
   ReminderFormDialog,
   type ReminderFormValues,
@@ -31,6 +34,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [detail, setDetail] = useState<Reminder | null>(null)
   const [completingReminder, setCompletingReminder] = useState<Reminder | null>(
     null,
   )
@@ -160,7 +164,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
       : ownAgentId
 
     if (!assignedAgentId) {
-      toast.error("Seleccioná un agente responsable")
+      toast.error("Selecciona un agente responsable")
       return
     }
 
@@ -170,6 +174,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         ? resolveSpecialtyLabel(specialtyItems, values.medicalAppointment)
         : ""
     const dueAt = new Date(values.dueAt).toISOString()
+    const schedule = reminderScheduleInput(values)
 
     if (editingReminder) {
       updateMutation.mutate({
@@ -185,6 +190,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
             values.kind === "MEDICAL_APPOINTMENT"
               ? values.medicalAppointment.healthCenterId || undefined
               : undefined,
+          ...schedule,
         },
       })
       return
@@ -197,6 +203,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
         dueAt,
         assignedAgentId,
         kind: "MEDICAL_APPOINTMENT",
+        ...schedule,
         medicalAppointment: {
           specialty,
           healthCenterId:
@@ -213,93 +220,40 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
       dueAt,
       assignedAgentId,
       kind: "GENERIC",
+      channel: values.channel,
     })
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-foreground text-sm font-semibold">
-            Recordatorios
-          </h2>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            {pendientes.length} pendiente{pendientes.length !== 1 ? "s" : ""}
-            {completados.length > 0 &&
-              ` · ${completados.length} completado${completados.length !== 1 ? "s" : ""}`}
-          </p>
-        </div>
-        {canManage && (
-          <Button size="sm" className="gap-1.5" onClick={openCreate}>
-            <BellPlus className="size-4" />
-            Agregar
-          </Button>
+    <div className="space-y-4">
+      <Card
+        title="Próximos"
+        description={pendientes.length ? `${pendientes.length} por cumplir. El aviso sale según la anticipación elegida.` : undefined}
+        action={canManage ? <AddButton onClick={openCreate}>Crear recordatorio</AddButton> : undefined}
+      >
+        {remindersQuery.isLoading ? (
+          <div className="grid gap-2 lg:grid-cols-2">
+            <Skeleton className="h-28 rounded-[14px] bg-zinc-100" />
+            <Skeleton className="h-28 rounded-[14px] bg-zinc-100" />
+          </div>
+        ) : pendientes.length === 0 ? (
+          <EmptyState title="Sin recordatorios pendientes" body="Registra citas médicas, procedimientos o medicaciones para avisarle a tiempo." action={canManage ? "Crear recordatorio" : undefined} onAction={openCreate} />
+        ) : (
+          <div className="grid gap-2 lg:grid-cols-2">
+            {pendientes.map((reminder) => (
+              <ReminderCard key={reminder.id} reminder={reminder} canManage={canManage} onEdit={openEdit} onComplete={handleComplete} onDismiss={(r) => dismissMutation.mutate(r.id)} />
+            ))}
+          </div>
         )}
-      </div>
-
-      {remindersQuery.isLoading ? (
-        <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
-          Cargando recordatorios...
-        </div>
-      ) : reminders.length === 0 ? (
-        <div className="flex h-48 flex-col items-center justify-center gap-2">
-          <ClipboardList className="text-muted-foreground/30 size-10" />
-          <p className="text-foreground text-sm font-medium">
-            Sin recordatorios
-          </p>
-          <p className="text-muted-foreground max-w-xs text-center text-xs">
-            Registrá citas médicas, procedimientos o medicaciones.
-          </p>
-          {canManage && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3 gap-1.5"
-              onClick={openCreate}
-            >
-              <BellPlus className="size-3.5" />
-              Crear recordatorio
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {pendientes.length > 0 && (
-            <div className="space-y-2">
-              {pendientes.map((reminder) => (
-                <ReminderCard
-                  key={reminder.id}
-                  reminder={reminder}
-                  canManage={canManage}
-                  onEdit={openEdit}
-                  onComplete={handleComplete}
-                  onDismiss={(r) => dismissMutation.mutate(r.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {completados.length > 0 && (
-            <details className="group">
-              <summary className="text-muted-foreground/80 hover:text-muted-foreground cursor-pointer py-1 text-xs font-semibold select-none">
-                Completados / Descartados ({completados.length})
-              </summary>
-              <div className="mt-2 space-y-2">
-                {completados.map((reminder) => (
-                  <ReminderCard
-                    key={reminder.id}
-                    reminder={reminder}
-                    canManage={false}
-                    onEdit={() => {}}
-                    onComplete={() => {}}
-                    onDismiss={() => {}}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
-        </div>
+      </Card>
+      {completados.length > 0 && (
+        <Card title="Anteriores" description={`${completados.length} completados o descartados`}>
+          <div className="space-y-2">
+            {[...completados].reverse().map((reminder) => (
+              <ReminderCard key={reminder.id} reminder={reminder} canManage={false} onEdit={() => {}} onComplete={() => {}} onDismiss={() => {}} onOpen={setDetail} />
+            ))}
+          </div>
+        </Card>
       )}
 
       <ReminderFormDialog
@@ -327,6 +281,7 @@ export function RecordatoriosTab({ pacienteId }: RecordatoriosTabProps) {
           })
         }}
       />
+      {detail && <ReminderDetailModal reminder={detail} onClose={() => setDetail(null)} />}
     </div>
   )
 }

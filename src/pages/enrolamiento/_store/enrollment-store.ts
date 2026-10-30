@@ -17,6 +17,7 @@ import type {
   PsychooncologySupportAssessmentRequest,
 } from "@/types"
 import { normalizeDuration } from "@/types/duration"
+import type { FixedWaitTimeRecall } from "@/types/wait-time-recall"
 
 export const TOTAL_STEPS = 8
 
@@ -51,6 +52,8 @@ export interface CompanionDraft {
   relationship?: string
   isCaregiver?: boolean
   isPrimaryContact?: boolean
+  /** Marcado como contacto secundario en el paso Paciente. */
+  isSecondaryContact?: boolean
 }
 
 export type EnrollmentContactDraft = CompanionDraft
@@ -86,11 +89,15 @@ export interface EnrollmentDraft {
   psychooncologySupportAssessment: PsychooncologySupportAssessmentRequest
   sisAffiliation: AddSisAffiliationRequest
   companion: CompanionDraft
+  /**
+   * Contacto principal: el paciente, quien llama (`companion`) o uno de los
+   * acompañantes de `contactPeople` (el que lleva `isPrimaryContact`).
+   */
   primaryContactSource?: EnrollmentContactSource
-  primaryContact: EnrollmentContactDraft
+  /** Acompañantes agregados en el paso Paciente. Cada uno puede ser contacto secundario. */
+  contactPeople: EnrollmentContactDraft[]
+  /** "¿Tiene contactos secundarios?". Los secundarios se marcan en quien llama o en `contactPeople`. */
   secondaryContactEnabled?: boolean
-  secondaryContactSource?: EnrollmentContactSource
-  secondaryContact: EnrollmentContactDraft
   enrollmentMetadata: EnrollmentMetadataDraft
 }
 
@@ -120,8 +127,10 @@ export type EnrollmentDiagnosisDraft = AddDiagnosisRequest & {
   /** UI-only; when false the API receives no firstSymptomsDate. */
   remembersFirstSymptomsDate?: boolean
   waitTimeForDiagnosisManuallyEdited?: boolean
-  /** UI-only; when false the API receives waitTimeForDiagnosis null. */
+  /** UI-only; when false the API receives the `waitTimeRecall` answer. */
   remembersWaitTimeForDiagnosis?: boolean
+  /** UI-only; answer when the wait time isn't remembered as an amount. */
+  waitTimeRecall?: FixedWaitTimeRecall
 }
 
 export type EnrollmentTreatmentDraft = Omit<
@@ -178,10 +187,8 @@ export const DEFAULT_DRAFT: EnrollmentDraft = {
   sisAffiliation: { canAffiliate: true },
   companion: { fullName: "", primaryPhone: "" },
   primaryContactSource: undefined,
-  primaryContact: { fullName: "", primaryPhone: "" },
+  contactPeople: [],
   secondaryContactEnabled: false,
-  secondaryContactSource: undefined,
-  secondaryContact: { fullName: "", primaryPhone: "" },
   enrollmentMetadata: {},
 }
 
@@ -231,6 +238,11 @@ function normalizeDraft(
   type RawEnrollmentDraft = Partial<EnrollmentDraft> & {
     diagnosis?: LegacyDiagnosisDraft
     treatment?: LegacyTreatmentDraft
+    // Forma anterior de los contactos (un principal y un secundario sueltos).
+    primaryContact?: EnrollmentContactDraft
+    secondaryContactSource?: EnrollmentContactSource
+    secondaryContact?: EnrollmentContactDraft
+    additionalSecondaryContacts?: EnrollmentContactDraft[]
   }
   const raw = draft as RawEnrollmentDraft | undefined
   // Legacy drafts (persisted before the companion step was expanded) stored the
@@ -274,9 +286,19 @@ function normalizeDraft(
       : undefined)
   const inferredPrimaryContact =
     raw?.primaryContact ??
-    (inferredPrimarySource === "NEW"
-      ? legacyCompanion
-      : DEFAULT_DRAFT.primaryContact)
+    (inferredPrimarySource === "NEW" && !raw?.contactPeople ? legacyCompanion : undefined)
+  const contactPeople: EnrollmentContactDraft[] =
+    raw?.contactPeople ?? [
+      ...(inferredPrimarySource === "NEW" && inferredPrimaryContact?.fullName.trim()
+        ? [{ ...inferredPrimaryContact, isPrimaryContact: true }]
+        : []),
+      ...(raw?.secondaryContactEnabled && raw?.secondaryContactSource === "NEW" && raw?.secondaryContact?.fullName.trim()
+        ? [{ ...raw.secondaryContact, isSecondaryContact: true }]
+        : []),
+      ...(raw?.secondaryContactEnabled ? (raw?.additionalSecondaryContacts ?? []) : [])
+        .filter((person) => person.fullName.trim())
+        .map((person) => ({ ...person, isSecondaryContact: true })),
+    ]
 
   const legacyDetails = raw?.details as
     | (EnrollmentDraft["details"] & {
@@ -310,11 +332,11 @@ function normalizeDraft(
     string,
     EnrollmentTreatmentDraft["treatmentSituation"]
   > = {
-    "En curso": "EN_CURSO",
-    "Por iniciar": "PENDIENTE_DE_INICIO",
-    "Suspendido temporalmente": "INTERRUMPIDO",
-    Finalizado: "FINALIZADO",
-    "En evaluación": "PENDIENTE_DE_INICIO",
+    "En curso": "EN_PROCESO",
+    "Por iniciar": "EN_ESPERA",
+    "Suspendido temporalmente": "SUSPENDIDO",
+    Finalizado: "CULMINADO",
+    "En evaluación": "EN_ESPERA",
   }
   const normalizeMedications = (
     medications: unknown,
@@ -441,25 +463,22 @@ function normalizeDraft(
     treatments,
     addresses: migratedAddresses,
     medicalAppointments: raw?.medicalAppointments ?? [],
-    familyPreventionTalkInterests: raw?.familyPreventionTalkInterests ?? [],
+    familyPreventionTalkInterests: (raw?.familyPreventionTalkInterests ?? []).map((item) => {
+      const legacy = item as { talk?: string; talkName?: string }
+      return { ...item, talk: legacy.talk || legacy.talkName || "" }
+    }),
     psychooncologySupportAssessment: raw?.psychooncologySupportAssessment ?? {},
     sisAffiliation: {
       ...DEFAULT_DRAFT.sisAffiliation,
       ...raw?.sisAffiliation,
     },
-    companion: legacyCompanion,
+    companion: {
+      ...legacyCompanion,
+      ...(raw?.secondaryContactEnabled && raw?.secondaryContactSource === "CALLER" ? { isSecondaryContact: true } : {}),
+    },
     primaryContactSource: inferredPrimarySource,
-    primaryContact: {
-      ...DEFAULT_DRAFT.primaryContact,
-      ...inferredPrimaryContact,
-      ...(raw?.primaryContact ?? {}),
-    },
+    contactPeople,
     secondaryContactEnabled: raw?.secondaryContactEnabled ?? false,
-    secondaryContactSource: raw?.secondaryContactSource,
-    secondaryContact: {
-      ...DEFAULT_DRAFT.secondaryContact,
-      ...raw?.secondaryContact,
-    },
     enrollmentMetadata: {
       ...DEFAULT_DRAFT.enrollmentMetadata,
       ...restMeta,

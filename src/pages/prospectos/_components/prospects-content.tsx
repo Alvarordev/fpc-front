@@ -38,8 +38,11 @@ export function ProspectsContent() {
     try {
       await patientsApi.create({
         fullName: values.fullName,
-        dni: values.dni || undefined,
+        ...(values.dni
+          ? { documentType: values.documentType, dni: values.dni }
+          : {}),
         primaryPhone: values.phone,
+        birthDate: values.birthDate,
         email: values.email || undefined,
         hasWhatsapp: true,
       })
@@ -87,7 +90,8 @@ export function ProspectsContent() {
         data={prospects}
         columns={patientColumns}
         isLoading={isLoading}
-        emptyMessage="No se encontraron prospectos"
+        emptyTitle="Sin prospectos"
+        emptyBody="No hay prospectos con esta búsqueda."
         onRowClick={(prospect) => navigate(`/pacientes/${prospect.id}`)}
       />
 

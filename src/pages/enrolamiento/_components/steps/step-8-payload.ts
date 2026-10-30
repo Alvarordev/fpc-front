@@ -9,7 +9,10 @@ import {
 import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import { getAge } from "../../_utils/patient-age"
 import { toDurationInput } from "@/types/duration"
+import { fixedWaitTime } from "@/types/wait-time-recall"
+import { housingPayloadFields } from "../../_utils/address-housing"
 import type { EnrollmentContactSource } from "@/types"
+import { enrollmentContacts } from "../../_utils/contacts"
 
 interface BaseBuildEnrollmentPayloadOptions {
   draft: EnrollmentDraft
@@ -60,7 +63,7 @@ function duration(value: Parameters<typeof toDurationInput>[0], field: string) {
   return result
 }
 
-function contactPerson(person: CompanionDraft) {
+export function contactPerson(person: CompanionDraft) {
   const fullName = value(person.fullName)
   const primaryPhone = value(person.primaryPhone)
   const relationship = value(person.relationship)
@@ -75,6 +78,7 @@ function contactPerson(person: CompanionDraft) {
     gender: value(person.gender),
     hasWhatsapp: person.hasWhatsapp,
     relationship,
+    isCaregiver: person.isCaregiver === true,
   }
 }
 
@@ -137,13 +141,6 @@ export function buildEnrollmentPayload({
   ) {
     throw new Error("Completa el teléfono principal del paciente")
   }
-  if (
-    !historical &&
-    !draft.patientId &&
-    !value(draft.patientData.primaryPhone)
-  ) {
-    throw new Error("Completa el teléfono principal del paciente")
-  }
   if (isMinorPatient && primaryContactSource === "PATIENT") {
     throw new Error(
       "Un paciente menor debe tener un acompañante como contacto principal",
@@ -169,20 +166,21 @@ export function buildEnrollmentPayload({
       hasReferral: diagnosis.hasReferral ?? undefined,
       diagnosisSpecialty: value(diagnosis.diagnosisSpecialty),
       symptomLeadingToCheckup: value(diagnosis.symptomLeadingToCheckup),
-      waitTimeForDiagnosis: (diagnosis.remembersWaitTimeForDiagnosis ?? true) ===
-      false
-        ? null
-        : diagnosis.waitTimeForDiagnosisManuallyEdited
-          ? duration(
-              diagnosis.waitTimeForDiagnosis,
-              `tiempo de espera para el diagnóstico ${index + 1}`,
-            )
-          : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
-            ? undefined
-            : duration(
+      diseaseEvolution: value(diagnosis.diseaseEvolution),
+      waitTimeForDiagnosis:
+        (diagnosis.remembersWaitTimeForDiagnosis ?? true) === false
+          ? fixedWaitTime(diagnosis.waitTimeRecall)
+          : diagnosis.waitTimeForDiagnosisManuallyEdited
+            ? duration(
                 diagnosis.waitTimeForDiagnosis,
                 `tiempo de espera para el diagnóstico ${index + 1}`,
-              ),
+              )
+            : diagnosis.firstSymptomsDate && diagnosis.diagnosisDate
+              ? undefined
+              : duration(
+                  diagnosis.waitTimeForDiagnosis,
+                  `tiempo de espera para el diagnóstico ${index + 1}`,
+                ),
       hasMedicalReport: diagnosis.hasMedicalReport ?? undefined,
     }
   })
@@ -211,14 +209,14 @@ export function buildEnrollmentPayload({
     const treatmentEndDate = value(treatment.endDate)
     const isReferred = treatment.isReferred ?? false
     if (
-      treatment.treatmentSituation === "ABANDONED" &&
+      treatment.treatmentSituation === "ABANDONADO" &&
       !value(treatment.treatmentAbandonmentReason)
     )
       throw new Error(
         `Indica el motivo de abandono del tratamiento ${index + 1}`,
       )
     if (
-      treatment.treatmentSituation === "INTERRUMPIDO" &&
+      treatment.treatmentSituation === "SUSPENDIDO" &&
       !treatment.interruptionReason
     )
       throw new Error(
@@ -229,7 +227,7 @@ export function buildEnrollmentPayload({
       !value(treatment.interruptionReasonOther)
     )
       throw new Error(
-        `Especificá el motivo de interrupción del tratamiento ${index + 1}`,
+        `Especifica el motivo de interrupción del tratamiento ${index + 1}`,
       )
     if (isSurgery && !value(treatment.operationName))
       throw new Error(`Selecciona el procedimiento de la cirugía ${index + 1}`)
@@ -301,14 +299,14 @@ export function buildEnrollmentPayload({
         ? { chemotherapyRoute: value(treatment.chemotherapyRoute) }
         : {}),
       treatmentSituation: treatment.treatmentSituation ?? undefined,
-      ...(treatment.treatmentSituation === "ABANDONED"
+      ...(treatment.treatmentSituation === "ABANDONADO"
         ? {
             treatmentAbandonmentReason: value(
               treatment.treatmentAbandonmentReason,
             ),
           }
         : {}),
-      ...(treatment.treatmentSituation === "INTERRUMPIDO"
+      ...(treatment.treatmentSituation === "SUSPENDIDO"
         ? {
             interruptionReason: treatment.interruptionReason,
             ...(treatment.interruptionReason === "OTHER"
@@ -447,6 +445,21 @@ export function buildEnrollmentPayload({
   const appointmentToSend =
     healthPhase === "CANCER_DIAGNOSIS" ? appointment : undefined
   const addresses = draft.addresses
+    .map((address) => {
+      const { asksAddress, fields } = housingPayloadFields(address)
+      return {
+        type: address.type,
+        isPrimary: address.isPrimary ?? true,
+        address: asksAddress ? value(address.address) : undefined,
+        district: asksAddress ? value(address.district) : undefined,
+        province: asksAddress ? value(address.province) : undefined,
+        department: asksAddress ? address.department : undefined,
+        ...fields,
+        dniMatchesAddress: address.dniMatchesAddress,
+        validFrom: value(address.validFrom),
+        validTo: value(address.validTo),
+      }
+    })
     .filter(
       (address) =>
         address.address ||
@@ -454,86 +467,63 @@ export function buildEnrollmentPayload({
         address.province ||
         address.department ||
         address.locationUrl ||
+        address.locationShareStatus ||
+        address.housingType ||
         address.dniMatchesAddress !== undefined,
     )
-    .map((address) => ({
-      type: address.type,
-      isPrimary: address.isPrimary ?? true,
-      address: value(address.address),
-      district: value(address.district),
-      province: value(address.province),
-      department: address.department,
-      locationUrl: value(address.locationUrl),
-      dniMatchesAddress: address.dniMatchesAddress,
-      validFrom: value(address.validFrom),
-      validTo: value(address.validTo),
-    }))
   const talks = draft.familyPreventionTalkInterests
-    .filter((item) => value(item.talkName) && value(item.familyMemberName))
+    .filter((item) => value(item.talk) && value(item.familyMemberName))
     .map((item) => ({
-      talkName: item.talkName.trim(),
+      talk: item.talk.trim(),
       familyMemberName: item.familyMemberName.trim(),
       familyMemberPhone: value(item.familyMemberPhone),
       familyMemberEmail: value(item.familyMemberEmail),
     }))
   const psychooncologySupport = draft.psychooncologySupportAssessment
   const hasPsychooncologySupportResponse =
-    meta.affiliationType === "PATIENT" &&
+    (meta.affiliationType === "PATIENT" || historical) &&
     healthPhase === "CANCER_DIAGNOSIS" &&
     (typeof psychooncologySupport.excessiveWorry === "boolean" ||
       psychooncologySupport.emotionalDistressScore !== undefined ||
       psychooncologySupport.preferredModality !== undefined)
-  const secondaryContactSource = draft.secondaryContactEnabled
-    ? (draft.secondaryContactSource ??
-      (callerIsComplete && primaryContactSource !== "CALLER"
-        ? "CALLER"
-        : "NEW"))
-    : undefined
-  if (secondaryContactSource === "CALLER" && !callerIsComplete)
-    throw new Error("Completa los datos de quien llama")
-  const contacts = [
-    {
-      role: "PRIMARY" as const,
-      source: primaryContactSource as EnrollmentContactSource,
-      ...(primaryContactSource === "NEW"
-        ? { person: contactPerson(draft.primaryContact) }
-        : {}),
-    },
-    ...(draft.secondaryContactEnabled
-      ? [
-          {
-            role: "SECONDARY" as const,
-            source: secondaryContactSource as EnrollmentContactSource,
-            ...(secondaryContactSource === "NEW"
-              ? { person: contactPerson(draft.secondaryContact) }
-              : {}),
-          },
-        ]
-      : []),
-  ]
+  const linked = enrollmentContacts(
+    draft,
+    primaryContactSource as EnrollmentContactSource,
+    callerIsComplete,
+  )
+  const contacts = linked.contacts.map((contact) =>
+    contact.person
+      ? { ...contact, person: contactPerson(contact.person) }
+      : contact,
+  )
+  // Quien llama también se registra si es el cuidador, aunque no sea contacto.
   const hasCaller =
     isFamily ||
-    primaryContactSource === "CALLER" ||
-    secondaryContactSource === "CALLER"
+    linked.callerIsContact ||
+    (callerIsComplete && draft.companion.isCaregiver === true)
   if (hasCaller && !callerIsComplete)
     throw new Error("Completa los datos de quien llama")
 
   const payload = {
-    ...(draft.patientId
-      ? { patientId: draft.patientId }
-      : {
-          patient: {
-            fullName: draft.patientData.fullName.trim(),
-            ...(value(draft.patientData.primaryPhone)
-              ? { primaryPhone: value(draft.patientData.primaryPhone) }
-              : {}),
-            secondaryPhone: value(draft.patientData.secondaryPhone),
+    // Con un prospecto se manda su id y lo registrado en el asistente, que completa su ficha.
+    ...(draft.patientId ? { patientId: draft.patientId } : {}),
+    patient: {
+      fullName: draft.patientData.fullName.trim(),
+      ...(value(draft.patientData.primaryPhone)
+        ? { primaryPhone: value(draft.patientData.primaryPhone) }
+        : {}),
+      secondaryPhone: value(draft.patientData.secondaryPhone),
+      email: value(draft.patientData.email),
+      ...(value(draft.patientData.dni)
+        ? {
+            documentType: draft.patientData.documentType ?? "DNI",
             dni: value(draft.patientData.dni),
-            birthDate: value(draft.patientData.birthDate),
-            gender: value(draft.patientData.gender),
-            hasWhatsapp: draft.patientData.hasWhatsapp,
-          },
-        }),
+          }
+        : {}),
+      birthDate: value(draft.patientData.birthDate),
+      gender: value(draft.patientData.gender),
+      hasWhatsapp: draft.patientData.hasWhatsapp,
+    },
     followUp: {
       type: "CALL",
       agentId,
@@ -562,7 +552,7 @@ export function buildEnrollmentPayload({
             relationship: value(draft.companion.relationship),
             isPrimaryInformant: isFamily,
             isPrimaryContact: false,
-            isCaregiver: false,
+            isCaregiver: draft.companion.isCaregiver === true,
           },
         }
       : {}),

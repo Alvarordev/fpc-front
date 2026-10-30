@@ -1,20 +1,7 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import {
-  ArrowRight,
-  Bell,
-  BrainCircuit,
-  Calendar,
-  CalendarClock,
-  CalendarDays,
-  Clock3,
-  List,
-  Loader2,
-  Phone,
-  RefreshCw,
-  Video,
-} from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
@@ -26,34 +13,28 @@ import {
   type Reminder,
 } from "@/api/reminders"
 import { volunteersApi } from "@/api/volunteers"
-import { PatientHealthSubcategoryDot } from "@/components/patient-health-subcategory-badge"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Button } from "@/components/ds/button"
+import { EmptyState } from "@/components/ds/empty-state"
+import { SlidingTabs } from "@/components/ds/sliding-tabs"
 import { useAuthStore } from "@/store/auth-store"
 import { resolveSpecialtyLabel } from "@/components/medical-appointment-fields"
 import { useCatalog } from "@/hooks/use-catalog"
+import { reminderScheduleInput } from "@/lib/reminder-labels"
 import { CompleteMedicalReminderDialog } from "@/pages/pacientes/[id]/_components/complete-medical-reminder-dialog"
 import {
   ReminderFormDialog,
   type ReminderFormValues,
 } from "@/pages/pacientes/[id]/_components/reminder-form-dialog"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
+import { NeedsReassignmentPanel } from "@/pages/voluntarios/_components/needs-reassignment-panel"
+import { AgentSurveysPanel } from "./_components/agent-surveys-panel"
 import { AgentAgendaCalendar } from "./_components/agent-agenda-calendar"
+import { AgendaSummary } from "./_components/agenda-summary"
 import { FollowUpDetailDialog } from "./_components/follow-up-detail-dialog"
 import { FollowUpEditDialog } from "./_components/follow-up-edit-dialog"
 import { ReminderDetailDialog } from "./_components/reminder-detail-dialog"
 import {
   buildAgendaEvents,
-  formatAgendaDate,
-  formatAgendaDateTime,
-  formatAgendaTime,
   isOverdue,
   isToday,
   type AgendaPatientInfo,
@@ -90,7 +71,13 @@ export default function AgentAgendaPage() {
 
   const followUpsQuery = useQuery({
     queryKey: ["agent-follow-ups", agentId],
-    queryFn: () => followUpsApi.list({ agentId, status: "SCHEDULED" }),
+    queryFn: async () => {
+      const [scheduled, overdue] = await Promise.all([
+        followUpsApi.list({ agentId, status: "SCHEDULED" }),
+        followUpsApi.list({ agentId, status: "OVERDUE" }),
+      ])
+      return [...scheduled, ...overdue]
+    },
     enabled: Boolean(agentId),
     staleTime: 30_000,
   })
@@ -117,8 +104,18 @@ export default function AgentAgendaPage() {
   })
 
   const rescheduleMutation = useMutation({
-    mutationFn: ({ id, scheduledAt }: { id: string; scheduledAt: string }) =>
-      followUpsApi.update(id, { scheduledAt }),
+    mutationFn: ({
+      id,
+      scheduledAt,
+      status,
+    }: {
+      id: string
+      scheduledAt: string
+      status: FollowUp["status"]
+    }) =>
+      status === "OVERDUE" || status === "CANCELLED"
+        ? followUpsApi.reschedule(id, { scheduledAt })
+        : followUpsApi.update(id, { scheduledAt }),
     onSuccess: async (_data, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
@@ -128,12 +125,34 @@ export default function AgentAgendaPage() {
           queryKey: ["follow-up", variables.id],
         }),
         queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-follow-ups"] }),
       ])
       setEditingFollowUp(null)
       toast.success("Seguimiento reagendado")
     },
     onError: (error: Error) =>
       toast.error("No se pudo reagendar el seguimiento", {
+        description: error.message,
+      }),
+  })
+
+  const cancelFollowUpMutation = useMutation({
+    mutationFn: (followUp: FollowUp) =>
+      followUpsApi.update(followUp.id, { status: "CANCELLED" }),
+    onSuccess: async (_data, followUp) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["agent-follow-ups", agentId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["follow-up", followUp.id] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-follow-ups"] }),
+        queryClient.invalidateQueries({ queryKey: ["patient-timeline"] }),
+      ])
+      setSelectedFollowUp(null)
+      toast.success("Seguimiento cancelado")
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo cancelar el seguimiento", {
         description: error.message,
       }),
   })
@@ -229,9 +248,9 @@ export default function AgentAgendaPage() {
     (Boolean(agentId) && (followUpsQuery.isLoading || remindersQuery.isLoading))
   ) {
     return (
-      <div className="text-muted-foreground flex h-64 items-center justify-center gap-2 text-sm">
+      <div className="font-ds flex h-64 items-center justify-center gap-2 text-[13px] text-zinc-500">
         <Loader2 className="size-4 animate-spin" />
-        Cargando tu agenda...
+        Cargando tu agenda…
       </div>
     )
   }
@@ -242,32 +261,28 @@ export default function AgentAgendaPage() {
     followUpsQuery.isError ||
     remindersQuery.isError
   ) {
+    const message = agentsQuery.isError
+      ? "Revisa la conexión con el servidor e intenta de nuevo."
+      : !agentId
+        ? "Tu usuario todavía no tiene un perfil de agente asociado. Pide a un administrador que lo vincule."
+        : "No se pudieron cargar tus seguimientos o recordatorios. Intenta de nuevo."
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No se pudo cargar tu agenda</CardTitle>
-          <CardDescription>
-            {agentsQuery.isError
-              ? "Revisa la conexión con el servidor e intenta nuevamente."
-              : !agentId
-                ? "Tu usuario todavía no tiene un perfil de agente asociado."
-                : "No se pudieron cargar tus seguimientos o recordatorios. Intenta nuevamente."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="font-ds space-y-5">
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Mi agenda</h1>
+        <EmptyState title="No se pudo cargar tu agenda" body={message} />
+        {agentId || agentsQuery.isError ? (
           <Button
-            variant="outline"
+            icon={RefreshCw}
             onClick={() => {
               void agentsQuery.refetch()
               void followUpsQuery.refetch()
               void remindersQuery.refetch()
             }}
           >
-            <RefreshCw className="size-4" />
             Reintentar
           </Button>
-        </CardContent>
-      </Card>
+        ) : null}
+      </div>
     )
   }
 
@@ -318,61 +333,59 @@ export default function AgentAgendaPage() {
           values.kind === "MEDICAL_APPOINTMENT"
             ? values.medicalAppointment.healthCenterId || undefined
             : undefined,
+        ...reminderScheduleInput(values),
       },
     })
   }
 
   return (
-    <div className="space-y-6">
+    <div className="font-ds space-y-5">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-primary mb-2 text-xs font-semibold tracking-[0.18em] uppercase">
-            Tu espacio de trabajo
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Mi agenda</h1>
-          <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-            Organiza tus seguimientos, recordatorios y lo que tienes programado
-            para los próximos días.
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Mi agenda</h1>
+          <p className="mt-0.5 text-[13px] text-zinc-500">
+            {events.length === 0 ? (
+              "No tienes tareas pendientes."
+            ) : (
+              <>
+                {events.length} pendiente{events.length === 1 ? "" : "s"} ·{" "}
+                {todayCount} para hoy
+                {overdueCount > 0 && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-red-700">
+                      {overdueCount} vencida{overdueCount === 1 ? "" : "s"}
+                    </span>
+                  </>
+                )}
+              </>
+            )}
           </p>
         </div>
-        <div className="bg-muted/40 flex w-fit items-center rounded-xl border p-1 text-xs">
-          <ViewButton
-            active={viewMode === "calendar"}
-            icon={CalendarDays}
-            onClick={() => setViewMode("calendar")}
-          >
-            Calendario
-          </ViewButton>
-          <ViewButton
-            active={viewMode === "summary"}
-            icon={List}
-            onClick={() => setViewMode("summary")}
-          >
-            Resumen
-          </ViewButton>
-        </div>
+        <SlidingTabs
+          label="Vista de la agenda"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { id: "calendar", label: "Calendario" },
+            { id: "summary", label: "Resumen" },
+          ]}
+        />
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <AgendaMetric
-          icon={CalendarClock}
-          label="Tareas pendientes"
-          value={events.length}
-          tone="amber"
-        />
-        <AgendaMetric
-          icon={CalendarDays}
-          label="Para hoy"
-          value={todayCount}
-          tone="primary"
-        />
-        <AgendaMetric
-          icon={Bell}
-          label="Vencidas"
-          value={overdueCount}
-          tone="violet"
-        />
-      </section>
+      <NeedsReassignmentPanel />
+      <AgentSurveysPanel
+        patients={(followUpsQuery.data ?? []).flatMap((followUp) =>
+          followUp.subjectPatientName
+            ? [
+                {
+                  id: followUp.subjectPatientId,
+                  name: followUp.subjectPatientName,
+                },
+              ]
+            : [],
+        )}
+      />
 
       {viewMode === "calendar" ? (
         <AgentAgendaCalendar events={events} onSelectEvent={openEvent} />
@@ -395,6 +408,8 @@ export default function AgentAgendaPage() {
         onClose={() => setSelectedFollowUp(null)}
         onGoToFollowUp={goToFollowUp}
         onEdit={openFollowUpEditor}
+        onCancel={(followUp) => cancelFollowUpMutation.mutate(followUp)}
+        isCancelling={cancelFollowUpMutation.isPending}
       />
       <FollowUpEditDialog
         key={editingFollowUp?.id ?? "follow-up-editor-closed"}
@@ -404,7 +419,11 @@ export default function AgentAgendaPage() {
         onOpenChange={(open) => !open && setEditingFollowUp(null)}
         onSave={({ scheduledAt }) => {
           if (editingFollowUp)
-            rescheduleMutation.mutate({ id: editingFollowUp.id, scheduledAt })
+            rescheduleMutation.mutate({
+              id: editingFollowUp.id,
+              scheduledAt,
+              status: editingFollowUp.status,
+            })
         }}
       />
       <ReminderDetailDialog
@@ -445,329 +464,6 @@ export default function AgentAgendaPage() {
           })
         }}
       />
-    </div>
-  )
-}
-
-function ViewButton({
-  active,
-  icon: Icon,
-  onClick,
-  children,
-}: {
-  active: boolean
-  icon: typeof CalendarDays
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors ${
-        active
-          ? "bg-background text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      <Icon className="size-3.5" />
-      {children}
-    </button>
-  )
-}
-
-function AgendaMetric({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof CalendarClock
-  label: string
-  value: number
-  tone: "amber" | "primary" | "violet"
-}) {
-  const toneClasses = {
-    amber: "bg-amber-50 text-amber-600",
-    primary: "bg-primary/10 text-primary",
-    violet: "bg-violet-50 text-violet-600",
-  }
-
-  return (
-    <Card size="sm">
-      <CardContent className="flex items-center gap-3 p-4">
-        <div
-          className={`flex size-10 items-center justify-center rounded-xl ${toneClasses[tone]}`}
-        >
-          <Icon className="size-5" />
-        </div>
-        <div>
-          <p className="text-2xl leading-none font-semibold">{value}</p>
-          <p className="text-muted-foreground mt-1 text-xs">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function AgendaSummary({
-  followUpEvents,
-  reminderEvents,
-  sessions,
-  patientInfo,
-  volunteers,
-  onSelectEvent,
-  onOpenPatient,
-}: {
-  followUpEvents: Extract<AgendaEvent, { kind: "follow-up" }>[]
-  reminderEvents: Extract<AgendaEvent, { kind: "reminder" }>[]
-  sessions: Awaited<ReturnType<typeof psychooncologyAppointmentsApi.list>>
-  patientInfo: Map<string, AgendaPatientInfo>
-  volunteers: Map<string, { firstName: string; lastName: string }>
-  onSelectEvent: (event: AgendaEvent) => void
-  onOpenPatient: (patientId: string) => void
-}) {
-  return (
-    <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-      <TaskBentoCard
-        className="xl:row-span-2"
-        title="Seguimientos"
-        description="Contactos que tienes agendados"
-        icon={Phone}
-        tone="amber"
-        events={followUpEvents}
-        empty="No tienes seguimientos agendados."
-        onSelectEvent={onSelectEvent}
-      />
-      <TaskBentoCard
-        title="Recordatorios"
-        description="Tareas pendientes para tus pacientes"
-        icon={Bell}
-        tone="violet"
-        events={reminderEvents}
-        empty="No tienes recordatorios pendientes."
-        onSelectEvent={onSelectEvent}
-      />
-      <PsychooncologyCard
-        sessions={sessions}
-        patientInfo={patientInfo}
-        volunteers={volunteers}
-        onOpenPatient={onOpenPatient}
-      />
-    </section>
-  )
-}
-
-function TaskBentoCard({
-  className,
-  title,
-  description,
-  icon: Icon,
-  tone,
-  events,
-  empty,
-  onSelectEvent,
-}: {
-  className?: string
-  title: string
-  description: string
-  icon: typeof Phone
-  tone: "amber" | "violet"
-  events: AgendaEvent[]
-  empty: string
-  onSelectEvent: (event: AgendaEvent) => void
-}) {
-  const toneClasses = {
-    amber: { icon: "bg-amber-100 text-amber-700", accent: "bg-amber-500" },
-    violet: { icon: "bg-violet-100 text-violet-700", accent: "bg-violet-500" },
-  }[tone]
-  const visibleEvents = events.slice(0, 8)
-
-  return (
-    <Card className={className}>
-      <CardHeader className="border-b pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex size-10 items-center justify-center rounded-xl ${toneClasses.icon}`}
-            >
-              <Icon className="size-5" />
-            </div>
-            <div>
-              <CardTitle className="text-base">{title}</CardTitle>
-              <CardDescription className="mt-1">{description}</CardDescription>
-            </div>
-          </div>
-          <Badge variant="secondary">{events.length}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {visibleEvents.length === 0 ? (
-          <EmptyState icon={Icon} message={empty} />
-        ) : (
-          <div className="divide-y">
-            {visibleEvents.map((event) => (
-              <BentoTaskRow
-                key={`${event.kind}-${event.id}`}
-                event={event}
-                accent={toneClasses.accent}
-                onClick={() => onSelectEvent(event)}
-              />
-            ))}
-            {events.length > visibleEvents.length && (
-              <p className="text-muted-foreground px-5 py-3 text-center text-xs">
-                +{events.length - visibleEvents.length} tareas más en el
-                calendario
-              </p>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function BentoTaskRow({
-  event,
-  accent,
-  onClick,
-}: {
-  event: AgendaEvent
-  accent: string
-  onClick: () => void
-}) {
-  const overdue = isOverdue(event.startsAt)
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors"
-    >
-      <span className={`h-10 w-1 shrink-0 rounded-full ${accent}`} />
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-          <PatientHealthSubcategoryDot subcategory={event.healthSubcategory} />
-          <span className="truncate">{event.patientName}</span>
-        </p>
-        <p className="text-muted-foreground mt-0.5 truncate text-xs">
-          {event.title} · {event.detail}
-        </p>
-        <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-          <Calendar className="size-3" />
-          {formatAgendaDate(event.startsAt)}
-          <Clock3 className="ml-1 size-3" />
-          {formatAgendaTime(event.startsAt)}
-        </p>
-      </div>
-      {overdue && (
-        <Badge
-          variant="outline"
-          className="border-red-200 bg-red-50 text-[10px] text-red-700"
-        >
-          Vencida
-        </Badge>
-      )}
-      <ArrowRight className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-    </button>
-  )
-}
-
-function PsychooncologyCard({
-  sessions,
-  patientInfo,
-  volunteers,
-  onOpenPatient,
-}: {
-  sessions: Awaited<ReturnType<typeof psychooncologyAppointmentsApi.list>>
-  patientInfo: Map<string, AgendaPatientInfo>
-  volunteers: Map<string, { firstName: string; lastName: string }>
-  onOpenPatient: (patientId: string) => void
-}) {
-  return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
-              <BrainCircuit className="size-5" />
-            </div>
-            <div>
-              <CardTitle className="text-base">Psicooncología</CardTitle>
-              <CardDescription className="mt-1">
-                Citas próximas del programa
-              </CardDescription>
-            </div>
-          </div>
-          <Badge variant="secondary">{sessions.length}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {sessions.length === 0 ? (
-          <EmptyState
-            icon={BrainCircuit}
-            message="No hay citas psicooncológicas próximas."
-          />
-        ) : (
-          <div className="divide-y">
-            {sessions.slice(0, 6).map((session) => {
-              const volunteer = volunteers.get(session.volunteerId)
-              const Icon = session.modality === "VIDEO_CALL" ? Video : Phone
-              return (
-                <button
-                  key={session.id}
-                  type="button"
-                  onClick={() => onOpenPatient(session.patientId)}
-                  className="group hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3 text-left transition-colors"
-                >
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-                      <PatientHealthSubcategoryDot
-                        subcategory={
-                          patientInfo.get(session.patientId)?.healthSubcategory
-                        }
-                      />
-                      <span className="truncate">
-                        {patientInfo.get(session.patientId)?.name ??
-                          "Paciente desconocido"}
-                      </span>
-                    </p>
-                    <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                      Sesión {session.sessionNumber}
-                      {volunteer
-                        ? ` · ${volunteer.firstName} ${volunteer.lastName}`
-                        : ""}
-                    </p>
-                    <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-                      <Calendar className="size-3" />
-                      {formatAgendaDateTime(session.scheduledAt)}
-                    </p>
-                  </div>
-                  <ArrowRight className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function EmptyState({
-  icon: Icon,
-  message,
-}: {
-  icon: typeof Phone
-  message: string
-}) {
-  return (
-    <div className="text-muted-foreground flex min-h-36 flex-col items-center justify-center gap-2 px-5 text-center">
-      <Icon className="size-8 opacity-25" />
-      <p className="text-sm">{message}</p>
     </div>
   )
 }

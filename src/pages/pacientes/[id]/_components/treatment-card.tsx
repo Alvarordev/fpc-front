@@ -1,3 +1,4 @@
+import { treatmentStatus } from "../_lib/treatment-series"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -7,6 +8,7 @@ import {
   Calendar,
   ChevronDown,
   Clock,
+  History,
   Loader2,
   Pencil,
   Pill,
@@ -57,32 +59,26 @@ function durationLabel(value: DurationValue | null | undefined) {
   return `${range} ${DURATION_UNIT_LABELS[value.unit].toLowerCase()}`
 }
 
-function treatmentStatus(treatment: PatientTreatment) {
-  if (treatment.treatmentSituation) {
-    return treatment.treatmentSituation
-  }
-  return treatment.isCurrent ? "EN_CURSO" : "FINALIZADO"
-}
 
 function statusClass(status: ReturnType<typeof treatmentStatus>) {
   switch (status) {
-    case "EN_CURSO":
+    case "EN_PROCESO":
       return "border-emerald-200 bg-emerald-50 text-emerald-700"
-    case "PENDIENTE_DE_INICIO":
+    case "EN_ESPERA":
       return "border-amber-200 bg-amber-50 text-amber-700"
-    case "INTERRUMPIDO":
+    case "SUSPENDIDO":
       return "border-orange-200 bg-orange-50 text-orange-700"
-    case "FINALIZADO":
+    case "CULMINADO":
       return "border-border bg-muted text-muted-foreground"
-    case "SEARCHING":
+    case "EN_BUSQUEDA":
       return "border-sky-200 bg-sky-50 text-sky-700"
-    case "ABANDONED":
+    case "ABANDONADO":
       return "border-red-200 bg-red-50 text-red-700"
-    case "DECEASED_DURING_TREATMENT":
+    case "FALLECIDO":
       return "border-slate-200 bg-slate-50 text-slate-700"
-    case "NOT_APPLICABLE":
+    case "NO_APLICA":
       return "border-border bg-muted text-muted-foreground"
-    case "REMISSION":
+    case "REMISION":
       return "border-violet-200 bg-violet-50 text-violet-700"
     default:
       return "border-border bg-muted text-muted-foreground"
@@ -92,10 +88,13 @@ function statusClass(status: ReturnType<typeof treatmentStatus>) {
 export function TreatmentCard({
   patientId,
   treatment,
+  previousVersions = [],
   allowMedicationManagement,
 }: {
   patientId: string
   treatment: PatientTreatment
+  /** Superseded versions of this same treatment (same seriesId), newest first. */
+  previousVersions?: PatientTreatment[]
   allowMedicationManagement: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -148,6 +147,8 @@ export function TreatmentCard({
             ) : (
               "Sin diagnóstico asociado"
             )}
+            {previousVersions.length > 0 &&
+              ` · ${previousVersions.length} ${previousVersions.length === 1 ? "actualización" : "actualizaciones"}`}
           </span>
         </span>
         <ChevronDown
@@ -171,12 +172,7 @@ export function TreatmentCard({
         />
         <Detail
           label="Centro de atención"
-          value={
-            treatment.isReferred
-              ? treatment.receivingHealthCenterName
-              : (treatment.receivingHealthCenterName ??
-                treatment.sourceHealthCenterName)
-          }
+          value={centerLabel(treatment)}
           icon={Building2}
         />
       </div>
@@ -293,6 +289,13 @@ export function TreatmentCard({
             </div>
           </div>
 
+          {previousVersions.length > 0 && (
+            <TreatmentVersionHistory
+              current={treatment}
+              previousVersions={previousVersions}
+            />
+          )}
+
           <TreatmentMedications
             patientId={patientId}
             treatment={treatment}
@@ -302,6 +305,95 @@ export function TreatmentCard({
         </div>
       )}
     </article>
+  )
+}
+
+function centerLabel(treatment: PatientTreatment) {
+  return treatment.isReferred
+    ? treatment.receivingHealthCenterName
+    : (treatment.receivingHealthCenterName ?? treatment.sourceHealthCenterName)
+}
+
+export function TreatmentVersionHistory({
+  current,
+  previousVersions,
+}: {
+  current: PatientTreatment
+  previousVersions: PatientTreatment[]
+}) {
+  // Each entry is the state *before* an update; the newer neighbour is what it
+  // was changed to, so only fields that actually differ are highlighted.
+  return (
+    <div>
+      <p className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+        Historial de cambios
+      </p>
+      <ol className="space-y-2">
+        {previousVersions.map((version, index) => {
+          const next = index === 0 ? current : previousVersions[index - 1]
+          const versionStatus = version.treatmentSituation
+          const changes = [
+            versionStatus !== next.treatmentSituation && {
+              label: "Estado",
+              value: versionStatus ? (
+                <CatalogValue kind="treatment_situation" code={versionStatus} />
+              ) : (
+                "Sin estado"
+              ),
+            },
+            (version.startDate !== next.startDate ||
+              version.endDate !== next.endDate) && {
+              label: "Período",
+              value: periodLabel(version),
+            },
+            durationLabel(version.treatmentFrequency) !==
+              durationLabel(next.treatmentFrequency) && {
+              label: "Frecuencia",
+              value: durationLabel(version.treatmentFrequency) ?? "-",
+            },
+            centerLabel(version) !== centerLabel(next) && {
+              label: "Centro",
+              value: centerLabel(version) ?? "-",
+            },
+          ].filter((change) => change !== false)
+
+          return (
+            <li
+              key={version.id}
+              className="bg-card rounded-lg border px-3 py-2.5 text-sm"
+            >
+              <p className="text-muted-foreground flex items-center gap-1 text-xs">
+                <History className="size-3 shrink-0" />
+                Versión registrada el {date(version.createdAt)}
+              </p>
+              {changes.length ? (
+                <dl className="mt-1.5 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                  {changes.map((change) => (
+                    <div key={change.label} className="min-w-0">
+                      <dt className="text-muted-foreground inline text-xs">
+                        {change.label} anterior:{" "}
+                      </dt>
+                      <dd className="inline font-medium break-words">
+                        {change.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-muted-foreground mt-1.5 text-xs">
+                  Sin cambios en estado, período, frecuencia ni centro.
+                </p>
+              )}
+              {next.changeReason && (
+                <p className="text-muted-foreground mt-1.5 text-xs">
+                  Motivo del cambio: {next.changeReason}
+                </p>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+    </div>
   )
 }
 
@@ -331,7 +423,7 @@ function Detail({
   )
 }
 
-function TreatmentMedications({
+export function TreatmentMedications({
   patientId,
   treatment,
   canManage,

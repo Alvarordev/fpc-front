@@ -17,6 +17,7 @@ import {
   useCatalog,
 } from "@/hooks/use-catalog"
 import {
+  CATALOG_KIND_LABELS,
   OPEN_CATALOG_KINDS,
   type CatalogItem,
   type CatalogKind,
@@ -115,7 +116,7 @@ export function CatalogSelect({
             >
               <SelectValue
                 placeholder={
-                  missingParent ? "Seleccioná primero la fuente" : placeholder
+                  missingParent ? "Selecciona primero la fuente" : placeholder
                 }
               />
             </SelectTrigger>
@@ -134,6 +135,8 @@ export function CatalogSelect({
               size="icon"
               className="shrink-0"
               disabled={isDisabled}
+              aria-label={`Agregar opción a ${CATALOG_KIND_LABELS[kind]}`}
+              title={`Agregar opción a ${CATALOG_KIND_LABELS[kind]}`}
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="size-3.5" />

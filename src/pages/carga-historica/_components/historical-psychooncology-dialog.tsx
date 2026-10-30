@@ -11,6 +11,7 @@ import {
   type PsychooncologyAppointment,
 } from "@/api/psychooncology-appointments"
 import { volunteersApi } from "@/api/volunteers"
+import { usePatient } from "@/pages/pacientes/[id]/_hooks/use-patient"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -38,6 +39,9 @@ type AppointmentStatus =
 const ANONYMOUS_VOLUNTEER = "__ANONYMOUS__"
 const NO_FOLLOW_UP = "__NONE__"
 const NO_REFERRAL = "__UNSET__"
+/** Beneficiario: el paciente, o `companion:<id>` para un acompañante (decisión P14). */
+const PATIENT_BENEFICIARY = "PATIENT"
+const COMPANION_PREFIX = "companion:"
 
 interface HistoricalPsychooncologyDialogProps {
   open: boolean
@@ -83,7 +87,7 @@ export function HistoricalPsychooncologyDialog({
               : "Agregar sesión psicooncológica"}
           </DialogTitle>
           <DialogDescription>
-            Registrá una sesión ya ocurrida junto con su resultado. No se
+            Registra una sesión ya ocurrida junto con su resultado. No se
             reserva ningún horario del calendario.
           </DialogDescription>
         </DialogHeader>
@@ -149,6 +153,11 @@ function HistoricalPsychooncologyForm({
   const [volunteerId, setVolunteerId] = useState(
     () => existing?.volunteerId || ANONYMOUS_VOLUNTEER,
   )
+  const [beneficiary, setBeneficiary] = useState(() =>
+    existing?.beneficiaryType === "COMPANION" && existing.companionId
+      ? `${COMPANION_PREFIX}${existing.companionId}`
+      : PATIENT_BENEFICIARY,
+  )
   const [followUpId, setFollowUpId] = useState(
     () => existing?.followUpId ?? defaultFollowUpId ?? "",
   )
@@ -175,6 +184,15 @@ function HistoricalPsychooncologyForm({
     queryFn: volunteersApi.list,
     staleTime: 300_000,
   })
+  const patient = usePatient(patientId).data
+  // Una sesión guardada con el voluntario anónimo trae su id real: se trata como
+  // "no identificado" para mostrarlo y para enviarlo como anónimo.
+  const isAnonymous =
+    volunteerId === ANONYMOUS_VOLUNTEER ||
+    Boolean(
+      volunteersQuery.data?.find((volunteer) => volunteer.id === volunteerId)
+        ?.isAnonymous,
+    )
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -184,7 +202,9 @@ function HistoricalPsychooncologyForm({
       if (!Number.isInteger(parsedSessionNumber) || parsedSessionNumber < 1)
         throw new Error("El número de sesión debe ser un entero positivo")
 
-      const isAnonymous = volunteerId === ANONYMOUS_VOLUNTEER
+      const companionId = beneficiary.startsWith(COMPANION_PREFIX)
+        ? beneficiary.slice(COMPANION_PREFIX.length)
+        : null
       const results = {
         schedulingNotes: schedulingNotes.trim() || null,
         topicAddressed: topicAddressed.trim() || null,
@@ -197,6 +217,8 @@ function HistoricalPsychooncologyForm({
         ...results,
         volunteerId: isAnonymous ? undefined : volunteerId,
         useAnonymousVolunteer: isAnonymous,
+        beneficiaryType: companionId ? ("COMPANION" as const) : ("PATIENT" as const),
+        companionId,
         followUpId: followUpId || undefined,
         sessionNumber: parsedSessionNumber,
         modality,
@@ -252,6 +274,13 @@ function HistoricalPsychooncologyForm({
         }`,
       })),
   ]
+  const beneficiaryItems: SelectOption[] = [
+    { value: PATIENT_BENEFICIARY, label: "El paciente" },
+    ...(patient?.companions ?? []).map((link) => ({
+      value: `${COMPANION_PREFIX}${link.companionId}`,
+      label: `${link.companion?.fullName ?? link.companionDisplayName ?? "Acompañante"} (acompañante)`,
+    })),
+  ]
   const followUpSelectItems: SelectOption[] = [
     { value: NO_FOLLOW_UP, label: "Sin seguimiento relacionado" },
     ...followUpItems,
@@ -306,8 +335,15 @@ function HistoricalPsychooncologyForm({
             onChange={(value) => setStatus(value as AppointmentStatus)}
           />
           <SelectField
+            label="Para quién fue la sesión"
+            value={beneficiary}
+            placeholder="Seleccionar"
+            items={beneficiaryItems}
+            onChange={setBeneficiary}
+          />
+          <SelectField
             label="Voluntario original"
-            value={volunteerId}
+            value={isAnonymous ? ANONYMOUS_VOLUNTEER : volunteerId}
             placeholder="Seleccionar voluntario"
             items={volunteerItems}
             onChange={setVolunteerId}
@@ -351,7 +387,7 @@ function HistoricalPsychooncologyForm({
             <Textarea
               value={sessionDetails}
               onChange={(event) => setSessionDetails(event.target.value)}
-              placeholder="Describí lo trabajado durante la sesión..."
+              placeholder="Describe lo trabajado durante la sesión..."
               className="min-h-20 resize-y"
             />
           </Field>

@@ -1,6 +1,7 @@
 import { RouterProvider } from "react-router-dom"
 import { useEffect } from "react"
 import { QueryProvider } from "@/providers/query-provider"
+import { AppCatalogProvider } from "@/components/app-catalog-source"
 import { Toaster } from "sonner"
 import { router } from "@/router"
 import { useAuthStore } from "@/store/auth-store"
@@ -14,7 +15,9 @@ export default function App() {
 
   return (
     <QueryProvider>
-      <RouterProvider router={router} />
+      <AppCatalogProvider>
+        <RouterProvider router={router} />
+      </AppCatalogProvider>
       <Toaster position="top-right" richColors />
     </QueryProvider>
   )

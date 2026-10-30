@@ -1,15 +1,6 @@
-import type { AvailabilitySlot, Volunteer } from "@/types";
-import { getDaysInMonth, groupSlotsByDay, WEEKDAY_LABELS } from "@/lib/calendar-helpers";
-import { CalendarDayCell } from "./calendar-day-cell";
-
-interface AvailabilityCalendarProps {
-  year: number;
-  month: number;
-  slots: AvailabilitySlot[];
-  volunteers: Volunteer[];
-  highlightedIds: string[];
-  patientNameByAvailabilityId: Map<string, string>;
-}
+import type { AvailabilitySlot, Volunteer } from "@/types"
+import { getDaysInMonth, groupSlotsByDay, WEEKDAY_LABELS } from "@/lib/calendar-helpers"
+import { CalendarDayCell } from "./calendar-day-cell"
 
 export function AvailabilityCalendar({
   year,
@@ -18,39 +9,42 @@ export function AvailabilityCalendar({
   volunteers,
   highlightedIds,
   patientNameByAvailabilityId,
-}: AvailabilityCalendarProps) {
-  const days = getDaysInMonth(year, month);
-  const slotsByDay = groupSlotsByDay(slots, year, month);
+}: {
+  year: number
+  month: number
+  slots: AvailabilitySlot[]
+  volunteers: Volunteer[]
+  highlightedIds: string[]
+  patientNameByAvailabilityId: Map<string, string>
+}) {
+  const days = getDaysInMonth(year, month)
+  const slotsByDay = groupSlotsByDay(slots, year, month)
 
   return (
-    <div className="rounded-xl border border-border/60 overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-border/60">
+    <div className="space-y-2">
+      <div className="grid grid-cols-7 gap-2">
         {WEEKDAY_LABELS.map((label) => (
-          <div
-            key={label}
-            className="py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted/30"
-          >
+          <div key={label} className="py-1 text-center text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
             {label}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
-        {days.map((date, i) => {
-          const isoKey = date.toISOString().slice(0, 10);
-          const daySlots = slotsByDay.get(isoKey) ?? [];
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((date, index) => {
+          const isoKey = date.toISOString().slice(0, 10)
           return (
             <CalendarDayCell
-              key={i}
+              key={index}
               date={date}
               currentMonth={month}
-              slots={daySlots}
+              slots={slotsByDay.get(isoKey) ?? []}
               volunteers={volunteers}
               highlightedIds={highlightedIds}
               patientNameByAvailabilityId={patientNameByAvailabilityId}
             />
-          );
+          )
         })}
       </div>
     </div>
-  );
+  )
 }

@@ -78,6 +78,13 @@ export function CreateAppointmentDialog({
   const [difficulties, setDifficulties] = useState("")
   const [attendedViaSepa, setAttendedViaSepa] = useState<boolean | undefined>()
   const [referredViaSepa, setReferredViaSepa] = useState<boolean | undefined>()
+  const [reminderLead, setReminderLead] = useState<
+    "TWO_HOURS" | "ONE_DAY" | "CUSTOM"
+  >("ONE_DAY")
+  const [reminderChannel, setReminderChannel] = useState<"EMAIL" | "MANUAL">(
+    "EMAIL",
+  )
+  const [reminderAt, setReminderAt] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
 
   const { data: patientPage } = usePatients({
@@ -103,6 +110,9 @@ export function CreateAppointmentDialog({
     setDifficulties("")
     setAttendedViaSepa(undefined)
     setReferredViaSepa(undefined)
+    setReminderLead("ONE_DAY")
+    setReminderChannel("EMAIL")
+    setReminderAt("")
     setErrorMsg("")
   }
 
@@ -116,6 +126,10 @@ export function CreateAppointmentDialog({
     const finalSpecialty = resolveSpecialty(appointmentFields)
     if (!finalSpecialty) {
       setErrorMsg("Selecciona o especifica una especialidad médica.")
+      return
+    }
+    if (reminderLead === "CUSTOM" && !reminderAt) {
+      setErrorMsg("Indica la fecha y hora de la anticipación personalizada.")
       return
     }
 
@@ -134,6 +148,12 @@ export function CreateAppointmentDialog({
         isFirstConsultation: appointmentFields.isFirstConsultation,
         attendedViaSepa,
         referredViaSepa,
+        reminderLead,
+        reminderChannel,
+        reminderAt:
+          reminderLead === "CUSTOM" && reminderAt
+            ? new Date(reminderAt).toISOString()
+            : undefined,
       })
 
       resetForm()
@@ -309,6 +329,55 @@ export function CreateAppointmentDialog({
                 placeholder="Ej. INEN - Departamento de Radioterapia"
                 value={referredTo}
                 onChange={(e) => setReferredTo(e.target.value)}
+                className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
+              />
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-foreground text-xs font-semibold">
+                Anticipación del recordatorio
+              </label>
+              <select
+                value={reminderLead}
+                onChange={(event) =>
+                  setReminderLead(
+                    event.target.value as "TWO_HOURS" | "ONE_DAY" | "CUSTOM",
+                  )
+                }
+                className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
+              >
+                <option value="TWO_HOURS">2 horas antes</option>
+                <option value="ONE_DAY">1 día antes</option>
+                <option value="CUSTOM">Personalizada</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-foreground text-xs font-semibold">
+                Canal del recordatorio
+              </label>
+              <select
+                value={reminderChannel}
+                onChange={(event) =>
+                  setReminderChannel(event.target.value as "EMAIL" | "MANUAL")
+                }
+                className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
+              >
+                <option value="EMAIL">Correo</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+          </div>
+          {reminderLead === "CUSTOM" && (
+            <div className="space-y-1.5">
+              <label className="text-foreground text-xs font-semibold">
+                Fecha y hora del recordatorio
+              </label>
+              <input
+                type="datetime-local"
+                value={reminderAt}
+                onChange={(event) => setReminderAt(event.target.value)}
                 className="bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
               />
             </div>

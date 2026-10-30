@@ -36,7 +36,6 @@ export const genderLabels: Record<string, string> = {
 export const roleLabels: Record<PatientDetailsResponse["role"], string> = {
   UNKNOWN: "Sin definir",
   PATIENT: "Paciente",
-  COMPANION: "Acompañante",
 }
 
 /** Catálogo alineado al PDF de observaciones CRM (parentesco de contactos). */

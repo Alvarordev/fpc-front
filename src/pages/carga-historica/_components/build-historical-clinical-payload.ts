@@ -12,6 +12,10 @@ import {
 } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-drafts"
 import { normalizeDuration, toDurationInput } from "@/types/duration"
 import { toIsoDateOnly } from "./historical-record-options"
+import {
+  fixedWaitTime,
+  fixedWaitTimeRecallFrom,
+} from "@/types/wait-time-recall"
 
 /**
  * The historical create and update DTOs are identical except that the update
@@ -77,7 +81,8 @@ export interface HistoricalClinicalRecordIds {
 }
 
 function resolveWaitTimeForDiagnosis(draft: DiagnosisDraft) {
-  if (draft.remembersWaitTimeForDiagnosis === false) return null
+  if (draft.remembersWaitTimeForDiagnosis === false)
+    return fixedWaitTime(draft.waitTimeRecall)
   const manuallyEdited = draft.waitTimeForDiagnosisManuallyEdited
   if (manuallyEdited) return toDurationInput(draft.waitTimeForDiagnosis)
   if (draft.firstSymptomsDate && draft.diagnosisDate) return undefined
@@ -88,6 +93,9 @@ function buildDiagnosis(
   draft: DiagnosisDraft,
   existingId?: string,
 ): DiagnosisPayload {
+  // Historical capture never offers in-place corrections of active diagnoses.
+  if (draft.mode === "EDIT")
+    throw new Error("La carga histórica no admite corregir diagnósticos")
   const waitTimeForDiagnosis = resolveWaitTimeForDiagnosis(draft)
   if (
     draft.remembersWaitTimeForDiagnosis !== false &&
@@ -110,6 +118,7 @@ function buildDiagnosis(
     healthCenterId: draft.healthCenterId,
     diagnosisSpecialty: draft.diagnosisSpecialty,
     symptomLeadingToCheckup: draft.symptomLeadingToCheckup,
+    diseaseEvolution: draft.diseaseEvolution,
     hasMedicalReport: draft.hasMedicalReport,
     isSepaActiveReferral: draft.isSepaActiveReferral,
     changeReason: draft.changeReason,
@@ -177,7 +186,7 @@ function buildTreatment(
         : undefined,
     treatmentSituation: draft.treatmentSituation,
     treatmentAbandonmentReason:
-      draft.treatmentSituation === "ABANDONED"
+      draft.treatmentSituation === "ABANDONADO"
         ? draft.treatmentAbandonmentReason
         : undefined,
     interruptionReason: draft.interruptionReason,
@@ -367,12 +376,12 @@ export function buildHistoricalClinicalPayload({
     }
   }
 
-  if (drafts.address) {
+  if (drafts.address || drafts.temporaryAddress) {
     payload.addresses = [
-      {
-        ...drafts.address,
-        ...(recordIds.addressId ? { id: recordIds.addressId } : {}),
-      },
+      ...(drafts.address
+        ? [{ ...drafts.address, ...(recordIds.addressId ? { id: recordIds.addressId } : {}) }]
+        : []),
+      ...(drafts.temporaryAddress ? [drafts.temporaryAddress] : []),
     ]
   }
 
@@ -405,6 +414,9 @@ export function historicalClinicalDraftsFromPatient(
     recordIds.diagnoses = {}
     drafts.diagnoses = diagnoses.map((diagnosis) => {
       recordIds.diagnoses![diagnosis.id] = diagnosis.id
+      const waitTimeRecall = fixedWaitTimeRecallFrom(
+        diagnosis.waitTimeForDiagnosis,
+      )
       return {
         draftId: diagnosis.id,
         mode: "PARALLEL",
@@ -416,18 +428,24 @@ export function historicalClinicalDraftsFromPatient(
           healthCenterId: diagnosis.healthCenterId,
           diagnosisSpecialty: diagnosis.diagnosisSpecialty,
           symptomLeadingToCheckup: diagnosis.symptomLeadingToCheckup,
+          diseaseEvolution: diagnosis.diseaseEvolution,
           isSepaActiveReferral: diagnosis.isSepaActiveReferral,
           changeReason: diagnosis.changeReason,
         }),
         hasMedicalReport: diagnosis.hasMedicalReport,
-        waitTimeForDiagnosis: normalizeDuration(diagnosis.waitTimeForDiagnosis),
+        waitTimeForDiagnosis: waitTimeRecall
+          ? undefined
+          : normalizeDuration(diagnosis.waitTimeForDiagnosis),
         waitTimeForDiagnosisManuallyEdited:
-          diagnosis.waitTimeSource === "REPORTED",
-        remembersWaitTimeForDiagnosis: !(
-          Boolean(diagnosis.firstSymptomsDate && diagnosis.diagnosisDate) &&
-          diagnosis.waitTimeForDiagnosis == null &&
-          diagnosis.waitTimeSource == null
-        ),
+          !waitTimeRecall && diagnosis.waitTimeSource === "REPORTED",
+        remembersWaitTimeForDiagnosis:
+          !waitTimeRecall &&
+          !(
+            Boolean(diagnosis.firstSymptomsDate && diagnosis.diagnosisDate) &&
+            diagnosis.waitTimeForDiagnosis == null &&
+            diagnosis.waitTimeSource == null
+          ),
+        waitTimeRecall,
       } satisfies DiagnosisDraft
     })
   }

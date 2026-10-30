@@ -1,37 +1,34 @@
-import { cn } from "@/lib/utils";
-import { STEP_LABELS, TOTAL_STEPS } from "../_store/enrollment-store";
+import { cn } from "@/lib/utils"
+import { SegmentedProgress } from "@/components/ds/progress"
+import { STEP_LABELS, TOTAL_STEPS } from "../_store/enrollment-store"
 
-interface Props { currentStep: number }
+interface Props {
+  currentStep: number
+  onGoTo: (step: number) => void
+}
 
-export function EnrollmentStepper({ currentStep }: Props) {
+export function EnrollmentStepper({ currentStep, onGoTo }: Props) {
   return (
-    <nav className="flex items-start gap-0">
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((step) => {
-        const isDone = step < currentStep;
-        const isActive = step === currentStep;
-        return (
-          <div key={step} className="flex items-start">
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="relative flex items-center justify-center">
-                {isActive && <span className="absolute size-5 animate-ping rounded-full bg-primary/30" />}
-                <div className={cn("rounded-full transition-all duration-300",
-                  isDone && "size-2.5 bg-primary",
-                  isActive && "size-3.5 bg-primary ring-4 ring-primary/20",
-                  !isDone && !isActive && "size-2.5 bg-border")}
-                />
-              </div>
-              <span className={cn("hidden text-[10px] font-semibold tracking-wide transition-colors md:block",
-                isActive ? "text-foreground" : "text-muted-foreground/60")}>
-                {STEP_LABELS[step]}
-              </span>
-            </div>
-            {step < TOTAL_STEPS && (
-              <div className={cn("mx-1 mt-1 h-px w-6 md:w-10 transition-colors duration-300",
-                step < currentStep ? "bg-primary" : "bg-border/60")} />
-            )}
-          </div>
-        );
-      })}
-    </nav>
-  );
+    <div className="space-y-3">
+      <SegmentedProgress done={currentStep} total={TOTAL_STEPS} showCount={false} />
+      <ol className="flex flex-wrap gap-x-3 gap-y-1">
+        {Array.from({ length: TOTAL_STEPS }, (_, index) => index + 1).map((step) => {
+          const active = step === currentStep
+          const done = step < currentStep
+          const className = cn("text-[13px]", active ? "font-medium text-black" : "text-zinc-400")
+          return (
+            <li key={step}>
+              {done ? (
+                <button type="button" onClick={() => onGoTo(step)} className={cn(className, "cursor-pointer hover:text-zinc-700")}>
+                  {STEP_LABELS[step]}
+                </button>
+              ) : (
+                <span className={className}>{STEP_LABELS[step]}</span>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
 }

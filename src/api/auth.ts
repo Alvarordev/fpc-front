@@ -1,3 +1,4 @@
+import { readApiErrorMessage } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 import { refreshAccessToken, setAccessToken } from "@/lib/auth-session"
@@ -17,7 +18,10 @@ export class AuthApiError extends Error {
 
 function getAuthErrorMessage(status: number): string {
   if (status === 401) {
-    return "Credenciales inválidas"
+    return "Correo o contraseña incorrectos."
+  }
+  if (status === 429) {
+    return "Demasiados intentos. Espera un momento y vuelve a probar."
   }
 
   return "No se pudo completar la solicitud de autenticación"
@@ -57,6 +61,42 @@ export const authApi = {
     }
 
     return user
+  },
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const { error, response } = await api.POST("/auth/forgot-password", {
+      body: { email },
+    })
+    if (!response.ok) {
+      throw new AuthApiError(
+        response.status,
+        readApiErrorMessage(error) ?? getAuthErrorMessage(response.status),
+      )
+    }
+  },
+
+  async verifyPasswordReset(token: string): Promise<void> {
+    const { error, response } = await api.POST("/auth/reset-password/verify", {
+      body: { token },
+    })
+    if (!response.ok) {
+      throw new AuthApiError(
+        response.status,
+        readApiErrorMessage(error) ?? "El enlace no es válido o ya venció.",
+      )
+    }
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    const { error, response } = await api.POST("/auth/reset-password", {
+      body: { token, password },
+    })
+    if (!response.ok) {
+      throw new AuthApiError(
+        response.status,
+        readApiErrorMessage(error) ?? "No se pudo cambiar la contraseña.",
+      )
+    }
   },
 
   async logout(): Promise<void> {

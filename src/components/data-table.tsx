@@ -26,6 +26,7 @@ interface DataTableProps<TData> {
   isLoading?: boolean;
   onRowClick?: (row: TData) => void;
   emptyMessage?: string;
+  emptyDescription?: string | null;
 }
 
 export function DataTable<TData>({
@@ -34,6 +35,7 @@ export function DataTable<TData>({
   isLoading,
   onRowClick,
   emptyMessage = "Sin resultados",
+  emptyDescription = "No se encontraron registros con esos criterios.",
 }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
@@ -119,9 +121,11 @@ export function DataTable<TData>({
                     <p className="text-sm font-medium text-foreground">
                       {emptyMessage}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      No se encontraron registros con esos criterios.
-                    </p>
+                    {emptyDescription && (
+                      <p className="text-xs text-muted-foreground">
+                        {emptyDescription}
+                      </p>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

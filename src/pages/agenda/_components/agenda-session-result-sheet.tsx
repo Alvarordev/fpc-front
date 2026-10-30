@@ -308,7 +308,7 @@ export function AgendaSessionResultSheet({
                       <Label>Detalles de la sesión</Label>
                       <Textarea
                         {...register("sessionDetails")}
-                        placeholder="Describí lo trabajado durante la sesión..."
+                        placeholder="Describe lo trabajado durante la sesión..."
                         className="min-h-24 resize-none"
                       />
                     </div>

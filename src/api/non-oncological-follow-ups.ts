@@ -1,3 +1,4 @@
+import { apiErrorFromBody } from "./api-error"
 import type { components } from "./schema"
 import { api } from "./client"
 
@@ -10,11 +11,11 @@ export type UpdateNonOncologicalFollowUpInput =
 
 export const nonOncologicalFollowUpsApi = {
   async list(patientId: string): Promise<NonOncologicalFollowUp[]> {
-    const { data, response } = await api.GET(
+    const { data, error, response } = await api.GET(
       "/patients/{patientId}/non-oncological-follow-ups",
       { params: { path: { patientId } } },
     )
-    if (!data) throw new Error(`No se pudo cargar el seguimiento (${response.status})`)
+    if (!data) throw apiErrorFromBody(error, response.status, "No se pudo cargar el seguimiento")
     return data
   },
 
@@ -22,11 +23,11 @@ export const nonOncologicalFollowUpsApi = {
     patientId: string,
     input: CreateNonOncologicalFollowUpInput,
   ): Promise<NonOncologicalFollowUp> {
-    const { data, response } = await api.POST(
+    const { data, error, response } = await api.POST(
       "/patients/{patientId}/non-oncological-follow-ups",
       { params: { path: { patientId } }, body: input },
     )
-    if (!data) throw new Error(`No se pudo guardar el seguimiento (${response.status})`)
+    if (!data) throw apiErrorFromBody(error, response.status, "No se pudo guardar el seguimiento")
     return data
   },
 
@@ -35,11 +36,11 @@ export const nonOncologicalFollowUpsApi = {
     id: string,
     input: UpdateNonOncologicalFollowUpInput,
   ): Promise<NonOncologicalFollowUp> {
-    const { data, response } = await api.PATCH(
+    const { data, error, response } = await api.PATCH(
       "/patients/{patientId}/non-oncological-follow-ups/{id}",
       { params: { path: { patientId, id } }, body: input },
     )
-    if (!data) throw new Error(`No se pudo actualizar el seguimiento (${response.status})`)
+    if (!data) throw apiErrorFromBody(error, response.status, "No se pudo actualizar el seguimiento")
     return data
   },
 }

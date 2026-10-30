@@ -1,178 +1,68 @@
-import { useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { toast } from "sonner"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  catalogsApi,
-  type CatalogItem,
-  type CatalogKind,
-} from "@/api/catalogs"
+import { Pencil } from "lucide-react"
+import { toast } from "sonner"
+import { catalogsApi, type CatalogItem, type CatalogKind } from "@/api/catalogs"
+import { CopyValue } from "@/components/ds/copy-value"
+import { FormModal } from "@/components/ds/form-modal"
+import type { Option, Values } from "@/components/ds/questions"
 import { catalogQueryKey } from "@/hooks/use-catalog"
-
-const schema = z.object({
-  label: z.string().min(1, "Requerido"),
-  sortOrder: z.string().min(1, "Requerido"),
-  isActive: z.enum(["true", "false"]),
-})
-
-type FormValues = z.infer<typeof schema>
-
-interface EditCatalogItemDialogProps {
-  item: CatalogItem | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
+import { catalogItemEditGroups } from "@/lib/catalog-item-questions"
 
 export function EditCatalogItemDialog({
   item,
-  open,
-  onOpenChange,
-}: EditCatalogItemDialogProps) {
+  kindLabel,
+  parent,
+  onClose,
+}: {
+  item: CatalogItem | null
+  kindLabel: string
+  parent?: { label: string; options: Option[] }
+  onClose: () => void
+}) {
   const queryClient = useQueryClient()
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string
-      data: Parameters<typeof catalogsApi.update>[1]
-    }) => catalogsApi.update(id, data),
-    onSuccess: (updated) => {
-      void queryClient.invalidateQueries({
-        queryKey: catalogQueryKey(updated.kind as CatalogKind),
+  const update = useMutation({
+    mutationFn: (values: Values) => {
+      if (!item) throw new Error("No hay un ítem para editar")
+      return catalogsApi.update(item.id, {
+        label: values.label?.trim() ?? "",
+        sortOrder: values.sortOrder ? Number(values.sortOrder) : 0,
+        ...(parent ? { parentCode: values.parent } : {}),
       })
     },
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: catalogQueryKey(updated.kind as CatalogKind) })
+    },
   })
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { label: "", sortOrder: "0", isActive: "true" },
-  })
-
-  const isActive = watch("isActive")
-
-  useEffect(() => {
-    if (open && item) {
-      reset({
-        label: item.label,
-        sortOrder: String(item.sortOrder),
-        isActive: item.isActive ? "true" : "false",
-      })
-    }
-  }, [open, item, reset])
-
-  function handleClose() {
-    onOpenChange(false)
-  }
-
-  async function onSubmit(values: FormValues) {
-    if (!item) return
-    try {
-      await updateMutation.mutateAsync({
-        id: item.id,
-        data: {
-          label: values.label.trim(),
-          sortOrder: Number(values.sortOrder) || 0,
-          isActive: values.isActive === "true",
-        },
-      })
-      toast.success("Ítem actualizado")
-      handleClose()
-    } catch (err) {
-      toast.error("Error al actualizar", {
-        description: err instanceof Error ? err.message : "Error inesperado",
-      })
-    }
-  }
+  if (!item) return null
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Editar ítem</DialogTitle>
-          <DialogDescription>
-            El código no se puede cambiar. Código: {item?.code}
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={(event) => {
-            event.stopPropagation()
-            void handleSubmit(onSubmit)(event)
-          }}
-          className="space-y-4 py-2"
-        >
-          <div className="space-y-2">
-            <Label>Etiqueta</Label>
-            <Input {...register("label")} />
-            {errors.label && (
-              <p className="text-destructive text-xs">{errors.label.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>Orden en listas</Label>
-            <Input type="number" min={0} {...register("sortOrder")} />
-            <p className="text-muted-foreground text-xs">
-              Posición en desplegables y en esta tabla. Menor número = más arriba.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label>Estado</Label>
-            <Select
-              items={[
-                { value: "true", label: "Activo" },
-                { value: "false", label: "Archivado" },
-              ]}
-              value={isActive}
-              onValueChange={(value) =>
-                setValue("isActive", (value as "true" | "false") ?? "true")
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="true">Activo</SelectItem>
-                <SelectItem value="false">Archivado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Guardando..." : "Guardar"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormModal
+      key={item.id}
+      icon={Pencil}
+      title="Editar opción"
+      description={kindLabel}
+      groups={catalogItemEditGroups(parent)}
+      initial={{
+        label: item.label,
+        sortOrder: String(item.sortOrder),
+        parent: item.parentCode,
+      }}
+      submitLabel="Guardar cambios"
+      pending={update.isPending}
+      onClose={onClose}
+      onSubmit={(values) => {
+        update.mutate(values, {
+          onSuccess: (updated) => {
+            toast.success("Opción actualizada", { description: updated.label })
+            onClose()
+          },
+          onError: (error: Error) => toast.error("No se pudo guardar la opción", { description: error.message }),
+        })
+      }}
+    >
+      <p className="px-1 text-[13px] text-zinc-500">
+        Código <CopyValue value={item.code} label="Código" className="font-medium text-zinc-800" />. No se puede cambiar.
+      </p>
+    </FormModal>
   )
 }

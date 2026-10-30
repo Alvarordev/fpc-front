@@ -24,6 +24,7 @@ export const FOLLOW_UP_STATUS_OPTIONS: SelectOption[] = [
   { value: "COMPLETED", label: "Completado" },
   { value: "SCHEDULED", label: "Programado" },
   { value: "NO_ANSWER", label: "Sin respuesta" },
+  { value: "OVERDUE", label: "Vencido" },
   { value: "CANCELLED", label: "Cancelado" },
 ]
 
@@ -34,9 +35,11 @@ export const REMINDER_STATUS_OPTIONS: SelectOption[] = [
 ]
 
 export const APPOINTMENT_STATUS_OPTIONS: SelectOption[] = [
-  { value: "COMPLETED", label: "Atendida" },
+  { value: "COMPLETED", label: "Completada" },
   { value: "SCHEDULED", label: "Programada" },
-  { value: "NO_ANSWER", label: "No asistió" },
+  { value: "NO_SHOW", label: "No se presentó" },
+  { value: "RESCHEDULED", label: "Reprogramada" },
+  { value: "OVERDUE", label: "Vencida" },
   { value: "CANCELLED", label: "Cancelada" },
 ]
 

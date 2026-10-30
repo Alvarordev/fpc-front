@@ -1,33 +1,16 @@
 import { useState } from "react"
 import { CalendarPlus, Copy, Plus, Trash2 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  followUpPurposeLabels,
-  followUpTypeLabels,
-} from "@/lib/follow-up-labels"
-import {
-  getLocalDateValue,
-  scheduleFollowUpSchema,
-  type ScheduleFollowUpFormValues,
-} from "./schedule-follow-up-schema"
+import { Button, IconButton } from "@/components/ds/button"
+import { Panel } from "@/components/ds/card"
+import { Field, SelectField } from "@/components/ds/form"
+import { Modal } from "@/components/ds/modal"
+import { QuestionForm } from "@/components/ds/question-form"
+import type { Group, Values } from "@/components/ds/questions"
+import { followUpPurposeLabels, followUpTypeLabels } from "@/lib/follow-up-labels"
+import { getLocalDateValue, type ScheduleFollowUpFormValues } from "./schedule-follow-up-schema"
+
+// Planificar varios seguimientos de una vez: cada uno en su bloque, con la
+// opción de duplicarlo para repetir canal y motivo en otra fecha.
 
 interface ScheduleFollowUpsDialogProps {
   open: boolean
@@ -38,370 +21,136 @@ interface ScheduleFollowUpsDialogProps {
   requiresAgentSelection?: boolean
 }
 
-function createEmptyRow(): ScheduleFollowUpFormValues {
-  return {
-    type: "CALL",
-    purpose: "FOLLOW_UP",
-    date: getLocalDateValue(),
-    time: "",
-    notes: "",
-  }
+const options = (labels: Record<string, string>) => Object.entries(labels).map(([value, label]) => ({ value, label }))
+
+const rowGroups: Group[] = [
+  {
+    // Sin título: el bloque ya lleva el número y la fecha.
+    title: "",
+    questions: [
+      { id: "date", label: "Fecha", type: "date", required: true },
+      { id: "time", label: "Hora", type: "time", required: true },
+      { id: "type", label: "Canal", type: "choice", required: true, options: options(followUpTypeLabels), wide: true },
+      { id: "purpose", label: "Motivo", type: "select", required: true, options: options(followUpPurposeLabels) },
+      { id: "notes", label: "Nota", type: "textarea", placeholder: "Qué conviene revisar en este seguimiento" },
+    ],
+  },
+]
+
+type Row = { key: number; values: Values }
+
+let nextKey = 0
+const emptyRow = (values: Values = { type: "CALL", purpose: "FOLLOW_UP", date: getLocalDateValue() }): Row => ({ key: nextKey++, values })
+
+function rowLabel(values: Values) {
+  if (!values.date) return "Sin fecha"
+  const date = new Date(`${values.date}T12:00:00`)
+  if (Number.isNaN(date.valueOf())) return "Sin fecha"
+  const label = date.toLocaleDateString("es-PE", { weekday: "long", day: "numeric", month: "long" })
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)}${values.time ? `, ${values.time}` : ""}`
 }
 
-function formatRowDate(row: ScheduleFollowUpFormValues) {
-  if (!row.date) return "Elegí una fecha"
-
-  const date = new Date(`${row.date}T12:00:00`)
-  if (Number.isNaN(date.valueOf())) return "Elegí una fecha"
-
-  return date.toLocaleDateString("es-PE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function getRowError(row: ScheduleFollowUpFormValues) {
-  const result = scheduleFollowUpSchema.safeParse(row)
-  if (!result.success)
-    return result.error.issues[0]?.message ?? "Revisá este seguimiento"
-
-  const scheduledAt = new Date(`${row.date}T${row.time}:00`)
-  if (Number.isNaN(scheduledAt.valueOf()) || scheduledAt <= new Date()) {
-    return "La fecha y hora deben ser futuras"
-  }
-
+function rowError(values: Values) {
+  if (!values.date) return "Elige la fecha"
+  if (!values.time) return "Elige la hora"
+  if (!values.type || !values.purpose) return "Elige el canal y el motivo"
+  const at = new Date(`${values.date}T${values.time}:00`)
+  if (Number.isNaN(at.valueOf()) || at <= new Date()) return "La fecha y hora deben ser futuras"
   return undefined
 }
 
-export function ScheduleFollowUpsDialog({
-  open,
-  onOpenChange,
+export function ScheduleFollowUpsDialog({ open, onOpenChange, onSubmit, isPending, agents = [], requiresAgentSelection = false }: ScheduleFollowUpsDialogProps) {
+  if (!open) return null
+  return <PlanModal onClose={() => onOpenChange(false)} onSubmit={onSubmit} isPending={isPending} agents={agents} requiresAgentSelection={requiresAgentSelection} />
+}
+
+function PlanModal({
+  onClose,
   onSubmit,
   isPending,
-  agents = [],
-  requiresAgentSelection = false,
-}: ScheduleFollowUpsDialogProps) {
-  const [rows, setRows] = useState<ScheduleFollowUpFormValues[]>([
-    createEmptyRow(),
-  ])
-  const [selectedAgentId, setSelectedAgentId] = useState<string>()
-  const [rowErrors, setRowErrors] = useState<Array<string | undefined>>([])
-  const [agentError, setAgentError] = useState<string>()
+  agents,
+  requiresAgentSelection,
+}: Omit<ScheduleFollowUpsDialogProps, "open" | "onOpenChange"> & { onClose: () => void; agents: Array<{ id: string; fullName: string }> }) {
+  const [rows, setRows] = useState<Row[]>(() => [emptyRow()])
+  const [agentId, setAgentId] = useState<string | null>(null)
+  const [tried, setTried] = useState(false)
 
-  function reset() {
-    setRows([createEmptyRow()])
-    setSelectedAgentId(undefined)
-    setRowErrors([])
-    setAgentError(undefined)
+  const errors = rows.map((r) => rowError(r.values))
+  const agentMissing = requiresAgentSelection && !agentId
+  const invalid = errors.filter(Boolean).length + (agentMissing ? 1 : 0)
+
+  function update(key: number, id: string, value: string | null) {
+    setRows((current) => current.map((r) => (r.key === key ? { ...r, values: { ...r.values, [id]: value } } : r)))
   }
 
-  function close() {
-    onOpenChange(false)
-    reset()
-  }
-
-  function updateRow(
-    index: number,
-    updates: Partial<ScheduleFollowUpFormValues>,
-  ) {
-    setRows((current) =>
-      current.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, ...updates } : row,
-      ),
-    )
-    setRowErrors((current) =>
-      current.map((error, rowIndex) =>
-        rowIndex === index ? undefined : error,
-      ),
-    )
-  }
-
-  function addRow() {
-    setRows((current) => [...current, createEmptyRow()])
-    setRowErrors((current) => [...current, undefined])
-  }
-
-  function duplicateRow(index: number) {
-    setRows((current) => [
-      ...current.slice(0, index + 1),
-      { ...current[index], time: "" },
-      ...current.slice(index + 1),
-    ])
-    setRowErrors((current) => [
-      ...current.slice(0, index + 1),
-      undefined,
-      ...current.slice(index + 1),
-    ])
-  }
-
-  function removeRow(index: number) {
-    if (rows.length === 1) return
-    setRows((current) => current.filter((_, rowIndex) => rowIndex !== index))
-    setRowErrors((current) =>
-      current.filter((_, rowIndex) => rowIndex !== index),
-    )
+  function duplicate(index: number) {
+    setRows((current) => [...current.slice(0, index + 1), emptyRow({ ...current[index].values, time: null }), ...current.slice(index + 1)])
   }
 
   async function submit() {
-    const errors = rows.map(getRowError)
-    setRowErrors(errors)
-
-    const nextAgentError =
-      requiresAgentSelection && !selectedAgentId
-        ? "Seleccioná un agente responsable"
-        : undefined
-    setAgentError(nextAgentError)
-
-    if (errors.some(Boolean) || nextAgentError) return
-
+    setTried(true)
+    if (invalid) return
     await onSubmit(
-      rows.map((row) => ({
-        ...row,
-        agentId: selectedAgentId,
+      rows.map(({ values: v }) => ({
+        type: v.type as ScheduleFollowUpFormValues["type"],
+        purpose: v.purpose as ScheduleFollowUpFormValues["purpose"],
+        date: v.date!,
+        time: v.time!,
+        notes: v.notes ?? "",
+        agentId: agentId ?? undefined,
       })),
     )
-    close()
+    onClose()
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : close())}
-    >
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 pr-8">
-            <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-full">
-              <CalendarPlus className="size-4" />
-            </span>
-            Planificar seguimientos
-          </DialogTitle>
-          <DialogDescription>
-            Organizá los próximos seguimientos de este paciente.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-1">
-          {requiresAgentSelection && (
-            <div className="space-y-2">
-              <Label htmlFor="planned-follow-up-agent">
-                Agente responsable
-              </Label>
-              <Select
-                items={agents.map((agent) => ({
-                  value: agent.id,
-                  label: agent.fullName,
-                }))}
-                value={selectedAgentId}
-                onValueChange={(value) => {
-                  setSelectedAgentId(value ?? undefined)
-                  setAgentError(undefined)
-                }}
-              >
-                <SelectTrigger
-                  id="planned-follow-up-agent"
-                  className="w-full"
-                  aria-invalid={Boolean(agentError)}
-                >
-                  <SelectValue placeholder="Seleccionar agente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {agentError && (
-                <p className="text-destructive text-xs">{agentError}</p>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {rows.map((row, index) => {
-              const error = rowErrors[index]
-
-              return (
-                <div
-                  key={index}
-                  className={`space-y-4 rounded-xl border p-4 ${
-                    error
-                      ? "border-destructive/50 bg-destructive/[0.03]"
-                      : "border-border/70"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                      {index + 1}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">
-                        Seguimiento {index + 1}
-                      </p>
-                      <p className="text-muted-foreground text-xs capitalize">
-                        {formatRowDate(row)}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label={`Duplicar seguimiento ${index + 1}`}
-                        onClick={() => duplicateRow(index)}
-                      >
-                        <Copy className="size-3.5" />
-                      </Button>
-                      {rows.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          aria-label={`Eliminar seguimiento ${index + 1}`}
-                          onClick={() => removeRow(index)}
-                        >
-                          <Trash2 className="text-muted-foreground size-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor={`planned-follow-up-date-${index}`}>
-                        Fecha
-                      </Label>
-                      <Input
-                        id={`planned-follow-up-date-${index}`}
-                        type="date"
-                        value={row.date}
-                        onChange={(event) =>
-                          updateRow(index, { date: event.target.value })
-                        }
-                        aria-invalid={Boolean(error)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`planned-follow-up-time-${index}`}>
-                        Hora
-                      </Label>
-                      <Input
-                        id={`planned-follow-up-time-${index}`}
-                        type="time"
-                        value={row.time}
-                        onChange={(event) =>
-                          updateRow(index, { time: event.target.value })
-                        }
-                        aria-invalid={Boolean(error)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Canal</Label>
-                      <Select
-                        items={Object.entries(followUpTypeLabels).map(
-                          ([value, label]) => ({ value, label }),
-                        )}
-                        value={row.type}
-                        onValueChange={(value) =>
-                          updateRow(index, {
-                            type: value as ScheduleFollowUpFormValues["type"],
-                          })
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Seleccionar canal" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(followUpTypeLabels).map(
-                            ([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Propósito</Label>
-                      <Select
-                        items={Object.entries(followUpPurposeLabels).map(
-                          ([value, label]) => ({ value, label }),
-                        )}
-                        value={row.purpose}
-                        onValueChange={(value) =>
-                          updateRow(index, {
-                            purpose:
-                              value as ScheduleFollowUpFormValues["purpose"],
-                          })
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Seleccionar propósito" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(followUpPurposeLabels).map(
-                            ([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`planned-follow-up-notes-${index}`}>
-                      Nota{" "}
-                      <span className="text-muted-foreground font-normal">
-                        (opcional)
-                      </span>
-                    </Label>
-                    <Textarea
-                      id={`planned-follow-up-notes-${index}`}
-                      value={row.notes ?? ""}
-                      onChange={(event) =>
-                        updateRow(index, { notes: event.target.value })
-                      }
-                      className="min-h-16 resize-y"
-                      placeholder="Qué conviene revisar en este seguimiento..."
-                    />
-                  </div>
-
-                  {error && <p className="text-destructive text-xs">{error}</p>}
-                </div>
-              )
-            })}
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full border-dashed"
-            onClick={addRow}
-          >
-            <Plus className="size-4" />
-            Agregar otro seguimiento
-          </Button>
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={close}>
+    <Modal
+      open
+      onClose={() => !isPending && onClose()}
+      icon={CalendarPlus}
+      title="Planificar seguimientos"
+      description="Los próximos contactos con este paciente"
+      footer={
+        <>
+          {tried && invalid > 0 && <span className="mr-auto self-center text-[13px] text-red-700">{invalid === 1 ? "Falta corregir 1 dato" : `Faltan corregir ${invalid} datos`}</span>}
+          <Button onClick={onClose} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="button" onClick={submit} disabled={isPending}>
-            {isPending
-              ? "Guardando..."
-              : `Guardar ${rows.length} ${rows.length === 1 ? "seguimiento" : "seguimientos"}`}
+          <Button variant="dark" onClick={submit} disabled={isPending}>
+            {isPending ? "Guardando…" : rows.length === 1 ? "Guardar seguimiento" : `Guardar ${rows.length} seguimientos`}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      {requiresAgentSelection && (
+        <Panel>
+          <Field label="Agente responsable *" hint={tried && agentMissing ? "Elige quién hará estos seguimientos." : undefined}>
+            {(id) => <SelectField id={id} value={agentId} onChange={setAgentId} options={agents.map((a) => ({ value: a.id, label: a.fullName }))} placeholder="Seleccionar agente" />}
+          </Field>
+        </Panel>
+      )}
+      {rows.map((row, index) => (
+        <Panel key={row.key}>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600 tabular-nums">{index + 1}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-zinc-900">{rowLabel(row.values)}</p>
+              {tried && errors[index] && <p className="text-[13px] text-red-700">{errors[index]}</p>}
+            </div>
+            <IconButton icon={Copy} label={`Duplicar seguimiento ${index + 1}`} onClick={() => duplicate(index)} />
+            {rows.length > 1 && <IconButton icon={Trash2} label={`Quitar seguimiento ${index + 1}`} onClick={() => setRows((current) => current.filter((r) => r.key !== row.key))} />}
+          </div>
+          <QuestionForm groups={rowGroups} values={row.values} onChange={(id, v) => update(row.key, id, v)} showMissing={tried} />
+        </Panel>
+      ))}
+      <button
+        type="button"
+        onClick={() => setRows((current) => [...current, emptyRow()])}
+        className="flex h-10 w-full items-center justify-center gap-1.5 rounded-[14px] border border-dashed border-zinc-300 text-sm font-medium text-zinc-600 transition-[color,transform] hover:text-zinc-900 active:scale-[0.99]"
+      >
+        <Plus className="size-4" />
+        Agregar otro seguimiento
+      </button>
+    </Modal>
   )
 }

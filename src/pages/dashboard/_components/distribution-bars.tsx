@@ -48,7 +48,7 @@ export function DistributionBars({
 
   if (distribution.items.length === 0) {
     return (
-      <p className="text-muted-foreground py-6 text-center text-sm">
+      <p className="text-zinc-500 py-6 text-center text-sm">
         No hay datos para esta población.
       </p>
     )
@@ -83,7 +83,7 @@ export function DistributionBars({
         />
       ))}
       {hidden > 0 && (
-        <p className="text-muted-foreground pt-1 text-xs">
+        <p className="text-zinc-500 pt-1 text-xs">
           +{hidden} categorías más
         </p>
       )}
@@ -115,22 +115,22 @@ export function MetricBar({
       style={{ gridTemplateColumns: columns }}
     >
       <span
-        className={cn("min-w-0 truncate", unknown && "text-muted-foreground")}
+        className={cn("min-w-0 truncate", unknown && "text-zinc-500")}
       >
         {label}
       </span>
-      <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+      <div className="bg-zinc-100 h-2.5 overflow-hidden rounded-full">
         <div
           className={cn(
             "h-full rounded-full",
             unknown
               ? "bg-[repeating-linear-gradient(45deg,var(--muted-foreground)_0_4px,transparent_4px_8px)] opacity-40"
-              : "bg-foreground",
+              : "bg-zinc-900",
           )}
           style={{ width: `${width}%` }}
         />
       </div>
-      <em className="text-muted-foreground text-right text-[13px] not-italic">
+      <em className="text-zinc-500 text-right text-[13px] not-italic">
         <b className="text-foreground font-medium tabular-nums">
           {number.format(count)}
         </b>
@@ -178,13 +178,13 @@ function FoldedBars({
             type="button"
             aria-expanded={open}
             onClick={() => setOpen((current) => !current)}
-            className="hover:bg-muted/60 -mx-2 grid w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-[13px]"
+            className="hover:bg-zinc-100/60 -mx-2 grid w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-[13px]"
             style={{ gridTemplateColumns: columns }}
           >
             <span className="min-w-0 truncate">
               <span
                 className={cn(
-                  "text-muted-foreground mr-1.5 inline-block transition-transform",
+                  "text-zinc-500 mr-1.5 inline-block transition-transform",
                   open && "rotate-90",
                 )}
               >
@@ -192,13 +192,13 @@ function FoldedBars({
               </span>
               {foldLabel}
             </span>
-            <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+            <div className="bg-zinc-100 h-2.5 overflow-hidden rounded-full">
               <div
-                className="bg-foreground h-full rounded-full"
+                className="bg-zinc-900 h-full rounded-full"
                 style={{ width: `${total ? (restCount / total) * 100 : 0}%` }}
               />
             </div>
-            <em className="text-muted-foreground text-right text-[13px] not-italic">
+            <em className="text-zinc-500 text-right text-[13px] not-italic">
               <b className="text-foreground font-medium tabular-nums">
                 {number.format(restCount)}
               </b>

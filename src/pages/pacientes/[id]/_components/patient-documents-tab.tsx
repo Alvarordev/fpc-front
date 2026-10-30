@@ -6,9 +6,7 @@ import {
   Eye,
   FileImage,
   FileText,
-  FileUp,
   Loader2,
-  Plus,
   RotateCcw,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -18,17 +16,11 @@ import {
   type PatientDocument,
   type PatientDocumentType,
 } from "@/api/patient-documents"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Chip } from "@/components/ds/badge"
+import { AddButton, Button as DsButton, IconButton } from "@/components/ds/button"
+import { Card as DsCard, Item } from "@/components/ds/card"
+import { EmptyState } from "@/components/ds/empty-state"
+import { Modal } from "@/components/ds/modal"
 import { useAuthStore } from "@/store/auth-store"
 import type { CatalogItem } from "@/api/catalogs"
 import { catalogLabel, useCatalog } from "@/hooks/use-catalog"
@@ -144,124 +136,52 @@ export function PatientDocumentsTab({
   if (!canManage) return null
 
   return (
-    <div className="space-y-5">
-      <Card>
-        <CardContent className="space-y-5 pt-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
-                <FileUp className="size-5" />
-              </span>
-              <div>
-                <h2 className="text-sm font-semibold">Documentos clínicos</h2>
-                <p className="text-muted-foreground mt-1 max-w-xl text-xs leading-relaxed">
-                  Informes, recetas y otros archivos del paciente en un espacio
-                  privado y asociado a su historial.
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant={showArchived ? "secondary" : "outline"}
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setShowArchived((value) => !value)}
-              >
-                <RotateCcw className="size-3.5" />
-                {showArchived ? "Ocultar archivados" : "Ver archivados"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="gap-1.5"
-                onClick={openUpload}
-              >
-                <Plus className="size-4" />
-                Agregar archivo
-              </Button>
-            </div>
+    <div className="space-y-4">
+      <DsCard
+        title="Documentos clínicos"
+        description="Informes, recetas y otros archivos del paciente. Máximo 10 MB por archivo."
+        action={
+          <div className="flex gap-2">
+            <DsButton icon={RotateCcw} onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? "Ocultar archivados" : "Ver archivados"}
+            </DsButton>
+            <AddButton onClick={openUpload}>Subir documento</AddButton>
           </div>
-
-          {documentsQuery.isLoading ? (
-            <div className="text-muted-foreground flex h-36 items-center justify-center gap-2 text-sm">
-              <Loader2 className="size-4 animate-spin" />
-              Cargando documentos...
-            </div>
-          ) : documentsQuery.isError ? (
-            <div className="flex h-36 flex-col items-center justify-center gap-2 text-center">
-              <p className="text-sm font-medium">
-                No se pudieron cargar los documentos.
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Revisa tu conexión e intenta nuevamente.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void documentsQuery.refetch()}
-              >
-                Reintentar
-              </Button>
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="border-border flex min-h-44 flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-5 text-center">
-              <FileText className="text-muted-foreground/35 size-9" />
-              <p className="text-sm font-medium">
-                {showArchived
-                  ? "Sin documentos archivados"
-                  : "Aún no hay documentos"}
-              </p>
-              <p className="text-muted-foreground max-w-sm text-xs leading-relaxed">
-                {showArchived
-                  ? "Los archivos archivados aparecerán aquí para consulta de auditoría."
-                  : "Agrega informes médicos, recetas u otros archivos relevantes para la atención."}
-              </p>
-              {!showArchived && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 gap-1.5"
-                  onClick={openUpload}
-                >
-                  <Plus className="size-3.5" />
-                  Agregar primer archivo
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="text-muted-foreground flex items-center justify-between text-xs">
-                <span>
-                  {documentsQuery.data?.total ?? documents.length} documento
-                  {(documentsQuery.data?.total ?? documents.length) === 1
-                    ? ""
-                    : "s"}
-                </span>
-                <span>Máximo 10 MB por archivo</span>
-              </div>
-              {documents.map((document) => (
-                <PatientDocumentRow
-                  key={document.id}
-                  document={document}
-                  association={associationLabel(
-                    document,
-                    diagnoses,
-                    treatments,
-                    cancerDiagnoses,
-                  )}
-                  isDownloading={downloadingId === document.id}
-                  onPreview={setPreviewDocument}
-                  onDownload={downloadDocument}
-                  onArchive={setArchiveDocument}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        }
+      >
+        {documentsQuery.isLoading ? (
+          <p className="flex items-center gap-2 text-[13px] text-zinc-500">
+            <Loader2 className="size-4 animate-spin" />
+            Cargando documentos...
+          </p>
+        ) : documentsQuery.isError ? (
+          <div className="flex items-center gap-3">
+            <p className="text-[13px] text-red-700">No se pudieron cargar los documentos.</p>
+            <DsButton onClick={() => void documentsQuery.refetch()}>Reintentar</DsButton>
+          </div>
+        ) : documents.length === 0 ? (
+          <EmptyState
+            title={showArchived ? "Sin documentos archivados" : "Aún no hay documentos"}
+            body={showArchived ? "Los archivos archivados aparecen aquí para auditoría." : "Sube informes médicos, recetas u otros archivos relevantes para la atención."}
+            action={showArchived ? undefined : "Subir documento"}
+            onAction={openUpload}
+          />
+        ) : (
+          <div className="grid gap-2 lg:grid-cols-2">
+            {documents.map((document) => (
+              <PatientDocumentRow
+                key={document.id}
+                document={document}
+                association={associationLabel(document, diagnoses, treatments, cancerDiagnoses)}
+                isDownloading={downloadingId === document.id}
+                onPreview={setPreviewDocument}
+                onDownload={downloadDocument}
+                onArchive={setArchiveDocument}
+              />
+            ))}
+          </div>
+        )}
+      </DsCard>
 
       <PatientDocumentUploadDialog
         key={uploadKey}
@@ -312,84 +232,28 @@ function PatientDocumentRow({
     document.mediaType.startsWith("image/")
   const isArchived = document.status === "ARCHIVED"
 
+  const isImage = document.mediaType.startsWith("image/")
   return (
-    <article className="border-border flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center">
-      <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
-        {document.mediaType.startsWith("image/") ? (
-          <FileImage className="size-4" />
-        ) : (
-          <FileText className="size-4" />
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p
-            className="truncate text-sm font-medium"
-            title={document.originalFileName}
-          >
-            {document.originalFileName}
-          </p>
-          <Badge
-            variant={isArchived ? "outline" : "secondary"}
-            className="text-[10px]"
-          >
-            {isArchived
-              ? "Archivado"
-              : DOCUMENT_TYPE_LABELS[document.documentType]}
-          </Badge>
-        </div>
-        <p className="text-muted-foreground mt-1 truncate text-xs">
-          {association ?? document.description ?? "Documento del paciente"}
-        </p>
-        <p className="text-muted-foreground/75 mt-1 text-[11px]">
-          {formatBytes(document.sizeBytes)} · {formatDate(document.createdAt)}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-1 self-end sm:self-center">
-        {!isArchived && isPreviewable && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            title="Previsualizar documento"
-            aria-label="Previsualizar documento"
-            onClick={() => onPreview(document)}
-          >
-            <Eye className="size-4" />
-          </Button>
-        )}
-        {!isArchived && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            title="Descargar documento"
-            aria-label="Descargar documento"
-            onClick={() => onDownload(document)}
-            disabled={isDownloading}
-          >
-            {isDownloading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Download className="size-4" />
-            )}
-          </Button>
-        )}
-        {!isArchived && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground hover:text-destructive"
-            title="Archivar documento"
-            aria-label="Archivar documento"
-            onClick={() => onArchive(document)}
-          >
-            <Archive className="size-4" />
-          </Button>
-        )}
-      </div>
-    </article>
+    <Item
+      leading={
+        <span className={isImage ? "flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-sky-50 text-sky-600 ring-1 ring-sky-100" : "flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-red-50 text-red-600 ring-1 ring-red-100"}>
+          {isImage ? <FileImage className="size-5" /> : <FileText className="size-5" />}
+        </span>
+      }
+      title={<span title={document.originalFileName}>{document.originalFileName}</span>}
+      tags={<Chip tone={isArchived ? "gray" : "blue"}>{isArchived ? "Archivado" : DOCUMENT_TYPE_LABELS[document.documentType]}</Chip>}
+      meta={association ?? document.description ?? "Documento del paciente"}
+      body={<span className="text-zinc-500">{formatBytes(document.sizeBytes)}, {formatDate(document.createdAt)}</span>}
+      actions={
+        isArchived ? undefined : (
+          <>
+            {isPreviewable && <IconButton icon={Eye} label="Previsualizar documento" onClick={() => onPreview(document)} />}
+            <IconButton icon={isDownloading ? Loader2 : Download} label="Descargar documento" disabled={isDownloading} onClick={() => onDownload(document)} />
+            <IconButton icon={Archive} label="Archivar documento" onClick={() => onArchive(document)} />
+          </>
+        )
+      }
+    />
   )
 }
 
@@ -404,39 +268,27 @@ function PatientDocumentArchiveDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
 }) {
+  if (!document) return null
   return (
-    <Dialog open={Boolean(document)} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Archivar documento</DialogTitle>
-          <DialogDescription>
-            El archivo dejará de aparecer en el listado normal y ya no podrá
-            descargarse. Se conservará su registro de auditoría.
-          </DialogDescription>
-        </DialogHeader>
-        <p className="bg-muted/50 rounded-lg px-3 py-2 text-sm break-words">
-          {document?.originalFileName}
-        </p>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={isPending}
-          >
+    <Modal
+      open
+      onClose={() => !isPending && onOpenChange(false)}
+      icon={Archive}
+      title="Archivar documento"
+      description="Deja de aparecer en el listado y ya no se puede descargar. Se conserva su registro de auditoría."
+      footer={
+        <>
+          <DsButton onClick={() => onOpenChange(false)} disabled={isPending}>
+            Volver
+          </DsButton>
+          <DsButton variant="dark" onClick={onConfirm} disabled={isPending}>
             {isPending ? "Archivando..." : "Archivar"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DsButton>
+        </>
+      }
+    >
+      <p className="px-1 text-sm break-words text-zinc-700">{document.originalFileName}</p>
+    </Modal>
   )
 }
 

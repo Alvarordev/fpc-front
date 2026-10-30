@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import type { Reminder } from "@/api/reminders"
 import { CatalogValue } from "@/components/catalog-select"
+import { ReminderDeliveryActions } from "@/components/reminder-delivery-actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -152,6 +153,8 @@ export function ReminderDetailDialog({
                 value={formatAgendaTime(reminder.dueAt)}
               />
             </div>
+
+            <ReminderDeliveryActions reminder={reminder} />
           </div>
 
           <DialogFooter className="gap-2 sm:justify-between">

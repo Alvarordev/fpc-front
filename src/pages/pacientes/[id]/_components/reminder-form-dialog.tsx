@@ -1,31 +1,13 @@
-import { useEffect } from "react"
-import { useForm } from "react-hook-form"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  MedicalAppointmentFields,
-  resolveSpecialty,
-  type MedicalAppointmentFieldsValue,
-} from "@/components/medical-appointment-fields"
+import { Bell } from "lucide-react"
+import { toast } from "sonner"
+import { HEALTH_CENTER } from "@/components/app-catalog-source"
+import { FormModal } from "@/components/ds/form-modal"
+import { is, type Group, type Question } from "@/components/ds/questions"
+import type { MedicalAppointmentFieldsValue } from "@/components/medical-appointment-fields"
 import type { Agent } from "@/api/agents"
-import type { Reminder, ReminderKind } from "@/api/reminders"
-import { cn } from "@/lib/utils"
+import type { Reminder, ReminderChannel, ReminderKind, ReminderLead } from "@/api/reminders"
+import { REMINDER_CHANNEL_ITEMS, REMINDER_LEAD_ITEMS } from "@/lib/reminder-labels"
+import { compact, fromBool } from "../seguimientos/_components/ficha/answers"
 
 function toLocalDateTime(date: string | null) {
   if (!date) return ""
@@ -39,6 +21,9 @@ export interface ReminderFormValues {
   description: string
   dueAt: string
   assignedAgentId?: string
+  channel: ReminderChannel
+  lead: ReminderLead
+  remindAt: string
   medicalAppointment: MedicalAppointmentFieldsValue
 }
 
@@ -54,10 +39,50 @@ interface ReminderFormDialogProps {
   onSave: (values: ReminderFormValues) => void
 }
 
-const EMPTY_APPOINTMENT: MedicalAppointmentFieldsValue = {
-  specialty: "",
-  healthCenterId: "",
-  isFirstConsultation: false,
+const medical = is("kind", "MEDICAL_APPOINTMENT")
+
+function groups(isEditing: boolean, agents: Agent[] | null): Group[] {
+  const appointment: Question[] = [
+    // La especialidad identifica la cita: no se cambia al editar.
+    ...(isEditing ? [] : [{ id: "specialty", label: "Especialidad", type: "select" as const, catalog: "medical_specialty", required: true, showIf: medical }]),
+    { id: "center", label: "Establecimiento", type: "select", catalog: HEALTH_CENTER, showIf: medical },
+    { id: "first", label: "¿Es su primera consulta?", type: "yesno", showIf: medical },
+  ]
+  return [
+    {
+      title: "Recordatorio",
+      questions: [
+        ...(isEditing
+          ? []
+          : [
+              {
+                id: "kind",
+                label: "Tipo",
+                type: "choice" as const,
+                required: true,
+                wide: true,
+                options: [
+                  { value: "MEDICAL_APPOINTMENT", label: "Cita médica" },
+                  { value: "GENERIC", label: "Genérico" },
+                ],
+              },
+            ]),
+        ...appointment,
+        { id: "dueAt", label: "Fecha y hora", type: "datetime", required: true },
+        { id: "description", label: "Descripción", type: "text", required: true, placeholder: "Ej: hemograma completo", showIf: is("kind", "GENERIC") },
+        { id: "description", label: "Descripción", type: "text", placeholder: "Opcional, se arma con la especialidad", showIf: medical },
+      ],
+    },
+    {
+      title: "Aviso",
+      questions: [
+        { id: "channel", label: "Canal", type: "choice", required: true, options: REMINDER_CHANNEL_ITEMS, wide: true },
+        { id: "lead", label: "¿Con cuánta anticipación?", type: "choice", required: true, options: REMINDER_LEAD_ITEMS, wide: true, showIf: medical },
+        { id: "remindAt", label: "Fecha y hora del aviso", type: "datetime", required: true, showIf: (v) => medical(v) && v.lead === "CUSTOM" },
+        ...(agents ? [{ id: "agentId", label: "Agente responsable", type: "select" as const, required: true, options: agents.map((a) => ({ value: a.id, label: a.fullName })) }] : []),
+      ],
+    },
+  ]
 }
 
 export function ReminderFormDialog({
@@ -71,196 +96,50 @@ export function ReminderFormDialog({
   draftMode = false,
   onSave,
 }: ReminderFormDialogProps) {
+  if (!open) return null
   const isEditing = Boolean(reminder)
-  const { register, handleSubmit, watch, setValue, reset } =
-    useForm<ReminderFormValues>({
-      defaultValues: {
-        kind: "GENERIC",
-        description: "",
-        dueAt: "",
-        assignedAgentId: undefined,
-        medicalAppointment: EMPTY_APPOINTMENT,
-      },
-    })
-
-  useEffect(() => {
-    if (!open) return
-    if (reminder) {
-      const appointment = reminder.medicalAppointment
-      reset({
-        kind: reminder.kind ?? "GENERIC",
-        description: reminder.description,
-        dueAt: toLocalDateTime(reminder.dueAt),
-        assignedAgentId: reminder.assignedAgentId,
-        medicalAppointment: appointment
-          ? {
-              specialty: appointment.specialty,
-              healthCenterId: appointment.healthCenterId ?? "",
-              isFirstConsultation: appointment.isFirstConsultation,
-            }
-          : EMPTY_APPOINTMENT,
-      })
-      return
-    }
-    reset({
-      kind: "GENERIC",
-      description: "",
-      dueAt: "",
-      assignedAgentId: undefined,
-      medicalAppointment: EMPTY_APPOINTMENT,
-    })
-  }, [open, reminder, reset])
-
-  const kind = watch("kind")
-  const description = watch("description")
-  const dueAt = watch("dueAt")
-  const assignedAgentId = watch("assignedAgentId")
-  const medicalAppointment = watch("medicalAppointment")
-  const specialty = resolveSpecialty(medicalAppointment)
-  const isMedical = kind === "MEDICAL_APPOINTMENT"
-
-  const agentItems = agents.map((agent) => ({
-    value: agent.id,
-    label: agent.fullName,
-  }))
-
-  const canSubmit = Boolean(
-    dueAt &&
-      (isMedical
-        ? specialty
-        : description.trim()) &&
-      (!requiresAgentSelection || hideAgentSelection || assignedAgentId),
-  )
-
+  const r = reminder
+  const appointment = r?.medicalAppointment
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing
-              ? "Editar recordatorio"
-              : draftMode
-                ? "Agregar recordatorio"
-                : "Nuevo recordatorio"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Modificá los campos del recordatorio."
-              : draftMode
-                ? "Se guardará al completar el seguimiento."
-                : "Registrá un recordatorio genérico o una cita médica."}
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={handleSubmit(onSave)}
-          className="flex flex-col gap-4"
-        >
-          {!isEditing && (
-            <div className="flex gap-2">
-              {(
-                [
-                  ["GENERIC", "Genérico"],
-                  ["MEDICAL_APPOINTMENT", "Cita médica"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setValue("kind", value)}
-                  className={cn(
-                    "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
-                    kind === value
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-border text-muted-foreground hover:bg-muted/50",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {isMedical ? (
-            <MedicalAppointmentFields
-              value={medicalAppointment}
-              specialtyReadOnly={isEditing}
-              onChange={(value) => setValue("medicalAppointment", value)}
-            />
-          ) : null}
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reminder-description">
-              Descripción{" "}
-              {!isMedical && <span className="text-destructive">*</span>}
-            </Label>
-            <Input
-              id="reminder-description"
-              placeholder={
-                isMedical
-                  ? "Opcional — se genera desde la especialidad"
-                  : "Ej: Hemograma completo, Tomografía de tórax..."
-              }
-              {...register("description", { required: !isMedical })}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reminder-due-at">
-              {isMedical ? "Fecha y hora de la cita" : "Fecha y hora"}{" "}
-              <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="reminder-due-at"
-              type="datetime-local"
-              {...register("dueAt", { required: true })}
-            />
-          </div>
-
-          {requiresAgentSelection && !hideAgentSelection && (
-            <div className="flex flex-col gap-2">
-              <Label>Agente responsable</Label>
-              <Select
-                items={agentItems}
-                value={assignedAgentId}
-                onValueChange={(value) =>
-                  setValue("assignedAgentId", value ?? undefined)
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleccionar agente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <DialogFooter className="mt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isPending || !canSubmit}>
-              {isPending
-                ? "Guardando..."
-                : isEditing
-                  ? "Guardar cambios"
-                  : draftMode
-                    ? "Agregar a la lista"
-                    : "Crear recordatorio"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormModal
+      icon={Bell}
+      title={isEditing ? "Editar recordatorio" : "Nuevo recordatorio"}
+      description={isEditing ? "Cambia la fecha, el aviso o el detalle" : "Cita médica o pendiente del paciente"}
+      groups={groups(isEditing, requiresAgentSelection && !hideAgentSelection ? agents : null)}
+      initial={compact({
+        kind: r?.kind ?? "MEDICAL_APPOINTMENT",
+        specialty: appointment?.specialty,
+        center: appointment?.healthCenterId,
+        first: appointment ? fromBool(appointment.isFirstConsultation) : null,
+        dueAt: toLocalDateTime(r?.dueAt ?? null),
+        description: r?.description,
+        channel: r?.channel ?? "EMAIL",
+        lead: r?.lead ?? "ONE_DAY",
+        remindAt: toLocalDateTime(r?.remindAt ?? null),
+        agentId: r?.assignedAgentId,
+      })}
+      submitLabel={isEditing ? "Guardar cambios" : draftMode ? "Agregar a la lista" : "Crear recordatorio"}
+      footnote={draftMode ? "Se guardará al completar el seguimiento" : undefined}
+      pending={isPending}
+      onClose={() => onOpenChange(false)}
+      onSubmit={(v) => {
+        // Un recordatorio nuevo siempre es a futuro; lo pasado se registra en carga histórica.
+        if (!isEditing && new Date(v.dueAt!) < new Date()) return toast.error("La fecha ya pasó. Elige una fecha y hora futuras.")
+        onSave({
+          kind: v.kind as ReminderKind,
+          description: v.description?.trim() ?? "",
+          dueAt: v.dueAt!,
+          assignedAgentId: v.agentId ?? r?.assignedAgentId,
+          channel: v.channel as ReminderChannel,
+          lead: (v.lead as ReminderLead) ?? "ONE_DAY",
+          remindAt: v.remindAt ?? "",
+          medicalAppointment: {
+            specialty: v.specialty ?? appointment?.specialty ?? "",
+            healthCenterId: v.center ?? "",
+            isFirstConsultation: v.first === "yes",
+          },
+        })
+      }}
+    />
   )
 }

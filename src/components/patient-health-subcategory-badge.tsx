@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge"
 import { CatalogValue } from "@/components/catalog-select"
 import { cn } from "@/lib/utils"
 import {
@@ -7,37 +6,34 @@ import {
 } from "@/lib/patient-health-subcategory"
 import type { PatientHealthSubcategory } from "@/api/patients"
 
-interface PatientHealthSubcategoryBadgeProps {
-  subcategory: PatientHealthSubcategory | null | undefined
-  className?: string
-}
+const NEUTRAL = { badge: "bg-zinc-100 text-zinc-600", dot: "bg-zinc-400" }
 
+/** Subcategoría de salud con su color (píldora del sistema de diseño). */
 export function PatientHealthSubcategoryBadge({
   subcategory,
   className,
-}: PatientHealthSubcategoryBadgeProps) {
-  const colors = subcategory
-    ? (patientHealthSubcategoryColors[subcategory] ?? {
-        badge: "border-border bg-muted/50 text-muted-foreground",
-        dot: "bg-muted-foreground",
-      })
-    : {
-        badge: "border-border bg-muted/50 text-muted-foreground",
-        dot: "bg-muted-foreground",
-      }
+}: {
+  subcategory: PatientHealthSubcategory | null | undefined
+  className?: string
+}) {
+  const colors =
+    (subcategory && patientHealthSubcategoryColors[subcategory]) || NEUTRAL
 
   return (
-    <Badge className={cn("border font-medium", colors.badge, className)}>
-      <span className={cn("size-2 rounded-full", colors.dot)} />
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        colors.badge,
+        className,
+      )}
+    >
+      <span className={cn("size-1.5 shrink-0 rounded-full", colors.dot)} />
       {subcategory ? (
-        <CatalogValue
-          kind="patient_health_subcategory"
-          code={subcategory}
-        />
+        <CatalogValue kind="patient_health_subcategory" code={subcategory} />
       ) : (
         "Sin subcategoría"
       )}
-    </Badge>
+    </span>
   )
 }
 
@@ -56,7 +52,7 @@ export function PatientHealthSubcategoryDot({
       title={patientHealthSubcategoryLabels[subcategory]}
       className={cn(
         "inline-block size-2 shrink-0 rounded-full",
-        patientHealthSubcategoryColors[subcategory]?.dot ?? "bg-muted-foreground",
+        patientHealthSubcategoryColors[subcategory]?.dot ?? NEUTRAL.dot,
         className,
       )}
     />

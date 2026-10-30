@@ -21,7 +21,16 @@ export function catalogLabel(
   code: string | null | undefined,
 ): string {
   if (!code) return "—"
-  return items.find((item) => item.code === code)?.label ?? code
+  return (
+    items.find((item) => item.code === code) ??
+    // Datos migrados guardan códigos viejos (p. ej. URBAN) declarados como alias.
+    items.find((item) => aliasesOf(item).includes(code))
+  )?.label ?? code
+}
+
+function aliasesOf(item: CatalogItem): string[] {
+  const aliases = (item.metadata as { aliases?: unknown } | null | undefined)?.aliases
+  return Array.isArray(aliases) ? aliases.filter((alias): alias is string => typeof alias === "string") : []
 }
 
 export function formatCatalogValue(

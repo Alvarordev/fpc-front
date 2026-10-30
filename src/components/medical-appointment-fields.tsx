@@ -1,9 +1,11 @@
-import { Building2, Stethoscope } from "lucide-react"
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { HospitalFormModal } from "@/pages/hospitales/_components/hospital-form-modal"
+import { Building2, Plus, Stethoscope } from "lucide-react"
 import type { CatalogItem } from "@/api/catalogs"
 import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
+import { HealthCenterCombobox } from "@/components/health-center-combobox"
 import { catalogLabel } from "@/hooks/use-catalog"
-import { useHealthCenters } from "@/pages/hospitales/_hooks/use-health-centers"
 
 export interface MedicalAppointmentFieldsValue {
   specialty: string
@@ -37,12 +39,7 @@ export function MedicalAppointmentFields({
   specialtyReadOnly = false,
   disabled = false,
 }: MedicalAppointmentFieldsProps) {
-  const { data: healthCenters = [] } = useHealthCenters()
-  const healthCenterOptions: SearchableOption[] = healthCenters.map((hc) => ({
-    value: hc.id,
-    label: hc.name,
-    sublabel: hc.department,
-  }))
+  const [createHealthCenterOpen, setCreateHealthCenterOpen] = useState(false)
 
   return (
     <div className="space-y-3">
@@ -73,15 +70,36 @@ export function MedicalAppointmentFields({
           <Building2 className="text-muted-foreground size-3.5" />
           Establecimiento de salud
         </label>
-        <SearchableSelect
-          options={healthCenterOptions}
-          value={value.healthCenterId}
-          onChange={(healthCenterId) => onChange({ ...value, healthCenterId })}
-          placeholder="Buscar hospital o clínica..."
-          searchPlaceholder="Escribe el nombre del hospital..."
-          disabled={disabled}
-        />
+        <div className="flex items-start gap-2">
+          <HealthCenterCombobox
+            className="min-w-0 flex-1"
+            value={value.healthCenterId}
+            onValueChange={(healthCenterId) =>
+              onChange({ ...value, healthCenterId: healthCenterId ?? "" })
+            }
+            placeholder="Buscar hospital o clínica..."
+            disabled={disabled}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+            disabled={disabled}
+            aria-label="Agregar establecimiento de salud"
+            title="Agregar establecimiento de salud"
+            onClick={() => setCreateHealthCenterOpen(true)}
+          >
+            <Plus className="size-3.5" />
+          </Button>
+        </div>
       </div>
+
+      <HospitalFormModal
+        open={createHealthCenterOpen}
+        onClose={() => setCreateHealthCenterOpen(false)}
+        onSaved={(center) => onChange({ ...value, healthCenterId: center.id })}
+      />
 
       <label className="flex items-center gap-2 pt-1">
         <input

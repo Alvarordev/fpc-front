@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
 set -e
-./node_modules/.bin/vitest run
-./node_modules/.bin/playwright test
+./node_modules/.bin/vitest run --passWithNoTests
+if find e2e -type f \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
+  ./node_modules/.bin/playwright test
+fi

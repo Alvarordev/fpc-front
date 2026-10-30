@@ -10,6 +10,7 @@ import type {
   TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
 import type { DurationDraft } from "@/types/duration"
+import type { FixedWaitTimeRecall } from "@/types/wait-time-recall"
 
 /** Sentinel diagnosisId meaning "link to the diagnosis draft in this same batch". */
 export const DRAFT_DIAGNOSIS_ID = "__DRAFT_DIAGNOSIS__"
@@ -26,6 +27,7 @@ export function draftDiagnosisIdFromOption(value: string) {
   return value.slice(`${DRAFT_DIAGNOSIS_ID}:`.length)
 }
 
+/** How a new diagnosis relates to the active ones. */
 export type DiagnosisDecisionMode = "REPLACE" | "PARALLEL"
 
 export type DiagnosisDraft = Omit<
@@ -33,11 +35,15 @@ export type DiagnosisDraft = Omit<
   "followUpId" | "waitTimeForDiagnosis" | "mode" | "replacementDiagnosisId"
 > & {
   draftId: string
-  mode: DiagnosisDecisionMode
+  /** EDIT corrects the active diagnosis `editedDiagnosisId` in place. */
+  mode: DiagnosisDecisionMode | "EDIT"
   replacementDiagnosisId?: string
+  editedDiagnosisId?: string
   waitTimeForDiagnosis?: DurationDraft
   waitTimeForDiagnosisManuallyEdited?: boolean
   remembersWaitTimeForDiagnosis?: boolean
+  /** Answer when the wait time isn't remembered as an amount. */
+  waitTimeRecall?: FixedWaitTimeRecall
 }
 export type TreatmentDecisionMode = "REPLACE" | "PARALLEL"
 export type TreatmentDraft = Omit<
@@ -140,6 +146,8 @@ export interface ClinicalDrafts {
   sisAffiliation?: SisAffiliationDraft
   healthBackground?: HealthBackgroundAssessmentDraft
   address?: Omit<CreatePatientAddressInput, "followUpId">
+  /** Vivienda provisional nueva, aparte de la dirección permanente (`address`). */
+  temporaryAddress?: Omit<CreatePatientAddressInput, "followUpId">
   contact?: ContactDraft
 }
 
@@ -157,6 +165,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.sisAffiliation ||
     drafts.healthBackground ||
     drafts.address ||
+    drafts.temporaryAddress ||
     drafts.contact,
   )
 }

@@ -1,12 +1,9 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { formatMonthYear } from "@/lib/calendar-helpers";
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ds/button"
+import { formatMonthYear } from "@/lib/calendar-helpers"
 
-interface CalendarHeaderProps {
-  year: number;
-  month: number;
-  onPrev: () => void;
-  onNext: () => void;
+function capitalizeFirst(text: string) {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 export function CalendarHeader({
@@ -14,18 +11,23 @@ export function CalendarHeader({
   month,
   onPrev,
   onNext,
-}: CalendarHeaderProps) {
+}: {
+  year: number
+  month: number
+  onPrev: () => void
+  onNext: () => void
+}) {
   return (
-    <div className="flex items-center gap-3">
-      <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onPrev}>
+    <div className="flex items-center gap-2">
+      <Button onClick={onPrev} aria-label="Mes anterior">
         <ChevronLeft className="size-4" />
       </Button>
-      <span className="text-sm font-semibold text-foreground capitalize min-w-36 text-center">
-        {formatMonthYear(year, month)}
+      <span className="min-w-36 text-center text-sm font-semibold text-zinc-900">
+        {capitalizeFirst(formatMonthYear(year, month))}
       </span>
-      <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onNext}>
+      <Button onClick={onNext} aria-label="Mes siguiente">
         <ChevronRight className="size-4" />
       </Button>
     </div>
-  );
+  )
 }

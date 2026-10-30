@@ -1,435 +1,185 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { HeartHandshake } from "lucide-react"
 import { toast } from "sonner"
-import type { UpdateVolunteerInput, Volunteer } from "@/api/volunteers"
+import type { Volunteer } from "@/api/volunteers"
 import { volunteersApi } from "@/api/volunteers"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Chip } from "@/components/ds/badge"
+import { Button } from "@/components/ds/button"
+import { Panel } from "@/components/ds/card"
+import { CopyValue } from "@/components/ds/copy-value"
+import { FieldGrid } from "@/components/ds/data"
+import { FormModal } from "@/components/ds/form-modal"
+import { Modal } from "@/components/ds/modal"
+import type { Values } from "@/components/ds/questions"
+import { boolToYes, userEditGroups, yesToBool } from "@/lib/user-questions"
 import { formatCommitmentDate } from "@/lib/volunteer-commitment"
-
-interface VolunteerProfileDialogProps {
-  volunteer: Volunteer
-  canEdit: boolean
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
-
-interface VolunteerFormValues {
-  firstName: string
-  lastName: string
-  specialty: string
-  email: string
-  phone: string
-  birthDate: string
-  commitmentStartAt: string
-  commitmentEndAt: string
-  hasVolunteerCertificate: boolean
-  additionalComments: string
-  completedSustainabilityModule: boolean
-  completedDesignThinkingModule: boolean
-}
-
-function formValuesFromVolunteer(volunteer: Volunteer): VolunteerFormValues {
-  return {
-    firstName: volunteer.firstName,
-    lastName: volunteer.lastName,
-    specialty: volunteer.specialty,
-    email: volunteer.email,
-    phone: volunteer.phone,
-    birthDate: volunteer.birthDate?.slice(0, 10) ?? "",
-    commitmentStartAt: volunteer.commitmentStartAt?.slice(0, 10) ?? "",
-    commitmentEndAt: volunteer.commitmentEndAt?.slice(0, 10) ?? "",
-    hasVolunteerCertificate: volunteer.hasVolunteerCertificate,
-    additionalComments: volunteer.additionalComments ?? "",
-    completedSustainabilityModule: volunteer.completedSustainabilityModule,
-    completedDesignThinkingModule: volunteer.completedDesignThinkingModule,
-  }
-}
-
-function Detail({
-  label,
-  value,
-}: {
-  label: string
-  value: string | null | undefined
-}) {
-  return (
-    <div>
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-0.5 text-sm font-medium">{value || "Sin registrar"}</p>
-    </div>
-  )
-}
-
-function BooleanDetail({ label, value }: { label: string; value: boolean }) {
-  return (
-    <div>
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <Badge
-        variant="outline"
-        className={
-          value
-            ? "mt-1 border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "mt-1 border-zinc-200 bg-zinc-100 text-zinc-600"
-        }
-      >
-        {value ? "Sí" : "No"}
-      </Badge>
-    </div>
-  )
-}
+import { volunteerName } from "../_lib/volunteer-filters"
+import { useVolunteerCalendar } from "../_hooks/use-volunteers"
 
 export function VolunteerProfileDialog({
   volunteer,
   canEdit,
-  open,
-  onOpenChange,
-}: VolunteerProfileDialogProps) {
+  onClose,
+}: {
+  volunteer: Volunteer
+  canEdit: boolean
+  onClose: () => void
+}) {
+  const [editing, setEditing] = useState(false)
   const queryClient = useQueryClient()
-  const [isEditing, setIsEditing] = useState(false)
-  const [values, setValues] = useState(() => formValuesFromVolunteer(volunteer))
-  const [formError, setFormError] = useState<string | null>(null)
+  const range = useMemo(() => {
+    const now = new Date()
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10),
+    }
+  }, [])
+  const calendar = useVolunteerCalendar(range.from, range.to)
+  const entry = calendar.data?.volunteers.find((item) => item.id === volunteer.id)
+  const patients = [...new Map((entry?.appointments ?? []).map((item) => [item.patientId, item.patientName])).values()]
+  const upcoming = [...(entry?.appointments ?? [])]
+    .filter((item) => item.status === "SCHEDULED" || item.status === "OVERDUE")
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+  const slots = [...(entry?.availabilitySlots ?? [])].sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))
 
-  const updateMutation = useMutation({
-    mutationFn: (input: UpdateVolunteerInput) =>
-      volunteersApi.update(volunteer.id, input),
-    onSuccess: (updatedVolunteer) => {
-      setValues(formValuesFromVolunteer(updatedVolunteer))
-      setIsEditing(false)
-      setFormError(null)
+  const update = useMutation({
+    mutationFn: (input: Parameters<typeof volunteersApi.update>[1]) => volunteersApi.update(volunteer.id, input),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["volunteers"] })
-      toast.success("Perfil de voluntario actualizado")
-    },
-    onError: (error: Error) => {
-      setFormError(error.message)
+      queryClient.invalidateQueries({ queryKey: ["volunteer-calendar"] })
     },
   })
 
-  function updateValue<K extends keyof VolunteerFormValues>(
-    key: K,
-    value: VolunteerFormValues[K],
-  ) {
-    setValues((previous) => ({ ...previous, [key]: value }))
-  }
-
-  function cancelEditing() {
-    setValues(formValuesFromVolunteer(volunteer))
-    setFormError(null)
-    setIsEditing(false)
-  }
-
-  function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setFormError(null)
-    if (
-      values.commitmentStartAt &&
-      values.commitmentEndAt &&
-      values.commitmentEndAt < values.commitmentStartAt
-    ) {
-      setFormError("La fecha de fin debe ser posterior al inicio.")
-      return
+  async function submit(values: Values) {
+    if ((values.firstName ?? "").trim().length < 2) return toast.error("Escribe el nombre")
+    if ((values.lastName ?? "").trim().length < 2) return toast.error("Escribe el apellido")
+    if ((values.phone ?? "").trim().length < 9) return toast.error("El teléfono debe tener al menos 9 dígitos")
+    if ((values.specialty ?? "").trim().length < 2) return toast.error("Escribe la especialidad")
+    if (values.commitmentStartAt && values.commitmentEndAt && values.commitmentEndAt < values.commitmentStartAt) {
+      return toast.error("La fecha de fin debe ser posterior al inicio")
     }
-
-    updateMutation.mutate({
-      firstName: values.firstName.trim(),
-      lastName: values.lastName.trim(),
-      specialty: values.specialty.trim(),
-      email: values.email.trim(),
-      phone: values.phone.trim(),
-      birthDate: values.birthDate || null,
-      commitmentStartAt: values.commitmentStartAt || null,
-      commitmentEndAt: values.commitmentEndAt || null,
-      hasVolunteerCertificate: values.hasVolunteerCertificate,
-      additionalComments: values.additionalComments.trim() || null,
-      completedSustainabilityModule: values.completedSustainabilityModule,
-      completedDesignThinkingModule: values.completedDesignThinkingModule,
-    })
+    try {
+      await update.mutateAsync({
+        firstName: values.firstName!.trim(),
+        lastName: values.lastName!.trim(),
+        specialty: values.specialty!.trim(),
+        email: values.email!.trim(),
+        phone: values.phone!.trim(),
+        birthDate: values.birthDate || null,
+        commitmentStartAt: values.commitmentStartAt || null,
+        commitmentEndAt: values.commitmentEndAt || null,
+        hasVolunteerCertificate: yesToBool(values.hasVolunteerCertificate),
+        additionalComments: values.additionalComments?.trim() || null,
+        completedSustainabilityModule: yesToBool(values.completedSustainabilityModule),
+        completedDesignThinkingModule: yesToBool(values.completedDesignThinkingModule),
+      })
+      toast.success("Perfil actualizado")
+      setEditing(false)
+    } catch (error) {
+      toast.error("No se pudo guardar el perfil", {
+        description: error instanceof Error ? error.message : "Inténtalo de nuevo.",
+      })
+    }
   }
 
-  const fullName = `${volunteer.firstName} ${volunteer.lastName}`
+  if (editing) {
+    return (
+      <FormModal
+        icon={HeartHandshake}
+        title="Editar voluntario"
+        description={volunteerName(volunteer)}
+        groups={userEditGroups()}
+        initial={{
+          role: "VOLUNTEER",
+          email: volunteer.email,
+          firstName: volunteer.firstName,
+          lastName: volunteer.lastName,
+          phone: volunteer.phone,
+          specialty: volunteer.specialty,
+          birthDate: volunteer.birthDate?.slice(0, 10) ?? null,
+          commitmentStartAt: volunteer.commitmentStartAt?.slice(0, 10) ?? null,
+          commitmentEndAt: volunteer.commitmentEndAt?.slice(0, 10) ?? null,
+          hasVolunteerCertificate: boolToYes(volunteer.hasVolunteerCertificate),
+          completedSustainabilityModule: boolToYes(volunteer.completedSustainabilityModule),
+          completedDesignThinkingModule: boolToYes(volunteer.completedDesignThinkingModule),
+          additionalComments: volunteer.additionalComments,
+        }}
+        submitLabel="Guardar"
+        pending={update.isPending}
+        onClose={() => !update.isPending && setEditing(false)}
+        onSubmit={submit}
+      />
+    )
+  }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen && !updateMutation.isPending) {
-          cancelEditing()
-          onOpenChange(false)
-        }
-      }}
+    <Modal
+      open
+      onClose={onClose}
+      icon={HeartHandshake}
+      title={volunteerName(volunteer)}
+      description={volunteer.specialty}
+      tags={volunteer.isActive ? <Chip tone="green">Activo</Chip> : <Chip tone="gray">Inactivo</Chip>}
+      footer={
+        canEdit ? (
+          <Button variant="dark" onClick={() => setEditing(true)}>
+            Editar
+          </Button>
+        ) : undefined
+      }
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Editar perfil de voluntario" : fullName}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Actualiza los datos personales, el acta y la formación del voluntario."
-              : "Información personal y seguimiento del compromiso voluntario."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {isEditing ? (
-          <form onSubmit={submit} className="space-y-5">
-            <section className="space-y-3">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Datos personales
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-first-name">Nombre</Label>
-                  <Input
-                    id="volunteer-first-name"
-                    value={values.firstName}
-                    onChange={(event) =>
-                      updateValue("firstName", event.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-last-name">Apellido</Label>
-                  <Input
-                    id="volunteer-last-name"
-                    value={values.lastName}
-                    onChange={(event) =>
-                      updateValue("lastName", event.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-specialty">Especialidad</Label>
-                  <Input
-                    id="volunteer-specialty"
-                    value={values.specialty}
-                    onChange={(event) =>
-                      updateValue("specialty", event.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-phone">Teléfono</Label>
-                  <Input
-                    id="volunteer-phone"
-                    value={values.phone}
-                    onChange={(event) =>
-                      updateValue("phone", event.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="volunteer-email">Email</Label>
-                  <Input
-                    id="volunteer-email"
-                    type="email"
-                    value={values.email}
-                    onChange={(event) =>
-                      updateValue("email", event.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-birth-date">
-                    Fecha de nacimiento
-                  </Label>
-                  <Input
-                    id="volunteer-birth-date"
-                    type="date"
-                    value={values.birthDate}
-                    onChange={(event) =>
-                      updateValue("birthDate", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-3">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Compromiso
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-commitment-start">
-                    Inicio del compromiso
-                  </Label>
-                  <Input
-                    id="volunteer-commitment-start"
-                    type="date"
-                    value={values.commitmentStartAt}
-                    onChange={(event) =>
-                      updateValue("commitmentStartAt", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="volunteer-commitment-end">
-                    Fin del compromiso
-                  </Label>
-                  <Input
-                    id="volunteer-commitment-end"
-                    type="date"
-                    value={values.commitmentEndAt}
-                    onChange={(event) =>
-                      updateValue("commitmentEndAt", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={values.hasVolunteerCertificate}
-                  onCheckedChange={(checked) =>
-                    updateValue("hasVolunteerCertificate", checked === true)
-                  }
-                />
-                Tiene certificado de voluntariado
-              </label>
-            </section>
-
-            <section className="space-y-3">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Formación y comentarios
-              </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={values.completedSustainabilityModule}
-                    onCheckedChange={(checked) =>
-                      updateValue(
-                        "completedSustainabilityModule",
-                        checked === true,
-                      )
-                    }
-                  />
-                  Módulo de sostenibilidad completado
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={values.completedDesignThinkingModule}
-                    onCheckedChange={(checked) =>
-                      updateValue(
-                        "completedDesignThinkingModule",
-                        checked === true,
-                      )
-                    }
-                  />
-                  Módulo de design thinking completado
-                </label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="volunteer-additional-comments">
-                  Comentarios adicionales
-                </Label>
-                <Textarea
-                  id="volunteer-additional-comments"
-                  value={values.additionalComments}
-                  onChange={(event) =>
-                    updateValue("additionalComments", event.target.value)
-                  }
-                  rows={4}
-                />
-              </div>
-            </section>
-
-            {formError && (
-              <p className="text-destructive text-sm">{formError}</p>
-            )}
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={cancelEditing}
-                disabled={updateMutation.isPending}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
-              </Button>
-            </DialogFooter>
-          </form>
+      <Panel title="Datos">
+        <FieldGrid
+          items={[
+            ["Correo", <CopyValue key="email" value={volunteer.email} label="Correo" />],
+            ["Teléfono", volunteer.phone ? <CopyValue key="phone" value={volunteer.phone} label="Teléfono" /> : "Sin teléfono"],
+            ["Nacimiento", volunteer.birthDate ? formatCommitmentDate(volunteer.birthDate) : "Sin registrar"],
+            ["Acta", volunteer.commitmentEndAt ? `Hasta ${formatCommitmentDate(volunteer.commitmentEndAt)}` : "Sin fecha"],
+          ]}
+        />
+      </Panel>
+      <Panel title="Pacientes">
+        {patients.length === 0 ? (
+          <p className="text-[13px] text-zinc-500">No hay pacientes en el mes en curso.</p>
         ) : (
-          <>
-            <div className="flex items-start gap-3">
-              <div className="bg-primary/10 text-primary flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
-                {volunteer.firstName[0]}
-                {volunteer.lastName[0]}
-              </div>
-              <div className="min-w-0">
-                <p className="text-base font-semibold">{fullName}</p>
-                <p className="text-muted-foreground text-sm">
-                  {volunteer.specialty}
-                </p>
-              </div>
-            </div>
-            <section className="grid grid-cols-1 gap-4 rounded-xl border p-4 sm:grid-cols-2">
-              <Detail label="Email" value={volunteer.email} />
-              <Detail label="Teléfono" value={volunteer.phone} />
-              <Detail
-                label="Fecha de nacimiento"
-                value={formatCommitmentDate(volunteer.birthDate)}
-              />
-              <Detail
-                label="Inicio del compromiso"
-                value={formatCommitmentDate(volunteer.commitmentStartAt)}
-              />
-              <Detail
-                label="Fin del compromiso"
-                value={formatCommitmentDate(volunteer.commitmentEndAt)}
-              />
-              <BooleanDetail
-                label="Certificado de voluntariado"
-                value={volunteer.hasVolunteerCertificate}
-              />
-              <BooleanDetail
-                label="Módulo de sostenibilidad"
-                value={volunteer.completedSustainabilityModule}
-              />
-              <BooleanDetail
-                label="Módulo de design thinking"
-                value={volunteer.completedDesignThinkingModule}
-              />
-            </section>
-            <section className="space-y-1">
-              <p className="text-muted-foreground text-xs">
-                Comentarios adicionales
-              </p>
-              <p className="text-sm whitespace-pre-wrap">
-                {volunteer.additionalComments || "Sin comentarios"}
-              </p>
-            </section>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cerrar
-              </Button>
-              {canEdit && (
-                <Button onClick={() => setIsEditing(true)}>
-                  Editar perfil
-                </Button>
-              )}
-            </DialogFooter>
-          </>
+          <ul className="space-y-1 text-sm text-zinc-800">
+            {patients.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
         )}
-      </DialogContent>
-    </Dialog>
+      </Panel>
+      <Panel title="Sesiones próximas">
+        {upcoming.length === 0 ? (
+          <p className="text-[13px] text-zinc-500">No hay sesiones agendadas este mes.</p>
+        ) : (
+          <ul className="space-y-2 text-sm text-zinc-800">
+            {upcoming.map((session) => (
+              <li key={session.id}>
+                {session.patientName}
+                <span className="text-[13px] text-zinc-500">
+                  {" "}
+                  · {new Date(session.scheduledAt).toLocaleString("es-PE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <Panel title="Disponibilidad">
+        {slots.length === 0 ? (
+          <p className="text-[13px] text-zinc-500">No hay horarios cargados este mes.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {slots.map((slot) => (
+              <Chip key={slot.id} tone={slot.status === "AVAILABLE" ? "blue" : "gray"}>
+                {slot.date.slice(8, 10)} · {slot.startTime.slice(0, 5)}
+              </Chip>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    </Modal>
   )
 }

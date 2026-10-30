@@ -1,21 +1,19 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Building2, Calendar } from "lucide-react"
-import { healthCentersApi } from "@/api/health-centers"
+import { healthCentersApi, type HealthCenter } from "@/api/health-centers"
 import type {
   PatientDetailsResponse,
   PatientMedicalAppointment,
 } from "@/api/patients"
+import { careLevelLabel } from "@/lib/health-center-labels"
+import { collectJourneyHealthCenterIds } from "../_lib/patient-care-journey"
 import { CatalogValue } from "@/components/catalog-select"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card } from "@/components/ds/card"
+import { Chip } from "@/components/ds/badge"
 import { cn } from "@/lib/utils"
+import { formatDate } from "../_lib/ficha-format"
 import { buildPatientCareJourney } from "../_lib/patient-care-journey"
 import type { PatientCareJourneyEvent } from "../_lib/patient-care-journey"
 import {
@@ -49,9 +47,25 @@ export function PatientCareJourneyBoard({
 }: {
   patient: PatientDetailsResponse
 }) {
+  const healthCenterIds = useMemo(
+    () => collectJourneyHealthCenterIds(patient),
+    [patient],
+  )
   const { data: healthCenters = [], isLoading } = useQuery({
-    queryKey: ["healthCenters"],
-    queryFn: () => healthCentersApi.list(),
+    queryKey: ["health-centers", "journey", healthCenterIds],
+    queryFn: async () => {
+      const results = await Promise.all(
+        healthCenterIds.map(async (id) => {
+          try {
+            return await healthCentersApi.getById(id)
+          } catch {
+            return null
+          }
+        }),
+      )
+      return results.filter((center): center is HealthCenter => center !== null)
+    },
+    enabled: healthCenterIds.length > 0,
     staleTime: 5 * 60 * 1000,
   })
   const [highlightedCode, setHighlightedCode] = useState<string | null>(null)
@@ -71,26 +85,13 @@ export function PatientCareJourneyBoard({
       : `${journey.departmentCodes.length} regiones`
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 border-b pb-5">
-        <div className="min-w-0">
-          <CardTitle>Recorrido de atención</CardTitle>
-          <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-relaxed">
-            Hospitales y departamentos donde se registró cita, diagnóstico o
-            tratamiento.
-          </p>
-        </div>
-        {journey.events.length > 0 ? (
-          <CardAction className="static justify-self-end">
-            <Badge variant="outline">
-              {hospitalLabel} · {regionLabel}
-            </Badge>
-          </CardAction>
-        ) : null}
-      </CardHeader>
-
-      <CardContent className="grid p-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
-        <div className="bg-muted/20 flex min-h-[32rem] flex-col justify-between p-4 sm:p-6">
+    <Card
+      title="Recorrido de atención"
+      description="Hospitales y departamentos donde se registró una cita, un diagnóstico o un tratamiento"
+      action={journey.events.length > 0 ? <Chip>{hospitalLabel}, {regionLabel}</Chip> : undefined}
+    >
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
+        <div className="flex min-h-[28rem] flex-col justify-between rounded-[14px] bg-zinc-50 p-4 ring-1 ring-zinc-200/60">
           <PatientCareJourneyMap
             departmentCodes={journey.departmentCodes}
             hops={journey.hops}
@@ -100,31 +101,22 @@ export function PatientCareJourneyBoard({
           />
           <PatientCareJourneyMapLegend className="mt-3" />
         </div>
-
-        <div className="border-t p-4 sm:p-6 xl:max-h-[38rem] xl:overflow-y-auto xl:border-t-0 xl:border-l">
+        <div className="xl:max-h-[32rem] xl:overflow-y-auto">
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">
-              Cargando hospitales…
-            </p>
+            <p className="text-[13px] text-zinc-500">Cargando hospitales...</p>
           ) : journey.events.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Todavía no hay atenciones con hospital registrado.
-            </p>
+            <p className="text-[13px] text-zinc-500">Todavía no hay atenciones con hospital registrado.</p>
           ) : (
             <ol className="space-y-2" aria-label="Atenciones por hospital">
               {journey.events.map((event) => (
                 <li key={event.id}>
-                  <JourneyEventRow
-                    event={event}
-                    highlighted={highlightedCode === event.departmentCode}
-                    onHighlight={setHighlightedCode}
-                  />
+                  <JourneyEventRow event={event} highlighted={highlightedCode === event.departmentCode} onHighlight={setHighlightedCode} />
                 </li>
               ))}
             </ol>
           )}
         </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }
@@ -165,13 +157,10 @@ function JourneyEventRow({
         <span>{event.departmentLabel ?? "Departamento no registrado"}</span>
         <span aria-hidden>·</span>
         <span className="text-foreground font-medium">
-          {event.category ? (
+          {event.careLevel || event.careCategory ? (
             <>
-              Nivel{" "}
-              <CatalogValue
-                kind="health_center_category"
-                code={event.category}
-              />
+              {careLevelLabel(event.careLevel) ?? "Nivel no registrado"}
+              {event.careCategory ? ` · ${event.careCategory}` : ""}
             </>
           ) : (
             "Nivel no registrado"
@@ -208,11 +197,8 @@ function formatJourneyDate(
   value: string,
   kind: PatientCareJourneyEvent["dateKind"],
 ) {
-  const formatted = new Date(value).toLocaleDateString("es-PE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+  // Las fechas de calendario (YYYY-MM-DD) se leen en hora local, no en UTC.
+  const formatted = formatDate(value) ?? value
   return kind === "registered" ? `Registrado el ${formatted}` : formatted
 }
 

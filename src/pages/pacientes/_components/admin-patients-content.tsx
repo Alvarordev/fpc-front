@@ -1,94 +1,102 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { CircleHelp } from "lucide-react"
+import { IconButton } from "@/components/ds/button"
+import { PatientHealthSubcategoryProtocolDialog } from "@/components/patient-health-subcategory-protocol-dialog"
+import type { PatientListFilters } from "@/api/patients"
 import { usePatients } from "../_hooks/use-patients"
-import { PatientsToolbar } from "./patients-toolbar"
+import { PatientsFilters } from "./patients-filters"
 import { PatientsTable } from "./patients-table"
 import { patientColumns } from "./patients-columns"
-import type {
-  PatientActivityStatus,
-  PatientHealthPhase,
-  PatientHealthSubcategoryFilter,
-} from "@/api/patients"
-import { Button } from "@/components/ui/button"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { PatientHealthSubcategoryProtocolDialog } from "@/components/patient-health-subcategory-protocol-dialog"
+  filterPatients,
+  hasPatientFilters,
+  readPatientFilters,
+} from "../_lib/patient-filters"
+
+function serverFilters(
+  filters: ReturnType<typeof readPatientFilters>,
+  includeStatus: boolean,
+): PatientListFilters {
+  return {
+    segment: "CARE",
+    role: "PATIENT",
+    ...(filters.search ? { search: filters.search } : {}),
+    ...(filters.healthPhase ? { healthPhase: filters.healthPhase } : {}),
+    ...(filters.healthSubcategory ? { healthSubcategory: filters.healthSubcategory } : {}),
+    ...(includeStatus && filters.activityStatus ? { activityStatus: filters.activityStatus } : {}),
+  }
+}
 
 export function AdminPatientsContent() {
-  const [search, setSearch] = useState("")
-  const [activityStatusFilter, setActivityStatusFilter] =
-    useState<PatientActivityStatus | null>(null)
-  const [healthPhaseFilter, setHealthPhaseFilter] =
-    useState<PatientHealthPhase | null>(null)
-  const [healthSubcategoryFilter, setHealthSubcategoryFilter] =
-    useState<PatientHealthSubcategoryFilter | null>(null)
+  const [params] = useSearchParams()
+  const filters = readPatientFilters(params)
   const [protocolOpen, setProtocolOpen] = useState(false)
   const navigate = useNavigate()
 
-  const { data: patientPage, isLoading } = usePatients({
-    filters: {
-      segment: "CARE",
-      search: search || undefined,
-      activityStatus: activityStatusFilter ?? undefined,
-      healthPhase: healthPhaseFilter ?? undefined,
-      healthSubcategory: healthSubcategoryFilter ?? undefined,
-      role: "PATIENT",
-    },
+  const { data: everyone } = usePatients({
+    filters: { segment: "CARE", role: "PATIENT" },
   })
-  const patients = patientPage?.data ?? []
+  const { data: poolPage } = usePatients({
+    filters: serverFilters(filters, false),
+  })
+  const { data: listedPage, isLoading } = usePatients({
+    filters: serverFilters(filters, true),
+  })
+
+  const rows = useMemo(
+    () =>
+      filterPatients(listedPage?.data ?? [], {
+        activityStatus: null,
+        diagnosis: filters.diagnosis,
+        hospital: filters.hospital,
+        department: filters.department,
+        followUp: filters.followUp,
+        age: filters.age,
+        companion: filters.companion,
+      }),
+    [
+      listedPage?.data,
+      filters.diagnosis,
+      filters.hospital,
+      filters.department,
+      filters.followUp,
+      filters.age,
+      filters.companion,
+    ],
+  )
+  const total = everyone?.total ?? listedPage?.total ?? 0
+  const filtering = hasPatientFilters(filters)
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-foreground text-xl font-semibold tracking-tight">
-              Pacientes
-            </h1>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground size-7"
-                    aria-label="Ver protocolo de subcategorías"
-                    onClick={() => setProtocolOpen(true)}
-                  >
-                    <CircleHelp className="size-4" />
-                  </Button>
-                }
-              />
-              <TooltipContent>Ver protocolo de subcategorías</TooltipContent>
-            </Tooltip>
-          </div>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            {patientPage?.total ?? 0} pacientes en seguimiento
-          </p>
+    <div className="font-ds space-y-5">
+      <header>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Pacientes</h1>
+          <IconButton
+            icon={CircleHelp}
+            label="Ver protocolo de subcategorías"
+            onClick={() => setProtocolOpen(true)}
+          />
         </div>
-      </div>
+        <p className="text-[13px] text-zinc-500">
+          {isLoading && !listedPage
+            ? "Cargando…"
+            : filtering
+              ? `${rows.length} de ${total}`
+              : `${total} en seguimiento`}
+        </p>
+      </header>
 
-      <PatientsToolbar
-        search={search}
-        onSearchChange={setSearch}
-        activityStatusFilter={activityStatusFilter}
-        onActivityStatusFilterChange={setActivityStatusFilter}
-        healthPhaseFilter={healthPhaseFilter}
-        onHealthPhaseFilterChange={setHealthPhaseFilter}
-        healthSubcategoryFilter={healthSubcategoryFilter}
-        onHealthSubcategoryFilterChange={setHealthSubcategoryFilter}
-      />
+      <PatientsFilters source={poolPage?.data ?? []} />
 
       <PatientsTable
-        data={patients}
+        data={rows}
         columns={patientColumns}
         isLoading={isLoading}
-        onRowClick={(p) => navigate(`/pacientes/${p.id}`)}
+        onRowClick={(patient) => navigate(`/pacientes/${patient.id}`)}
+        emptyTitle="Sin pacientes"
+        emptyBody="Prueba con otro nombre, documento o filtro."
       />
 
       <PatientHealthSubcategoryProtocolDialog

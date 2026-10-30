@@ -1,11 +1,12 @@
 import { useLocation, Link } from "react-router-dom"
-import { Bell, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
+import { SupportButton } from "@/components/support-button"
 import { pathTitles } from "@/lib/navigation"
 import { patientsApi } from "@/api/patients"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
+import { AssistantTrigger } from "@/components/assistant/assistant-trigger"
 
 function PatientBreadcrumbs({ patientId }: { patientId: string }) {
   const { data: patient } = useQuery({
@@ -33,7 +34,7 @@ export function AppTopbar() {
 
   if (patientId) {
     return (
-      <header className="border-border/60 bg-background/95 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
+      <header className="border-border/60 bg-background/95 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground -ml-1" />
 
         <nav className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
@@ -63,14 +64,8 @@ export function AppTopbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground relative size-8"
-          >
-            <Bell className="size-4" />
-            <span className="bg-primary absolute top-1 right-1.5 flex size-2 rounded-full" />
-          </Button>
+          <AssistantTrigger />
+          <SupportButton />
         </div>
       </header>
     )
@@ -79,20 +74,14 @@ export function AppTopbar() {
   const title = pathTitles[baseSegment] ?? "Dashboard"
 
   return (
-    <header className="border-border/60 bg-background/95 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
+    <header className="border-border/60 bg-background/95 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
       <SidebarTrigger className="text-muted-foreground hover:text-foreground -ml-1" />
 
       <span className="text-sm font-medium">{title}</span>
 
       <div className="ml-auto flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-foreground relative size-8"
-        >
-          <Bell className="size-4" />
-          <span className="bg-primary absolute top-1 right-1.5 flex size-2 rounded-full" />
-        </Button>
+        <AssistantTrigger />
+        <SupportButton />
       </div>
     </header>
   )

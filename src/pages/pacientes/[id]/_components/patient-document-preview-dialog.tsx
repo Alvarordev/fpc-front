@@ -2,15 +2,8 @@ import { useEffect, useState } from "react"
 import { Download, FileText, Loader2 } from "lucide-react"
 import type { PatientDocument } from "@/api/patient-documents"
 import { patientDocumentsApi } from "@/api/patient-documents"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Button } from "@/components/ds/button"
+import { Modal } from "@/components/ds/modal"
 
 interface PatientDocumentPreviewDialogProps {
   patientId: string
@@ -25,21 +18,13 @@ interface PreviewState {
   error?: string
 }
 
-export function PatientDocumentPreviewDialog({
-  patientId,
-  document,
-  onOpenChange,
-  onDownload,
-}: PatientDocumentPreviewDialogProps) {
+export function PatientDocumentPreviewDialog({ patientId, document, onOpenChange, onDownload }: PatientDocumentPreviewDialogProps) {
   const [previewState, setPreviewState] = useState<PreviewState | null>(null)
-  const open = Boolean(document)
 
   useEffect(() => {
     if (!document) return
-
     let cancelled = false
     let objectUrl: string | null = null
-
     patientDocumentsApi
       .content(patientId, document.id)
       .then((blob) => {
@@ -48,86 +33,48 @@ export function PatientDocumentPreviewDialog({
         setPreviewState({ documentId: document.id, url: objectUrl })
       })
       .catch(() => {
-        if (!cancelled) {
-          setPreviewState({
-            documentId: document.id,
-            error: "No se pudo cargar la previsualización.",
-          })
-        }
+        if (!cancelled) setPreviewState({ documentId: document.id, error: "No se pudo cargar la vista previa. Descárgalo para abrirlo." })
       })
-
     return () => {
       cancelled = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [document, patientId])
 
-  const currentPreview =
-    document && previewState?.documentId === document.id ? previewState : null
-  const previewUrl = currentPreview?.url ?? null
-  const error = currentPreview?.error ?? null
-  const isLoading = Boolean(document && !currentPreview)
-  const isImage = document?.mediaType.startsWith("image/") ?? false
+  if (!document) return null
+  const current = previewState?.documentId === document.id ? previewState : null
+  const isImage = document.mediaType.startsWith("image/")
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          setPreviewState(null)
-          onOpenChange(false)
-        }
+    <Modal
+      open
+      onClose={() => {
+        setPreviewState(null)
+        onOpenChange(false)
       }}
+      icon={FileText}
+      title={document.originalFileName}
+      description={isImage ? "Imagen" : "Documento PDF"}
+      footer={
+        <Button icon={Download} onClick={() => onDownload(document)}>
+          Descargar
+        </Button>
+      }
     >
-      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>{document?.originalFileName ?? "Documento"}</DialogTitle>
-          <DialogDescription>
-            {isImage ? "Previsualización de imagen" : "Previsualización de PDF"}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="bg-muted/30 flex min-h-48 flex-1 items-center justify-center overflow-auto rounded-lg p-2 sm:min-h-[55vh]">
-          {isLoading && (
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Loader2 className="size-4 animate-spin" />
-              Cargando documento...
-            </div>
-          )}
-          {error && <p className="text-destructive text-sm">{error}</p>}
-          {!isLoading && !error && previewUrl && isImage && (
-            <img
-              src={previewUrl}
-              alt={document?.originalFileName ?? "Documento del paciente"}
-              className="max-h-[65vh] max-w-full object-contain"
-            />
-          )}
-          {!isLoading && !error && previewUrl && !isImage && (
-            <iframe
-              src={previewUrl}
-              title={document?.originalFileName ?? "Documento PDF"}
-              className="h-[65vh] w-full rounded border-0"
-            />
-          )}
-          {!isLoading && !error && !previewUrl && (
-            <FileText className="text-muted-foreground/40 size-12" />
-          )}
-        </div>
-
-        <DialogFooter>
-          {document && (
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => onDownload(document)}
-            >
-              <Download className="size-4" />
-              Descargar
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <div className="flex min-h-48 items-center justify-center overflow-auto rounded-[18px] bg-white p-2 ring-1 ring-zinc-200/70 sm:min-h-[55vh]">
+        {!current ? (
+          <p className="flex items-center gap-2 text-[13px] text-zinc-500">
+            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+            Cargando documento…
+          </p>
+        ) : current.error ? (
+          <p className="text-[13px] text-red-700">{current.error}</p>
+        ) : isImage ? (
+          <img src={current.url} alt={document.originalFileName} className="max-h-[60vh] max-w-full object-contain" />
+        ) : (
+          <iframe src={current.url} title={document.originalFileName} className="h-[60vh] w-full rounded-[12px] border-0" />
+        )}
+      </div>
+    </Modal>
   )
 }

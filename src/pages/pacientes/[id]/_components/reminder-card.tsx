@@ -1,53 +1,34 @@
-import { Calendar, CheckCircle2, Pencil, Stethoscope, XCircle } from "lucide-react"
-import { CatalogValue } from "@/components/catalog-select"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useQuery } from "@tanstack/react-query"
+import { Bell, CheckCircle2, Pencil, XCircle } from "lucide-react"
+import { remindersApi } from "@/api/reminders"
 import type { Reminder } from "@/api/reminders"
+import { CatalogValue } from "@/components/catalog-select"
+import { Chip } from "@/components/ds/badge"
+import { Button } from "@/components/ds/button"
+import { Item, Panel } from "@/components/ds/card"
+import { DataList } from "@/components/ds/data"
+import { Modal } from "@/components/ds/modal"
+import { DateTile } from "@/components/ds/date-tile"
+import type { Tone } from "@/components/ds/tone"
+import { ReminderDeliveryActions } from "@/components/reminder-delivery-actions"
+import { reminderChannelLabels, reminderDeliveryLabels, reminderLeadLabels } from "@/lib/reminder-labels"
+import { capitalize, daysFromToday, formatDate, formatTime, relativeDay } from "../_lib/ficha-format"
 
-const STATUS_CONFIG: Record<
-  Reminder["status"],
-  { label: string; className: string }
-> = {
-  PENDING: {
-    label: "Pendiente",
-    className: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  },
-  DONE: {
-    label: "Completado",
-    className: "bg-green-100 text-green-800 border-green-300",
-  },
-  DISMISSED: {
-    label: "Descartado",
-    className: "bg-red-100 text-red-800 border-red-300",
-  },
+// Recordatorio de un paciente: qué, cuándo, dónde y si el aviso salió.
+
+const STATUS: Record<Reminder["status"], { label: string; tone: Tone }> = {
+  PENDING: { label: "Pendiente", tone: "amber" },
+  DONE: { label: "Completado", tone: "green" },
+  DISMISSED: { label: "Descartado", tone: "gray" },
 }
 
-const APPOINTMENT_STATUS_LABELS: Record<
-  NonNullable<Reminder["medicalAppointment"]>["status"],
-  string
-> = {
+const DELIVERY_TONE: Record<Reminder["deliveryStatus"], Tone> = { PENDING: "amber", SENT: "green", FAILED: "red" }
+
+const APPOINTMENT: Record<NonNullable<Reminder["medicalAppointment"]>["status"], string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Asistió",
   CANCELLED: "Cancelada",
   NO_ANSWER: "No asistió",
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "Sin fecha"
-  return new Date(value).toLocaleDateString("es-PE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-interface ReminderCardProps {
-  reminder: Reminder
-  canManage: boolean
-  onEdit: (reminder: Reminder) => void
-  onComplete: (reminder: Reminder) => void
-  onDismiss: (reminder: Reminder) => void
 }
 
 export function ReminderCard({
@@ -56,107 +37,139 @@ export function ReminderCard({
   onEdit,
   onComplete,
   onDismiss,
-}: ReminderCardProps) {
-  const statusCfg = STATUS_CONFIG[reminder.status]
-  const isPending = reminder.status === "PENDING"
-  const isMedical = reminder.kind === "MEDICAL_APPOINTMENT"
+  onOpen,
+}: {
+  reminder: Reminder
+  canManage: boolean
+  onEdit: (reminder: Reminder) => void
+  onComplete: (reminder: Reminder) => void
+  onDismiss: (reminder: Reminder) => void
+  /** Abre el detalle (recordatorios ya cerrados). */
+  onOpen?: (reminder: Reminder) => void
+}) {
+  const due = reminder.dueAt ?? (reminder.dueOn ? `${reminder.dueOn}T12:00:00` : null)
+  const pending = reminder.status === "PENDING"
   const appointment = reminder.medicalAppointment
-
+  const today = pending && due !== null && daysFromToday(due) === 0
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-xl border border-border/60 bg-card",
-        reminder.status === "DONE" && "opacity-70",
-        reminder.status === "DISMISSED" && "opacity-50",
-      )}
-    >
-      <div
-        className={cn(
-          "absolute inset-y-0 left-0 w-1",
-          isMedical ? "bg-red-500" : "bg-purple-500",
-        )}
-      />
-
-      <div className="py-3.5 pl-5 pr-4">
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="mb-1 flex flex-wrap items-center gap-1.5">
-              {isMedical && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase text-red-700">
-                  <Stethoscope className="size-3" />
-                  Cita médica
-                </span>
-              )}
-              {appointment && (
-                <span className="rounded-full border border-border px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
-                  {APPOINTMENT_STATUS_LABELS[appointment.status]}
-                </span>
-              )}
-            </div>
-            <p className="truncate text-sm font-semibold text-foreground">
-              {reminder.description}
-            </p>
-            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
-              <Calendar className="size-3" />
-              {formatDate(reminder.dueOn ?? reminder.dueAt)}
+    <Item
+      highlight={today}
+      onOpen={onOpen ? () => onOpen(reminder) : undefined}
+      openLabel={`Ver el detalle de ${reminder.description}`}
+      leading={due ? <DateTile date={due} urgent={today} /> : undefined}
+      title={reminder.description}
+      tags={
+        <>
+          {reminder.kind === "MEDICAL_APPOINTMENT" && <Chip tone="blue">Cita médica</Chip>}
+          <Chip tone={STATUS[reminder.status].tone}>{STATUS[reminder.status].label}</Chip>
+          {appointment && <Chip>{APPOINTMENT[appointment.status]}</Chip>}
+        </>
+      }
+      meta={
+        <>
+          {[due && `${capitalize(relativeDay(due))}${reminder.dueAt ? ` a las ${formatTime(reminder.dueAt)}` : ""}`, appointment?.healthCenterName].filter(Boolean).join(", ")}
+          {appointment && (
+            <span>
+              {", "}
+              <CatalogValue kind="medical_specialty" code={appointment.specialty} />
             </span>
-            {appointment && (
-              <p className="text-muted-foreground mt-1 text-[11px]">
-                <CatalogValue
-                  kind="medical_specialty"
-                  code={appointment.specialty}
-                />
-                {appointment.healthCenterName
-                  ? ` · ${appointment.healthCenterName}`
-                  : ""}
-              </p>
-            )}
-          </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
-              statusCfg.className,
-            )}
-          >
-            {statusCfg.label}
-          </span>
-        </div>
+          )}
+        </>
+      }
+      body={
+        <span className="flex items-center gap-2">
+          <span className="text-zinc-500">Aviso:</span>
+          <Chip tone={DELIVERY_TONE[reminder.deliveryStatus]}>{reminderDeliveryLabels[reminder.deliveryStatus]}</Chip>
+        </span>
+      }
+      footer={
+        <>
+          {canManage && pending && (
+            <>
+              <Button icon={CheckCircle2} onClick={() => onComplete(reminder)}>
+                Completar
+              </Button>
+              <Button icon={Pencil} onClick={() => onEdit(reminder)}>
+                Editar
+              </Button>
+              <Button icon={XCircle} onClick={() => onDismiss(reminder)}>
+                Descartar
+              </Button>
+            </>
+          )}
+          <ReminderDeliveryActions reminder={reminder} />
+        </>
+      }
+    />
+  )
+}
 
-        {canManage && isPending && (
-          <div className="mt-3 flex items-center gap-1.5 border-t border-border/40 pt-2.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => onEdit(reminder)}
-            >
-              <Pencil className="size-3" />
-              Editar
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
-              onClick={() => onComplete(reminder)}
-            >
-              <CheckCircle2 className="size-3" />
-              Completar
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
-              onClick={() => onDismiss(reminder)}
-            >
-              <XCircle className="size-3" />
-              Cancelar
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+const dateTime = (value: string | null | undefined) => (value ? `${formatDate(value)}, ${formatTime(value)}` : null)
+
+/** Detalle de un recordatorio: qué se recordó, cómo se cerró y qué texto recibió el paciente. */
+export function ReminderDetailModal({ reminder, onClose }: { reminder: Reminder; onClose: () => void }) {
+  const appointment = reminder.medicalAppointment
+  const message = useQuery({ queryKey: ["reminder-message", reminder.id], queryFn: () => remindersApi.message(reminder.id) })
+  const due = reminder.dueAt ? dateTime(reminder.dueAt) : formatDate(reminder.dueOn)
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      icon={Bell}
+      title={reminder.description}
+      description={reminder.kind === "MEDICAL_APPOINTMENT" ? "Recordatorio de cita médica" : "Recordatorio"}
+      tags={
+        <>
+          <Chip tone={STATUS[reminder.status].tone}>{STATUS[reminder.status].label}</Chip>
+          {appointment && <Chip>{APPOINTMENT[appointment.status]}</Chip>}
+        </>
+      }
+    >
+      <Panel title="Recordatorio">
+        <DataList
+          items={[
+            ["Para", due],
+            [reminder.status === "DISMISSED" ? "Descartado" : "Completado", dateTime(reminder.completedAt) ?? formatDate(reminder.completedOn)],
+            ...(appointment
+              ? ([
+                  ["Especialidad", <CatalogValue kind="medical_specialty" code={appointment.specialty} />],
+                  ["Hospital", appointment.healthCenterName],
+                  ["Cita", [formatDate(appointment.appointmentDate), appointment.appointmentTime?.slice(0, 5)].filter(Boolean).join(", ") || null],
+                  ["Primera consulta", appointment.isFirstConsultation ? "Sí" : "No"],
+                ] as [string, React.ReactNode][])
+              : []),
+          ]}
+        />
+      </Panel>
+      <Panel title="Aviso al paciente">
+        <DataList
+          items={[
+            ["Canal", reminderChannelLabels[reminder.channel]],
+            ["Anticipación", reminder.lead ? reminderLeadLabels[reminder.lead] : null],
+            [
+              "Envío",
+              // Cerrado sin enviar: ya no está "pendiente", simplemente no salió.
+              reminder.status !== "PENDING" && reminder.deliveryStatus === "PENDING" ? (
+                "No se envió"
+              ) : (
+                <Chip tone={DELIVERY_TONE[reminder.deliveryStatus]}>{reminderDeliveryLabels[reminder.deliveryStatus]}</Chip>
+              ),
+            ],
+            ["Enviado", dateTime(reminder.sentAt)],
+            ...(reminder.deliveryError ? ([["Error", reminder.deliveryError]] as [string, React.ReactNode][]) : []),
+          ]}
+        />
+        <div className="mt-3">
+          <p className="mb-1.5 text-[13px] text-zinc-500">Texto{message.data?.isCustom ? " (escrito por el agente)" : ""}</p>
+          {message.isLoading ? (
+            <p className="text-[13px] text-zinc-500">Cargando…</p>
+          ) : message.data ? (
+            <p className="rounded-[12px] bg-zinc-50 p-3 text-[13px] leading-relaxed whitespace-pre-line text-zinc-700 ring-1 ring-zinc-200/60">{message.data.text}</p>
+          ) : (
+            <p className="text-[13px] text-zinc-500">No se pudo cargar el texto.</p>
+          )}
+        </div>
+      </Panel>
+    </Modal>
   )
 }

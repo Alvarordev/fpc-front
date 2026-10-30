@@ -13,6 +13,8 @@ import {
   GraduationCap,
   Archive,
   BookMarked,
+  MessageSquareWarning,
+  Library,
 } from "lucide-react"
 import type { NavGroup } from "@/types/navigation"
 import type { UserRole } from "@/types"
@@ -39,6 +41,8 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
           icon: GraduationCap,
         },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
+        { title: "Catálogos", url: "/catalogos", icon: BookMarked },
+        { title: "Mis tickets", url: "/tickets", icon: MessageSquareWarning },
       ],
     },
   ],
@@ -63,6 +67,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
         { title: "Usuarios", url: "/usuarios", icon: ShieldUser },
         { title: "Carga histórica", url: "/carga-historica", icon: Archive },
+        { title: "Biblioteca", url: "/biblioteca", icon: Library },
       ],
     },
     {
@@ -78,6 +83,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
         },
         { title: "Hospitales", url: "/hospitales", icon: Building2 },
         { title: "Catálogos", url: "/catalogos", icon: BookMarked },
+        { title: "Tickets", url: "/tickets", icon: MessageSquareWarning },
       ],
     },
   ],
@@ -86,14 +92,19 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Gestión",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Biblioteca", url: "/biblioteca", icon: Library },
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
+        { title: "Alertas", url: "/alertas", icon: TriangleAlert },
+        { title: "Call center", url: "/callcenter", icon: Headset },
+        { title: "Catálogos", url: "/catalogos", icon: BookMarked },
         {
           title: "Charlas de prevención",
           url: "/charlas",
           icon: GraduationCap,
         },
+        { title: "Mis tickets", url: "/tickets", icon: MessageSquareWarning },
       ],
     },
   ],
@@ -117,4 +128,6 @@ export const pathTitles: Record<string, string> = {
   "/catalogos": "Catálogos",
   "/usuarios": "Usuarios",
   "/callcenter": "Call center",
+  "/tickets": "Tickets",
+  "/biblioteca": "Biblioteca del programa",
 }

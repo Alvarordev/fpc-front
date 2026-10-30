@@ -3,6 +3,8 @@
 // ============================================================
 
 import type { DurationDraft } from "./duration"
+import type { IdentityDocumentType } from "./identity-document"
+import type { LodgingCostPeriod } from "@/pages/enrolamiento/_utils/address-housing"
 
 export type { DurationDraft, DurationInput, DurationUnit } from "./duration"
 
@@ -120,6 +122,8 @@ export interface LoginRequest {
 
 export interface CreatePatientRequest {
   fullName: string
+  documentType?: IdentityDocumentType | null
+  /** Identity document number (DNI, CE or CPP per `documentType`). */
   dni?: string | null
   birthDate?: string | null
   gender?: string | null
@@ -149,8 +153,6 @@ export interface EnrollPatientDetailsRequest {
   usesWoodStove?: boolean | null
   isWorking?: boolean | null
   receivesFinancialSupport?: boolean | null
-  programDropoutReason?: string | null
-  programDropoutDate?: string | null
   referredToSocialWorker?: boolean | null
   hasConadisCard?: boolean | null
   knowsAboutFissal?: boolean | null
@@ -182,6 +184,8 @@ export interface AddDiagnosisRequest {
   hasReferral?: boolean | null
   diagnosisSpecialty?: string | null
   symptomLeadingToCheckup?: string | null
+  /** How the disease progressed, e.g. metastasis to other organs. */
+  diseaseEvolution?: string | null
   waitTimeForDiagnosis?: DurationDraft | null
   hasMedicalReport?: boolean
   isSepaActiveReferral?: boolean | null
@@ -190,15 +194,15 @@ export interface AddDiagnosisRequest {
 }
 
 export type TreatmentSituation =
-  | "EN_CURSO"
-  | "PENDIENTE_DE_INICIO"
-  | "INTERRUMPIDO"
-  | "FINALIZADO"
-  | "SEARCHING"
-  | "ABANDONED"
-  | "DECEASED_DURING_TREATMENT"
-  | "NOT_APPLICABLE"
-  | "REMISSION"
+  | "EN_PROCESO"
+  | "EN_ESPERA"
+  | "SUSPENDIDO"
+  | "CULMINADO"
+  | "EN_BUSQUEDA"
+  | "ABANDONADO"
+  | "FALLECIDO"
+  | "NO_APLICA"
+  | "REMISION"
 
 export type CareProgram = "COPHOES" | "PADOMI"
 
@@ -372,13 +376,25 @@ export interface EnrollmentAddressRequest {
   province?: string
   reference?: string
   locationUrl?: string
+  /** Catalog `location_share_status`. */
+  locationShareStatus?: string
+  locationShareStatusOther?: string
+  /** Catalog `temporary_housing_type`; TEMPORARY addresses only. */
+  housingType?: string
+  housingTypeOther?: string
+  shelterName?: string
+  travelTimeToHospital?: DurationDraft
+  /** Average spend in soles when renting lodging. */
+  averageLodgingCost?: number
+  averageLodgingCostPeriod?: LodgingCostPeriod
   dniMatchesAddress?: boolean
   validFrom?: string
   validTo?: string
 }
 
 export interface FamilyPreventionTalkInterestRequest {
-  talkName: string
+  /** Código del catálogo `educational_talk`. */
+  talk: string
   familyMemberName: string
   familyMemberPhone: string
   familyMemberEmail: string
@@ -419,4 +435,5 @@ export interface AvailabilitySlot {
   startTime: string
   endTime: string
   status: AvailabilityStatus
+  recurrenceId?: string | null
 }

@@ -1,95 +1,53 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  BrainCircuit,
-  CalendarDays,
-  CalendarPlus,
-  Clock3,
-  Edit,
-  PhoneCall,
-  Video,
-} from "lucide-react"
+import { Clock3, MessageSquareText, PhoneOff, XCircle } from "lucide-react"
 import { toast } from "sonner"
-import {
-  psychooncologyAppointmentsApi,
-  type PsychooncologyAppointment,
-} from "@/api/psychooncology-appointments"
+import { psychooncologyAppointmentsApi, type PsychooncologyAppointment } from "@/api/psychooncology-appointments"
 import { volunteersApi } from "@/api/volunteers"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Chip } from "@/components/ds/badge"
+import { AddButton, Button } from "@/components/ds/button"
+import { Card, Item, Panel } from "@/components/ds/card"
+import { DateTile } from "@/components/ds/date-tile"
+import { EmptyState } from "@/components/ds/empty-state"
+import { FilterToggles } from "@/components/ds/filter-toggles"
+import { Field, TextArea } from "@/components/ds/form"
+import { Modal } from "@/components/ds/modal"
+import type { Tone } from "@/components/ds/tone"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthStore } from "@/store/auth-store"
+import { daysFromToday, formatTime, capitalize } from "../_lib/ficha-format"
 import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
-import { AgendaSessionResultDialog } from "@/pages/agenda/_components/agenda-session-result-dialog"
-import { AgendaSessionResultSheet } from "@/pages/agenda/_components/agenda-session-result-sheet"
 import { PsychooncologySessionDetailDialog } from "./psychooncology-session-detail-dialog"
-import {
-  SchedulePsychooncologyDialog,
-  type SchedulePsychooncologySubmitInput,
-} from "./schedule-psychooncology-dialog"
+import { PsychoCyclePanel } from "./psycho-cycle-panel"
+import { PsychoSessionResultModal } from "./psycho-session-result-modal"
+import { PsychoSessionActions } from "./psycho-session-actions"
+import { SchedulePsychooncologyDialog, type SchedulePsychooncologySubmitInput } from "./schedule-psychooncology-dialog"
+import { UnmanagedNoShowsBanner } from "./unmanaged-no-shows-banner"
 
 interface PsicoTabProps {
   pacienteId: string
   patientName: string
 }
 
-const statusLabels: Record<string, string> = {
+const statusLabels: Record<PsychooncologyAppointment["status"], string> = {
   SCHEDULED: "Programada",
   COMPLETED: "Completada",
+  NO_SHOW: "No se presentó",
   CANCELLED: "Cancelada",
-  NO_ANSWER: "No contestó",
+  RESCHEDULED: "Reprogramada",
+  OVERDUE: "Vencida",
 }
 
-const statusStyles: Record<string, string> = {
-  SCHEDULED: "border-violet-200 bg-violet-50/70 hover:border-violet-300",
-  NO_ANSWER: "border-amber-200 bg-amber-50/70 hover:border-amber-300",
-  COMPLETED: "border-emerald-200 bg-emerald-50/60 hover:border-emerald-300",
-  CANCELLED: "border-border bg-muted/40 hover:border-muted-foreground/30",
+const statusTones: Record<PsychooncologyAppointment["status"], Tone> = {
+  SCHEDULED: "blue",
+  NO_SHOW: "red",
+  COMPLETED: "green",
+  CANCELLED: "gray",
+  RESCHEDULED: "amber",
+  OVERDUE: "red",
 }
 
 type SessionBeneficiaryTab = "PATIENT" | "COMPANION"
-
-function formatScheduledParts(date: string | null, dateOnly: string | null) {
-  const value = new Date(date ?? (dateOnly ? `${dateOnly}T12:00:00` : ""))
-  if (Number.isNaN(value.getTime())) {
-    return {
-      day: "—",
-      month: "",
-      year: "",
-      date: "Sin fecha",
-      time: "Sin hora",
-    }
-  }
-  return {
-    day: value.toLocaleDateString("es-PE", { day: "numeric" }),
-    month: value
-      .toLocaleDateString("es-PE", { month: "short" })
-      .replace(".", "")
-      .toUpperCase(),
-    year: value.toLocaleDateString("es-PE", { year: "numeric" }),
-    date: value.toLocaleDateString("es-PE", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-    time: value.toLocaleTimeString("es-PE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  }
-}
 
 function ratingLabel(rating: unknown) {
   if (typeof rating !== "number" && typeof rating !== "string") return undefined
@@ -98,8 +56,13 @@ function ratingLabel(rating: unknown) {
   )?.label
 }
 
+function sessionDate(appointment: PsychooncologyAppointment) {
+  return appointment.scheduledAt ?? (appointment.scheduledOn ? `${appointment.scheduledOn}T12:00:00` : null)
+}
+
 function PsychoSessionCard({
   appointment,
+  patientId,
   volunteerName,
   canManage,
   canRecordResult,
@@ -110,6 +73,7 @@ function PsychoSessionCard({
   onCancel,
 }: {
   appointment: PsychooncologyAppointment
+  patientId: string
   volunteerName: string
   canManage: boolean
   canRecordResult: boolean
@@ -119,181 +83,75 @@ function PsychoSessionCard({
   onNoAnswer: () => void
   onCancel: () => void
 }) {
-  const date = formatScheduledParts(
-    appointment.scheduledAt,
-    appointment.scheduledOn,
-  )
+  const when = sessionDate(appointment)
+  const isScheduled = appointment.status === "SCHEDULED" || appointment.status === "OVERDUE"
+  const today = isScheduled && when !== null && daysFromToday(when) === 0
   const companionName = textValue(appointment.companionFullName)
-  const schedulingNotes = textValue(appointment.schedulingNotes)
-  const noAnswerNote = textValue(appointment.noAnswerNote)
-  const satisfactionComment = textValue(appointment.satisfactionComment)
-  const isScheduled = appointment.status === "SCHEDULED"
-  const isNoAnswer = appointment.status === "NO_ANSWER"
-  const isActionable = isScheduled || isNoAnswer
-  const ModalityIcon = appointment.modality === "CALL" ? PhoneCall : Video
-
+  const notes = [
+    textValue(appointment.schedulingNotes) && `Derivación: ${textValue(appointment.schedulingNotes)}`,
+    textValue(appointment.noAnswerNote) && `No se presentó: ${textValue(appointment.noAnswerNote)}`,
+    appointment.status === "COMPLETED" && appointment.satisfactionRating && `Encuesta: ${ratingLabel(appointment.satisfactionRating)}`,
+    appointment.status === "COMPLETED" && textValue(appointment.satisfactionComment),
+  ].filter(Boolean) as string[]
+  const actions = (
+    <>
+      {canRecordResult && (isScheduled || appointment.status === "NO_SHOW") && (
+        <Button variant="brand" onClick={onRegister}>
+          Registrar resultado
+        </Button>
+      )}
+      {canRecordResult && isScheduled && (
+        <Button icon={PhoneOff} onClick={onNoAnswer}>
+          No se presentó
+        </Button>
+      )}
+      {canManage && isScheduled && (
+        <Button icon={Clock3} onClick={onEdit}>
+          Reprogramar
+        </Button>
+      )}
+      {canManage && isScheduled && (
+        <Button icon={XCircle} onClick={onCancel}>
+          Cancelar
+        </Button>
+      )}
+    </>
+  )
   return (
-    <article
-      role="button"
-      tabIndex={0}
-      aria-label={`Ver detalle de la sesión ${appointment.sessionNumber}`}
-      onClick={onView}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onView()
-        }
-      }}
-      className={`rounded-2xl border p-3 transition-[border-color,box-shadow] duration-200 hover:shadow-sm sm:p-4 ${statusStyles[appointment.status] ?? statusStyles.SCHEDULED}`}
-    >
-      <div className="flex items-stretch gap-3 sm:gap-5">
-        <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-white/70 py-2 text-violet-900 sm:w-16">
-          <span className="text-2xl leading-none font-semibold tracking-tight">
-            {date.day}
+    <Item
+      highlight={today || appointment.status === "OVERDUE"}
+      leading={when ? <DateTile date={when} urgent={today || appointment.status === "OVERDUE"} /> : undefined}
+      title={`Sesión ${appointment.sessionNumber}`}
+      tags={
+        <>
+          <Chip tone={statusTones[appointment.status]}>{statusLabels[appointment.status]}</Chip>
+          {today && <Chip tone="red">Hoy</Chip>}
+        </>
+      }
+      meta={[when && `${capitalize(new Date(when).toLocaleDateString("es-PE", { weekday: "long" }))} a las ${formatTime(when)}`, appointment.modality === "VIDEO_CALL" ? "videollamada" : "llamada", volunteerName, appointment.beneficiaryType === "COMPANION" ? `para ${companionName ?? "un acompañante"}` : null, appointment.followUpId ? "desde un seguimiento" : null].filter(Boolean).join(", ")}
+      body={
+        notes.length ? (
+          <span className="flex gap-2">
+            <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-zinc-400" />
+            <span>{notes.join(". ")}</span>
           </span>
-          <span className="text-muted-foreground mt-1 text-[10px] font-semibold tracking-wider">
-            {date.month}
-          </span>
-          <span className="text-muted-foreground text-[10px]">{date.year}</span>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-                <ModalityIcon className="size-3.5" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold sm:text-base">
-                  Sesión {appointment.sessionNumber}
-                </p>
-                <p className="text-muted-foreground text-xs">{volunteerName}</p>
-                {appointment.beneficiaryType === "COMPANION" && (
-                  <p className="text-muted-foreground text-xs">
-                    Para: {companionName ?? "Acompañante"}
-                  </p>
-                )}
-              </div>
-              <Badge variant="outline">
-                {statusLabels[appointment.status]}
-              </Badge>
-            </div>
-            {(canManage || canRecordResult) && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onEdit()
-                }}
-                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 shadow-2xs transition-colors hover:bg-red-600 hover:text-white"
-                title="Editar sesión"
-              >
-                <Edit className="size-3.5" />
-                <span>Editar</span>
-              </button>
-            )}
-          </div>
-
-          <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm">
-            <span className="flex items-center gap-1.5">
-              <CalendarDays className="size-3.5" />
-              <span className="capitalize">{date.date}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock3 className="size-3.5" />
-              {date.time}
-            </span>
-          </div>
-
-          {schedulingNotes && (
-            <p className="text-muted-foreground mt-3 line-clamp-2 text-sm leading-relaxed">
-              <span className="text-foreground/80 font-medium">
-                Derivación:{" "}
-              </span>
-              {schedulingNotes}
-            </p>
-          )}
-
-          {noAnswerNote && (
-            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-amber-900/80">
-              <span className="font-medium">Nota (no contestó): </span>
-              {noAnswerNote}
-            </p>
-          )}
-
-          {appointment.status === "COMPLETED" &&
-            (textValue(appointment.satisfactionRating) ||
-              satisfactionComment) && (
-              <div className="mt-3 rounded-xl border border-emerald-200/80 bg-white/60 p-3 text-sm">
-                {appointment.satisfactionRating && (
-                  <p className="font-medium text-emerald-900">
-                    Encuesta: {ratingLabel(appointment.satisfactionRating)}
-                  </p>
-                )}
-                {satisfactionComment && (
-                  <p className="text-muted-foreground mt-1 leading-relaxed">
-                    {satisfactionComment}
-                  </p>
-                )}
-              </div>
-            )}
-
-          {appointment.followUpId && (
-            <p className="text-muted-foreground mt-2 text-xs">
-              Vinculada a un seguimiento
-            </p>
-          )}
-
-          {isActionable && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {canRecordResult && (
-                <Button
-                  size="sm"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onRegister()
-                  }}
-                >
-                  Registrar
-                </Button>
-              )}
-              {canRecordResult && isScheduled && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onNoAnswer()
-                  }}
-                >
-                  No contestó
-                </Button>
-              )}
-              {canRecordResult && isScheduled && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onCancel()
-                  }}
-                >
-                  Cancelar
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </article>
+        ) : undefined
+      }
+      footer={
+        <>
+          {actions}
+          {canManage && <PsychoSessionActions appointment={appointment} patientId={patientId} />}
+        </>
+      }
+      onOpen={onView}
+      openLabel={`Ver detalle de la sesión ${appointment.sessionNumber}`}
+    />
   )
 }
 
 export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
-  const isMobile = useIsMobile()
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [editingAppointment, setEditingAppointment] =
     useState<PsychooncologyAppointment | null>(null)
@@ -301,22 +159,18 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     useState<PsychooncologyAppointment | null>(null)
   const [resultAppointment, setResultAppointment] =
     useState<PsychooncologyAppointment | null>(null)
-  const [resultOpen, setResultOpen] = useState(false)
   const [noAnswerTarget, setNoAnswerTarget] =
     useState<PsychooncologyAppointment | null>(null)
   const [noAnswerNote, setNoAnswerNote] = useState("")
   const [beneficiaryTab, setBeneficiaryTab] =
     useState<SessionBeneficiaryTab>("PATIENT")
+  const [additionalSession, setAdditionalSession] = useState(false)
 
   const canSchedule =
     user?.role === "ADMIN" ||
     user?.role === "FOUNDATION" ||
-    user?.role === "AGENT" ||
-    user?.role === "VOLUNTEER"
-  const canManage =
-    user?.role === "ADMIN" ||
-    user?.role === "FOUNDATION" ||
     user?.role === "AGENT"
+  const canManage = canSchedule
 
   const appointmentsQuery = useQuery({
     queryKey: ["psychooncology-appointments", pacienteId],
@@ -326,6 +180,13 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   const volunteersQuery = useQuery({
     queryKey: ["volunteers"],
     queryFn: volunteersApi.list,
+    enabled: user?.role !== "VOLUNTEER",
+    staleTime: 300_000,
+  })
+  const meQuery = useQuery({
+    queryKey: ["volunteers", "me"],
+    queryFn: volunteersApi.me,
+    enabled: user?.role === "VOLUNTEER",
     staleTime: 300_000,
   })
 
@@ -336,6 +197,10 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
       }),
       queryClient.invalidateQueries({
         queryKey: ["patient-timeline", pacienteId],
+      }),
+      // El panel del ciclo cuenta las sesiones agendadas y realizadas.
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-cycles", pacienteId],
       }),
     ])
   }
@@ -357,10 +222,11 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     }: {
       id: string
       input: Parameters<typeof psychooncologyAppointmentsApi.update>[1]
+      successMessage?: string
     }) => psychooncologyAppointmentsApi.update(id, input),
-    onSuccess: async () => {
+    onSuccess: async (_data, { successMessage }) => {
       await invalidate()
-      toast.success("Cita actualizada")
+      toast.success(successMessage ?? "Cita actualizada")
     },
     onError: (error: Error) =>
       toast.error("No se pudo actualizar la cita", {
@@ -380,7 +246,13 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
       }),
   })
 
-  const appointments = [...(appointmentsQuery.data ?? [])].sort((a, b) => {
+  const appointments = [...(appointmentsQuery.data ?? [])]
+    .filter((appointment) =>
+      user?.role === "VOLUNTEER"
+        ? meQuery.data != null && appointment.volunteerId === meQuery.data.id
+        : true,
+    )
+    .sort((a, b) => {
     const scheduledDifference = (b.scheduledOn ?? b.scheduledAt ?? "").localeCompare(
       a.scheduledOn ?? a.scheduledAt ?? "",
     )
@@ -394,11 +266,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   )
   const visibleAppointments =
     beneficiaryTab === "PATIENT" ? patientAppointments : companionAppointments
-  const ownVolunteerId =
-    user?.role === "VOLUNTEER"
-      ? volunteersQuery.data?.find((volunteer) => volunteer.userId === user.id)
-          ?.id
-      : undefined
+  const ownVolunteerId = meQuery.data?.id
   const detailVolunteer = detailAppointment
     ? volunteersQuery.data?.find(
         (volunteer) => volunteer.id === detailAppointment.volunteerId,
@@ -413,6 +281,23 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   ) {
     if (payload.mode === "create") {
       await createMutation.mutateAsync(payload.input)
+      return
+    }
+    if (payload.mode === "reschedule") {
+      const created = await psychooncologyAppointmentsApi.reschedule(
+        payload.id,
+        payload.input,
+      )
+      if (payload.update) {
+        await updateMutation.mutateAsync({
+          id: created.id,
+          input: payload.update,
+          successMessage: "Sesión reprogramada",
+        })
+        return
+      }
+      await invalidate()
+      toast.success("Sesión reprogramada")
       return
     }
     await updateMutation.mutateAsync({
@@ -434,12 +319,6 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   function openResult(appointment: PsychooncologyAppointment) {
     setDetailAppointment(null)
     setResultAppointment(appointment)
-    setResultOpen(true)
-  }
-
-  function closeResult(nextOpen: boolean) {
-    setResultOpen(nextOpen)
-    if (!nextOpen) setResultAppointment(null)
   }
 
   async function submitNoAnswer() {
@@ -451,7 +330,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     await updateMutation.mutateAsync({
       id: noAnswerTarget.id,
       input: {
-        status: "NO_ANSWER",
+        status: "NO_SHOW",
         noAnswerNote: noAnswerNote.trim(),
       },
     })
@@ -459,108 +338,81 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     setNoAnswerNote("")
   }
 
+  function openSchedule(extra: boolean) {
+    setAdditionalSession(extra)
+    setEditingAppointment(null)
+    setScheduleOpen(true)
+  }
+
+  const volunteerNameOf = (appointment: PsychooncologyAppointment) => {
+    const volunteer = volunteersQuery.data?.find((item) => item.id === appointment.volunteerId)
+    const own = meQuery.data?.id === appointment.volunteerId ? meQuery.data : undefined
+    return volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : own ? `${own.firstName} ${own.lastName}` : appointment.volunteerFullName || "Psicooncólogo"
+  }
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-sm font-semibold">Sesiones de psicooncología</h2>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            {appointments.length} cita{appointments.length === 1 ? "" : "s"}{" "}
-            registradas
-          </p>
+    <div className="space-y-4">
+      <UnmanagedNoShowsBanner patientId={pacienteId} canManage={canManage} />
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="lg:self-start">
+          <PsychoCyclePanel patientId={pacienteId} canManage={canManage} onScheduleAdditional={() => openSchedule(true)} />
         </div>
-        {canSchedule && (
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => {
-              setEditingAppointment(null)
-              setScheduleOpen(true)
-            }}
-          >
-            <CalendarPlus className="size-4" />
-            Agendar cita
-          </Button>
-        )}
-      </div>
-
-      {appointmentsQuery.isLoading ? (
-        <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
-          Cargando citas...
-        </div>
-      ) : (
-        <Tabs
-          value={beneficiaryTab}
-          onValueChange={(value) =>
-            setBeneficiaryTab(value as SessionBeneficiaryTab)
-          }
+        <Card
+          title="Sesiones"
+          description={`${appointments.length} ${appointments.length === 1 ? "sesión registrada" : "sesiones registradas"}`}
+          action={canSchedule ? <AddButton onClick={() => openSchedule(false)}>Agendar sesión</AddButton> : undefined}
         >
-          <TabsList className="w-full sm:w-fit">
-            <TabsTrigger value="PATIENT" className="flex-1 sm:flex-none">
-              Paciente
-              <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">
-                {patientAppointments.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="COMPANION" className="flex-1 sm:flex-none">
-              Acompañantes
-              <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">
-                {companionAppointments.length}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={beneficiaryTab} className="mt-3">
-            {visibleAppointments.length === 0 ? (
-              <div className="flex h-40 flex-col items-center justify-center gap-2 text-center">
-                <BrainCircuit className="text-muted-foreground/40 size-8" />
-                <p className="text-sm font-medium">
-                  Sin sesiones para{" "}
-                  {beneficiaryTab === "PATIENT"
-                    ? "el paciente"
-                    : "acompañantes"}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  Podés crear una cita independiente o vincularla desde un
-                  seguimiento.
-                </p>
+          {appointmentsQuery.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }, (_, i) => (
+                <Skeleton key={i} className="h-20 rounded-[14px] bg-zinc-100" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <FilterToggles
+                  value={beneficiaryTab}
+                  onChange={setBeneficiaryTab}
+                  options={[
+                    { id: "PATIENT", label: "Paciente", count: patientAppointments.length },
+                    { id: "COMPANION", label: "Acompañantes", count: companionAppointments.length },
+                  ]}
+                />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {visibleAppointments.map((appointment) => {
-                  const volunteer = volunteersQuery.data?.find(
-                    (item) => item.id === appointment.volunteerId,
-                  )
-                  const volunteerName = volunteer
-                    ? `${volunteer.firstName} ${volunteer.lastName}`
-                    : "Psicooncólogo"
-                  const canRecordResult = user?.role === "VOLUNTEER"
-
-                  return (
+              {visibleAppointments.length === 0 ? (
+                <EmptyState
+                  title={beneficiaryTab === "PATIENT" ? "Sin sesiones para el paciente" : "Sin sesiones para acompañantes"}
+                  body="Agenda una sesión aquí o derívala desde un seguimiento."
+                  action={canSchedule ? "Agendar sesión" : undefined}
+                  onAction={() => openSchedule(false)}
+                />
+              ) : (
+                <div key={beneficiaryTab} className="space-y-2 animate-in fade-in-0 duration-200 motion-reduce:animate-none">
+                  {visibleAppointments.map((appointment) => (
                     <PsychoSessionCard
                       key={appointment.id}
                       appointment={appointment}
-                      volunteerName={volunteerName}
+                      patientId={pacienteId}
+                      volunteerName={volunteerNameOf(appointment)}
                       canManage={canManage}
-                      canRecordResult={canRecordResult}
+                      canRecordResult={user?.role === "VOLUNTEER" && ownVolunteerId != null && appointment.volunteerId === ownVolunteerId}
                       onView={() => setDetailAppointment(appointment)}
                       onEdit={() => openEdit(appointment)}
                       onRegister={() => openResult(appointment)}
                       onNoAnswer={() => {
                         setNoAnswerTarget(appointment)
-                        setNoAnswerNote(
-                          textValue(appointment.noAnswerNote) ?? "",
-                        )
+                        setNoAnswerNote(textValue(appointment.noAnswerNote) ?? "")
                       }}
                       onCancel={() => cancelMutation.mutate(appointment.id)}
                     />
-                  )
-                })}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
 
       <SchedulePsychooncologyDialog
         key={editingAppointment?.id ?? "new"}
@@ -569,6 +421,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         patientId={pacienteId}
         ownVolunteerId={ownVolunteerId}
         appointment={editingAppointment}
+        additionalSession={additionalSession}
         isPending={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleDialogSubmit}
       />
@@ -580,78 +433,45 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         patientName={patientName}
         volunteerName={detailAppointment ? detailVolunteerName : ""}
         onRegister={
-          user?.role === "VOLUNTEER" && detailAppointment?.status === "SCHEDULED"
+          user?.role === "VOLUNTEER" && (detailAppointment?.status === "SCHEDULED" || detailAppointment?.status === "OVERDUE" || detailAppointment?.status === "NO_SHOW")
             ? () => openResult(detailAppointment)
             : undefined
         }
       />
 
-      {isMobile ? (
-        <AgendaSessionResultSheet
-          open={resultOpen}
-          onOpenChange={closeResult}
-          appointment={resultAppointment}
-          patientName={patientName}
-          patientId={pacienteId}
-          volunteerId={ownVolunteerId}
-        />
-      ) : (
-        <AgendaSessionResultDialog
-          open={resultOpen}
-          onOpenChange={closeResult}
-          appointment={resultAppointment}
-          patientName={patientName}
-          patientId={pacienteId}
-          volunteerId={ownVolunteerId}
-        />
-      )}
+      {resultAppointment && <PsychoSessionResultModal appointment={resultAppointment} patientName={patientName} onClose={() => setResultAppointment(null)} />}
 
-      <Dialog
-        open={Boolean(noAnswerTarget)}
-        onOpenChange={(open) => {
-          if (!open) {
+      {noAnswerTarget && (
+        <Modal
+          open
+          onClose={() => {
             setNoAnswerTarget(null)
             setNoAnswerNote("")
+          }}
+          icon={PhoneOff}
+          title="Marcar como no se presentó"
+          description="Deja una nota del intento de contacto. Luego alguien debe gestionar la inasistencia."
+          footer={
+            <>
+              <Button
+                onClick={() => {
+                  setNoAnswerTarget(null)
+                  setNoAnswerNote("")
+                }}
+              >
+                Volver
+              </Button>
+              <Button variant="dark" onClick={submitNoAnswer} disabled={updateMutation.isPending || !noAnswerNote.trim()}>
+                {updateMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </>
           }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Marcar como no contestó</DialogTitle>
-            <DialogDescription>
-              Registra una nota del intento de contacto. Podrás reprogramar o
-              completar la sesión después.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label htmlFor="no-answer-note">Nota</Label>
-            <Textarea
-              id="no-answer-note"
-              value={noAnswerNote}
-              onChange={(event) => setNoAnswerNote(event.target.value)}
-              placeholder="Ej.: llamé dos veces, dejó mensaje en buzón..."
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setNoAnswerTarget(null)
-                setNoAnswerNote("")
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={submitNoAnswer}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? "Guardando..." : "Guardar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        >
+          <Panel>
+            <Field label="Nota *">{(id) => <TextArea id={id} value={noAnswerNote} onChange={(e) => setNoAnswerNote(e.target.value)} placeholder="Ej.: llamé dos veces y dejé mensaje en el buzón" />}</Field>
+          </Panel>
+        </Modal>
+      )}
     </div>
   )
 }

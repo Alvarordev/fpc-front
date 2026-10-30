@@ -1,5 +1,7 @@
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   AlertCircle,
   ArrowRight,
@@ -12,6 +14,15 @@ import {
   UserRound,
 } from "lucide-react"
 import { callCenterApi, type CallCenterWorkload } from "@/api/call-center"
+import { CallCenterLoadTable } from "./_components/call-center-load-table"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,7 +47,7 @@ type WorkloadGroup = {
 
 function formatDate(date: string | null): string {
   if (!date) return "Sin fecha"
-  return new Date(date).toLocaleDateString("es-PE", {
+  return new Date(date.length === 10 ? `${date}T00:00:00` : date).toLocaleDateString("es-PE", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -54,10 +65,33 @@ function formatTime(datetime: string | null): string {
 
 export default function CallcenterPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [targetAgentId, setTargetAgentId] = useState("")
+  const [confirming, setConfirming] = useState(false)
   const workloadQuery = useQuery({
     queryKey: ["callcenter-workload"],
     queryFn: callCenterApi.workload,
     staleTime: 30_000,
+  })
+  const reassignMutation = useMutation({
+    mutationFn: () =>
+      callCenterApi.reassign({
+        followUpIds: selectedIds,
+        agentId: targetAgentId,
+      }),
+    onSuccess: async (result) => {
+      setSelectedIds([])
+      setConfirming(false)
+      await queryClient.invalidateQueries({ queryKey: ["callcenter-workload"] })
+      toast.success(
+        result.reassigned === 1
+          ? "Se reasignó 1 seguimiento"
+          : `Se reasignaron ${result.reassigned} seguimientos`,
+      )
+    },
+    onError: (error: Error) =>
+      toast.error("No se pudo reasignar", { description: error.message }),
   })
 
   if (workloadQuery.isLoading) {
@@ -120,15 +154,104 @@ export default function CallcenterPage() {
       group.id !== "unassigned" &&
       (group.followUps.length || group.reminders.length),
   ).length
+  const agentItems = agents.map((agent) => ({
+    value: agent.id,
+    label: agent.fullName,
+  }))
+  const targetAgent = agents.find((agent) => agent.id === targetAgentId)
+
+  function toggleFollowUp(id: string) {
+    setConfirming(false)
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Call center</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Carga de trabajo pendiente, organizada por agente.
+          Carga de trabajo pendiente, organizada por agente. Puedes reasignar
+          seguimientos programados o vencidos.
         </p>
       </div>
+      <CallCenterLoadTable load={workloadQuery.data.load} />
+      {selectedIds.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Reasignar {selectedIds.length} seguimiento
+              {selectedIds.length === 1 ? "" : "s"}
+            </CardTitle>
+            <CardDescription>
+              Los seguimientos pendientes pasan al agente que elijas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Select
+              items={agentItems}
+              value={targetAgentId}
+              onValueChange={(value) => {
+                setTargetAgentId(value ?? "")
+                setConfirming(false)
+              }}
+            >
+              <SelectTrigger className="max-w-sm" aria-label="Agente destino">
+                <SelectValue placeholder="Seleccionar agente" />
+              </SelectTrigger>
+              <SelectContent>
+                {agentItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {confirming && targetAgent && (
+              <p className="bg-muted/40 rounded-md border px-3 py-2 text-sm">
+                Vas a pasar {selectedIds.length} seguimiento
+                {selectedIds.length === 1 ? "" : "s"} pendiente
+                {selectedIds.length === 1 ? "" : "s"} a {targetAgent.fullName}.
+                La carga de los agentes se actualiza al confirmar.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {confirming ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirming(false)}
+                    disabled={reassignMutation.isPending}
+                  >
+                    Volver
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => reassignMutation.mutate()}
+                    disabled={reassignMutation.isPending || !targetAgentId}
+                  >
+                    {reassignMutation.isPending
+                      ? "Reasignando..."
+                      : "Confirmar reasignación"}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => setConfirming(true)}
+                  disabled={!targetAgentId}
+                >
+                  Reasignar
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <section className="grid gap-4 sm:grid-cols-3">
         <Metric
           icon={Phone}
@@ -192,20 +315,29 @@ export default function CallcenterPage() {
                   >
                     {group.followUps
                       .sort((a, b) =>
-                        (a.scheduledAt ?? "").localeCompare(
-                          b.scheduledAt ?? "",
+                        (a.scheduledOn ?? a.scheduledAt ?? "").localeCompare(
+                          b.scheduledOn ?? b.scheduledAt ?? "",
                         ),
                       )
                       .map((followUp) => (
-                        <button
+                        <div
                           key={followUp.id}
-                          className="hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3 text-left transition-colors"
-                          onClick={() =>
-                            navigate(
-                              `/pacientes/${followUp.subjectPatientId}/seguimientos/${followUp.id}`,
-                            )
-                          }
+                          className="hover:bg-muted/30 flex w-full items-center gap-3 px-5 py-3"
                         >
+                          <Checkbox
+                            checked={selectedIds.includes(followUp.id)}
+                            onCheckedChange={() => toggleFollowUp(followUp.id)}
+                            aria-label={`Seleccionar seguimiento de ${followUp.subjectPatientName}`}
+                          />
+                          <button
+                            type="button"
+                            className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                            onClick={() =>
+                              navigate(
+                                `/pacientes/${followUp.subjectPatientId}/seguimientos/${followUp.id}`,
+                              )
+                            }
+                          >
                           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
                             <Phone className="size-4" />
                           </div>
@@ -219,13 +351,14 @@ export default function CallcenterPage() {
                             </p>
                             <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                               <Calendar className="size-3" />
-                              {formatDate(followUp.scheduledAt)}
+                              {formatDate(followUp.scheduledOn ?? followUp.scheduledAt)}
                               <Clock className="ml-1 size-3" />
                               {formatTime(followUp.scheduledAt)}
                             </p>
                           </div>
                           <ArrowRight className="text-muted-foreground size-4 shrink-0" />
-                        </button>
+                          </button>
+                        </div>
                       ))}
                   </TaskColumn>
                   <TaskColumn
@@ -234,7 +367,7 @@ export default function CallcenterPage() {
                     empty="No hay recordatorios pendientes."
                   >
                     {group.reminders
-                      .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+                      .sort((a, b) => (a.dueOn ?? a.dueAt ?? "").localeCompare(b.dueOn ?? b.dueAt ?? ""))
                       .map((reminder) => (
                         <button
                           key={reminder.id}
@@ -260,7 +393,7 @@ export default function CallcenterPage() {
                             </p>
                             <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                               <Calendar className="size-3" />
-                              {formatDate(reminder.dueAt)}
+                              {formatDate(reminder.dueOn ?? reminder.dueAt)}
                             </p>
                           </div>
                           <ArrowRight className="text-muted-foreground size-4 shrink-0" />

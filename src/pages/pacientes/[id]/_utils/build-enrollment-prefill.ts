@@ -11,7 +11,7 @@ function durationDraft(
 ): DurationDraft | undefined {
   if (!value) return undefined
   return {
-    valueMin: value.valueMin,
+    valueMin: value.valueMin ?? undefined,
     ...(value.valueMax !== null ? { valueMax: value.valueMax } : {}),
     unit: value.unit,
   }
@@ -32,6 +32,7 @@ export function buildEnrollmentPrefill(
     patientId: patient.id,
     patientData: {
       fullName: patient.fullName,
+      documentType: patient.documentType,
       dni: patient.dni,
       birthDate: patient.birthDate,
       gender: patient.gender,
@@ -61,8 +62,6 @@ export function buildEnrollmentPrefill(
       referredToSocialWorker: details.referredToSocialWorker,
       hasConadisCard: details.hasConadisCard,
       knowsAboutFissal: details.knowsAboutFissal,
-      programDropoutReason: details.programDropoutReason,
-      programDropoutDate: details.programDropoutDate,
     }
   }
 
