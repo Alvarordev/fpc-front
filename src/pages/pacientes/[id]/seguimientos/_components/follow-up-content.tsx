@@ -122,13 +122,15 @@ export function FollowUpContent() {
   const isStatusPending = isCompleting || updateMutation.isPending || editMutation.isPending
 
   async function refreshAfterFollowUpUpdate() {
+    // El resumen IA se regenera al pedirlo tras un cambio y tarda varios segundos:
+    // se refresca en segundo plano, sin hacer esperar el guardado.
+    void queryClient.invalidateQueries({ queryKey: ["patient-summary", patientId] })
     const keys = [
       ["follow-up", followUpId],
       ["patient-timeline", patientId],
       ["patient-follow-ups", patientId],
       ["patient-profile", patientId],
       ["patient-diagnostic-status-current", patientId],
-      ["patient-summary", patientId],
       ["patient-addresses", patientId],
       ["patient-social-notes", patientId],
       ["psychooncology-appointments"],
@@ -188,6 +190,28 @@ export function FollowUpContent() {
     } finally {
       setIsCompleting(false)
       setConfirmation(null)
+    }
+  }
+
+  /**
+   * Guarda la nota y vuelve a la ficha. Los intentos ya quedaron guardados al
+   * registrarlos (un intento sin respuesta deja el seguimiento en No contestó);
+   * el seguimiento sigue abierto para volver a intentar y completarlo después.
+   */
+  async function saveAndExit() {
+    setIsCompleting(true)
+    try {
+      if (notes.trim() !== (followUp!.notes ?? "").trim()) {
+        await followUpsApi.update(followUpId!, { notes: notes.trim() })
+        toast.success("Nota guardada")
+      }
+      if (notesKey) draftStore.clearNotes(notesKey)
+      void refreshAfterFollowUpUpdate()
+      back()
+    } catch (error) {
+      toast.error("No se pudo guardar la nota", { description: (error as Error).message })
+    } finally {
+      setIsCompleting(false)
     }
   }
 
@@ -291,6 +315,7 @@ export function FollowUpContent() {
             canComplete={Boolean(contactDraft) && !reenrollmentBlocker}
             completeHint={contactDraft ? (reenrollmentBlocker ?? undefined) : undefined}
             onClose={(action) => !isStatusPending && setConfirmation({ action, source: "open" })}
+            onSaveAndExit={() => !isStatusPending && void saveAndExit()}
             interlocutor={{
               value: interlocutorDraft ?? followUp.interlocutorId ?? followUp.subjectPatientId,
               onChange: draftStore.setInterlocutor,

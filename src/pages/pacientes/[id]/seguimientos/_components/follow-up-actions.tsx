@@ -1,4 +1,4 @@
-import { Bell, Brain, CalendarPlus, CheckCircle2, PhoneOff, RotateCcw, TriangleAlert, XCircle } from "lucide-react"
+import { Bell, Brain, CalendarPlus, CheckCircle2, LogOut, RotateCcw, TriangleAlert, XCircle } from "lucide-react"
 import { ActionTile } from "@/components/ds/action-tile"
 import { Button } from "@/components/ds/button"
 import { Card, GroupLabel, Item } from "@/components/ds/card"
@@ -76,6 +76,7 @@ export function NotesDock({
   completeHint,
   interlocutor,
   onClose,
+  onSaveAndExit,
 }: {
   notes: string
   onNotesChange: (value: string) => void
@@ -86,7 +87,9 @@ export function NotesDock({
   /** Por qué no se puede completar todavía, si no es por falta del intento Contactado. */
   completeHint?: string
   interlocutor: { value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }
-  onClose: (status: "COMPLETED" | "NO_ANSWER" | "CANCELLED") => void
+  onClose: (status: "COMPLETED" | "CANCELLED") => void
+  /** Guarda la nota y sale; el seguimiento sigue abierto. */
+  onSaveAndExit: () => void
 }) {
   return (
     <ComposerDock
@@ -111,17 +114,17 @@ export function NotesDock({
         <div className="space-y-2">
           <p className="text-right text-xs text-zinc-500">
             {!canComplete
-              ? (completeHint ?? "Para completar, registra un intento como Contactado")
+              ? (completeHint ?? "Para completar, registra un intento como Contactado. Los intentos sin respuesta ya quedaron guardados.")
               : pendingCount
                 ? `Al completar se guardará: ${pendingCount} ${pendingCount === 1 ? "elemento" : "elementos"}`
                 : "Escribe la nota antes de completar"}
           </p>
           <div className="flex flex-wrap justify-end gap-2">
             <Button icon={XCircle} disabled={disabled} onClick={() => onClose("CANCELLED")}>
-              Cancelar seguimiento
+              Cancelar
             </Button>
-            <Button icon={PhoneOff} disabled={disabled} onClick={() => onClose("NO_ANSWER")}>
-              No contestó
+            <Button icon={LogOut} disabled={disabled} onClick={onSaveAndExit}>
+              Guardar nota y salir
             </Button>
             <Button variant="brand" icon={CheckCircle2} disabled={disabled || !canComplete} onClick={() => onClose("COMPLETED")}>
               {disabled ? "Guardando…" : "Completar"}
