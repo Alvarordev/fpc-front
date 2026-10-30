@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { RotateCcw, UserMinus } from "lucide-react"
 import { toast } from "sonner"
+import { agentsApi } from "@/api/agents"
 import { followUpsApi } from "@/api/follow-ups"
 import { patientsApi, type DeactivatePatientInput, type PatientDetailsResponse } from "@/api/patients"
 import { Button } from "@/components/ds/button"
@@ -33,10 +34,15 @@ export function PatientActivityActions({ patient }: { patient: PatientDetailsRes
   const reenroll = useStartReenrollment(patient.id)
   if (!canManage) return null
   if (patient.activityStatus === "INACTIVE") {
+    // El agente se asigna el seguimiento; admin y fundación eligen a quién.
+    const choosesAgent = role !== "AGENT"
     return (
-      <Button icon={RotateCcw} onClick={() => reenroll.mutate()} disabled={reenroll.isPending}>
-        {reenroll.isPending ? "Creando seguimiento..." : "Reenrolar"}
-      </Button>
+      <>
+        <Button icon={RotateCcw} onClick={() => (choosesAgent ? setOpen(true) : reenroll.mutate(undefined))} disabled={reenroll.isPending}>
+          {reenroll.isPending ? "Creando seguimiento..." : "Reenrolar"}
+        </Button>
+        {open && <ReenrollAgentModal pending={reenroll.isPending} onClose={() => setOpen(false)} onConfirm={(agentId) => reenroll.mutate(agentId)} />}
+      </>
     )
   }
   return (
@@ -46,6 +52,44 @@ export function PatientActivityActions({ patient }: { patient: PatientDetailsRes
       </Button>
       {open && <DeactivateModal patient={patient} onClose={() => setOpen(false)} />}
     </>
+  )
+}
+
+function ReenrollAgentModal({ pending, onClose, onConfirm }: { pending: boolean; onClose: () => void; onConfirm: (agentId: string) => void }) {
+  const [agentId, setAgentId] = useState<string | null>(null)
+  const agents = useQuery({ queryKey: ["agents"], queryFn: agentsApi.list, staleTime: 60_000 })
+  return (
+    <Modal
+      open
+      onClose={() => !pending && onClose()}
+      icon={RotateCcw}
+      title="Reenrolar al paciente"
+      description="Se crea un seguimiento de reenrolamiento para ahora. Elige el agente que lo registrará."
+      footer={
+        <>
+          <Button onClick={onClose} disabled={pending}>
+            Volver
+          </Button>
+          <Button variant="dark" disabled={pending || !agentId} onClick={() => agentId && onConfirm(agentId)}>
+            {pending ? "Creando seguimiento..." : "Crear seguimiento"}
+          </Button>
+        </>
+      }
+    >
+      <Panel title="Agente responsable">
+        <Field label="Agente *">
+          {(id) => (
+            <SelectField
+              id={id}
+              value={agentId}
+              onChange={setAgentId}
+              placeholder={agents.isLoading ? "Cargando agentes…" : "Seleccionar agente"}
+              options={(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.fullName }))}
+            />
+          )}
+        </Field>
+      </Panel>
+    </Modal>
   )
 }
 

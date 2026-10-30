@@ -20,7 +20,8 @@ function dueText(value: string) {
   return date.toLocaleString("es-PE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
-export function DerivedActionsCard({ onOpen }: { onOpen: (action: DerivedAction) => void }) {
+/** `canReportIncident`: solo el agente crea alertas (decisión AL1). */
+export function DerivedActionsCard({ onOpen, canReportIncident = true }: { onOpen: (action: DerivedAction) => void; canReportIncident?: boolean }) {
   const { psico, psicoSummary, alert, nextFollowUp, reminders, clearPsico, clearAlert, clearNextFollowUp, removeReminder } = useFollowUpDraftStore()
   const pending = [
     psico && { id: "psico", title: "Sesión de psicooncología", meta: psicoSummary ?? (psico.modality === "VIDEO_CALL" ? "Videollamada" : "Llamada"), open: "psico" as const, remove: clearPsico },
@@ -39,7 +40,9 @@ export function DerivedActionsCard({ onOpen }: { onOpen: (action: DerivedAction)
     <Card title="Acciones de este seguimiento" description="Se crean al completar el seguimiento">
       <div className="grid gap-2 sm:grid-cols-2">
         <ActionTile icon={Brain} tone="violet" label="Derivar a psicooncología" hint="Agenda una sesión con un voluntario" done={Boolean(psico)} onClick={() => onOpen("psico")} />
-        <ActionTile icon={TriangleAlert} tone="red" label="Reportar incidencia hospitalaria" hint="Medicinas, citas, trato o trámites" done={Boolean(alert)} onClick={() => onOpen("alerta")} />
+        {canReportIncident && (
+          <ActionTile icon={TriangleAlert} tone="red" label="Reportar incidencia hospitalaria" hint="Medicinas, citas, trato o trámites" done={Boolean(alert)} onClick={() => onOpen("alerta")} />
+        )}
         <ActionTile icon={CalendarPlus} tone="blue" label="Agendar siguiente seguimiento" hint="Fecha, canal y agente" done={Boolean(nextFollowUp)} onClick={() => onOpen("siguiente")} />
         <ActionTile icon={Bell} tone="amber" label="Agregar recordatorio" hint="Cita médica o tratamiento" onClick={() => onOpen("recordatorio")} />
       </div>
@@ -70,6 +73,7 @@ export function NotesDock({
   pendingCount,
   disabled,
   canComplete,
+  completeHint,
   interlocutor,
   onClose,
 }: {
@@ -79,6 +83,8 @@ export function NotesDock({
   pendingCount: number
   disabled: boolean
   canComplete: boolean
+  /** Por qué no se puede completar todavía, si no es por falta del intento Contactado. */
+  completeHint?: string
   interlocutor: { value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }
   onClose: (status: "COMPLETED" | "NO_ANSWER" | "CANCELLED") => void
 }) {
@@ -105,7 +111,7 @@ export function NotesDock({
         <div className="space-y-2">
           <p className="text-right text-xs text-zinc-500">
             {!canComplete
-              ? "Para completar, registra un intento como Contactado"
+              ? (completeHint ?? "Para completar, registra un intento como Contactado")
               : pendingCount
                 ? `Al completar se guardará: ${pendingCount} ${pendingCount === 1 ? "elemento" : "elementos"}`
                 : "Escribe la nota antes de completar"}

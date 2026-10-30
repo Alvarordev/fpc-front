@@ -32,6 +32,8 @@ import { FollowUpHeader } from "./follow-up-header"
 import { canRescheduleFollowUp } from "../_lib/follow-up-reschedule"
 import { FollowUpRescheduleModal, FollowUpReschedulePanel } from "./follow-up-reschedule-panel"
 import { FollowUpStatusConfirmationDialog, type FollowUpStatusAction } from "./follow-up-status-confirmation-dialog"
+import { reenrollmentMissing, toReenrollmentInput, type ReenrollmentDraft } from "../_lib/reenrollment"
+import { ReenrollmentForm } from "./reenrollment-form"
 
 // Pantalla de un seguimiento. Abierto, se registra en tres pasos (contactar,
 // actualizar la ficha, decidir los siguientes pasos) con la nota fija al pie; todo
@@ -54,6 +56,7 @@ export function FollowUpContent() {
   const [confirmation, setConfirmation] = useState<{ action: FollowUpStatusAction; source: "open" | "edit" } | null>(null)
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<PatientDiagnosis | null>(null)
   const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null)
+  const [reenrollment, setReenrollment] = useState<ReenrollmentDraft>({})
 
   const draftStore = useFollowUpDraftStore()
   const { notesDrafts, clinical: clinicalDrafts, nextFollowUp: nextFollowUpDraft, contact: contactDraft, interlocutorId: interlocutorDraft } = draftStore
@@ -130,6 +133,8 @@ export function FollowUpContent() {
       ["patient-social-notes", patientId],
       ["psychooncology-appointments"],
       ["agent-follow-ups"],
+      ["patients"],
+      ["patient-change-log", patientId],
     ]
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
   }
@@ -145,6 +150,9 @@ export function FollowUpContent() {
   const canAct = canManage && (user?.role !== "AGENT" || (Boolean(ownAgentId) && followUp.agentId === ownAgentId))
   const canEditClosed = canAct && !isOpen && isClosed(followUp.status)
   const pending = pendingSummary(draftStore, notes)
+  // Un seguimiento de reenrolamiento abierto de un paciente inactivo registra el reenrolamiento al completarse.
+  const registersReenrollment = followUp.purpose === "REENROLLMENT" && patient?.activityStatus === "INACTIVE"
+  const reenrollmentBlocker = registersReenrollment ? reenrollmentMissing(reenrollment) : null
   const selectedSeries = selectedTreatment && patient ? groupTreatmentSeries(patient.treatments).find((s) => s.seriesId === selectedTreatment.seriesId) : undefined
   const viewDiagnosis = (diagnosis: PatientDiagnosis) => {
     setSelectedTreatment(null)
@@ -164,16 +172,17 @@ export function FollowUpContent() {
     setIsCompleting(true)
     try {
       if (!contactDraft) throw new Error("Registra el intento en que lograste el contacto")
-      // El backend no acepta completar antes del día agendado; se avisa antes de guardar nada.
-      if (followUp!.scheduledAt && new Date(followUp!.scheduledAt).toLocaleDateString("en-CA") > new Date().toLocaleDateString("en-CA"))
-        throw new Error("Está agendado para una fecha futura. Reprográmalo para hoy antes de completarlo.")
+      if (reenrollmentBlocker) throw new Error(reenrollmentBlocker)
       await commitFollowUpDrafts({ patientId: patientId!, followUp: followUp!, drafts: useFollowUpDraftStore.getState(), nextFollowUpAgentId: nextFollowUpAgentId() })
+      // Reactiva al paciente y deja el seguimiento realizado; la nota y el intento se guardan después.
+      if (registersReenrollment) await followUpsApi.createReenrollment(followUpId!, toReenrollmentInput(reenrollment))
       // Primero el cierre con la nota; el intento Contactado después no cambia el estado.
       await updateMutation.mutateAsync({ status: "COMPLETED", completedAt: new Date().toISOString() })
       await followUpsApi.recordAttempt(followUpId!, { channel: contactDraft.channel, outcome: "CONTACTED", notes: contactDraft.notes })
       draftStore.reset(notesKey ?? undefined)
       await refreshAfterFollowUpUpdate()
-      toast.success("Seguimiento completado")
+      if (registersReenrollment) setReenrollment({})
+      toast.success(registersReenrollment ? "Paciente reenrolado" : "Seguimiento completado")
     } catch (error) {
       toast.error("No se pudo completar el seguimiento", { description: (error as Error).message })
     } finally {
@@ -251,7 +260,12 @@ export function FollowUpContent() {
           <StepSection n={1} title="Contacta al paciente" done={Boolean(contactDraft)}>
             <FollowUpAttemptsPanel followUp={followUp} canRegister={canAct} registering />
           </StepSection>
-          <StepSection n={2} title="Actualiza la ficha clínica" done={hasAnyClinicalDraft(clinicalDrafts)}>
+          {registersReenrollment && (
+            <StepSection n={2} title="Registra el reenrolamiento" done={!reenrollmentBlocker}>
+              <ReenrollmentForm draft={reenrollment} onChange={setReenrollment} />
+            </StepSection>
+          )}
+          <StepSection n={registersReenrollment ? 3 : 2} title="Actualiza la ficha clínica" done={hasAnyClinicalDraft(clinicalDrafts)}>
             <Card title="Ficha clínica" description="Las preguntas son las que le haces. Lo que respondas se conserva al cambiar de pestaña y se guarda al completar.">
               <ClinicalSheet
                 patientId={patientId!}
@@ -265,8 +279,8 @@ export function FollowUpContent() {
             {/* Opcional, pero conviene tenerlas a la vista antes de decidir los siguientes pasos. */}
             <PatientReferralsSection patientId={patientId!} followUpId={followUp.id} />
           </StepSection>
-          <StepSection n={3} title="Decide los siguientes pasos" done={Boolean(draftStore.psico || draftStore.alert || nextFollowUpDraft || draftStore.reminders.length)}>
-            <DerivedActionsCard onOpen={setDerived} />
+          <StepSection n={registersReenrollment ? 4 : 3} title="Decide los siguientes pasos" done={Boolean(draftStore.psico || draftStore.alert || nextFollowUpDraft || draftStore.reminders.length)}>
+            <DerivedActionsCard onOpen={setDerived} canReportIncident={user?.role === "AGENT"} />
           </StepSection>
           <NotesDock
             notes={notes}
@@ -274,7 +288,8 @@ export function FollowUpContent() {
             onResetNotes={hasNotesDraft && notesKey ? () => draftStore.clearNotes(notesKey) : undefined}
             pendingCount={pending.length}
             disabled={isStatusPending}
-            canComplete={Boolean(contactDraft)}
+            canComplete={Boolean(contactDraft) && !reenrollmentBlocker}
+            completeHint={contactDraft ? (reenrollmentBlocker ?? undefined) : undefined}
             onClose={(action) => !isStatusPending && setConfirmation({ action, source: "open" })}
             interlocutor={{
               value: interlocutorDraft ?? followUp.interlocutorId ?? followUp.subjectPatientId,

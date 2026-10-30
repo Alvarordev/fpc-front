@@ -7,13 +7,15 @@ import { followUpsApi } from "@/api/follow-ups"
  * Reenrolar a un paciente inactivo: crea un seguimiento de reenrolamiento para
  * ahora y lleva a su pantalla, donde se registran el motivo y los datos. Es el
  * único camino para reactivar (el backend ya no tiene reactivación directa).
+ * Admin y fundación indican el agente responsable; el agente se asigna solo.
  */
 export function useStartReenrollment(patientId: string) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () =>
+    mutationFn: (agentId?: string) =>
       followUpsApi.create({
+        agentId,
         subjectPatientId: patientId,
         interlocutorId: patientId,
         type: "CALL",
