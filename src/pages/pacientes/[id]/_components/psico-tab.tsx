@@ -198,6 +198,10 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
       queryClient.invalidateQueries({
         queryKey: ["patient-timeline", pacienteId],
       }),
+      // El panel del ciclo cuenta las sesiones agendadas y realizadas.
+      queryClient.invalidateQueries({
+        queryKey: ["psychooncology-cycles", pacienteId],
+      }),
     ])
   }
 
@@ -218,10 +222,11 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     }: {
       id: string
       input: Parameters<typeof psychooncologyAppointmentsApi.update>[1]
+      successMessage?: string
     }) => psychooncologyAppointmentsApi.update(id, input),
-    onSuccess: async () => {
+    onSuccess: async (_data, { successMessage }) => {
       await invalidate()
-      toast.success("Cita actualizada")
+      toast.success(successMessage ?? "Cita actualizada")
     },
     onError: (error: Error) =>
       toast.error("No se pudo actualizar la cita", {
@@ -287,6 +292,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         await updateMutation.mutateAsync({
           id: created.id,
           input: payload.update,
+          successMessage: "Sesión reprogramada",
         })
         return
       }
