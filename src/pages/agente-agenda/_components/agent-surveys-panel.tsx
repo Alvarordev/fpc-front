@@ -1,18 +1,13 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { ClipboardList, Plus } from "lucide-react"
 import { surveysApi, type SurveyType } from "@/api/surveys"
 import { CopySurveyScript } from "@/components/copy-survey-script"
 import { RegisterSurveyDialog } from "@/components/register-survey-dialog"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { AddButton, Button } from "@/components/ds/button"
+import { Card, Item } from "@/components/ds/card"
+import { EmptyState } from "@/components/ds/empty-state"
+import { InlineAlert } from "@/components/ds/inline-alert"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 
 export function AgentSurveysPanel({
@@ -46,77 +41,44 @@ export function AgentSurveysPanel({
   }
 
   return (
-    <Card>
-      <CardHeader className="gap-3 border-b">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-xl">
-              <ClipboardList className="size-5" />
-            </div>
-            <div>
-              <CardTitle className="text-base">Encuestas</CardTitle>
-              <CardDescription className="mt-1">
-                Pacientes activos con 90 días o más de enrolados, sin encuesta
-                de 3 meses.
-              </CardDescription>
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => openRegister(null)}
-            disabled={options.length === 0}
-          >
-            <Plus className="size-3.5" />
-            Registrar encuesta
-          </Button>
-        </div>
+    <Card
+      title="Encuestas de 3 meses"
+      description="Pacientes activos con 90 días o más de enrolados que aún no la tienen."
+      action={
+        <AddButton onClick={() => openRegister(null)} disabled={options.length === 0}>
+          Registrar encuesta
+        </AddButton>
+      }
+    >
+      <div className="mb-3">
         <CopySurveyScript type="THREE_MONTHS" />
-      </CardHeader>
-      <CardContent className="p-0">
-        {pendingQuery.isLoading ? (
-          <p className="text-muted-foreground px-5 py-6 text-sm">
-            Cargando encuestas pendientes...
-          </p>
-        ) : pendingQuery.isError ? (
-          <p className="text-muted-foreground px-5 py-6 text-sm">
-            No se pudieron cargar las encuestas pendientes.
-          </p>
-        ) : pending.length === 0 ? (
-          <p className="text-muted-foreground px-5 py-6 text-sm">
-            No hay encuestas de 3 meses pendientes.
-          </p>
-        ) : (
-          <ul className="divide-y">
-            {pending.map((item) => (
-              <li
-                key={item.patientId}
-                className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
-              >
-                <button
-                  type="button"
-                  className="min-w-0 text-left"
-                  onClick={() => navigate(patientTabUrl(item.patientId, "resumen"))}
-                >
-                  <p className="truncate text-sm font-medium">{item.fullName}</p>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    {item.documentNumber ?? "Sin documento"}
-                    {item.primaryPhone ? ` · ${item.primaryPhone}` : ""} ·{" "}
-                    {item.daysSinceEnrollment} días desde el{" "}
-                    {new Date(item.enrolledOn).toLocaleDateString("es-PE")}
-                  </p>
-                </button>
-                <div className="flex flex-wrap items-center gap-2">
+      </div>
+      {pendingQuery.isLoading ? (
+        <p className="py-4 text-[13px] text-zinc-500">Cargando encuestas pendientes…</p>
+      ) : pendingQuery.isError ? (
+        <InlineAlert>No se pudieron cargar las encuestas pendientes. Recarga la página para intentar de nuevo.</InlineAlert>
+      ) : pending.length === 0 ? (
+        <EmptyState
+          title="Sin encuestas pendientes"
+          body="Cuando un paciente cumpla 90 días desde su enrolamiento aparecerá aquí."
+        />
+      ) : (
+        <div className="space-y-2">
+          {pending.map((item) => (
+            <Item
+              key={item.patientId}
+              title={item.fullName}
+              meta={`${item.documentNumber ?? "Sin documento"}${item.primaryPhone ? ` · ${item.primaryPhone}` : ""} · ${item.daysSinceEnrollment} días desde el ${new Date(item.enrolledOn).toLocaleDateString("es-PE")}`}
+              onOpen={() => navigate(patientTabUrl(item.patientId, "resumen"))}
+              openLabel={`Abrir ficha de ${item.fullName}`}
+              actions={
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <CopySurveyScript
                     type="THREE_MONTHS"
                     patientId={item.patientId}
                     allowTypeChange={false}
                   />
                   <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
                     onClick={() =>
                       openRegister({
                         patientId: item.patientId,
@@ -127,11 +89,11 @@ export function AgentSurveysPanel({
                     Registrar
                   </Button>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
+              }
+            />
+          ))}
+        </div>
+      )}
       <RegisterSurveyDialog
         key={`${registerOpen}-${preset?.patientId ?? "libre"}-${preset?.type ?? "ENROLLMENT"}`}
         open={registerOpen}
