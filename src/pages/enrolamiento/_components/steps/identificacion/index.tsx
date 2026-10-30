@@ -5,6 +5,7 @@ import { StepContainer, StepNav } from "../../shared"
 import { useStepGate } from "../use-step-gate"
 import { applyIdentificacion, identificacionValues } from "./adapter"
 import { identificacionGroups, validateIdentificacion } from "./config"
+import { withIcons } from "../../../_utils/section-icons"
 
 export function Step3Identificacion({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
@@ -24,7 +25,7 @@ export function Step3Identificacion({ embedded = false }: { embedded?: boolean }
       {known ? (
         <QuestionForm
           cards={!embedded}
-          groups={identificacionGroups}
+          groups={withIcons(identificacionGroups)}
           values={values}
           showMissing={gate.showMissing}
           onChange={(id, value) => updateDraft(applyIdentificacion(draft, id, value))}

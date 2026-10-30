@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { BookOpen } from "lucide-react"
 import { Card } from "@/components/ds/card"
+import { ToneIcon } from "@/components/ds/icon"
+import { sectionIcon } from "../_utils/section-icons"
 import { ExpandableLine } from "@/components/ds/expandable-line"
 import { InlineAlert } from "@/components/ds/inline-alert"
 import type { AsideContent } from "../_utils/aside-resolver"
@@ -94,7 +96,10 @@ export function EnrollmentScript({ content, nested = false, aside = false }: { c
   if (aside) {
     return (
       <section aria-label="Qué decirle" className="space-y-3 rounded-[20px] border border-zinc-200 bg-white p-5">
-        <h2 className="text-[15px] font-semibold text-zinc-900">Qué decirle</h2>
+        <div className="flex items-center gap-3">
+          <ToneIcon {...sectionIcon("Qué decirle")} />
+          <h2 className="text-[15px] font-semibold text-zinc-900">Qué decirle</h2>
+        </div>
         {content.script ? <ScriptText text={content.script} /> : <p className="text-[13px] text-zinc-500">En este paso no hay guion.</p>}
         {content.complianceNote && <InlineAlert tone="warning">{content.complianceNote}</InlineAlert>}
         {content.reference && <ExpandableLine icon={<BookOpen className="size-4 text-zinc-500" />} label="Referencia" text={content.reference} />}
@@ -103,5 +108,9 @@ export function EnrollmentScript({ content, nested = false, aside = false }: { c
   }
   const body = <ScriptBody content={content} hidden={hidden} onToggle={toggle} />
   if (nested) return body
-  return <Card title="Qué decirle">{body}</Card>
+  return (
+    <Card title="Qué decirle" {...sectionIcon("Qué decirle")}>
+      {body}
+    </Card>
+  )
 }

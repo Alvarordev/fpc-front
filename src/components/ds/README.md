@@ -21,7 +21,7 @@ para su presentación.
 | Cifras | `tabular-nums` |
 | Radios | tarjeta 20px · tarjeta interna 14px · botón y pestaña 10px · etiqueta píldora |
 | Superficies | un solo fondo `#f6f6f6`; tarjetas blancas con borde `zinc-200`; tarjetas internas `zinc-50` |
-| Tonos (`tone.ts`) | red: hoy, urgente, falló · amber: pendiente · green: completado, vigente · blue: programado, en curso · violet: etapa, charlas · gray: anterior |
+| Tonos (`tone.ts`) | red: hoy, urgente, falló · amber: pendiente · green: completado, vigente · blue: programado, en curso · violet: etapa, charlas · gray: anterior · teal, indigo, rose: solo para distinguir secciones, sin significado de estado |
 | Marca | rojo solo para lo urgente y la acción principal del momento; negro para crear |
 | Movimiento | 150–300 ms, salida suave; botones `active:scale-[0.97]`; todo con `motion-reduce` |
 
@@ -33,7 +33,7 @@ para su presentación.
 | `badge.tsx` | `Chip`, `Status`, `MetaTag` | `Chip` estados visibles; `Status` estado discreto; `MetaTag` metadatos de identidad |
 | `icon.tsx` | `IconTile`, `ToneIcon`, `AiMark` | ícono enmarcado; con color de estado; contenido generado por IA |
 | `date-tile.tsx` | `DateTile` | fecha en bloque al inicio de un registro |
-| `card.tsx` | `Card`, `Item`, `Panel`, `GroupLabel` | sección; registro que se gestiona o abre; bloque dentro de un modal; subgrupo |
+| `card.tsx` | `Card`, `Item`, `Panel`, `GroupLabel` | sección (`icon` + `tone` la marca en formularios largos); registro que se gestiona o abre; bloque dentro de un modal; subgrupo |
 | `data.tsx` | `DataList`, `FieldGrid`, `InsetRow` | datos de consulta en texto; campos en dos columnas; dato clave con ícono (modales) |
 | `modal.tsx` | `Modal` | detalle completo de un registro, con paneles y acciones |
 | `sliding-tabs.tsx` | `SlidingTabs` | pestañas de una pantalla |
@@ -68,6 +68,7 @@ para su presentación.
   secciones de una pantalla van en `SlidingTabs`. Excepción: el guion del
   enrolamiento va en una columna derecha fija (`sticky`), porque cambia con lo
   que se marca y debe seguir a la vista mientras se baja por el formulario.
+- **Secciones con ícono.** En formularios largos cada tarjeta lleva un `ToneIcon` (`Card icon tone`, o `Group.icon` con `cards`) para seguir el rastro al bajar. Temas afines comparten tono; nunca rojo ni ámbar, que son de alerta.
 - **Un nivel de título por tarjeta.** Si una tarjeta tiene un solo grupo de
   preguntas, el grupo no repite el título. Varios grupos sueltos van con
   `QuestionForm cards`, uno por tarjeta; dentro de una tarjeta, los grupos son

@@ -61,7 +61,7 @@ export function QuestionForm({
         )
         if (cards)
           return (
-            <Card key={g.title || "group"} title={g.title || undefined} description={g.description}>
+            <Card key={g.title || "group"} title={g.title || undefined} description={g.description} icon={g.icon} tone={g.tone}>
               {body}
             </Card>
           )

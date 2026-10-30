@@ -1,16 +1,25 @@
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, type LucideIcon } from "lucide-react"
+import { ToneIcon } from "./icon"
+import type { Tone } from "./tone"
 import { cn } from "@/lib/utils"
 
-/** Tarjeta de sección: título 15px, descripción 13px y una acción opcional. */
+/**
+ * Tarjeta de sección: título 15px, descripción 13px y una acción opcional.
+ * `icon` con `tone` marca la sección para distinguirla de las vecinas.
+ */
 export function Card({
   title,
   description,
+  icon,
+  tone = "gray",
   action,
   className,
   children,
 }: {
   title?: string
   description?: string
+  icon?: LucideIcon
+  tone?: Tone
   action?: React.ReactNode
   className?: string
   children: React.ReactNode
@@ -18,7 +27,8 @@ export function Card({
   return (
     <section className={cn("rounded-[20px] border border-zinc-200 bg-white p-5", className)}>
       {title && (
-        <header className="mb-4 flex items-start gap-3">
+        <header className={cn("mb-4 flex gap-3", description ? "items-start" : "items-center")}>
+          {icon && <ToneIcon icon={icon} tone={tone} />}
           <div className="min-w-0 flex-1">
             <h3 className="text-[15px] font-semibold text-zinc-900">{title}</h3>
             {description && <p className="mt-0.5 text-[13px] text-zinc-500">{description}</p>}

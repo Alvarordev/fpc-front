@@ -5,6 +5,7 @@ import type { Values } from "@/components/ds/questions"
 import type { EnrollmentDraft } from "../../../_store/enrollment-store"
 import { SectionBlock } from "../section-block"
 import { profileGroups } from "./config"
+import { withIcons } from "../../../_utils/section-icons"
 
 export function ProfileSection({
   embedded,
@@ -25,7 +26,7 @@ export function ProfileSection({
   const [socio, insuranceGroup] = profileGroups
   return (
     <>
-      <QuestionForm cards={!embedded} groups={[socio]} values={values} showMissing={showMissing} onChange={onChange} />
+      <QuestionForm cards={!embedded} groups={withIcons([socio])} values={values} showMissing={showMissing} onChange={onChange} />
       <SectionBlock embedded={embedded} title="Seguro de salud">
         <QuestionForm groups={[{ ...insuranceGroup, title: "", questions: insuranceGroup.questions.filter((q) => q.id === "hasInsurance") }]} values={values} showMissing={showMissing} onChange={onChange} />
         {hasInsurance && (

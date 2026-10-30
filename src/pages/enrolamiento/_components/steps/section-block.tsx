@@ -1,4 +1,5 @@
 import { Card } from "@/components/ds/card"
+import { sectionIcon } from "../../_utils/section-icons"
 
 /**
  * Bloque de un paso largo. En el wizard es una tarjeta blanca. En la carga
@@ -26,7 +27,7 @@ export function SectionBlock({
     )
   }
   return (
-    <Card title={title} description={description}>
+    <Card title={title} description={description} {...sectionIcon(title)}>
       {children}
     </Card>
   )

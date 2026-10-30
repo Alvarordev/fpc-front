@@ -16,6 +16,7 @@ import { useStepGate } from "../use-step-gate"
 import { applyCierre, cierreValues } from "./adapter"
 import { cierreGroups, validateCierre } from "./config"
 import { CierreSummary } from "./summary"
+import { sectionIcon, withIcons } from "../../../_utils/section-icons"
 
 export function Step8Cierre({ historical = false, embedded = false }: { historical?: boolean; embedded?: boolean }) {
   const draft = useEnrollmentStore((state) => state.draft)
@@ -125,7 +126,7 @@ export function Step8Cierre({ historical = false, embedded = false }: { historic
       )
     }
     return (
-      <Card title="Registro exitoso" description="El paciente ha sido registrado en el Programa SEPA.">
+      <Card title="Registro exitoso" description="El paciente ha sido registrado en el Programa SEPA." {...sectionIcon("Registro exitoso")}>
         {leave}
       </Card>
     )
@@ -136,13 +137,13 @@ export function Step8Cierre({ historical = false, embedded = false }: { historic
       {embedded ? (
         <CierreSummary />
       ) : (
-        <Card title="Resumen">
+        <Card title="Resumen" {...sectionIcon("Resumen")}>
           <CierreSummary />
         </Card>
       )}
       <QuestionForm
         cards={!embedded}
-        groups={groups}
+        groups={withIcons(groups)}
         values={values}
         showMissing={gate.showMissing}
         onChange={(id, value) => updateDraft(applyCierre(useEnrollmentStore.getState().draft, id, value))}

@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react"
+import type { Tone } from "./tone"
 // Formularios descritos como datos. Cada pregunta dice su tipo, cuándo se
 // muestra (`showIf`) y si es obligatoria; `QuestionForm` la dibuja. La etiqueta
 // es la pregunta que el usuario hace, con el texto completo.
@@ -35,6 +37,9 @@ export type Question = {
 export type Group = {
   title: string
   description?: string
+  /** Ícono de la sección; se ve cuando el grupo va en su tarjeta (`cards`). */
+  icon?: LucideIcon
+  tone?: Tone
   questions: Question[]
   showIf?: (v: Values) => boolean
 }

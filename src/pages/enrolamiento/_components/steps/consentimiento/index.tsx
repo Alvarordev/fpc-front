@@ -5,6 +5,7 @@ import { StepContainer, StepNav } from "../../shared"
 import { useStepGate } from "../use-step-gate"
 import { applyConsentimiento, consentimientoValues } from "./adapter"
 import { CONSENT_TEXT, consentimientoGroups } from "./config"
+import { withIcons } from "../../../_utils/section-icons"
 
 export function Step4Consentimiento({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep, setRejection } = useEnrollmentStore()
@@ -29,7 +30,7 @@ export function Step4Consentimiento({ embedded = false }: { embedded?: boolean }
       )}
       <QuestionForm
         cards={!embedded}
-        groups={consentimientoGroups}
+        groups={withIcons(consentimientoGroups)}
         values={values}
         showMissing={gate.showMissing}
         onChange={(id, value) => {

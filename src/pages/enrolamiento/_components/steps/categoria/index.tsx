@@ -6,6 +6,7 @@ import { StepContainer, StepNav } from "../../shared"
 import { useStepGate } from "../use-step-gate"
 import { asCategoria, categoriaValues } from "./adapter"
 import { categoriaGroups, validateCategoria } from "./config"
+import { withIcons } from "../../../_utils/section-icons"
 
 export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
   const { categoriaClinica, setCategoria, nextStep, prevStep, draft } = useEnrollmentStore()
@@ -34,7 +35,7 @@ export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
       </p>
       <QuestionForm
         cards={!embedded}
-        groups={groups}
+        groups={withIcons(groups)}
         values={values}
         showMissing={gate.showMissing}
         onChange={(id, value) => {

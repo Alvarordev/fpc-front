@@ -30,30 +30,60 @@ export function IdentitySection({
 }) {
   const pd = draft.patientData
   return (
-    <SectionBlock embedded={embedded} title="Identidad" description="Documento, nombre y fecha de nacimiento del paciente">
-      <div className="mb-4 max-w-md">
-        <Field label="Documento de identidad">
-          {() => (
-            <IdentityDocumentInput
-              type={(pd.documentType ?? "DNI") as IdentityDocumentType}
-              number={pd.dni ?? ""}
-              onChange={({ type, number }) => onDocument(type, number)}
+    <SectionBlock
+      embedded={embedded}
+      title="Identidad"
+      description="Documento, nombre y fecha de nacimiento del paciente"
+    >
+      <div className="mb-4 grid gap-x-5 gap-y-4 md:grid-cols-2">
+        <div>
+          <Field label="Documento de identidad">
+            {() => (
+              <IdentityDocumentInput
+                type={(pd.documentType ?? "DNI") as IdentityDocumentType}
+                number={pd.dni ?? ""}
+                onChange={({ type, number }) => onDocument(type, number)}
+              />
+            )}
+          </Field>
+          <div className="mt-2">
+            <EnrollmentDniLookup
+              documentType={pd.documentType}
+              dni={pd.dni}
+              patientId={draft.patientId}
+              onReenroll={(patient) => onReenroll(patient.id)}
             />
-          )}
-        </Field>
-        <div className="mt-2">
-          <EnrollmentDniLookup
-            documentType={pd.documentType}
-            dni={pd.dni}
-            patientId={draft.patientId}
-            onReenroll={(patient) => onReenroll(patient.id)}
-          />
+          </div>
         </div>
+        <QuestionForm
+          groups={identityGroups.map((group) => ({
+            ...group,
+            questions: group.questions
+              .filter((question) => question.id === "birthDate")
+              .map((question) => ({ ...question, wide: true })),
+          }))}
+          values={values}
+          showMissing={showMissing}
+          onChange={onChange}
+        />
       </div>
-      <QuestionForm groups={identityGroups} values={values} showMissing={showMissing} onChange={onChange} />
+      <QuestionForm
+        groups={identityGroups.map((group) => ({
+          ...group,
+          questions: group.questions.filter(
+            (question) => question.id !== "birthDate",
+          ),
+        }))}
+        values={values}
+        showMissing={showMissing}
+        onChange={onChange}
+      />
       {minor && (
         <div className="mt-4">
-          <InlineAlert tone="warning">Paciente menor de edad. El contacto principal debe ser un acompañante o tutor.</InlineAlert>
+          <InlineAlert tone="warning">
+            Paciente menor de edad. El contacto principal debe ser un
+            acompañante o tutor.
+          </InlineAlert>
         </div>
       )}
     </SectionBlock>

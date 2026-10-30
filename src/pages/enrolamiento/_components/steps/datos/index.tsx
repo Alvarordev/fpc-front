@@ -4,6 +4,7 @@ import { StepContainer, StepNav } from "../../shared"
 import { useStepGate } from "../use-step-gate"
 import { applyDatos, datosValues } from "./adapter"
 import { datosGroups } from "./config"
+import { withIcons } from "../../../_utils/section-icons"
 
 export function Step2Consent({ embedded = false }: { embedded?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep, setRejection } = useEnrollmentStore()
@@ -21,7 +22,7 @@ export function Step2Consent({ embedded = false }: { embedded?: boolean }) {
     >
       <QuestionForm
         cards={!embedded}
-        groups={datosGroups}
+        groups={withIcons(datosGroups)}
         values={values}
         showMissing={gate.showMissing}
         onChange={(id, value) => {
