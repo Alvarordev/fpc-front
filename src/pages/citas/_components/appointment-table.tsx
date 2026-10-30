@@ -13,6 +13,7 @@ import {
 import type { MedicalAppointment } from "@/api/medical-appointments";
 import type { CatalogItem } from "@/api/catalogs";
 import { catalogLabel, useCatalog } from "@/hooks/use-catalog";
+import { formatDate } from "@/pages/pacientes/[id]/_lib/ficha-format";
 
 interface AppointmentTableProps {
   appointments: MedicalAppointment[];
@@ -77,7 +78,7 @@ export function AppointmentTable({
 
   const handleCopyDetails = (appt: MedicalAppointment) => {
     const timeText = formatTimeRange(appt.appointmentTime) || "Por confirmar";
-    const text = `📋 *Recordatorio de Cita Médica - FPC*\n\n👤 *Paciente:* ${appt.patientFullName || "N/A"}\n🪪 *DNI:* ${appt.patientDni || "N/A"}\n🏥 *Hospital:* ${appt.healthCenterName || "N/A"}\n🩺 *Especialidad:* ${specialtyLabel(specialtyItems, appt.specialty)}\n📅 *Fecha:* ${appt.appointmentDate || "Por confirmar"}\n⏰ *Horario (30 min):* ${timeText}\n📄 *Hoja Referencia:* ${appt.hasReferralSheet ? "Sí cuenta" : "Pendiente"}`;
+    const text = `📋 *Recordatorio de Cita Médica - FPC*\n\n👤 *Paciente:* ${appt.patientFullName || "N/A"}\n🪪 *DNI:* ${appt.patientDni || "N/A"}\n🏥 *Hospital:* ${appt.healthCenterName || "N/A"}\n🩺 *Especialidad:* ${specialtyLabel(specialtyItems, appt.specialty)}\n📅 *Fecha:* ${formatDate(appt.appointmentDate) ?? "Por confirmar"}\n⏰ *Horario (30 min):* ${timeText}\n📄 *Hoja Referencia:* ${appt.hasReferralSheet ? "Sí cuenta" : "Pendiente"}`;
     navigator.clipboard.writeText(text);
     setCopiedId(appt.id);
     setTimeout(() => setCopiedId(null), 2000);

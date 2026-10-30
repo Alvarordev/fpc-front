@@ -34,7 +34,7 @@ export function EditAppointmentDialog({
 
   const [healthCenterId, setHealthCenterId] = useState(() => appointment?.healthCenterId || "");
   const [appointmentDate, setAppointmentDate] = useState(() => appointment?.appointmentDate || "");
-  const [appointmentTime, setAppointmentTime] = useState(() => appointment?.appointmentTime || "");
+  const [appointmentTime, setAppointmentTime] = useState(() => appointment?.appointmentTime?.slice(0, 5) || ""); // la API trae HH:mm:ss
   const [nextAppointmentDate, setNextAppointmentDate] = useState(() => appointment?.nextAppointmentDate || "");
   const [hasReferralSheet, setHasReferralSheet] = useState(() => appointment?.hasReferralSheet || false);
   const [referredTo, setReferredTo] = useState(() => appointment?.referredTo || "");
