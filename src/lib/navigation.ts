@@ -60,12 +60,12 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Gestión",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
-        { title: "Biblioteca del programa", url: "/biblioteca", icon: Library },
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
         { title: "Usuarios", url: "/usuarios", icon: ShieldUser },
         { title: "Carga histórica", url: "/carga-historica", icon: Archive },
+        { title: "Biblioteca", url: "/biblioteca", icon: Library },
       ],
     },
     {
@@ -89,7 +89,7 @@ export const navConfig: Record<UserRole, NavGroup[]> = {
       label: "Gestión",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
-        { title: "Biblioteca del programa", url: "/biblioteca", icon: Library },
+        { title: "Biblioteca", url: "/biblioteca", icon: Library },
         { title: "Pacientes", url: "/pacientes", icon: Users },
         { title: "Prospectos", url: "/prospectos", icon: UserRound },
         { title: "Voluntarios", url: "/voluntarios", icon: UserCheck },
