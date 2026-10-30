@@ -11,9 +11,7 @@ export function hospitalColumns(): ColumnDef<HealthCenter, unknown>[] {
       header: "Hospital",
       enableSorting: true,
       cell: ({ row }) => {
-        const institution = institutionLabel(row.original.institution)
-        const code = row.original.renipressCode
-        const detail = [institution, code ? `RENIPRESS ${code}` : null].filter(Boolean).join(" · ")
+        const detail = institutionLabel(row.original.institution)
         return (
           <div className="min-w-0">
             <p className="font-medium text-zinc-900">{row.original.name}</p>

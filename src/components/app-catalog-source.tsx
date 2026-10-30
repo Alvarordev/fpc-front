@@ -94,8 +94,6 @@ export function AppCatalogProvider({ children }: { children: React.ReactNode }) 
           department: v.department as CreateHealthCenterInput["department"],
           careCategory: (v.careCategory ?? undefined) as CreateHealthCenterInput["careCategory"],
           institution: (v.institution ?? undefined) as CreateHealthCenterInput["institution"],
-          renipressCode: v.renipressCode ?? undefined,
-          ubigeoDistrictCode: v.ubigeoDistrictCode ?? undefined,
         })
         await queryClient.invalidateQueries({ queryKey: ["health-centers"] })
         return { value: created.id, label: created.name }

@@ -62,7 +62,7 @@ export function HospitalsFilters({ centers }: { centers: HealthCenter[] }) {
           <TextInput
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Buscar por nombre o RENIPRESS"
+            placeholder="Buscar por nombre"
             aria-label="Buscar hospitales"
             className="pl-9"
           />

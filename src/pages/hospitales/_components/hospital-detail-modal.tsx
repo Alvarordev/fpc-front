@@ -109,8 +109,6 @@ export function HospitalDetailModal({
             ["Nivel", careLevelLabel(center.careLevel) ?? "Sin registrar"],
             ["Categoría", center.careCategory ?? "Sin registrar"],
             ["Institución", institutionLabel(center.institution) ?? "Sin registrar"],
-            ["RENIPRESS", center.renipressCode ?? "Sin registrar"],
-            ["Ubigeo", center.ubigeoDistrictCode ?? "Sin registrar"],
             ["Pacientes atendidos", String(center.patientCount)],
           ]}
         />

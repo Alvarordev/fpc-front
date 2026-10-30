@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Search, X } from "lucide-react"
+import { Search } from "lucide-react"
 import { CATALOG_KIND_LABELS, type CatalogItem, type CatalogKind } from "@/api/catalogs"
 import { FilterToggles } from "@/components/ds/filter-toggles"
 import { Field, TextInput } from "@/components/ds/form"
@@ -55,12 +55,6 @@ export function CatalogsFilters({
   }
 
   const counts = useMemo(() => countCatalogStatus(items, filters), [items, filters])
-  const chips = [
-    filters.search.trim() ? { id: "search" as const, text: `“${filters.search.trim()}”` } : null,
-    filters.status === "inactive" ? { id: "status" as const, text: "Inactivos" } : null,
-    filters.status === "all" ? { id: "status" as const, text: "Todos los estados" } : null,
-  ].filter((chip) => chip !== null)
-
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -98,34 +92,6 @@ export function CatalogsFilters({
           ]}
         />
       </div>
-      {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {chips.map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => {
-                if (chip.id === "search") setSearchInput("")
-                commit({ [chip.id]: chip.id === "search" ? "" : "active" })
-              }}
-              className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
-            >
-              {chip.text}
-              <X className="size-3" />
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              setSearchInput("")
-              commit({ search: "", status: "active" })
-            }}
-            className="text-[13px] text-zinc-600 underline decoration-zinc-300 underline-offset-2"
-          >
-            Limpiar filtros
-          </button>
-        </div>
-      )}
     </div>
   )
 }

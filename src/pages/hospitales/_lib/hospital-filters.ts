@@ -60,7 +60,7 @@ export function matchesHospital(center: HealthCenter, filters: HospitalFilters, 
   if (filters.institution && center.institution !== filters.institution) return false
   const query = fold(filters.search.trim())
   if (!query) return true
-  return fold(center.name).includes(query) || fold(center.renipressCode ?? "").includes(query)
+  return fold(center.name).includes(query)
 }
 
 export function countByStatus(centers: HealthCenter[], filters: HospitalFilters) {

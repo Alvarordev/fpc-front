@@ -44,8 +44,6 @@ export function HospitalFormModal({
               department,
               careCategory: blankToNull(values.careCategory) as CareCategory | null,
               institution: blankToNull(values.institution) as Institution | null,
-              renipressCode: blankToNull(values.renipressCode),
-              ubigeoDistrictCode: blankToNull(values.ubigeoDistrictCode),
             } satisfies UpdateHealthCenterInput,
           })
         : await create.mutateAsync({
@@ -53,8 +51,6 @@ export function HospitalFormModal({
             department,
             careCategory: (blankToNull(values.careCategory) ?? undefined) as CareCategory | undefined,
             institution: (blankToNull(values.institution) ?? undefined) as Institution | undefined,
-            renipressCode: blankToNull(values.renipressCode) ?? undefined,
-            ubigeoDistrictCode: blankToNull(values.ubigeoDistrictCode) ?? undefined,
           })
       toast.success(editing ? "Hospital actualizado" : "Hospital creado", { description: saved.name })
       onSaved?.(saved)
@@ -80,8 +76,6 @@ export function HospitalFormModal({
               department: center.department,
               careCategory: center.careCategory,
               institution: center.institution,
-              renipressCode: center.renipressCode,
-              ubigeoDistrictCode: center.ubigeoDistrictCode,
             }
           : {}
       }

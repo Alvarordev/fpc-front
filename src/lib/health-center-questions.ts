@@ -11,8 +11,6 @@ export const hospitalGroups: Group[] = [
       { id: "department", label: "Departamento", type: "select", options: DEPARTMENTS, required: true },
       { id: "careCategory", label: "Categoría de atención", type: "select", options: CARE_CATEGORIES.map((item) => ({ value: item, label: item })) },
       { id: "institution", label: "Institución", type: "select", options: HEALTH_CENTER_INSTITUTIONS.map((item) => ({ value: item, label: HEALTH_CENTER_INSTITUTION_LABELS[item] })) },
-      { id: "renipressCode", label: "Código RENIPRESS", type: "text" },
-      { id: "ubigeoDistrictCode", label: "Ubigeo del distrito", type: "text" },
     ],
   },
 ]
