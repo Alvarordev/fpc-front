@@ -1,4 +1,5 @@
 import type { PatientDetailsResponse } from "@/api/patients"
+import { useAuthStore } from "@/store/auth-store"
 import { PatientCareJourneyBoard } from "../patient-care-journey-board"
 import { PatientChangeLog } from "../patient-change-log"
 import { PatientReferralsSection } from "../patient-referrals-section"
@@ -10,6 +11,8 @@ import { ContactCard, InsuranceCard, OriginCard, PersonalDataCard, SocioCard } f
 // Resumen de la ficha: el caso, lo que pasó, quién es, su salud y su recorrido.
 
 export function ResumenTab({ patient }: { patient: PatientDetailsResponse }) {
+  // El historial completo de cambios de la ficha es solo para admin.
+  const isAdmin = useAuthStore((state) => state.user?.role) === "ADMIN"
   return (
     <div className="space-y-4">
       <CaseSummaryCard patientId={patient.id} fallback={patient.summary} />
@@ -35,7 +38,7 @@ export function ResumenTab({ patient }: { patient: PatientDetailsResponse }) {
         <PatientSurveysSection patientId={patient.id} enabled={patient.status === "ENROLLED"} />
       </div>
       <PatientCareJourneyBoard patient={patient} />
-      <PatientChangeLog patientId={patient.id} />
+      {isAdmin && <PatientChangeLog patientId={patient.id} />}
     </div>
   )
 }
