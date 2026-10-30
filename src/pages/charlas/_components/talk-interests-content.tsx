@@ -1,62 +1,136 @@
-import { useState } from "react"
-import { GraduationCap, Search } from "lucide-react"
-import { DataTable } from "@/components/data-table"
-import { Input } from "@/components/ui/input"
-import { CatalogSelect } from "@/components/catalog-select"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
+import { Search, X } from "lucide-react"
+import { DataTable } from "@/components/ds/data-table"
+import { Field, TextInput } from "@/components/ds/form"
+import { SearchSelect } from "@/components/ds/search-select"
+import { useCatalog } from "@/hooks/use-catalog"
 import { useTalkInterests } from "../_hooks/use-talk-interests"
-import { useTalkInterestColumns } from "./talk-interests-columns"
+import { readTalkFilters, talkFiltersNarrow, writeTalkFilters } from "../_lib/talk-filters"
+import { talkInterestColumns } from "./talk-interests-columns"
 
 export function TalkInterestsContent() {
-  const [search, setSearch] = useState("")
-  const [talk, setTalk] = useState<string | null>(null)
-  const { data, isLoading } = useTalkInterests({
-    search: search.trim() || undefined,
-    talk: talk ?? undefined,
+  const [params, setParams] = useSearchParams()
+  const filters = readTalkFilters(params)
+  const [searchInput, setSearchInput] = useState(filters.search)
+  const [syncedSearch, setSyncedSearch] = useState(filters.search)
+  if (syncedSearch !== filters.search) {
+    setSyncedSearch(filters.search)
+    setSearchInput(filters.search)
+  }
+
+  useEffect(() => {
+    if (searchInput === filters.search) return
+    const timer = window.setTimeout(() => {
+      setParams((current) => {
+        const currentFilters = readTalkFilters(current)
+        if (currentFilters.search === searchInput) return current
+        return writeTalkFilters(current, { ...currentFilters, search: searchInput })
+      }, { replace: true })
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [searchInput, filters.search, setParams])
+
+  const { data: talks = [] } = useCatalog("educational_talk")
+  const talkLabel = talks.find((item) => item.code === filters.talk)?.label
+  const list = useTalkInterests({
+    search: filters.search.trim() || undefined,
+    talk: filters.talk ?? undefined,
     limit: 100,
   })
-  const columns = useTalkInterestColumns()
-  const interests = data?.data ?? []
+  const everyone = useTalkInterests({ limit: 1 })
+  const rows = list.data?.data ?? []
+  const total = everyone.data?.total ?? list.data?.total ?? 0
+  const visible = list.data?.total ?? rows.length
+  const narrowed = talkFiltersNarrow(filters)
+  const columns = useMemo(() => talkInterestColumns(), [])
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-foreground flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <GraduationCap className="text-primary size-5" />
-            Charlas de prevención
-          </h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            {data?.total ?? 0} acompañantes interesados en una charla
-          </p>
+    <div className="font-ds space-y-5">
+      <header>
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Charlas de prevención</h1>
+        <p className="mt-0.5 text-[13px] text-zinc-500">
+          {narrowed ? `${visible} de ${total}` : `${visible} interesados`}
+        </p>
+      </header>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="relative min-w-56 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
+          <TextInput
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Buscar por nombre"
+            aria-label="Buscar interesados"
+            className="pl-9"
+          />
+        </div>
+        <div className="w-full sm:w-72">
+          <Field label="Charla">
+            {(id) => (
+              <SearchSelect
+                id={id}
+                value={filters.talk ?? "all"}
+                onChange={(value) =>
+                  setParams(writeTalkFilters(params, { ...filters, talk: value === "all" ? null : value }), { replace: true })
+                }
+                options={[{ value: "all", label: "Todas" }, ...talks.map((item) => ({ value: item.code, label: item.label }))]}
+                placeholder="Todas"
+                searchPlaceholder="Buscar charla"
+              />
+            )}
+          </Field>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative w-full max-w-xs">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
-          <Input
-            placeholder="Buscar acompañante o paciente..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="bg-background h-8 pl-8 text-sm"
-          />
+      {(filters.search.trim() || filters.talk) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {filters.search.trim() && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput("")
+                setParams(writeTalkFilters(params, { ...filters, search: "" }), { replace: true })
+              }}
+              className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
+            >
+              “{filters.search.trim()}”
+              <X className="size-3" />
+            </button>
+          )}
+          {filters.talk && (
+            <button
+              type="button"
+              onClick={() => setParams(writeTalkFilters(params, { ...filters, talk: null }), { replace: true })}
+              className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
+            >
+              {talkLabel ?? "Charla"}
+              <X className="size-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setSearchInput("")
+              setParams(writeTalkFilters(params, { search: "", talk: null }), { replace: true })
+            }}
+            className="text-[13px] text-zinc-600 underline decoration-zinc-300 underline-offset-2"
+          >
+            Limpiar filtros
+          </button>
         </div>
-        <div className="w-64">
-          <CatalogSelect
-            kind="educational_talk"
-            value={talk}
-            onValueChange={setTalk}
-            placeholder="Todas las charlas"
-            triggerClassName="h-8"
-          />
-        </div>
-      </div>
+      )}
 
       <DataTable
-        data={interests}
+        data={rows}
         columns={columns}
-        isLoading={isLoading}
-        emptyMessage="Nadie registró interés en una charla con estos filtros."
+        isLoading={list.isLoading}
+        emptyTitle={narrowed ? "Nadie coincide" : "Nadie anotó interés en una charla"}
+        emptyBody={
+          narrowed
+            ? "Prueba con otro nombre o quita el filtro de la charla."
+            : "Estos registros salen del enrolamiento, cuando un acompañante elige una charla de prevención."
+        }
       />
     </div>
   )
