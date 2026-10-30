@@ -1,4 +1,8 @@
 import { compact, fromDuration, text, toDuration } from "@/pages/pacientes/[id]/seguimientos/_components/ficha/answers"
+
+// Lo que se escribe se guarda tal cual (con sus espacios) mientras se escribe;
+// el recorte se hace al armar el envío. Recortar aquí borraba cada espacio al teclearlo.
+const typed = (value: string | null) => value || undefined
 import type { Values } from "@/components/ds/questions"
 import type {
   CompanionDraft,
@@ -134,17 +138,17 @@ export function applyPaciente(draft: EnrollmentDraft, id: string, value: string 
     case "zoneType":
       return { details: { ...details, zoneType: value || undefined } }
     case "address":
-      return setAddress({ address: text(value) })
+      return setAddress({ address: typed(value) })
     case "district":
-      return setAddress({ district: text(value) })
+      return setAddress({ district: typed(value) })
     case "province":
-      return setAddress({ province: text(value) })
+      return setAddress({ province: typed(value) })
     case "department":
       return setAddress({ department: (value || undefined) as PeruDepartment | undefined })
     case "locationShare":
       return setAddress({ locationShareStatus: text(value) })
     case "locationUrl":
-      return setAddress({ locationUrl: text(value) })
+      return setAddress({ locationUrl: typed(value) })
     case "travel":
       return { details: { ...details, travelTimeToHospital: toDuration(value) } }
     case "dniMatch":
@@ -155,21 +159,21 @@ export function applyPaciente(draft: EnrollmentDraft, id: string, value: string 
     case "tempHousing":
       return setTemp({ housingType: text(value), ...(value !== CATALOG_OTHER_CODE ? { housingTypeOther: undefined } : {}) })
     case "tempHousingOther":
-      return setTemp({ housingTypeOther: text(value) })
+      return setTemp({ housingTypeOther: typed(value) })
     case "tempShelter":
-      return setTemp({ shelterName: text(value) })
+      return setTemp({ shelterName: typed(value) })
     case "tempAddress":
-      return setTemp({ address: text(value) })
+      return setTemp({ address: typed(value) })
     case "tempDistrict":
-      return setTemp({ district: text(value) })
+      return setTemp({ district: typed(value) })
     case "tempProvince":
-      return setTemp({ province: text(value) })
+      return setTemp({ province: typed(value) })
     case "tempDepartment":
       return setTemp({ department: (value || undefined) as PeruDepartment | undefined })
     case "tempLocationShare":
       return setTemp({ locationShareStatus: text(value) })
     case "tempLocationUrl":
-      return setTemp({ locationUrl: text(value) })
+      return setTemp({ locationUrl: typed(value) })
     case "tempTravel":
       return setTemp({ travelTimeToHospital: toDuration(value) })
     case "tempCost":

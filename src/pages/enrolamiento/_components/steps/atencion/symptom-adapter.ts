@@ -1,4 +1,4 @@
-import { compact, fromDuration, text, toBool, toDuration, toTri } from "@/pages/pacientes/[id]/seguimientos/_components/ficha/answers"
+import { compact, fromDuration, toBool, toDuration, toTri } from "@/pages/pacientes/[id]/seguimientos/_components/ficha/answers"
 import type { Values } from "@/components/ds/questions"
 import type { SymptomReportRequest } from "@/types"
 
@@ -102,7 +102,7 @@ export function applySymptom(report: SymptomReportRequest, id: string, value: st
     case "reported":
       return { reportedDiagnosis: value }
     case "reportedText":
-      return { reportedDiagnosis: text(value) ?? null }
+      return { reportedDiagnosis: value || null }
     case "nextDate":
       return { nextConsultationDate: value }
     case "nextSpecialty":
