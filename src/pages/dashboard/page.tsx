@@ -1,11 +1,10 @@
 import { useSearchParams } from "react-router-dom"
-import { Card, CardContent } from "@/components/ui/card"
+import { InlineAlert } from "@/components/ds/inline-alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import { CoverageCard } from "./_components/coverage-card"
 import { DashboardCrossTable } from "./_components/dashboard-cross-table"
-import {
-  DashboardControls,
-  periodTitle,
-} from "./_components/dashboard-controls"
+import { DashboardControls } from "./_components/dashboard-controls"
+import { periodTitle } from "./_lib/dashboard-period"
 import { DashboardFilterBar } from "./_components/dashboard-filter-bar"
 import { DashboardKpis } from "./_components/dashboard-kpis"
 import { DashboardSatisfaction } from "./_components/dashboard-satisfaction"
@@ -22,6 +21,7 @@ import { DashboardCatalogProvider } from "./_components/dashboard-catalog"
 import { useDashboardData } from "./_hooks/use-dashboard-data"
 import { useDashboardIndicators } from "./_hooks/use-dashboard-indicators"
 import {
+  hasCustomRange,
   indicatorQuery,
   readDashboardFilters,
   summaryQuery,
@@ -51,7 +51,7 @@ export function DashboardPage() {
         ?.label ?? filters.department)
     : null
   const title = periodTitle(filters.period, filters.year, filters.month)
-  const customRange = Boolean(filters.from && filters.to)
+  const customRange = hasCustomRange(filters)
 
   function updateFilters(patch: Partial<DashboardFilterState>) {
     const next = writeDashboardFilters({ ...filters, ...patch })
@@ -60,13 +60,13 @@ export function DashboardPage() {
 
   return (
     <DashboardCatalogProvider>
-    <div className="space-y-5 pb-10">
-      <div>
-        <h1 className="text-[22px] font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
+    <div className="font-ds space-y-5 pb-10">
+      <header>
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Dashboard</h1>
+        <p className="mt-0.5 text-[13px] text-zinc-500">
           {title} · Métricas consolidadas en America/Lima
         </p>
-      </div>
+      </header>
 
       <DashboardControls
         period={filters.period}
@@ -84,7 +84,7 @@ export function DashboardPage() {
         onChange={updateFilters}
       />
       {customRange && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-[13px] text-zinc-500">
           El rango de fechas y los filtros se aplican a los indicadores y a
           la exportación. Los totales y el gráfico de enrolamientos siguen
           mostrando el mes o año elegido.
@@ -114,7 +114,7 @@ export function DashboardPage() {
             }
             sessions={data.summary.sessions}
           />
-          <section className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+          <section className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
             <EnrollmentBars data={data.trend} period={filters.period} />
             {indicators.epidemiology.data ? (
               <CoverageCard
@@ -145,9 +145,7 @@ export function DashboardPage() {
                 ]}
               />
             ) : (
-              <Card>
-                <CardContent className="bg-muted/30 h-56 animate-pulse" />
-              </Card>
+              <Skeleton className="h-56 rounded-[20px]" />
             )}
           </section>
         </>
@@ -184,7 +182,7 @@ export function DashboardPage() {
       {epidemiology && (
         <>
           <ProfileClinical data={epidemiology} territoryLabel={territoryLabel} />
-          <section className="grid gap-6 xl:grid-cols-2">
+          <section className="grid gap-5 xl:grid-cols-2">
             <DashboardCrossTable
               title="Diagnóstico por departamento"
               definition={epidemiology.meta.definitions.diagnosisByDepartment}
@@ -237,22 +235,14 @@ export function DashboardPage() {
 }
 
 function IndicatorError({ message }: { message: string }) {
-  return (
-    <Card>
-      <CardContent className="text-muted-foreground py-4 text-sm">
-        {message}
-      </CardContent>
-    </Card>
-  )
+  return <InlineAlert>{message} Recarga la página para intentar de nuevo.</InlineAlert>
 }
 
 function Loading() {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-5 md:grid-cols-2">
       {Array.from({ length: 4 }).map((_, index) => (
-        <Card key={index}>
-          <CardContent className="bg-muted/30 h-32 animate-pulse" />
-        </Card>
+        <Skeleton key={index} className="h-32 rounded-[20px]" />
       ))}
     </div>
   )

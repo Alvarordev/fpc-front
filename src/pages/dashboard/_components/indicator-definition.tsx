@@ -21,7 +21,7 @@ export function IndicatorDefinition({
         <TooltipTrigger
           type="button"
           aria-label="¿Cómo se calcula?"
-          className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 items-center justify-center"
+          className="text-zinc-500 hover:text-zinc-900 inline-flex size-4 shrink-0 items-center justify-center"
         >
           <CircleHelp className="size-3.5" />
         </TooltipTrigger>

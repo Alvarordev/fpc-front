@@ -2,7 +2,8 @@ import type { CatalogKind } from "@/api/catalogs"
 import type { DashboardEpidemiology } from "@/api/dashboard"
 import { PERU_DEPARTMENTS } from "@/lib/peru-departments"
 import { useDashboardCatalogLabel } from "./dashboard-catalog"
-import { IndicatorDefinition } from "./indicator-definition"
+import { EmptyState } from "@/components/ds/empty-state"
+import { DashboardSection } from "./dashboard-shell"
 
 type CrossItem = DashboardEpidemiology["diagnosisByDepartment"][number]
 
@@ -34,20 +35,17 @@ export function DashboardCrossTable({
   const max = Math.max(1, ...items.map((item) => item.count))
 
   return (
-    <div className="min-w-0">
-      <p className="mb-2 text-[13px] font-semibold">
-        <IndicatorDefinition definition={definition}>{title}</IndicatorDefinition>
-      </p>
+    <DashboardSection title={title} hint={definition} scope="estado">
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{empty}</p>
+        <EmptyState title={empty} body="Aparecerán cuando haya pacientes con ambos datos registrados." />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[32rem] overflow-auto">
           <table className="w-full border-collapse text-left text-xs">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white">
               <tr>
-                <th className="border-b p-2 font-medium" />
+                <th className="border-b border-zinc-100 p-2 font-medium" />
                 {columns.map((column) => (
-                  <th key={column} className="border-b p-2 font-medium">
+                  <th key={column} className="border-b border-zinc-100 p-2 font-medium">
                     {columnLabel(column)}
                   </th>
                 ))}
@@ -56,7 +54,7 @@ export function DashboardCrossTable({
             <tbody>
               {rows.map((row) => (
                 <tr key={row}>
-                  <th className="border-b p-2 font-medium">
+                  <th className="border-b border-zinc-100 p-2 font-medium text-zinc-500">
                     {labelOf(rowKind, row)}
                   </th>
                   {columns.map((column) => {
@@ -64,12 +62,12 @@ export function DashboardCrossTable({
                     return (
                       <td
                         key={column}
-                        className="border-b p-2 tabular-nums"
+                        className="border-b border-zinc-100 p-2 tabular-nums"
                         style={{
                           backgroundColor:
                             count === 0
                               ? undefined
-                              : `color-mix(in srgb, var(--foreground) ${Math.round((count / max) * 18)}%, transparent)`,
+                              : `color-mix(in srgb, #18181b ${Math.round((count / max) * 18)}%, transparent)`,
                         }}
                       >
                         {count || "—"}
@@ -82,7 +80,7 @@ export function DashboardCrossTable({
           </table>
         </div>
       )}
-    </div>
+    </DashboardSection>
   )
 }
 

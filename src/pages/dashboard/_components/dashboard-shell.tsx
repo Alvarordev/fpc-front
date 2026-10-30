@@ -1,51 +1,60 @@
-import { cn } from "@/lib/utils"
 import type { ReactNode } from "react"
+import { Chip } from "@/components/ds/badge"
+import { Card } from "@/components/ds/card"
+import { cn } from "@/lib/utils"
 
-export const dashboardPanelClass =
-  "gap-0 rounded-[14px] py-5 ring-1 ring-foreground/10"
-
-export function DashboardSectionTitle({
-  children,
-  badge,
+/**
+ * Tarjeta de sección del dashboard sobre la `Card` del sistema de diseño: el
+ * título de 15px, la descripción y, a la derecha, el alcance (flujo o estado)
+ * junto a la acción de la sección.
+ */
+export function DashboardSection({
+  title,
   hint,
+  scope,
+  action,
+  className,
+  children,
 }: {
-  children: ReactNode
-  badge?: ReactNode
+  title: string
   hint?: string
+  scope?: "flujo" | "estado"
+  action?: ReactNode
+  className?: string
+  children: ReactNode
 }) {
   return (
-    <div className="min-w-0">
-      <h2 className="text-[15px] font-semibold tracking-tight">
-        {children}
-        {badge ? <span className="ml-1.5 inline-block align-[2px]">{badge}</span> : null}
-      </h2>
-      {hint ? (
-        <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-relaxed">
-          {hint}
-        </p>
-      ) : null}
-    </div>
+    <Card
+      title={title}
+      description={hint}
+      className={cn("min-w-0", className)}
+      action={
+        scope || action ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {scope && <ScopeBadge kind={scope} />}
+            {action}
+          </div>
+        ) : undefined
+      }
+    >
+      {children}
+    </Card>
   )
 }
 
-export function ScopeBadge({
-  kind,
-  className,
-}: {
-  kind: "flujo" | "estado"
-  className?: string
-}) {
+/** Flujo: eventos con fecha dentro del periodo. Estado: foto al cierre. */
+export function ScopeBadge({ kind }: { kind: "flujo" | "estado" }) {
   return (
-    <em
-      className={cn(
-        "not-italic inline-flex rounded-full px-1.5 py-px text-[11px] font-medium",
+    <span
+      title={
         kind === "flujo"
-          ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
-          : "bg-muted text-muted-foreground",
-        className,
-      )}
+          ? "Cuenta eventos con fecha dentro del periodo"
+          : "Muestra el estado de cada paciente al cierre del periodo"
+      }
     >
-      {kind === "flujo" ? "Flujo" : "Estado"}
-    </em>
+      <Chip tone={kind === "flujo" ? "blue" : "gray"}>
+        {kind === "flujo" ? "Flujo" : "Estado"}
+      </Chip>
+    </span>
   )
 }

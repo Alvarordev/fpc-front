@@ -4,7 +4,7 @@ import { Download } from "lucide-react"
 import { toast } from "sonner"
 import { apiFetch } from "@/api/client"
 import type { DashboardIndicatorQuery } from "@/api/dashboard"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ds/button"
 
 export function DashboardExportButton({ query }: { query: DashboardIndicatorQuery }) {
   const [pending, setPending] = useState(false)
@@ -43,8 +43,7 @@ export function DashboardExportButton({ query }: { query: DashboardIndicatorQuer
   }
 
   return (
-    <Button type="button" size="sm" variant="outline" onClick={download} disabled={pending}>
-      <Download className="size-4" />
+    <Button icon={Download} onClick={download} disabled={pending}>
       {pending ? "Exportando..." : "Exportar a Excel"}
     </Button>
   )

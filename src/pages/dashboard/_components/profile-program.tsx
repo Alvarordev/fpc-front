@@ -5,16 +5,11 @@ import type {
   DashboardManagement,
   DashboardProductivity,
 } from "@/api/dashboard"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Button } from "@/components/ds/button"
 import { formatAvgDays, number } from "./dashboard-labels"
 import { IndicatorDefinition } from "./indicator-definition"
 import { DistributionBars } from "./distribution-bars"
-import {
-  dashboardPanelClass,
-  DashboardSectionTitle,
-  ScopeBadge,
-} from "./dashboard-shell"
+import { DashboardSection } from "./dashboard-shell"
 
 export function ProfileProgram({
   productivity,
@@ -198,32 +193,25 @@ export function ProfileProgram({
   )
 
   return (
-    <Card className={dashboardPanelClass}>
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 px-[22px]">
-        <DashboardSectionTitle
-          hint={`${number.format(productivity.meta.populationCount)} pacientes · ${productivity.meta.from} a ${productivity.meta.to}`}
-          badge={<ScopeBadge kind="flujo" />}
-        >
-          Programa
-        </DashboardSectionTitle>
+    <DashboardSection
+      title="Programa"
+      hint={`${number.format(productivity.meta.populationCount)} pacientes · ${productivity.meta.from} a ${productivity.meta.to}`}
+      scope="flujo"
+      action={
         <Button
-          type="button"
-          variant="outline"
-          size="sm"
           aria-pressed={hideZeros}
           onClick={() => setHideZeros((current) => !current)}
         >
-          {hideZeros
-            ? `Mostrar indicadores en cero`
-            : "Ocultar indicadores en cero"}
+          {hideZeros ? "Mostrar en cero" : "Ocultar en cero"}
         </Button>
-      </CardHeader>
-      <CardContent className="grid gap-8 px-[22px] pt-4 xl:grid-cols-3">
+      }
+    >
+      <div className="grid gap-8 xl:grid-cols-3">
         <ProgramGroup title="Beneficios" kind="estado" items={benefits} />
         <ProgramGroup title="Adherencia" kind="estado" items={adherenceItems}>
           {adherence.treatmentAbandonmentReasons.items.length > 0 && (
             <div className="pt-4">
-              <p className="mb-3 text-sm font-medium">
+              <p className="mb-3 text-[13px] font-semibold text-zinc-900">
                 <IndicatorDefinition
                   definition={adherence.meta.definitions.treatmentAbandonmentReasons}
                 >
@@ -242,7 +230,7 @@ export function ProfileProgram({
         <ProgramGroup title="Abandono" kind="flujo" items={abandonmentItems}>
           {abandonment.dropoutReasons.items.length > 0 && (
             <div className="pt-4">
-              <p className="mb-3 text-sm font-medium">
+              <p className="mb-3 text-[13px] font-semibold text-zinc-900">
                 <IndicatorDefinition
                   definition={abandonment.meta.definitions.dropoutReasons}
                 >
@@ -268,7 +256,7 @@ export function ProfileProgram({
           <ProgramGroup title="Gestión SEPA" kind="flujo" items={managementItems} />
           <div className="grid gap-6 md:grid-cols-3">
             <div>
-              <p className="mb-3 text-sm font-medium">Especialidad para diagnóstico</p>
+              <p className="mb-3 text-[13px] font-semibold text-zinc-900">Especialidad para diagnóstico</p>
               <DistributionBars
                 distribution={management.specialtyForDiagnosis}
                 compact
@@ -278,7 +266,7 @@ export function ProfileProgram({
               />
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium">Proveedores de traslado</p>
+              <p className="mb-3 text-[13px] font-semibold text-zinc-900">Proveedores de traslado</p>
               <DistributionBars
                 distribution={management.transportationSepaProviders}
                 compact
@@ -288,7 +276,7 @@ export function ProfileProgram({
               />
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium">Proveedores de albergue</p>
+              <p className="mb-3 text-[13px] font-semibold text-zinc-900">Proveedores de albergue</p>
               <DistributionBars
                 distribution={management.shelterSepaProviders}
                 compact
@@ -299,8 +287,8 @@ export function ProfileProgram({
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardSection>
   )
 }
 
@@ -316,24 +304,24 @@ function ProgramGroup({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-[13px] font-semibold">{title}</p>
+      <p className="mb-1.5 text-[13px] font-semibold text-zinc-900">{title}</p>
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-[13px]">
-          Sin eventos este año
+        <p className="text-zinc-500 text-[13px]">
+          Sin eventos en el periodo
         </p>
       ) : (
         <div>
           {items.map((item) => (
             <div
               key={item.label}
-              className="flex items-baseline justify-between gap-3 border-b py-[7px] text-[13.5px] last:border-b-0"
+              className="flex items-baseline justify-between gap-3 border-b border-zinc-100 py-[7px] text-[13px] last:border-b-0"
             >
-              <span className="text-muted-foreground min-w-0 truncate">
+              <span className="text-zinc-500 min-w-0 truncate">
                 <IndicatorDefinition definition={item.definition}>
                   {item.label}
                 </IndicatorDefinition>
               </span>
-              <b className="font-medium tabular-nums">
+              <b className="font-medium text-zinc-900 tabular-nums">
                 {typeof item.value === "number"
                   ? number.format(item.value)
                   : item.value}

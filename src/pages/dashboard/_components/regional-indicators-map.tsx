@@ -2,19 +2,12 @@ import { useState, type KeyboardEvent, type MouseEvent } from "react"
 import { createPortal } from "react-dom"
 import { scaleLinear } from "d3-scale"
 import { ComposableMap, Geographies, Geography } from "react-simple-maps"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Chip } from "@/components/ds/badge"
+import { SelectField } from "@/components/ds/form"
 import { cn } from "@/lib/utils"
 import { PERU_DEPARTMENTS_GEOJSON_URL } from "@/lib/peru-departments"
 import { PERU_DEPARTMENTS, type IndicatorMap } from "./regional-indicators"
-import { DashboardSectionTitle, ScopeBadge } from "./dashboard-shell"
+import { DashboardSection } from "./dashboard-shell"
 
 const GEO_URL = PERU_DEPARTMENTS_GEOJSON_URL
 const numberFormat = new Intl.NumberFormat("es-PE")
@@ -254,23 +247,16 @@ export function RegionalIndicatorsMap({
   }
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 border-b pb-5">
-        <DashboardSectionTitle
-          hint="Pacientes por departamento de residencia. Selecciona uno para ver el detalle y aplicarlo al perfil clínico y la demografía."
-          badge={<ScopeBadge kind="estado" />}
-        >
-          Territorio
-        </DashboardSectionTitle>
-        <CardAction className="static justify-self-end">
-          <Badge variant="outline">
-            Cobertura {percentageFormat.format(indicator.coveragePct)}%
-          </Badge>
-        </CardAction>
-      </CardHeader>
-
-      <CardContent className="grid p-0 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
-        <div className="bg-muted/20 flex min-h-[38rem] flex-col justify-between p-4 sm:p-6">
+    <DashboardSection
+      title="Territorio"
+      hint="Pacientes por departamento de residencia. Selecciona uno para ver el detalle y aplicarlo al perfil clínico y la demografía."
+      scope="estado"
+      action={
+        <Chip>Cobertura {percentageFormat.format(indicator.coveragePct)}%</Chip>
+      }
+    >
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.7fr)]">
+        <div className="flex flex-col justify-between xl:min-h-[38rem]">
           <PeruMap
             data={indicator.data}
             colorRange={indicator.colorRange}
@@ -282,7 +268,7 @@ export function RegionalIndicatorsMap({
           />
 
           <div className="mx-auto mt-3 w-full max-w-md space-y-2">
-            <div className="text-muted-foreground flex items-center gap-3 text-xs">
+            <div className="text-zinc-500 flex items-center gap-3 text-xs">
               <span>Menor volumen</span>
               <div
                 className="h-2 flex-1 rounded-full"
@@ -292,57 +278,44 @@ export function RegionalIndicatorsMap({
               />
               <span>Mayor volumen</span>
             </div>
-            <p className="text-muted-foreground text-center text-xs">
+            <p className="text-zinc-500 text-center text-xs">
               Selecciona un departamento para mantener su detalle visible.
             </p>
           </div>
         </div>
 
-        <div className="border-t p-4 sm:p-6 xl:border-t-0 xl:border-l">
+        <div className="min-w-0 border-t border-zinc-100 pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6">
           {indicators.length > 1 ? (
             <div className="mb-5 space-y-2">
-              <label className="text-muted-foreground text-xs font-medium">
+              <label className="text-zinc-500 text-xs font-medium">
                 Indicador
               </label>
-              <Select
+              <SelectField
                 value={indicator.id}
-                onValueChange={(value) => {
-                  if (value) {
-                    setIndicatorId(value)
-                    setHoveredCode(null)
-                    setSelectedCode(null)
-                  }
+                options={selectorItems}
+                onChange={(value) => {
+                  setIndicatorId(value)
+                  setHoveredCode(null)
+                  setSelectedCode(null)
                 }}
-                items={selectorItems}
-              >
-                <SelectTrigger aria-label="Indicador">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectorItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
           ) : (
             <div className="mb-5">
-              <p className="text-muted-foreground text-xs font-medium">
+              <p className="text-zinc-500 text-xs font-medium">
                 Indicador
               </p>
               <p className="mt-1 font-medium">{indicator.label}</p>
             </div>
           )}
 
-          <div className="bg-muted/25 mb-5 grid h-28 shrink-0 grid-rows-[auto_1fr] overflow-hidden rounded-xl border p-4">
+          <div className="mb-5 grid h-24 shrink-0 grid-rows-[auto_1fr] overflow-hidden border-b border-zinc-100 pb-4">
             {activeRow && activeRow.value !== undefined ? (
               <>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{activeRow.label}</p>
-                    <p className="text-muted-foreground mt-1 text-xs">
+                    <p className="text-zinc-500 mt-1 text-xs">
                       Puesto {activeRank} de {rows.length}
                     </p>
                   </div>
@@ -350,7 +323,7 @@ export function RegionalIndicatorsMap({
                     {formatValue(activeRow.value)}
                   </p>
                 </div>
-                <p className="text-muted-foreground self-end text-xs">
+                <p className="text-zinc-500 self-end text-xs">
                   {formatPercentage(activeRow.value, indicator.known)} del total
                   con residencia conocida
                 </p>
@@ -358,7 +331,7 @@ export function RegionalIndicatorsMap({
             ) : (
               <>
                 <p className="font-medium">Cobertura del indicador</p>
-                <p className="text-muted-foreground self-end text-xs leading-relaxed">
+                <p className="text-zinc-500 self-end text-xs leading-relaxed">
                   {numberFormat.format(indicator.known)} conocidos ·{" "}
                   {numberFormat.format(indicator.unknown)} sin información
                 </p>
@@ -366,7 +339,7 @@ export function RegionalIndicatorsMap({
             )}
           </div>
 
-          <div className="text-muted-foreground mb-2 flex items-center justify-between text-xs font-medium">
+          <div className="text-zinc-500 mb-2 flex items-center justify-between text-xs font-medium">
             <span>Departamento</span>
             <span>Pacientes</span>
           </div>
@@ -391,12 +364,12 @@ export function RegionalIndicatorsMap({
                   onClick={() => toggleSelection(row.code)}
                   className={cn(
                     "focus-visible:ring-ring/50 w-full rounded-lg px-3 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-150 outline-none focus-visible:ring-3 active:scale-[0.99]",
-                    isActive && "bg-accent",
-                    isSelected && "ring-foreground/15 ring-1",
+                    isActive && "bg-zinc-50",
+                    isSelected && "bg-zinc-50 ring-1 ring-zinc-200",
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground w-5 shrink-0 text-xs tabular-nums">
+                    <span className="text-zinc-500 w-5 shrink-0 text-xs tabular-nums">
                       {index + 1}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -408,9 +381,9 @@ export function RegionalIndicatorsMap({
                         : formatValue(row.value)}
                     </span>
                   </div>
-                  <div className="bg-muted mt-2 ml-8 h-1 overflow-hidden rounded-full">
+                  <div className="bg-zinc-100 mt-2 ml-8 h-1 overflow-hidden rounded-full">
                     <div
-                      className="bg-chart-2 h-full rounded-full transition-[width] duration-200"
+                      className="h-full bg-zinc-900 rounded-full transition-[width] duration-200"
                       style={{ width: `${width}%` }}
                     />
                   </div>
@@ -419,12 +392,12 @@ export function RegionalIndicatorsMap({
             })}
           </div>
 
-          <p className="text-muted-foreground mt-4 border-t pt-4 text-xs leading-relaxed">
+          <p className="text-zinc-500 mt-4 border-t border-zinc-100 pt-4 text-xs leading-relaxed">
             {indicator.description}
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardSection>
   )
 }
 
@@ -448,7 +421,7 @@ function MapTooltip({
       style={{ left, top }}
     >
       <p className="font-medium">{tooltip.name}</p>
-      <p className="text-muted-foreground mt-0.5 text-xs">
+      <p className="text-zinc-500 mt-0.5 text-xs">
         {tooltip.value === undefined
           ? "Sin dato"
           : `${formatValue(tooltip.value)} pacientes`}

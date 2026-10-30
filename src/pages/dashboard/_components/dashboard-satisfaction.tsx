@@ -1,7 +1,6 @@
 import type { DashboardSatisfaction } from "@/api/dashboard"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { DistributionBars } from "./distribution-bars"
-import { dashboardPanelClass, DashboardSectionTitle } from "./dashboard-shell"
+import { DashboardSection } from "./dashboard-shell"
 import { IndicatorDefinition } from "./indicator-definition"
 import { number } from "./dashboard-labels"
 
@@ -14,13 +13,8 @@ const GROUPS = [
 
 export function DashboardSatisfaction({ data }: { data: DashboardSatisfaction }) {
   return (
-    <Card className={dashboardPanelClass}>
-      <CardHeader className="px-[22px]">
-        <DashboardSectionTitle hint="Promedio y distribución de 1 a 5.">
-          Satisfacción
-        </DashboardSectionTitle>
-      </CardHeader>
-      <CardContent className="grid gap-6 px-[22px] pt-3 md:grid-cols-2 xl:grid-cols-4">
+    <DashboardSection title="Satisfacción" hint="Promedio y distribución de 1 a 5.">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {GROUPS.map((group) => {
           const summary = data[group.key]
           return (
@@ -33,7 +27,7 @@ export function DashboardSatisfaction({ data }: { data: DashboardSatisfaction })
               <p className="mt-1 text-2xl font-semibold tabular-nums">
                 {summary.average == null ? "—" : summary.average.toFixed(1)}
               </p>
-              <p className="text-muted-foreground mb-3 text-xs">
+              <p className="text-zinc-500 mb-3 text-xs">
                 {number.format(summary.responses)} respuestas
               </p>
               <DistributionBars
@@ -49,7 +43,7 @@ export function DashboardSatisfaction({ data }: { data: DashboardSatisfaction })
             </div>
           )
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardSection>
   )
 }

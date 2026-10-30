@@ -1,15 +1,11 @@
 import { useState } from "react"
 import type { DashboardDemographics } from "@/api/dashboard"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { number } from "./dashboard-labels"
 import { IndicatorDefinition } from "./indicator-definition"
 import { DistributionBars } from "./distribution-bars"
-import {
-  dashboardPanelClass,
-  DashboardSectionTitle,
-  ScopeBadge,
-} from "./dashboard-shell"
+import { DashboardSection } from "./dashboard-shell"
 
 export function ProfileDemographic({
   data,
@@ -23,20 +19,15 @@ export function ProfileDemographic({
   const male = data.gender.items.find((item) => item.label === "MALE")?.count ?? 0
 
   return (
-    <Card className={dashboardPanelClass}>
-      <CardHeader className="px-[22px]">
-        <DashboardSectionTitle
-          hint={
+    <DashboardSection
+      title="Perfil demográfico"
+      scope="estado"
+      hint={
             territoryLabel
               ? `${territoryLabel} · ${number.format(data.meta.populationCount)} pacientes`
               : "Atributos del paciente: no dependen del año en que se enroló."
-          }
-          badge={<ScopeBadge kind="estado" />}
-        >
-          Perfil demográfico
-        </DashboardSectionTitle>
-      </CardHeader>
-      <CardContent className="px-[22px] pt-3">
+      }
+    >
         <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
           <div>
             <p className="mb-2 text-[13px] font-semibold">
@@ -46,11 +37,11 @@ export function ProfileDemographic({
             </p>
             <div className="mb-3 flex gap-5 text-[13px]">
               <span>
-                <i className="bg-foreground mr-1.5 inline-block size-2.5 rounded-[2px]" />
+                <i className="bg-zinc-900 mr-1.5 inline-block size-2.5 rounded-[2px]" />
                 Femenino {number.format(female)}
               </span>
               <span>
-                <i className="bg-foreground/40 mr-1.5 inline-block size-2.5 rounded-[2px]" />
+                <i className="bg-zinc-400 mr-1.5 inline-block size-2.5 rounded-[2px]" />
                 Masculino {number.format(male)}
               </span>
             </div>
@@ -61,7 +52,7 @@ export function ProfileDemographic({
             />
           </div>
           <div>
-            <p className="text-muted-foreground mb-2 text-[12.5px]">
+            <p className="text-zinc-500 mb-2 text-[12.5px]">
               <IndicatorDefinition definition={data.meta.definitions.insuranceType}>
                 Seguro de salud
               </IndicatorDefinition>
@@ -72,7 +63,7 @@ export function ProfileDemographic({
               shareOfTotal
               columns="7rem 1fr 5.25rem"
             />
-            <p className="text-muted-foreground mt-4 mb-2 text-[12.5px]">
+            <p className="text-zinc-500 mt-4 mb-2 text-[12.5px]">
               <IndicatorDefinition
                 definition={data.meta.definitions.insuranceTypeAtEnrollment}
               >
@@ -87,16 +78,20 @@ export function ProfileDemographic({
             />
           </div>
         </div>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
-          className="mt-4 h-auto px-0 text-[13px]"
+          className="mt-4 inline-flex items-center gap-1 text-[13px] font-medium text-zinc-700 hover:text-zinc-900"
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
         >
           {expanded ? "Ocultar otros datos" : "Ver otros datos demográficos"}
-        </Button>
+          <ChevronDown
+            className={cn(
+              "size-4 transition-transform duration-200 motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
+          />
+        </button>
         {expanded && (
           <div className="mt-4 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
             <CompactBlock
@@ -145,8 +140,7 @@ export function ProfileDemographic({
             />
           </div>
         )}
-      </CardContent>
-    </Card>
+    </DashboardSection>
   )
 }
 

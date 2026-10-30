@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { EmptyState } from "@/components/ds/empty-state"
 import { number } from "./dashboard-labels"
-import { dashboardPanelClass, DashboardSectionTitle, ScopeBadge } from "./dashboard-shell"
+import { DashboardSection } from "./dashboard-shell"
 
 export function EnrollmentBars({
   data,
@@ -23,20 +23,16 @@ export function EnrollmentBars({
       : "Enrolamientos registrados en la ventana seleccionada."
 
   return (
-    <Card className={dashboardPanelClass}>
-      <CardHeader className="px-[22px]">
-        <DashboardSectionTitle
-          hint={hint}
-          badge={<ScopeBadge kind="flujo" />}
-        >
-          Enrolamientos por {period === "year" ? "mes" : "día"}
-        </DashboardSectionTitle>
-      </CardHeader>
-      <CardContent className="px-[22px] pt-2">
+    <DashboardSection
+      title={`Enrolamientos por ${period === "year" ? "mes" : "día"}`}
+      hint={hint}
+      scope="flujo"
+    >
         {data.length === 0 ? (
-          <p className="text-muted-foreground flex h-40 items-center justify-center text-sm">
-            No hay enrolamientos en este periodo.
-          </p>
+          <EmptyState
+            title="Sin enrolamientos en este periodo"
+            body="Elige otro mes o año para ver la tendencia."
+          />
         ) : (
           <div className="flex h-[170px] items-end gap-2.5 pt-5">
             {chartData.map((item) => {
@@ -47,17 +43,17 @@ export function EnrollmentBars({
                   key={item.period}
                   className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
                 >
-                  <b className="text-[13px] font-medium tabular-nums">
+                  <b className="text-[13px] font-medium text-zinc-900 tabular-nums">
                     {item.enrollmentEvents}
                   </b>
                   <i
                     className={cn(
                       "block w-full rounded-t-md",
-                      isPeak ? "bg-destructive" : "bg-foreground/25",
+                      isPeak ? "bg-zinc-900" : "bg-zinc-300",
                     )}
                     style={{ height: `${Math.max(height, item.enrollmentEvents > 0 ? 6 : 0)}%` }}
                   />
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-xs text-zinc-500">
                     {item.label}
                   </span>
                 </div>
@@ -65,8 +61,7 @@ export function EnrollmentBars({
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+    </DashboardSection>
   )
 }
 

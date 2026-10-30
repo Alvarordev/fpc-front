@@ -1,17 +1,9 @@
-import type { ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { agentsApi } from "@/api/agents"
 import { HealthCenterCombobox } from "@/components/health-center-combobox"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Card } from "@/components/ds/card"
+import { Field, SelectField, TextInput } from "@/components/ds/form"
+import { InlineAlert } from "@/components/ds/inline-alert"
 import { PERU_DEPARTMENTS } from "@/lib/peru-departments"
 import {
   patientHealthPhaseLabels,
@@ -55,147 +47,144 @@ export function DashboardFilterBar({
       label,
     })),
   ]
+  const agents = agentsQuery.data ?? []
   const agentItems = [
     { value: ALL, label: "Todos los agentes" },
-    ...(agentsQuery.data ?? []).map((agent) => ({
-      value: agent.id,
-      label: agent.fullName,
-    })),
+    ...agents.map((agent) => ({ value: agent.id, label: agent.fullName })),
   ]
-
-  return (
-    <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-2 xl:grid-cols-4">
-      <Field label="Desde">
-        <Input
-          type="date"
-          value={filters.from}
-          onChange={(event) => onChange({ from: event.target.value })}
-        />
-      </Field>
-      <Field label="Hasta">
-        <Input
-          type="date"
-          value={filters.to}
-          onChange={(event) => onChange({ to: event.target.value })}
-        />
-      </Field>
-      <Field label="Departamento">
-        <Select
-          items={departmentItems}
-          value={filters.department || ALL}
-          onValueChange={(value) =>
-            onChange({ department: !value || value === ALL ? "" : value })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {departmentItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field label="Hospital">
-        <HealthCenterCombobox
-          value={filters.healthCenterId || null}
-          onValueChange={(value) => onChange({ healthCenterId: value ?? "" })}
-          placeholder="Buscar hospital..."
-        />
-      </Field>
-      <Field label="Agente">
-        <Select
-          items={agentItems}
-          value={filters.agentId || ALL}
-          onValueChange={(value) =>
-            onChange({ agentId: !value || value === ALL ? "" : value })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Todos los agentes" />
-          </SelectTrigger>
-          <SelectContent>
-            {agentItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field label="Fase">
-        <Select
-          items={phaseItems}
-          value={filters.healthPhase || ALL}
-          onValueChange={(value) =>
-            onChange({ healthPhase: !value || value === ALL ? "" : value })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {phaseItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field label="Subcategoría">
-        <Select
-          items={subcategoryItems}
-          value={filters.healthSubcategory || ALL}
-          onValueChange={(value) =>
-            onChange({ healthSubcategory: !value || value === ALL ? "" : value })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {subcategoryItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <div className="flex items-end gap-2">
-        <DashboardExportButton query={query} />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            onChange({
-              from: "",
-              to: "",
-              department: "",
-              healthCenterId: "",
-              agentId: "",
-              healthPhase: "",
-              healthSubcategory: "",
-            })
-          }
-        >
-          Limpiar
-        </Button>
-      </div>
-    </div>
+  // Un agente que llega por la URL antes de cargar la lista (o que ya no está)
+  // no debe mostrarse como UUID crudo en el select.
+  if (filters.agentId && !agents.some((agent) => agent.id === filters.agentId)) {
+    agentItems.push({
+      value: filters.agentId,
+      label: agentsQuery.isLoading ? "Cargando agente…" : "Agente no disponible",
+    })
+  }
+  const partialRange = Boolean(filters.from) !== Boolean(filters.to)
+  const invertedRange = Boolean(
+    filters.from && filters.to && filters.from > filters.to,
   )
-}
+  const hasFilters = Boolean(
+    filters.from ||
+      filters.to ||
+      filters.department ||
+      filters.healthCenterId ||
+      filters.agentId ||
+      filters.healthPhase ||
+      filters.healthSubcategory,
+  )
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+  const pick =
+    (key: "department" | "agentId" | "healthPhase" | "healthSubcategory") =>
+    (value: string) =>
+      onChange({ [key]: value === ALL ? "" : value })
+
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
+    <Card>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Desde">
+          {(id) => (
+            <TextInput
+              id={id}
+              type="date"
+              value={filters.from}
+              max={filters.to || undefined}
+              onChange={(event) => onChange({ from: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label="Hasta">
+          {(id) => (
+            <TextInput
+              id={id}
+              type="date"
+              value={filters.to}
+              min={filters.from || undefined}
+              onChange={(event) => onChange({ to: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label="Departamento">
+          {(id) => (
+            <SelectField
+              id={id}
+              value={filters.department || ALL}
+              options={departmentItems}
+              onChange={pick("department")}
+            />
+          )}
+        </Field>
+        <Field label="Hospital">
+          {() => (
+            <HealthCenterCombobox
+              value={filters.healthCenterId || null}
+              onValueChange={(value) => onChange({ healthCenterId: value ?? "" })}
+              placeholder="Buscar hospital..."
+            />
+          )}
+        </Field>
+        <Field label="Agente">
+          {(id) => (
+            <SelectField
+              id={id}
+              value={filters.agentId || ALL}
+              options={agentItems}
+              onChange={pick("agentId")}
+            />
+          )}
+        </Field>
+        <Field label="Fase">
+          {(id) => (
+            <SelectField
+              id={id}
+              value={filters.healthPhase || ALL}
+              options={phaseItems}
+              onChange={pick("healthPhase")}
+            />
+          )}
+        </Field>
+        <Field label="Subcategoría">
+          {(id) => (
+            <SelectField
+              id={id}
+              value={filters.healthSubcategory || ALL}
+              options={subcategoryItems}
+              onChange={pick("healthSubcategory")}
+            />
+          )}
+        </Field>
+        <div className="flex items-end gap-3">
+          <DashboardExportButton query={query} />
+          {hasFilters && (
+            <button
+              type="button"
+              className="h-8 text-[13px] font-medium text-zinc-600 hover:text-zinc-900"
+              onClick={() =>
+                onChange({
+                  from: "",
+                  to: "",
+                  department: "",
+                  healthCenterId: "",
+                  agentId: "",
+                  healthPhase: "",
+                  healthSubcategory: "",
+                })
+              }
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      </div>
+      {(partialRange || invertedRange) && (
+        <div className="mt-4">
+          <InlineAlert tone="warning">
+            {invertedRange
+              ? "La fecha «Desde» es posterior a «Hasta». Corrígela para aplicar el rango."
+              : "Completa «Desde» y «Hasta» para aplicar el rango. Mientras tanto se usa el mes o año elegido."}
+          </InlineAlert>
+        </div>
+      )}
+    </Card>
   )
 }

@@ -88,7 +88,7 @@ export function writeDashboardFilters(filters: DashboardFilterState) {
 export function indicatorQuery(
   filters: DashboardFilterState,
 ): DashboardIndicatorQuery {
-  const customRange = Boolean(filters.from && filters.to)
+  const customRange = hasCustomRange(filters)
   return {
     timezone: "America/Lima",
     population: filters.population,
@@ -123,6 +123,11 @@ export function summaryQuery(filters: DashboardFilterState): DashboardQuery {
     timezone: "America/Lima",
     ...(filters.period === "month" ? { month: filters.month } : {}),
   }
+}
+
+/** Rango propio completo y en orden; si falta un extremo se usa el periodo. */
+export function hasCustomRange(filters: Pick<DashboardFilterState, "from" | "to">) {
+  return Boolean(filters.from && filters.to && filters.from <= filters.to)
 }
 
 function numberOr(value: string | null, fallback: number) {
