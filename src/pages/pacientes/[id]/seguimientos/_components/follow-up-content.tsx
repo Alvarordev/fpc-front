@@ -153,6 +153,8 @@ export function FollowUpContent() {
   const canEditClosed = canAct && !isOpen && isClosed(followUp.status)
   const pending = pendingSummary(draftStore, notes)
   // Un seguimiento de reenrolamiento abierto de un paciente inactivo registra el reenrolamiento al completarse.
+  // Un prospecto aún no tiene ficha clínica: se registra al enrolarlo, no en un seguimiento.
+  const isProspect = patient?.status === "UNENROLLED"
   const registersReenrollment = followUp.purpose === "REENROLLMENT" && patient?.activityStatus === "INACTIVE"
   const reenrollmentBlocker = registersReenrollment ? reenrollmentMissing(reenrollment) : null
   const selectedSeries = selectedTreatment && patient ? groupTreatmentSeries(patient.treatments).find((s) => s.seriesId === selectedTreatment.seriesId) : undefined
@@ -289,23 +291,37 @@ export function FollowUpContent() {
               <ReenrollmentForm draft={reenrollment} onChange={setReenrollment} />
             </StepSection>
           )}
-          <StepSection n={registersReenrollment ? 3 : 2} title="Actualiza la ficha clínica" done={hasAnyClinicalDraft(clinicalDrafts)}>
-            <Card title="Ficha clínica" description="Las preguntas son las que le haces. Lo que respondas se conserva al cambiar de pestaña y se guarda al completar.">
-              <ClinicalSheet
-                patientId={patientId!}
-                followUpId={followUpId}
-                drafts={clinicalDrafts}
-                onDraftsChange={(updater) => draftStore.updateClinical(updater)}
-                onViewDiagnosis={viewDiagnosis}
-                onViewTreatment={viewTreatment}
-              />
-            </Card>
-            {/* Opcional, pero conviene tenerlas a la vista antes de decidir los siguientes pasos. */}
-            <PatientReferralsSection patientId={patientId!} followUpId={followUp.id} />
-          </StepSection>
-          <StepSection n={registersReenrollment ? 4 : 3} title="Decide los siguientes pasos" done={Boolean(draftStore.psico || draftStore.alert || nextFollowUpDraft || draftStore.reminders.length)}>
-            <DerivedActionsCard onOpen={setDerived} canReportIncident={user?.role === "AGENT"} />
-          </StepSection>
+          {isProspect ? (
+            <StepSection n={2} title="Enrólalo para registrar su ficha" done={false}>
+              <Card
+                title="Todavía es prospecto"
+                description="La ficha clínica, los acompañantes y las derivaciones se registran al enrolarlo. Aquí registra el contacto y la nota; luego enrólalo desde su ficha."
+                action={<Button onClick={back}>Ir a la ficha para enrolar</Button>}
+              >
+                {null}
+              </Card>
+            </StepSection>
+          ) : (
+            <>
+              <StepSection n={registersReenrollment ? 3 : 2} title="Actualiza la ficha clínica" done={hasAnyClinicalDraft(clinicalDrafts)}>
+                <Card title="Ficha clínica" description="Las preguntas son las que le haces. Lo que respondas se conserva al cambiar de pestaña y se guarda al completar.">
+                  <ClinicalSheet
+                    patientId={patientId!}
+                    followUpId={followUpId}
+                    drafts={clinicalDrafts}
+                    onDraftsChange={(updater) => draftStore.updateClinical(updater)}
+                    onViewDiagnosis={viewDiagnosis}
+                    onViewTreatment={viewTreatment}
+                  />
+                </Card>
+                {/* Opcional, pero conviene tenerlas a la vista antes de decidir los siguientes pasos. */}
+                <PatientReferralsSection patientId={patientId!} followUpId={followUp.id} />
+              </StepSection>
+              <StepSection n={registersReenrollment ? 4 : 3} title="Decide los siguientes pasos" done={Boolean(draftStore.psico || draftStore.alert || nextFollowUpDraft || draftStore.reminders.length)}>
+                <DerivedActionsCard onOpen={setDerived} canReportIncident={user?.role === "AGENT"} />
+              </StepSection>
+            </>
+          )}
           <NotesDock
             notes={notes}
             onNotesChange={setNotes}
