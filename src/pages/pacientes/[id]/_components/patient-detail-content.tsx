@@ -1,3 +1,4 @@
+import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Fingerprint, MapPin, Phone, UserPlus } from "lucide-react"
@@ -109,15 +110,16 @@ export function PatientDetailContent() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold">{patient.fullName}</h2>
-              <Chip tone={patient.status === "ENROLLED" ? "green" : "violet"}>{patient.status === "ENROLLED" ? "Enrolado" : "Prospecto"}</Chip>
+              {patient.status !== "ENROLLED" && <Chip tone="violet">Prospecto</Chip>}
               <Chip tone={patient.activityStatus === "INACTIVE" ? "gray" : patient.activityStatus === "REACTIVE" ? "amber" : "blue"}>
                 {patient.activityStatus === "ACTIVE" ? "Activo" : patient.activityStatus === "REACTIVE" ? "Reenrolado" : "Inactivo"}
               </Chip>
               {patient.details?.healthPhase && (
-                <Chip tone="violet">
+                <Chip tone="gray">
                   <CatalogValue kind="patient_health_phase" code={patient.details.healthPhase} />
                 </Chip>
               )}
+              {patient.details?.healthSubcategory && <PatientHealthSubcategoryBadge subcategory={patient.details.healthSubcategory} />}
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {patient.dni && <MetaTag icon={Fingerprint}>{formatIdentityDocument(patient.documentType, patient.dni)}</MetaTag>}

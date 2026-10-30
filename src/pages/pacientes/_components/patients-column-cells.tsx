@@ -1,3 +1,4 @@
+import { PatientHealthSubcategoryBadge } from "@/components/patient-health-subcategory-badge"
 import { CatalogValue } from "@/components/catalog-select"
 import { Chip } from "@/components/ds/badge"
 import type {
@@ -81,14 +82,14 @@ export function DiagnosisCell({ patient }: { patient: PatientListItem }) {
 export function HealthCell({ patient }: { patient: PatientListItem }) {
   const subcategory = knownSubcategory(patient.healthSubcategory)
   if (subcategory) {
-    return <Chip tone="violet">{patientHealthSubcategoryLabels[subcategory]}</Chip>
+    return <PatientHealthSubcategoryBadge subcategory={subcategory} />
   }
 
   const phase = knownPhase(patient.healthPhase)
-  if (phase) return <Chip tone="violet">{patientHealthPhaseLabels[phase]}</Chip>
+  if (phase) return <Chip tone="gray">{patientHealthPhaseLabels[phase]}</Chip>
   if (patient.healthPhase) {
     return (
-      <Chip tone="violet">
+      <Chip tone="gray">
         <CatalogValue kind="patient_health_phase" code={patient.healthPhase} />
       </Chip>
     )

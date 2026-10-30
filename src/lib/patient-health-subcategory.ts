@@ -17,8 +17,7 @@ export const patientHealthSubcategoryLabels: Record<
   ACTIVE_TREATMENT: "Pacientes en Tratamiento Activo",
   UNDER_CONTROLS: "Pacientes en Controles",
   TREATMENT_ABANDONED: "Pacientes que Abandonaron su Tratamiento",
-  PALLIATIVE_NO_ACTIVE_TREATMENT:
-    "Paciente Paliativo sin Tratamiento Activo",
+  PALLIATIVE_NO_ACTIVE_TREATMENT: "Paciente Paliativo sin Tratamiento Activo",
   CANCER_RULED_OUT: "Pacientes con Descarte",
 }
 
@@ -34,34 +33,29 @@ export const patientHealthSubcategoryPhase: Record<
   CANCER_RULED_OUT: "ANNUAL_CHECKUP",
 }
 
+/** Color de cada subcategoría: fondo suave y punto. Distingue a los pacientes de un vistazo. */
 export const patientHealthSubcategoryColors: Record<
   PatientHealthSubcategory,
   { badge: string; dot: string }
 > = {
   SIGNS_AND_SYMPTOMS_PATIENT: {
-    badge: "border-yellow-200 bg-yellow-100 text-yellow-800",
+    badge: "bg-yellow-100 text-yellow-800",
     dot: "bg-yellow-500",
   },
-  ACTIVE_TREATMENT: {
-    badge: "border-red-200 bg-red-100 text-red-800",
-    dot: "bg-red-500",
-  },
+  ACTIVE_TREATMENT: { badge: "bg-red-50 text-red-700", dot: "bg-red-500" },
   UNDER_CONTROLS: {
-    badge: "border-green-200 bg-green-100 text-green-800",
-    dot: "bg-green-500",
+    badge: "bg-emerald-50 text-emerald-700",
+    dot: "bg-emerald-500",
   },
   TREATMENT_ABANDONED: {
-    badge: "border-orange-200 bg-orange-100 text-orange-800",
+    badge: "bg-orange-50 text-orange-700",
     dot: "bg-orange-500",
   },
   PALLIATIVE_NO_ACTIVE_TREATMENT: {
-    badge: "border-purple-200 bg-purple-100 text-purple-800",
+    badge: "bg-purple-50 text-purple-700",
     dot: "bg-purple-500",
   },
-  CANCER_RULED_OUT: {
-    badge: "border-blue-950 bg-blue-900 text-white",
-    dot: "bg-blue-900",
-  },
+  CANCER_RULED_OUT: { badge: "bg-blue-900 text-white", dot: "bg-blue-300" },
 }
 
 export const patientHealthSubcategoriesByPhase: Record<
@@ -174,7 +168,9 @@ export const patientHealthSubcategoryOptions: PatientHealthSubcategoryOption[] =
 export function getPatientHealthSubcategoryOption(
   value: PatientHealthSubcategory | null | undefined,
 ) {
-  return patientHealthSubcategoryOptions.find((option) => option.value === value)
+  return patientHealthSubcategoryOptions.find(
+    (option) => option.value === value,
+  )
 }
 
 export function requiresActiveDiagnosis(
