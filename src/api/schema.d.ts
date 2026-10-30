@@ -689,7 +689,7 @@ export interface paths {
         };
         /**
          * List visible follow-ups
-         * @description Agents see every follow-up of a patient when patientId is given; otherwise only their own unless agentId is given.
+         * @description Includes historical follow-ups and enrollments. Agents see every follow-up of a patient when patientId is given; otherwise only their own unless agentId is given.
          */
         get: operations["FollowUpsController_findAll"];
         put?: never;
@@ -3005,7 +3005,7 @@ export interface components {
             assignedAgentId: string;
             description: string;
             /** Format: date-time */
-            dueAt: string;
+            dueAt: string | null;
             /** Format: date */
             dueOn: string | null;
         };
@@ -3714,6 +3714,9 @@ export interface components {
             controlPeriodicity?: components["schemas"]["DurationDto"] | null;
             /** @enum {string} */
             status?: "ACTIVE" | "DISCHARGED";
+            /** Format: date */
+            dischargedOn?: string | null;
+            dischargeReason?: string | null;
         };
         CreateEnrollmentFamilyTalkInterestDto: {
             /** @description Código (o nombre) del catálogo educational_talk */
@@ -6054,11 +6057,11 @@ export interface components {
             controlPeriodicity?: components["schemas"]["DurationDto"] | null;
             /** @enum {string} */
             status?: "ACTIVE" | "DISCHARGED";
-            /** Format: uuid */
-            id?: string;
             /** Format: date */
             dischargedOn?: string | null;
             dischargeReason?: string | null;
+            /** Format: uuid */
+            id?: string;
         };
         HistoricalFollowUpSocialNoteDto: {
             /** @enum {string} */
@@ -6533,6 +6536,9 @@ export interface components {
             controlPeriodicity?: components["schemas"]["DurationDto"] | null;
             /** @enum {string} */
             status?: "ACTIVE" | "DISCHARGED";
+            /** Format: date */
+            dischargedOn?: string | null;
+            dischargeReason?: string | null;
         };
         UpdatePatientNonOncologicalFollowUpDto: {
             /** Format: uuid */

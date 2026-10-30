@@ -39,14 +39,15 @@ function symptomGroups(primaryCareQuestions: boolean): Group[] {
     },
     {
       title: "Diagnóstico",
+      // Opcional: el seguimiento puede ser antes de la cita y aún no hay resultado.
       showIf: yes("consulted"),
       questions: [
-        { id: "awaiting", label: "¿Está a la espera de un diagnóstico?", type: "yesno", required: true },
+        { id: "awaiting", label: "¿Está a la espera de un diagnóstico?", type: "yesno" },
         { id: "searchDuration", label: "¿Hace cuánto tiempo está esperando o buscando un diagnóstico?", type: "duration", units: ["DAY", "WEEK", "MONTH", "YEAR"], showIf: yes("awaiting") },
-        { id: "referral", label: "¿Le han brindado una hoja de referencia?", type: "tri", options: TRI_MENTION, required: true },
+        { id: "referral", label: "¿Le han brindado una hoja de referencia?", type: "tri", options: TRI_MENTION },
         { id: "referredCenter", label: "¿A dónde lo han referido?", type: "select", catalog: HEALTH_CENTER, required: true, showIf: yes("referral") },
         { id: "noReferralReason", label: "¿Sabe por qué no le brindaron la hoja de referencia?", type: "textarea", required: true, showIf: no("referral") },
-        { id: "diagnosed", label: "¿Le han brindado algún diagnóstico?", type: "yesno", required: true },
+        { id: "diagnosed", label: "¿Le han brindado algún diagnóstico?", type: "yesno" },
         {
           id: "diagnosisKind",
           label: "¿Qué tipo de diagnóstico?",

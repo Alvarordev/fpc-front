@@ -61,7 +61,7 @@ export const volunteersApi = {
     if (!data) throw new VolunteersApiError(response.status, error)
     return data.filter(
       (slot): slot is OperationalVolunteerAvailability =>
-        !slot.isHistorical && slot.startTime !== null && slot.endTime !== null,
+        slot.startTime !== null && slot.endTime !== null,
     )
   },
 

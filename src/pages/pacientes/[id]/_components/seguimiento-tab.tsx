@@ -36,7 +36,7 @@ const FILTERS = [
 type Filter = (typeof FILTERS)[number]["id"]
 
 const isOpen = (f: FollowUp) => f.status === "SCHEDULED" || f.status === "OVERDUE"
-const dateOf = (f: FollowUp) => f.completedAt ?? f.scheduledAt ?? f.createdAt
+const dateOf = (f: FollowUp) => f.completedAt ?? f.completedOn ?? f.scheduledAt ?? f.scheduledOn ?? f.createdAt
 
 function matches(f: FollowUp, filter: Filter) {
   if (filter === "pendientes") return isOpen(f)
@@ -164,7 +164,7 @@ export function SeguimientoTab({ pacienteId }: { pacienteId: string }) {
                         {f.isHistorical && <Chip>Carga histórica</Chip>}
                       </>
                     }
-                    meta={[formatTime(when), agentName(f.agentId), attempts ? `${attempts} ${attempts === 1 ? "intento" : "intentos"}` : null, f.nextFollowUpId ? "reagendado" : null].filter(Boolean).join(", ")}
+                    meta={[formatTime(f.completedAt ?? f.scheduledAt), agentName(f.agentId), attempts ? `${attempts} ${attempts === 1 ? "intento" : "intentos"}` : null, f.nextFollowUpId ? "reagendado" : null].filter(Boolean).join(", ")}
                     body={
                       f.notes && (
                         <span className="flex gap-2">

@@ -47,7 +47,7 @@ type WorkloadGroup = {
 
 function formatDate(date: string | null): string {
   if (!date) return "Sin fecha"
-  return new Date(date).toLocaleDateString("es-PE", {
+  return new Date(date.length === 10 ? `${date}T00:00:00` : date).toLocaleDateString("es-PE", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -315,8 +315,8 @@ export default function CallcenterPage() {
                   >
                     {group.followUps
                       .sort((a, b) =>
-                        (a.scheduledAt ?? "").localeCompare(
-                          b.scheduledAt ?? "",
+                        (a.scheduledOn ?? a.scheduledAt ?? "").localeCompare(
+                          b.scheduledOn ?? b.scheduledAt ?? "",
                         ),
                       )
                       .map((followUp) => (
@@ -351,7 +351,7 @@ export default function CallcenterPage() {
                             </p>
                             <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                               <Calendar className="size-3" />
-                              {formatDate(followUp.scheduledAt)}
+                              {formatDate(followUp.scheduledOn ?? followUp.scheduledAt)}
                               <Clock className="ml-1 size-3" />
                               {formatTime(followUp.scheduledAt)}
                             </p>
@@ -367,7 +367,7 @@ export default function CallcenterPage() {
                     empty="No hay recordatorios pendientes."
                   >
                     {group.reminders
-                      .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+                      .sort((a, b) => (a.dueOn ?? a.dueAt ?? "").localeCompare(b.dueOn ?? b.dueAt ?? ""))
                       .map((reminder) => (
                         <button
                           key={reminder.id}
@@ -393,7 +393,7 @@ export default function CallcenterPage() {
                             </p>
                             <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                               <Calendar className="size-3" />
-                              {formatDate(reminder.dueAt)}
+                              {formatDate(reminder.dueOn ?? reminder.dueAt)}
                             </p>
                           </div>
                           <ArrowRight className="text-muted-foreground size-4 shrink-0" />

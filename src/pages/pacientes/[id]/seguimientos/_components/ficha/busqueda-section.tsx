@@ -44,12 +44,14 @@ const statusGroups: Group[] = [
   },
 ]
 
+const hasDiagnosis = (v: Values) => Boolean(v.noDiagnosis?.trim())
+
 const nonOncologicalGroups: Group[] = [
   {
     title: "Diagnóstico no oncológico",
-    description: "Descartaron el cáncer. Registra lo que sí le diagnosticaron y el tratamiento que le dieron.",
+    description: "Si además le diagnosticaron otra enfermedad, regístrala con su tratamiento. Si no, déjalo vacío.",
     questions: [
-      { id: "noDiagnosis", label: "Diagnóstico no oncológico", type: "text", required: true, placeholder: "Ej. gastritis, anemia, hipertensión" },
+      { id: "noDiagnosis", label: "Diagnóstico no oncológico", type: "text", placeholder: "Opcional. Ej. gastritis, anemia, hipertensión" },
       { id: "noOccurredOn", label: "Fecha del hecho", type: "date" },
       { id: "noTreated", label: "¿Recibe tratamiento?", type: "tri", options: TRI_MENTION },
       { id: "noTreatment", label: "Nombre del tratamiento", type: "text", showIf: yes("noTreated") },
@@ -121,7 +123,8 @@ function statusDraft(v: Values): DiagnosticStatusDraft | undefined {
 }
 
 function nonOncologicalDraft(v: Values, previous: NonOncologicalFollowUpDraft | undefined, eventId: string | null): NonOncologicalFollowUpDraft | undefined {
-  if (!complete(nonOncologicalGroups, v)) return undefined
+  // Sin diagnóstico no oncológico no hay nada que registrar: el descarte no lo exige.
+  if (!hasDiagnosis(v) || !complete(nonOncologicalGroups, v)) return undefined
   const treated = toTri(v.noTreated)
   const controls = toTri(v.noControls)
   const discharged = v.noStatus === "DISCHARGED"

@@ -258,6 +258,8 @@ export function FollowUpContent() {
                 onViewTreatment={viewTreatment}
               />
             </Card>
+            {/* Opcional, pero conviene tenerlas a la vista antes de decidir los siguientes pasos. */}
+            <PatientReferralsSection patientId={patientId!} followUpId={followUp.id} />
           </StepSection>
           <StepSection n={3} title="Decide los siguientes pasos" done={Boolean(draftStore.psico || draftStore.alert || nextFollowUpDraft || draftStore.reminders.length)}>
             <DerivedActionsCard onOpen={setDerived} />
@@ -294,8 +296,8 @@ export function FollowUpContent() {
         />
       )}
 
+      {!(canAct && isOpen) && <PatientReferralsSection patientId={patientId!} followUpId={followUp.id} />}
       <PatientChangeLog patientId={patientId!} followUpId={followUp.id} title="Qué cambió en este contacto" description="Cambios registrados durante este seguimiento." />
-      <PatientReferralsSection patientId={patientId!} followUpId={followUp.id} />
 
       {derived && (
         <DerivedActionModal action={derived} patientId={followUp.subjectPatientId} followUpId={followUp.id} agents={agentsQuery.data} requiresAgentSelection={requiresAgentSelection} onClose={() => setDerived(null)} />
