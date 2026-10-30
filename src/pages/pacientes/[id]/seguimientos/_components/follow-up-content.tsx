@@ -29,7 +29,8 @@ import { DerivedActionsCard, NotesDock, type DerivedAction } from "./follow-up-a
 import { FollowUpAttemptsPanel } from "./follow-up-attempts-panel"
 import { FollowUpClosedView, type ClosedStatus } from "./follow-up-closed-view"
 import { FollowUpHeader } from "./follow-up-header"
-import { FollowUpReschedulePanel } from "./follow-up-reschedule-panel"
+import { canRescheduleFollowUp } from "../_lib/follow-up-reschedule"
+import { FollowUpRescheduleModal, FollowUpReschedulePanel } from "./follow-up-reschedule-panel"
 import { FollowUpStatusConfirmationDialog, type FollowUpStatusAction } from "./follow-up-status-confirmation-dialog"
 
 // Pantalla de un seguimiento. Abierto, se registra en tres pasos (contactar,
@@ -49,6 +50,7 @@ export function FollowUpContent() {
   const [editing, setEditing] = useState<{ followUpId: string; status: ClosedStatus } | null>(null)
   const [derived, setDerived] = useState<DerivedAction | null>(null)
   const [isCompleting, setIsCompleting] = useState(false)
+  const [rescheduling, setRescheduling] = useState(false)
   const [confirmation, setConfirmation] = useState<{ action: FollowUpStatusAction; source: "open" | "edit" } | null>(null)
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<PatientDiagnosis | null>(null)
   const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null)
@@ -238,9 +240,11 @@ export function FollowUpContent() {
         isOpen={isOpen}
         readOnlyNote={user?.role === "AGENT" && !canAct}
         onBack={back}
+        onReschedule={canAct && canRescheduleFollowUp(followUp) ? () => setRescheduling(true) : undefined}
         onEdit={canEditClosed && !isEditing ? () => setEditing({ followUpId: followUp.id, status: followUp.status as ClosedStatus }) : undefined}
       />
-      <FollowUpReschedulePanel followUp={followUp} patientId={patientId!} canReschedule={canAct} />
+      <FollowUpReschedulePanel followUp={followUp} patientId={patientId!} />
+      {canAct && <FollowUpRescheduleModal followUp={followUp} patientId={patientId!} open={rescheduling} onClose={() => setRescheduling(false)} />}
 
       {canAct && isOpen ? (
         <>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Fingerprint, History, Pencil, Phone, Sparkles } from "lucide-react"
+import { ArrowLeft, CalendarClock, Fingerprint, History, Pencil, Phone, Sparkles } from "lucide-react"
 import type { FollowUp } from "@/api/follow-ups"
 import type { PatientTimelineEvent } from "@/api/patient-timeline"
 import { patientsApi, type PatientDetailsResponse } from "@/api/patients"
@@ -32,6 +32,7 @@ export function FollowUpHeader({
   readOnlyNote,
   onBack,
   onEdit,
+  onReschedule,
 }: {
   followUp: FollowUp
   patient: PatientDetailsResponse | undefined
@@ -42,6 +43,7 @@ export function FollowUpHeader({
   readOnlyNote: boolean
   onBack: () => void
   onEdit?: () => void
+  onReschedule?: () => void
 }) {
   const { alerts } = usePatientAlerts(patient)
   const summary = useQuery({ queryKey: ["patient-summary", followUp.subjectPatientId], queryFn: () => patientsApi.getSummary(followUp.subjectPatientId), staleTime: 5 * 60_000, refetchOnWindowFocus: false, retry: false }).data?.summary
@@ -102,10 +104,19 @@ export function FollowUpHeader({
               {agentName ? `, a cargo de ${agentName}` : ""}
             </p>
           </div>
-          {onEdit && (
-            <Button icon={Pencil} onClick={onEdit}>
-              Editar seguimiento
-            </Button>
+          {(onReschedule || onEdit) && (
+            <div className="flex flex-wrap gap-2">
+              {onReschedule && (
+                <Button icon={CalendarClock} onClick={onReschedule}>
+                  Reprogramar
+                </Button>
+              )}
+              {onEdit && (
+                <Button icon={Pencil} onClick={onEdit}>
+                  Editar seguimiento
+                </Button>
+              )}
+            </div>
           )}
         </div>
         {(previous || summary) && (
