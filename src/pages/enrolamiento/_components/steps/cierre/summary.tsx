@@ -9,6 +9,7 @@ export function CierreSummary() {
     ["Paciente", draft.patientData.fullName || "—"],
     ["DNI", draft.patientData.dni || "—"],
     ["Teléfono", draft.patientData.primaryPhone || "—"],
+    ...(draft.patientData.email ? [["Correo", draft.patientData.email] as [string, string]] : []),
   ]
 
   if (categoriaClinica === "CANCER_DIAGNOSIS" && typeof meta.currentlyAttendingConsultations === "boolean") {

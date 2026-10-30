@@ -33,7 +33,7 @@ export const identityGroups: Group[] = [
 export function contactGroups(phoneRequired: boolean): Group[] {
   return [
     {
-      title: "Teléfonos del paciente",
+      title: "Contacto del paciente",
       description: phoneRequired
         ? "Se guardan en la ficha del paciente."
         : "Opcional. Se guardan en la ficha aunque el contacto principal sea otra persona.",
@@ -41,6 +41,7 @@ export function contactGroups(phoneRequired: boolean): Group[] {
         { id: "primaryPhone", label: "Teléfono principal", type: "text", required: phoneRequired, placeholder: "987654321" },
         { id: "secondaryPhone", label: "Teléfono adicional o fijo", type: "text", placeholder: "01 555 1234" },
         { id: "whatsapp", label: "¿Tiene WhatsApp?", type: "yesno" },
+        { id: "email", label: "Correo electrónico", type: "text", placeholder: "nombre@correo.com" },
       ],
     },
   ]

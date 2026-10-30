@@ -516,6 +516,7 @@ export function buildEnrollmentPayload({
               ? { primaryPhone: value(draft.patientData.primaryPhone) }
               : {}),
             secondaryPhone: value(draft.patientData.secondaryPhone),
+            email: value(draft.patientData.email),
             ...(value(draft.patientData.dni)
               ? {
                   documentType: draft.patientData.documentType ?? "DNI",

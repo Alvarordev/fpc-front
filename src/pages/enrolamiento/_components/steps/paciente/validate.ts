@@ -38,6 +38,7 @@ export function validatePaciente(
 
   const documentError = documentNumberError(pd.documentType ?? "DNI", pd.dni)
   if (documentError) return documentError
+  if (pd.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pd.email)) return "El correo no es válido. Revísalo o déjalo vacío."
 
   const temporary = draft.addresses[1]
   if (draft.addresses.length > 1 && temporary) {

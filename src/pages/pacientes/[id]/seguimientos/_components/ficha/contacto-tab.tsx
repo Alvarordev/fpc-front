@@ -40,6 +40,7 @@ function contactGroups(patient: PatientDetailsResponse, companions: CompanionPat
         { id: "name", label: "Nombre", type: "text", required: true, showIf: isCompanion },
         { id: "phone", label: "Celular principal", type: "text", required: true, placeholder: "9 dígitos" },
         { id: "phone2", label: "Celular auxiliar", type: "text" },
+        { id: "email", label: "Correo electrónico", type: "text", placeholder: "Opcional. nombre@correo.com" },
         { id: "relationship", label: "Parentesco", type: "select", catalog: "companion_relationship", showIf: isCompanion },
         { id: "gender", label: "Género", type: "choice", options: GENDERS, showIf: isCompanion },
         { id: "primary", label: "¿Es el contacto principal?", type: "yesno", showIf: (v) => isCompanion(v) && v.person !== NEW },
@@ -48,6 +49,8 @@ function contactGroups(patient: PatientDetailsResponse, companions: CompanionPat
     },
   ]
 }
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function valuesFor(person: string, patient: PatientDetailsResponse, companions: CompanionPatient[]): Values {
   if (person === NEW) return { person }
@@ -58,6 +61,7 @@ function valuesFor(person: string, patient: PatientDetailsResponse, companions: 
     name: p?.fullName ?? patient.fullName,
     phone: p?.primaryPhone ?? (link ? null : patient.primaryPhone),
     phone2: p?.secondaryPhone ?? (link ? null : patient.secondaryPhone),
+    email: p?.email ?? (link ? null : patient.email),
     relationship: link?.relationship,
     gender: p?.gender,
     primary: fromBool(link?.isPrimaryContact),
@@ -81,7 +85,10 @@ export function ContactoTab({ onDraftsChange, patient, companions, followUpId, h
 
   const mutation = useMutation({
     mutationFn: async (v: Values) => {
-      const phones = { primaryPhone: v.phone!.trim(), secondaryPhone: text(v.phone2) }
+      const email = text(v.email)
+      if (email && !EMAIL.test(email)) throw new Error("El correo no es válido. Revísalo o déjalo vacío.")
+      // El correo es opcional: solo se envía si se escribió.
+      const phones = { primaryPhone: v.phone!.trim(), secondaryPhone: text(v.phone2), ...(email ? { email } : {}) }
       const person = { fullName: v.name?.trim() ?? "", ...phones, gender: v.gender ?? undefined }
       let interlocutorId = patient.id
       if (v.person === NEW) {

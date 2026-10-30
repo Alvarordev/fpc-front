@@ -45,7 +45,7 @@ const SECTIONS: Record<string, { icon: LucideIcon; tone: Tone }> = {
   "Relación con el paciente": { icon: HeartHandshake, tone: "violet" },
   "Respuesta del paciente": { icon: MessageSquareText, tone: "blue" },
   Identidad: { icon: IdCard, tone: "blue" },
-  "Teléfonos del paciente": { icon: Phone, tone: "green" },
+  "Contacto del paciente": { icon: Phone, tone: "green" },
   Acompañantes: { icon: Users, tone: "violet" },
   Procedencia: { icon: Globe, tone: "teal" },
   "Dirección actual": { icon: MapPin, tone: "teal" },

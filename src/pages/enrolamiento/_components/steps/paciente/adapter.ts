@@ -40,6 +40,7 @@ export function pacienteValues(draft: EnrollmentDraft, extra: { historical: bool
     gender: pd.gender,
     primaryPhone: pd.primaryPhone,
     secondaryPhone: pd.secondaryPhone,
+    email: pd.email,
     whatsapp: pd.hasWhatsapp === true ? "yes" : pd.hasWhatsapp === false ? "no" : null,
     bornInPeru: born,
     birthDepartment: details.birthDepartment,
@@ -113,6 +114,8 @@ export function applyPaciente(draft: EnrollmentDraft, id: string, value: string 
       return { patientData: { ...pd, secondaryPhone: value } }
     case "whatsapp":
       return { patientData: { ...pd, hasWhatsapp: value === "yes" } }
+    case "email":
+      return { patientData: { ...pd, email: value?.trim() || undefined } }
     case "bornInPeru": {
       const inPeru = value === "yes"
       return {
