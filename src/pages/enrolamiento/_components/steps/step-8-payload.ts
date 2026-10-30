@@ -12,6 +12,7 @@ import { toDurationInput } from "@/types/duration"
 import { fixedWaitTime } from "@/types/wait-time-recall"
 import { housingPayloadFields } from "../../_utils/address-housing"
 import type { EnrollmentContactSource } from "@/types"
+import { enrollmentContacts } from "../../_utils/contacts"
 
 interface BaseBuildEnrollmentPayloadOptions {
   draft: EnrollmentDraft
@@ -62,7 +63,7 @@ function duration(value: Parameters<typeof toDurationInput>[0], field: string) {
   return result
 }
 
-function contactPerson(person: CompanionDraft) {
+export function contactPerson(person: CompanionDraft) {
   const fullName = value(person.fullName)
   const primaryPhone = value(person.primaryPhone)
   const relationship = value(person.relationship)
@@ -491,43 +492,17 @@ export function buildEnrollmentPayload({
     (typeof psychooncologySupport.excessiveWorry === "boolean" ||
       psychooncologySupport.emotionalDistressScore !== undefined ||
       psychooncologySupport.preferredModality !== undefined)
-  const secondaryContactSource = draft.secondaryContactEnabled
-    ? (draft.secondaryContactSource ??
-      (callerIsComplete && primaryContactSource !== "CALLER"
-        ? "CALLER"
-        : "NEW"))
-    : undefined
-  if (secondaryContactSource === "CALLER" && !callerIsComplete)
-    throw new Error("Completa los datos de quien llama")
-  const contacts = [
-    {
-      role: "PRIMARY" as const,
-      source: primaryContactSource as EnrollmentContactSource,
-      ...(primaryContactSource === "NEW"
-        ? { person: contactPerson(draft.primaryContact) }
-        : {}),
-    },
-    ...(draft.secondaryContactEnabled
-      ? [
-          {
-            role: "SECONDARY" as const,
-            source: secondaryContactSource as EnrollmentContactSource,
-            ...(secondaryContactSource === "NEW"
-              ? { person: contactPerson(draft.secondaryContact) }
-              : {}),
-          },
-          ...(draft.additionalSecondaryContacts ?? []).map((person) => ({
-            role: "SECONDARY" as const,
-            source: "NEW" as EnrollmentContactSource,
-            person: contactPerson(person),
-          })),
-        ]
-      : []),
-  ]
-  const hasCaller =
-    isFamily ||
-    primaryContactSource === "CALLER" ||
-    secondaryContactSource === "CALLER"
+  const linked = enrollmentContacts(
+    draft,
+    primaryContactSource as EnrollmentContactSource,
+    callerIsComplete,
+  )
+  const contacts = linked.contacts.map((contact) =>
+    contact.person
+      ? { ...contact, person: contactPerson(contact.person) }
+      : contact,
+  )
+  const hasCaller = isFamily || linked.callerIsContact
   if (hasCaller && !callerIsComplete)
     throw new Error("Completa los datos de quien llama")
 

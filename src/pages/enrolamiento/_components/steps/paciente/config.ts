@@ -1,4 +1,4 @@
-import { yes, type Group } from "@/components/ds/questions"
+import { yes, type Group, type Option } from "@/components/ds/questions"
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
 import { UNKNOWN_BIRTH_DEPARTMENT } from "@/types"
 import {
@@ -137,39 +137,27 @@ export const profileGroups: Group[] = [
   },
 ]
 
-export function companionGroups(callerReady: boolean): Group[] {
+/** Contactos: el principal (quien recibe el seguimiento) y si hay secundarios. */
+export function companionGroups(primaryOptions: Option[]): Group[] {
   return [
     {
-      title: "Contacto principal",
+      title: "",
       questions: [
         {
           id: "primarySource",
-          label: "¿Quién será el contacto principal?",
+          label: "¿Quién es el contacto principal?",
           type: "choice",
           required: true,
           wide: true,
-          optionsFrom: (v) => [
-            ...(v.minor === "yes" ? [] : [{ value: "PATIENT", label: "El paciente" }]),
-            ...(callerReady ? [{ value: "CALLER", label: "La persona que llama" }] : []),
-            { value: "NEW", label: "Registrar un acompañante" },
-          ],
+          options: primaryOptions,
+          hint: "Recibe las llamadas de seguimiento.",
         },
-      ],
-    },
-    {
-      title: "Contacto secundario",
-      questions: [
-        { id: "secondaryEnabled", label: "¿Desea registrar un contacto secundario?", type: "yesno", wide: true },
         {
-          id: "secondarySource",
-          label: "Origen del contacto secundario",
-          type: "choice",
+          id: "secondaryEnabled",
+          label: "¿Tiene contactos secundarios?",
+          type: "yesno",
           wide: true,
-          showIf: yes("secondaryEnabled"),
-          optionsFrom: (v) => [
-            ...(callerReady && v.primarySource !== "CALLER" ? [{ value: "CALLER", label: "La persona que llama" }] : []),
-            { value: "NEW", label: "Registrar un acompañante" },
-          ],
+          hint: "A quién llamar si no se ubica al contacto principal.",
         },
       ],
     },
@@ -178,7 +166,8 @@ export function companionGroups(callerReady: boolean): Group[] {
 
 export const personGroups: Group[] = [
   {
-    title: "Acompañante",
+    // Sin título: el modal ya dice qué se agrega.
+    title: "",
     questions: [
       { id: "fullName", label: "Nombre completo", type: "text", required: true, placeholder: "Nombre y apellidos" },
       { id: "relationship", label: "Parentesco con el paciente", type: "select", catalog: "companion_relationship", required: true },

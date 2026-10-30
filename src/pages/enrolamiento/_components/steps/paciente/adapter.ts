@@ -7,14 +7,12 @@ import type {
 import type {
   EducationLevel,
   EnrollmentAddressRequest,
-  EnrollmentContactSource,
   EpsProvider,
   InsuranceType,
   PeruDepartment,
 } from "@/types"
 import { CATALOG_OTHER_CODE } from "../../../_utils/address-housing"
-
-const EMPTY_CONTACT: CompanionDraft = { fullName: "", primaryPhone: "" }
+import { choosePrimary, NEW_PERSON, primaryValue } from "../../../_utils/contacts"
 
 function yn(value: boolean | null | undefined) {
   return value === true ? "yes" : value === false ? "no" : null
@@ -36,7 +34,6 @@ export function pacienteValues(draft: EnrollmentDraft, extra: { historical: bool
   const insurance = draft.insurance
   const meta = draft.enrollmentMetadata
   const born = details.bornInPeru === true ? "yes" : details.bornInPeru === false ? "no" : details.birthCountry ? "no" : details.birthDepartment ? "yes" : null
-  const primarySource = draft.primaryContactSource ?? (extra.minor && extra.callerReady ? "CALLER" : null)
   return compact({
     fullName: pd.fullName,
     birthDate: pd.birthDate,
@@ -78,9 +75,8 @@ export function pacienteValues(draft: EnrollmentDraft, extra: { historical: bool
     eps: insurance.epsProvider,
     entry: meta.programEntryPoint,
     entrySub: meta.programEntrySubSource,
-    primarySource,
+    primarySource: primaryValue(draft, extra.minor, extra.callerReady),
     secondaryEnabled: draft.secondaryContactEnabled ? "yes" : "no",
-    secondarySource: draft.secondaryContactSource,
     historical: extra.historical ? "yes" : "no",
     minor: extra.minor ? "yes" : "no",
   })
@@ -92,7 +88,7 @@ function cost(value: string | null) {
   return Number.isFinite(amount) ? amount : undefined
 }
 
-export function applyPaciente(draft: EnrollmentDraft, id: string, value: string | null, callerReady: boolean): Partial<EnrollmentDraft> {
+export function applyPaciente(draft: EnrollmentDraft, id: string, value: string | null): Partial<EnrollmentDraft> {
   const pd = draft.patientData
   const details = draft.details
   const meta = draft.enrollmentMetadata
@@ -204,31 +200,11 @@ export function applyPaciente(draft: EnrollmentDraft, id: string, value: string 
       return { enrollmentMetadata: { ...meta, programEntryPoint: value || undefined, programEntrySubSource: undefined } }
     case "entrySub":
       return { enrollmentMetadata: { ...meta, programEntrySubSource: value || undefined } }
-    case "primarySource": {
-      const source = (value || undefined) as EnrollmentContactSource | undefined
-      return {
-        primaryContactSource: source,
-        primaryContact: source === "NEW" ? draft.primaryContact : EMPTY_CONTACT,
-        ...(source === "CALLER" && draft.secondaryContactSource === "CALLER"
-          ? { secondaryContactSource: "NEW" as const, secondaryContact: EMPTY_CONTACT }
-          : {}),
-      }
-    }
-    case "secondaryEnabled": {
-      const enabled = value === "yes"
-      const defaultSource: EnrollmentContactSource = callerReady && draft.primaryContactSource !== "CALLER" ? "CALLER" : "NEW"
-      return {
-        secondaryContactEnabled: enabled,
-        secondaryContactSource: enabled ? (draft.secondaryContactSource ?? defaultSource) : undefined,
-        secondaryContact: enabled ? draft.secondaryContact : EMPTY_CONTACT,
-        additionalSecondaryContacts: enabled ? draft.additionalSecondaryContacts : [],
-      }
-    }
-    case "secondarySource":
-      return {
-        secondaryContactSource: (value || undefined) as EnrollmentContactSource | undefined,
-        secondaryContact: value === "NEW" ? draft.secondaryContact : EMPTY_CONTACT,
-      }
+    case "primarySource":
+      // "Otra persona" no cambia nada aquí: abre el alta del acompañante.
+      return value === NEW_PERSON ? {} : choosePrimary(draft, value)
+    case "secondaryEnabled":
+      return { secondaryContactEnabled: value === "yes" }
     default:
       return {}
   }

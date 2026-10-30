@@ -13,6 +13,7 @@ import { IdentitySection } from "./identity"
 import { ProfileSection } from "./profile"
 import { ResidenceSection } from "./residence"
 import { validatePaciente } from "./validate"
+import { primaryOptions } from "../../../_utils/contacts"
 
 export function Step5Datos({ embedded = false, historical = false }: { embedded?: boolean; historical?: boolean }) {
   const { draft, updateDraft, nextStep, prevStep } = useEnrollmentStore()
@@ -23,12 +24,12 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
   const values = pacienteValues(draft, { historical, minor, callerReady })
   const phoneRequired = values.primarySource === "PATIENT" || !historical
   const phones = contactGroups(phoneRequired)
-  const companions = companionGroups(callerReady)
+  const companions = companionGroups(primaryOptions(draft, minor, callerReady))
   const groups = [...identityGroups, ...phones, ...residenceGroups, ...profileGroups, ...companions]
   const gate = useStepGate(groups, values, () => validatePaciente(draft, historical, { state: lookup.state, matchId: lookup.match?.id }, callerReady, minor))
 
   function onChange(id: string, value: string | null) {
-    updateDraft(applyPaciente(draft, id, value, callerReady))
+    updateDraft(applyPaciente(draft, id, value))
   }
 
   function onDocument(type: IdentityDocumentType, number: string) {
@@ -61,6 +62,7 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
         embedded={embedded}
         draft={draft}
         callerReady={callerReady}
+        minor={minor}
         groups={companions}
         values={values}
         showMissing={gate.showMissing}

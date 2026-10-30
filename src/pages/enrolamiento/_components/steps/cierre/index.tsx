@@ -9,14 +9,29 @@ import { Card } from "@/components/ds/card"
 import { InlineAlert } from "@/components/ds/inline-alert"
 import { QuestionForm } from "@/components/ds/question-form"
 import { useAuthStore } from "@/store/auth-store"
-import { useEnrollmentStore } from "../../../_store/enrollment-store"
+import { useEnrollmentStore, type EnrollmentDraft } from "../../../_store/enrollment-store"
 import { StepContainer, StepNav } from "../../shared"
-import { buildEnrollmentPayload } from "../step-8-payload"
+import { buildEnrollmentPayload, contactPerson } from "../step-8-payload"
 import { useStepGate } from "../use-step-gate"
 import { applyCierre, cierreValues } from "./adapter"
 import { cierreGroups, validateCierre } from "./config"
 import { CierreSummary } from "./summary"
 import { sectionIcon, withIcons } from "../../../_utils/section-icons"
+import { patientsApi } from "@/api/patients"
+import { unlinkedPeople } from "../../../_utils/contacts"
+
+/**
+ * La API solo da de alta acompañantes nuevos como contacto. Los que no se
+ * marcaron como contacto se registran aquí, ya enrolado el paciente.
+ */
+async function registerUnlinked(patientId: string, draft: EnrollmentDraft) {
+  const people = unlinkedPeople(draft)
+  const results = await Promise.allSettled(
+    people.map((person) => patientsApi.createCompanion(patientId, { ...contactPerson(person), isPrimaryContact: false, isCaregiver: false })),
+  )
+  const failed = results.filter((result) => result.status === "rejected").length
+  if (failed) toast.warning(failed === 1 ? "No se pudo registrar un acompañante" : `No se pudieron registrar ${failed} acompañantes`, { description: "Agrégalo desde la ficha del paciente, en Acompañantes." })
+}
 
 export function Step8Cierre({ historical = false, embedded = false }: { historical?: boolean; embedded?: boolean }) {
   const draft = useEnrollmentStore((state) => state.draft)
@@ -73,11 +88,13 @@ export function Step8Cierre({ historical = false, embedded = false }: { historic
           }),
         )
         setHistoricalResult(result.patientId, result.followUpId)
+        await registerUnlinked(result.patientId, current)
         return result
       }
-      await enrollmentsApi.create(
+      const enrollment = await enrollmentsApi.create(
         buildEnrollmentPayload({ draft: current, agentId, categoriaClinica: state.categoriaClinica }),
       )
+      await registerUnlinked(enrollment.patientId, current)
     },
     onSuccess: (result) => {
       completeEnrollment()
