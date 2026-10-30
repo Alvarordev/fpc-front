@@ -14,14 +14,12 @@ import { Field, TextArea } from "@/components/ds/form"
 import { Modal } from "@/components/ds/modal"
 import type { Tone } from "@/components/ds/tone"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { useAuthStore } from "@/store/auth-store"
-import { AgendaSessionResultDialog } from "@/pages/agenda/_components/agenda-session-result-dialog"
-import { AgendaSessionResultSheet } from "@/pages/agenda/_components/agenda-session-result-sheet"
 import { daysFromToday, formatTime, capitalize } from "../_lib/ficha-format"
 import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
 import { PsychooncologySessionDetailDialog } from "./psychooncology-session-detail-dialog"
 import { PsychoCyclePanel } from "./psycho-cycle-panel"
+import { PsychoSessionResultModal } from "./psycho-session-result-modal"
 import { PsychoSessionActions } from "./psycho-session-actions"
 import { SchedulePsychooncologyDialog, type SchedulePsychooncologySubmitInput } from "./schedule-psychooncology-dialog"
 import { UnmanagedNoShowsBanner } from "./unmanaged-no-shows-banner"
@@ -154,7 +152,6 @@ function PsychoSessionCard({
 export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
-  const isMobile = useIsMobile()
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [editingAppointment, setEditingAppointment] =
     useState<PsychooncologyAppointment | null>(null)
@@ -162,7 +159,6 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
     useState<PsychooncologyAppointment | null>(null)
   const [resultAppointment, setResultAppointment] =
     useState<PsychooncologyAppointment | null>(null)
-  const [resultOpen, setResultOpen] = useState(false)
   const [noAnswerTarget, setNoAnswerTarget] =
     useState<PsychooncologyAppointment | null>(null)
   const [noAnswerNote, setNoAnswerNote] = useState("")
@@ -317,12 +313,6 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
   function openResult(appointment: PsychooncologyAppointment) {
     setDetailAppointment(null)
     setResultAppointment(appointment)
-    setResultOpen(true)
-  }
-
-  function closeResult(nextOpen: boolean) {
-    setResultOpen(nextOpen)
-    if (!nextOpen) setResultAppointment(null)
   }
 
   async function submitNoAnswer() {
@@ -443,11 +433,7 @@ export function PsicoTab({ pacienteId, patientName }: PsicoTabProps) {
         }
       />
 
-      {isMobile ? (
-        <AgendaSessionResultSheet open={resultOpen} onOpenChange={closeResult} appointment={resultAppointment} patientName={patientName} patientId={pacienteId} volunteerId={ownVolunteerId} />
-      ) : (
-        <AgendaSessionResultDialog open={resultOpen} onOpenChange={closeResult} appointment={resultAppointment} patientName={patientName} patientId={pacienteId} volunteerId={ownVolunteerId} />
-      )}
+      {resultAppointment && <PsychoSessionResultModal appointment={resultAppointment} patientName={patientName} onClose={() => setResultAppointment(null)} />}
 
       {noAnswerTarget && (
         <Modal

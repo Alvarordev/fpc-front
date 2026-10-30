@@ -1,40 +1,21 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Share2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { patientDocumentsApi } from "@/api/patient-documents"
-import {
-  referralsApi,
-  type CreateReferralInput,
-  type Referral,
-} from "@/api/referrals"
-import { CatalogSelect, CatalogValue } from "@/components/catalog-select"
-import { HealthCenterCombobox } from "@/components/health-center-combobox"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Trash2 } from "lucide-react"
+import { referralsApi, type CreateReferralInput, type Referral } from "@/api/referrals"
+import { HEALTH_CENTER } from "@/components/app-catalog-source"
+import { CatalogValue } from "@/components/catalog-select"
 import { Chip } from "@/components/ds/badge"
 import { Button as DsButton, IconButton } from "@/components/ds/button"
-import { Card as DsCard, Item } from "@/components/ds/card"
+import { Card as DsCard, Item, Panel } from "@/components/ds/card"
+import { FileField } from "@/components/ds/form"
 import { Modal } from "@/components/ds/modal"
+import { QuestionForm } from "@/components/ds/question-form"
+import { progress, type Group, type Values } from "@/components/ds/questions"
 import type { Tone } from "@/components/ds/tone"
 import { useAuthStore } from "@/store/auth-store"
+import { compact, fromBool } from "../seguimientos/_components/ficha/answers"
 
 const TYPE_ITEMS: { value: CreateReferralInput["type"]; label: string }[] = [
   { value: "FORMAL", label: "Formal" },
@@ -203,6 +184,33 @@ export function PatientReferralsSection({
 
 const REFERRAL_TONE: Record<string, Tone> = { REQUESTED: "amber", ISSUED: "blue", ATTENDED: "green" }
 
+const REFERRAL_TYPES: { value: CreateReferralInput["type"]; label: string }[] = TYPE_ITEMS
+
+function referralGroups(): Group[] {
+  return [
+    {
+      title: "Ruta",
+      questions: [
+        { id: "origin", label: "Establecimiento de origen", type: "select", catalog: HEALTH_CENTER, wide: true },
+        { id: "destination", label: "Establecimiento de destino", type: "select", catalog: HEALTH_CENTER, required: true, wide: true },
+        { id: "specialty", label: "Especialidad", type: "select", catalog: "medical_specialty" },
+        { id: "type", label: "Tipo", type: "choice", required: true, options: REFERRAL_TYPES },
+        { id: "status", label: "Estado", type: "choice", required: true, options: STATUS_ITEMS, wide: true },
+        { id: "viaSepa", label: "¿SEPA intervino?", type: "yesno", required: true },
+      ],
+    },
+    {
+      title: "Fechas",
+      questions: [
+        { id: "requestedOn", label: "Solicitada", type: "date", required: true },
+        { id: "issuedOn", label: "Emitida", type: "date" },
+        { id: "attendedOn", label: "Atendida", type: "date" },
+        { id: "notes", label: "Notas", type: "textarea", placeholder: "Opcional" },
+      ],
+    },
+  ]
+}
+
 function ReferralFormDialog({
   open,
   patientId,
@@ -218,239 +226,103 @@ function ReferralFormDialog({
   onOpenChange: (open: boolean) => void
   onSaved: () => Promise<void>
 }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{referral ? "Editar derivación" : "Nueva derivación"}</DialogTitle>
-          <DialogDescription>
-            Origen, destino, tipo y estado. Si tienes la hoja, súbela para vincularla.
-          </DialogDescription>
-        </DialogHeader>
-        {open && (
-          <ReferralForm
-            patientId={patientId}
-            followUpId={followUpId}
-            referral={referral}
-            onCancel={() => onOpenChange(false)}
-            onSaved={async () => {
-              await onSaved()
-              onOpenChange(false)
-            }}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
-  )
+  if (!open) return null
+  return <ReferralForm patientId={patientId} followUpId={followUpId} referral={referral} onClose={() => onOpenChange(false)} onSaved={onSaved} />
 }
 
 function ReferralForm({
   patientId,
   followUpId,
-  referral,
-  onCancel,
+  referral: r,
+  onClose,
   onSaved,
 }: {
   patientId: string
   followUpId?: string
   referral: Referral | null
-  onCancel: () => void
+  onClose: () => void
   onSaved: () => Promise<void>
 }) {
-  const [type, setType] = useState<CreateReferralInput["type"]>(referral?.type ?? "FORMAL")
-  const [status, setStatus] = useState<CreateReferralInput["status"]>(
-    referral?.status ?? "REQUESTED",
+  const [values, setValues] = useState<Values>(() =>
+    compact({
+      origin: r?.originHealthCenter?.id,
+      destination: r?.destinationHealthCenter?.id,
+      specialty: r?.specialty,
+      type: r?.type ?? "FORMAL",
+      status: r?.status ?? "REQUESTED",
+      viaSepa: fromBool(r?.viaSepa ?? false),
+      requestedOn: r?.requestedOn ?? today(),
+      issuedOn: r?.issuedOn,
+      attendedOn: r?.attendedOn,
+      notes: r?.notes,
+    }),
   )
-  const [requestedOn, setRequestedOn] = useState(referral?.requestedOn ?? today())
-  const [issuedOn, setIssuedOn] = useState(referral?.issuedOn ?? "")
-  const [attendedOn, setAttendedOn] = useState(referral?.attendedOn ?? "")
-  const [originId, setOriginId] = useState<string | null>(referral?.originHealthCenter?.id ?? null)
-  const [destinationId, setDestinationId] = useState<string | null>(
-    referral?.destinationHealthCenter?.id ?? null,
-  )
-  const [specialty, setSpecialty] = useState<string | null>(referral?.specialty ?? null)
-  const [viaSepa, setViaSepa] = useState(referral?.viaSepa ?? false)
-  const [notes, setNotes] = useState(referral?.notes ?? "")
   const [file, setFile] = useState<File | null>(null)
+  const groups = referralGroups()
+  const { missingRequired } = progress(groups, values)
 
   const mutation = useMutation({
     mutationFn: async () => {
-      let referralSheetDocumentId = referral?.referralSheetDocumentId ?? undefined
+      let referralSheetDocumentId = r?.referralSheetDocumentId ?? undefined
       if (file) {
-        const document = await patientDocumentsApi.create(patientId, {
-          file,
-          documentType: "REFERRAL_OR_COUNTERREFERRAL",
-          description: "Hoja de referencia",
-        })
+        const document = await patientDocumentsApi.create(patientId, { file, documentType: "REFERRAL_OR_COUNTERREFERRAL", description: "Hoja de referencia" })
         referralSheetDocumentId = document.id
       }
       const body = {
-        type,
-        status,
-        requestedOn,
-        viaSepa,
-        originHealthCenterId: originId,
-        destinationHealthCenterId: destinationId,
-        specialty,
-        issuedOn: issuedOn || null,
-        attendedOn: attendedOn || null,
-        notes: notes.trim() || null,
-        followUpId: referral?.followUpId ?? followUpId ?? null,
+        type: values.type as CreateReferralInput["type"],
+        status: values.status as CreateReferralInput["status"],
+        requestedOn: values.requestedOn!,
+        viaSepa: values.viaSepa === "yes",
+        originHealthCenterId: values.origin ?? null,
+        destinationHealthCenterId: values.destination ?? null,
+        specialty: values.specialty ?? null,
+        issuedOn: values.issuedOn ?? null,
+        attendedOn: values.attendedOn ?? null,
+        notes: values.notes?.trim() || null,
+        followUpId: r?.followUpId ?? followUpId ?? null,
         referralSheetDocumentId: referralSheetDocumentId ?? null,
       }
-      if (referral) return referralsApi.update(patientId, referral.id, body)
+      if (r) return referralsApi.update(patientId, r.id, body)
       return referralsApi.create(patientId, body)
     },
     onSuccess: async () => {
       await onSaved()
-      toast.success(referral ? "Derivación actualizada" : "Derivación registrada")
+      toast.success(r ? "Derivación actualizada" : "Derivación registrada")
+      onClose()
     },
-    onError: (error: Error) =>
-      toast.error("No se pudo guardar la derivación", { description: error.message }),
+    onError: (error: Error) => toast.error("No se pudo guardar la derivación", { description: error.message }),
   })
 
+  function submit() {
+    if (values.origin && values.origin === values.destination) return toast.error("El origen y el destino deben ser establecimientos distintos")
+    mutation.mutate()
+  }
+
+  const close = () => !mutation.isPending && onClose()
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (!destinationId) {
-          toast.error("Selecciona el establecimiento de destino")
-          return
-        }
-        if (originId && originId === destinationId) {
-          toast.error("El origen y el destino deben ser establecimientos distintos")
-          return
-        }
-        if (!requestedOn) {
-          toast.error("Indica la fecha de solicitud")
-          return
-        }
-        mutation.mutate()
-      }}
+    <Modal
+      open
+      onClose={close}
+      icon={Share2}
+      title={r ? "Editar derivación" : "Nueva derivación"}
+      description="Origen, destino y en qué va. Si tienes la hoja, adjúntala."
+      footer={
+        <>
+          <span className="mr-auto self-center text-[13px] text-zinc-500">{missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : null}</span>
+          <DsButton onClick={close} disabled={mutation.isPending}>
+            Cancelar
+          </DsButton>
+          <DsButton variant="dark" onClick={submit} disabled={missingRequired > 0 || mutation.isPending}>
+            {mutation.isPending ? "Guardando…" : r ? "Guardar cambios" : "Registrar derivación"}
+          </DsButton>
+        </>
+      }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Tipo</Label>
-          <Select
-            items={TYPE_ITEMS}
-            value={type}
-            onValueChange={(value) => value && setType(value as CreateReferralInput["type"])}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TYPE_ITEMS.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Estado</Label>
-          <Select
-            items={STATUS_ITEMS}
-            value={status}
-            onValueChange={(value) =>
-              value && setStatus(value as CreateReferralInput["status"])
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_ITEMS.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Origen</Label>
-        <HealthCenterCombobox value={originId} onValueChange={setOriginId} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Destino</Label>
-        <HealthCenterCombobox value={destinationId} onValueChange={setDestinationId} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Especialidad</Label>
-        <CatalogSelect
-          kind="medical_specialty"
-          value={specialty}
-          onValueChange={setSpecialty}
-          allowCreate={false}
-        />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="referral-requested">Solicitada</Label>
-          <Input
-            id="referral-requested"
-            type="date"
-            value={requestedOn}
-            onChange={(event) => setRequestedOn(event.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="referral-issued">Emitida</Label>
-          <Input
-            id="referral-issued"
-            type="date"
-            value={issuedOn}
-            onChange={(event) => setIssuedOn(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="referral-attended">Atendida</Label>
-          <Input
-            id="referral-attended"
-            type="date"
-            value={attendedOn}
-            onChange={(event) => setAttendedOn(event.target.value)}
-          />
-        </div>
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={viaSepa}
-          onChange={(event) => setViaSepa(event.target.checked)}
-        />
-        SEPA intervino
-      </label>
-      <div className="space-y-1.5">
-        <Label htmlFor="referral-sheet">Hoja de referencia</Label>
-        <Input
-          id="referral-sheet"
-          type="file"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="referral-notes">Notas</Label>
-        <Textarea
-          id="referral-notes"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          rows={2}
-        />
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={mutation.isPending}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Guardando..." : "Guardar"}
-        </Button>
-      </DialogFooter>
-    </form>
+      <QuestionForm framed groups={groups} values={values} onChange={(id, v) => setValues((prev) => ({ ...prev, [id]: v }))} />
+      <Panel title="Hoja de referencia">
+        <FileField file={file} onChange={setFile} disabled={mutation.isPending} />
+        {r?.referralSheetDocumentId && !file && <p className="mt-2 text-xs text-zinc-500">Ya tiene una hoja adjunta. Si eliges otra, la reemplaza.</p>}
+      </Panel>
+    </Modal>
   )
 }

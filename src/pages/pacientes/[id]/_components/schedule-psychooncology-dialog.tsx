@@ -1,36 +1,22 @@
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Brain } from "lucide-react"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { volunteersApi } from "@/api/volunteers"
-import { patientsApi, type CompanionPatient } from "@/api/patients"
+import { patientsApi } from "@/api/patients"
 import type {
   CreatePsychooncologyAppointmentInput,
   PsychooncologyAppointment,
   ReschedulePsychooncologyAppointmentInput,
   UpdatePsychooncologyAppointmentInput,
 } from "@/api/psychooncology-appointments"
+import { Button } from "@/components/ds/button"
+import { Modal } from "@/components/ds/modal"
+import { QuestionForm } from "@/components/ds/question-form"
+import { is, progress, type Group, type Values } from "@/components/ds/questions"
 import { isAvailabilitySlotInFuture } from "@/lib/calendar-helpers"
+import { compact } from "../seguimientos/_components/ficha/answers"
 import { ENROLLMENT_RATING_OPTIONS } from "./enrollment-rating-options"
-import { relationshipSelectOptions } from "../_lib/clinical-labels"
 
 export type SchedulePsychooncologySubmitInput =
   | { mode: "create"; input: CreatePsychooncologyAppointmentInput }
@@ -55,679 +41,249 @@ interface SchedulePsychooncologyDialogProps {
   onSubmit: (payload: SchedulePsychooncologySubmitInput) => Promise<void>
 }
 
-function volunteerLabel(volunteer: {
-  firstName: string
-  lastName: string
-  specialty: string
-}) {
-  return `${volunteer.firstName} ${volunteer.lastName} - ${volunteer.specialty}`
-}
+type ReminderMode = NonNullable<CreatePsychooncologyAppointmentInput["reminderMode"]>
 
+const NEW_COMPANION = "new"
+
+/** "Jue 5 nov, 15:00 a 16:00". */
 function slotLabel(slot: { date: string; startTime: string; endTime: string }) {
-  const date = new Date(`${slot.date}T12:00:00`).toLocaleDateString("es-PE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  })
-  return `${date}, ${slot.startTime.slice(0, 5)} a ${slot.endTime.slice(0, 5)}`
-}
-
-function companionLabel(companion: CompanionPatient) {
-  return (
-    companion.companion?.fullName ??
-    companion.companionDisplayName ??
-    "Acompañante"
-  )
-}
-
-const MODALITY_OPTIONS = [
-  { value: "CALL", label: "Llamada" },
-  { value: "VIDEO_CALL", label: "Videollamada" },
-] as const
-
-const REMINDER_MODE_OPTIONS = [
-  { value: "TWO_HOURS", label: "2 horas antes" },
-  { value: "ONE_DAY", label: "1 día antes" },
-  { value: "CUSTOM", label: "Personalizado" },
-  { value: "MANUAL", label: "Manual" },
-] as const
-
-const BENEFICIARY_OPTIONS = [
-  { value: "PATIENT", label: "Paciente" },
-  { value: "COMPANION", label: "Acompañante" },
-] as const
-
-const RELATIONSHIP_OPTIONS = [...relationshipSelectOptions]
-
-const ADD_NEW_COMPANION = "ADD_NEW"
-
-type BeneficiaryType = (typeof BENEFICIARY_OPTIONS)[number]["value"]
-
-export function SchedulePsychooncologyDialog({
-  open,
-  onOpenChange,
-  patientId,
-  followUpId,
-  ownVolunteerId,
-  appointment,
-  additionalSession = false,
-  completeIntent = false,
-  isPending,
-  onSubmit,
-}: SchedulePsychooncologyDialogProps) {
-  const isEdit = Boolean(appointment)
-  const queryClient = useQueryClient()
-  const [selectedVolunteerId, setSelectedVolunteerId] = useState<
-    string | undefined
-  >(appointment?.volunteerId)
-  const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>(
-    appointment?.availabilityId,
-  )
-  const [beneficiaryType, setBeneficiaryType] = useState<BeneficiaryType>(
-    appointment?.beneficiaryType ?? "PATIENT",
-  )
-  const [selectedCompanionId, setSelectedCompanionId] = useState<
-    string | undefined
-  >(appointment?.companionId ?? undefined)
-  const [newCompanionName, setNewCompanionName] = useState("")
-  const [newCompanionPhone, setNewCompanionPhone] = useState("")
-  const [newCompanionRelationship, setNewCompanionRelationship] = useState("")
-  const [newCompanionOtherRelationship, setNewCompanionOtherRelationship] =
-    useState("")
-  const [modality, setModality] = useState<"CALL" | "VIDEO_CALL">(
-    appointment?.modality ?? "CALL",
-  )
-  const [zoomLink, setZoomLink] = useState(appointment?.zoomLink ?? "")
-  const [reminderMode, setReminderMode] = useState<
-    (typeof REMINDER_MODE_OPTIONS)[number]["value"]
-  >(appointment?.reminderMode ?? "MANUAL")
-  const [remindAt, setRemindAt] = useState(() =>
-    appointment?.remindAt ? toDateTimeLocal(appointment.remindAt) : "",
-  )
-  const [schedulingNotes, setSchedulingNotes] = useState(
-    appointment?.schedulingNotes ?? "",
-  )
-  const [satisfactionRating, setSatisfactionRating] = useState(
-    appointment?.satisfactionRating
-      ? String(appointment.satisfactionRating)
-      : "",
-  )
-  const [satisfactionComment, setSatisfactionComment] = useState(
-    appointment?.satisfactionComment ?? "",
-  )
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const volunteerId =
-    ownVolunteerId ?? selectedVolunteerId ?? appointment?.volunteerId
-
-  const volunteersQuery = useQuery({
-    queryKey: ["volunteers"],
-    queryFn: volunteersApi.list,
-    enabled: open,
-    staleTime: 300_000,
-  })
-  const slotsQuery = useQuery({
-    queryKey: ["volunteer-availability", volunteerId],
-    queryFn: () => volunteersApi.listAvailability(volunteerId!),
-    enabled: open && Boolean(volunteerId),
-  })
-  const companionsQuery = useQuery({
-    queryKey: ["patient-companions", patientId],
-    queryFn: () => patientsApi.companions(patientId),
-    enabled: open,
-    staleTime: 30_000,
-  })
-
-  const availableSlots = (slotsQuery.data ?? []).filter(
-    (slot) =>
-      (slot.status === "AVAILABLE" && isAvailabilitySlotInFuture(slot)) ||
-      (slot.id === appointment?.availabilityId &&
-        slot.volunteerId === volunteerId),
-  )
-  const availableVolunteers = (volunteersQuery.data ?? []).filter(
-    (volunteer) => volunteer.isActive,
-  )
-  const companionOptions = (companionsQuery.data ?? []).map((companion) => ({
-    value: companion.companionId,
-    label: companionLabel(companion),
-  }))
-  const companionItems = [
-    ...(selectedCompanionId &&
-    selectedCompanionId !== ADD_NEW_COMPANION &&
-    !companionOptions.some((item) => item.value === selectedCompanionId)
-      ? [
-          {
-            value: selectedCompanionId,
-            label: appointment?.companionFullName ?? "Acompañante",
-          },
-        ]
-      : []),
-    ...companionOptions,
-    { value: ADD_NEW_COMPANION, label: "Añadir acompañante" },
-  ]
-  const volunteerOptions = availableVolunteers.map((volunteer) => ({
-    value: volunteer.id,
-    label: volunteerLabel(volunteer),
-  }))
-  const volunteerItems =
-    volunteerId && !volunteerOptions.some((item) => item.value === volunteerId)
-      ? [
-          {
-            value: volunteerId,
-            label: appointment ? "Psicooncólogo asignado" : "Mi perfil",
-          },
-          ...volunteerOptions,
-        ]
-      : volunteerOptions
-
-  function close() {
-    onOpenChange(false)
-    setSelectedVolunteerId(undefined)
-    setSelectedSlotId(undefined)
-    setBeneficiaryType("PATIENT")
-    setSelectedCompanionId(undefined)
-    setNewCompanionName("")
-    setNewCompanionPhone("")
-    setNewCompanionRelationship("")
-    setNewCompanionOtherRelationship("")
-    setModality("CALL")
-    setZoomLink("")
-    setSchedulingNotes("")
-    setSatisfactionRating("")
-    setSatisfactionComment("")
-  }
-
-  async function submit() {
-    if (!volunteerId || !selectedSlotId) return
-    let companionId: string | null = null
-
-    setIsSubmitting(true)
-    try {
-      if (beneficiaryType === "COMPANION") {
-        if (!selectedCompanionId) {
-          toast.error("Selecciona un acompañante")
-          return
-        }
-
-        if (selectedCompanionId === ADD_NEW_COMPANION) {
-          const relationship =
-            newCompanionRelationship === "OTHER"
-              ? newCompanionOtherRelationship.trim()
-              : newCompanionRelationship
-          if (!newCompanionName.trim()) {
-            toast.error("Ingresa el nombre del acompañante")
-            return
-          }
-          if (!newCompanionPhone.trim()) {
-            toast.error("Ingresa el teléfono del acompañante")
-            return
-          }
-          if (!relationship) {
-            toast.error("Selecciona el parentesco del acompañante")
-            return
-          }
-
-          const companion = await patientsApi.createCompanion(patientId, {
-            fullName: newCompanionName.trim(),
-            primaryPhone: newCompanionPhone.trim(),
-            relationship,
-          })
-          companionId = companion.id
-          await queryClient.invalidateQueries({
-            queryKey: ["patient-companions", patientId],
-          })
-        } else {
-          companionId = selectedCompanionId
-        }
-      }
-
-      if (reminderMode === "CUSTOM" && !remindAt) {
-        toast.error("Indica la fecha del recordatorio personalizado")
-        return
-      }
-      const reminderAt =
-        reminderMode === "CUSTOM" ? new Date(remindAt).toISOString() : undefined
-
-      if (isEdit && appointment) {
-        const zoom =
-          modality === "VIDEO_CALL" && zoomLink.trim() ? zoomLink.trim() : null
-        const notes = schedulingNotes.trim() || null
-        const slotChanged =
-          !completeIntent && selectedSlotId !== appointment.availabilityId
-        const patch: UpdatePsychooncologyAppointmentInput = {}
-
-        if (!slotChanged) {
-          patch.modality = modality
-          patch.zoomLink = zoom
-          patch.schedulingNotes = notes
-          patch.reminderMode = reminderMode
-          if (reminderAt) patch.remindAt = reminderAt
-        }
-
-        const previousBeneficiaryType = appointment.beneficiaryType ?? "PATIENT"
-        const previousCompanionId = appointment.companionId ?? null
-        if (
-          beneficiaryType !== previousBeneficiaryType ||
-          companionId !== previousCompanionId
-        ) {
-          patch.beneficiaryType = beneficiaryType
-          patch.companionId = companionId
-        }
-
-        if (completeIntent) {
-          patch.status = "COMPLETED"
-          if (satisfactionRating) {
-            patch.satisfactionRating = Number(satisfactionRating)
-          }
-          if (satisfactionComment.trim()) {
-            patch.satisfactionComment = satisfactionComment.trim()
-          }
-        }
-
-        if (slotChanged) {
-          await onSubmit({
-            mode: "reschedule",
-            id: appointment.id,
-            input: {
-              availabilityId: selectedSlotId,
-              modality,
-              zoomLink: zoom ?? undefined,
-              schedulingNotes: notes ?? undefined,
-              reminderMode,
-              remindAt: reminderAt,
-            },
-            update: Object.keys(patch).length > 0 ? patch : undefined,
-          })
-        } else {
-          await onSubmit({ mode: "update", id: appointment.id, input: patch })
-        }
-        close()
-        return
-      }
-
-      await onSubmit({
-        mode: "create",
-        input: {
-          patientId,
-          beneficiaryType,
-          companionId,
-          availabilityId: selectedSlotId,
-          followUpId,
-          modality,
-          reminderMode,
-          remindAt: reminderAt,
-          isAdditionalSession: additionalSession || undefined,
-          zoomLink:
-            modality === "VIDEO_CALL" && zoomLink.trim()
-              ? zoomLink.trim()
-              : undefined,
-          schedulingNotes: schedulingNotes.trim() || undefined,
-        },
-      })
-      close()
-    } catch (error) {
-      if (companionId === null && beneficiaryType === "COMPANION") {
-        toast.error("No se pudo agregar el acompañante", {
-          description:
-            error instanceof Error ? error.message : "Error inesperado",
-        })
-        return
-      }
-      throw error
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const showSatisfaction = completeIntent || appointment?.status === "COMPLETED"
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => (nextOpen ? onOpenChange(true) : close())}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {completeIntent
-              ? "Completar sesión de psicooncología"
-              : isEdit
-                ? "Editar cita de psicooncología"
-                : "Agendar cita de psicooncología"}
-          </DialogTitle>
-          <DialogDescription>
-            {completeIntent
-              ? "Registra la encuesta de satisfacción y confirma la sesión."
-              : followUpId
-                ? "La cita quedará vinculada al seguimiento actual."
-                : isEdit
-                  ? "Puedes reprogramar el horario o cambiar el psicooncólogo, además de actualizar la modalidad y el motivo de derivación."
-                  : "Esta cita se registrará de forma independiente."}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>¿La sesión es para…?</Label>
-            <Select
-              items={BENEFICIARY_OPTIONS}
-              value={beneficiaryType}
-              onValueChange={(value) => {
-                const nextType = value as BeneficiaryType
-                setBeneficiaryType(nextType)
-                if (nextType === "PATIENT") {
-                  setSelectedCompanionId(undefined)
-                }
-              }}
-              disabled={isEdit}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BENEFICIARY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {beneficiaryType === "COMPANION" && (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Acompañante</Label>
-                <Select
-                  items={companionItems}
-                  value={selectedCompanionId}
-                  onValueChange={(value) =>
-                    setSelectedCompanionId(value ?? undefined)
-                  }
-                  disabled={isEdit || companionsQuery.isLoading}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar acompañante" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companionItems.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedCompanionId === ADD_NEW_COMPANION && (
-                <div className="space-y-3 rounded-xl border border-dashed p-3">
-                  <p className="text-muted-foreground text-xs">
-                    Registra los datos básicos del nuevo acompañante.
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-companion-name">Nombre completo</Label>
-                    <Input
-                      id="new-companion-name"
-                      value={newCompanionName}
-                      onChange={(event) =>
-                        setNewCompanionName(event.target.value)
-                      }
-                      placeholder="Nombre y apellido"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-companion-phone">Teléfono</Label>
-                    <Input
-                      id="new-companion-phone"
-                      value={newCompanionPhone}
-                      onChange={(event) =>
-                        setNewCompanionPhone(event.target.value)
-                      }
-                      placeholder="987654321"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Parentesco</Label>
-                    <Select
-                      items={RELATIONSHIP_OPTIONS}
-                      value={newCompanionRelationship || undefined}
-                      onValueChange={(value) => {
-                        setNewCompanionRelationship(value ?? "")
-                        if (value !== "OTHER") {
-                          setNewCompanionOtherRelationship("")
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar parentesco" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RELATIONSHIP_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {newCompanionRelationship === "OTHER" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="new-companion-other-relationship">
-                        Especifica el parentesco
-                      </Label>
-                      <Input
-                        id="new-companion-other-relationship"
-                        value={newCompanionOtherRelationship}
-                        onChange={(event) =>
-                          setNewCompanionOtherRelationship(event.target.value)
-                        }
-                        placeholder="Describe la relación"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label>Psicooncólogo</Label>
-            <Select
-              items={volunteerItems}
-              value={volunteerId}
-              onValueChange={(value) => {
-                if (ownVolunteerId) return
-                setSelectedVolunteerId(value ?? undefined)
-                setSelectedSlotId(undefined)
-              }}
-              disabled={Boolean(ownVolunteerId)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar psicooncólogo" />
-              </SelectTrigger>
-              <SelectContent>
-                {volunteerItems.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Horario disponible</Label>
-            <Select
-              items={availableSlots.map((slot) => ({
-                value: slot.id,
-                label: slotLabel(slot),
-              }))}
-              value={selectedSlotId}
-              onValueChange={(value) => setSelectedSlotId(value ?? undefined)}
-              disabled={!volunteerId || slotsQuery.isLoading}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    volunteerId
-                      ? "Seleccionar horario"
-                      : "Primero selecciona un psicooncólogo"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {availableSlots.map((slot) => (
-                  <SelectItem key={slot.id} value={slot.id}>
-                    {slotLabel(slot)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Modalidad</Label>
-            <Select
-              items={MODALITY_OPTIONS}
-              value={modality}
-              onValueChange={(value) => {
-                const nextModality = value as "CALL" | "VIDEO_CALL"
-                setModality(nextModality)
-                if (nextModality === "CALL") setZoomLink("")
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MODALITY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Recordatorio</Label>
-            <Select
-              items={[...REMINDER_MODE_OPTIONS]}
-              value={reminderMode}
-              onValueChange={(value) =>
-                setReminderMode(
-                  (value as (typeof REMINDER_MODE_OPTIONS)[number]["value"] | null) ??
-                    "MANUAL",
-                )
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {REMINDER_MODE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {reminderMode === "CUSTOM" && (
-              <Input
-                type="datetime-local"
-                value={remindAt}
-                onChange={(event) => setRemindAt(event.target.value)}
-                aria-label="Fecha del recordatorio"
-              />
-            )}
-          </div>
-          {additionalSession && (
-            <p className="text-muted-foreground text-xs">
-              Esta cita se registra como sesión adicional del ciclo.
-            </p>
-          )}
-          {modality === "VIDEO_CALL" && (
-            <div className="space-y-2">
-              <Label htmlFor="zoom-link">Link de Zoom (opcional)</Label>
-              <Input
-                id="zoom-link"
-                type="url"
-                value={zoomLink}
-                onChange={(event) => setZoomLink(event.target.value)}
-                placeholder="https://zoom.us/j/..."
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="scheduling-notes">
-              Motivo de derivación / comentarios
-            </Label>
-            <Textarea
-              id="scheduling-notes"
-              value={schedulingNotes}
-              onChange={(event) => setSchedulingNotes(event.target.value)}
-              placeholder="Motivo de la derivación o contexto para la sesión..."
-              rows={3}
-            />
-          </div>
-          {showSatisfaction && (
-            <>
-              <div className="space-y-2">
-                <Label>Calificación de la sesión</Label>
-                <Select
-                  items={ENROLLMENT_RATING_OPTIONS}
-                  value={satisfactionRating}
-                  onValueChange={(value) => setSatisfactionRating(value ?? "")}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar calificación" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ENROLLMENT_RATING_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="satisfaction-comment">
-                  Comentario de la encuesta
-                </Label>
-                <Textarea
-                  id="satisfaction-comment"
-                  value={satisfactionComment}
-                  onChange={(event) =>
-                    setSatisfactionComment(event.target.value)
-                  }
-                  placeholder="Comentarios adicionales del paciente..."
-                  rows={3}
-                />
-              </div>
-            </>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={close}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={submit}
-            disabled={!selectedSlotId || isPending || isSubmitting}
-          >
-            {isPending || isSubmitting
-              ? "Guardando..."
-              : completeIntent
-                ? "Completar sesión"
-                : isEdit
-                  ? "Guardar cambios"
-                  : "Agendar cita"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  const date = new Date(`${slot.date}T12:00:00`).toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" }).replace(".", "")
+  return `${date.charAt(0).toUpperCase()}${date.slice(1)}, ${slot.startTime.slice(0, 5)} a ${slot.endTime.slice(0, 5)}`
 }
 
 function toDateTimeLocal(iso: string) {
   const date = new Date(iso)
   const offset = date.getTimezoneOffset() * 60_000
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+export function SchedulePsychooncologyDialog(props: SchedulePsychooncologyDialogProps) {
+  if (!props.open) return null
+  return <ScheduleModal {...props} />
+}
+
+function ScheduleModal({ onOpenChange, patientId, followUpId, ownVolunteerId, appointment: a, additionalSession = false, completeIntent = false, isPending, onSubmit }: SchedulePsychooncologyDialogProps) {
+  const isEdit = Boolean(a)
+  const queryClient = useQueryClient()
+  const [submitting, setSubmitting] = useState(false)
+  const [values, setValues] = useState<Values>(() =>
+    compact({
+      psFor: a?.beneficiaryType === "COMPANION" ? "companion" : "patient",
+      companion: a?.companionId,
+      volunteer: ownVolunteerId ?? a?.volunteerId,
+      slot: a?.availabilityId,
+      modality: a?.modality ?? "CALL",
+      zoom: a?.zoomLink,
+      reason: a?.schedulingNotes,
+      reminder: a?.reminderMode ?? "ONE_DAY",
+      remindAt: a?.remindAt ? toDateTimeLocal(a.remindAt) : null,
+      rating: a?.satisfactionRating ? String(a.satisfactionRating) : null,
+      comment: a?.satisfactionComment,
+    }),
+  )
+
+  const volunteers = useQuery({ queryKey: ["volunteers"], queryFn: volunteersApi.list, staleTime: 300_000 })
+  const slots = useQuery({ queryKey: ["volunteer-availability", values.volunteer], queryFn: () => volunteersApi.listAvailability(values.volunteer!), enabled: Boolean(values.volunteer) })
+  const companions = useQuery({ queryKey: ["patient-companions", patientId], queryFn: () => patientsApi.companions(patientId), staleTime: 30_000 })
+
+  const volunteerOptions = (volunteers.data ?? []).filter((v) => v.isActive || v.id === values.volunteer).map((v) => ({ value: v.id, label: `${v.firstName} ${v.lastName}`, sublabel: v.specialty }))
+  const slotOptions = (slots.data ?? [])
+    .filter((s) => (s.status === "AVAILABLE" && isAvailabilitySlotInFuture(s)) || s.id === a?.availabilityId)
+    .sort((x, y) => `${x.date}${x.startTime}`.localeCompare(`${y.date}${y.startTime}`))
+    .map((s) => ({ value: s.id, label: slotLabel(s) }))
+  const companionOptions = (companions.data ?? []).map((l) => ({ value: l.companionId, label: l.companion?.fullName ?? l.companionDisplayName ?? "Acompañante" }))
+  if (a?.companionId && !companionOptions.some((o) => o.value === a.companionId)) companionOptions.unshift({ value: a.companionId, label: a.companionFullName ?? "Acompañante" })
+
+  const scheduling: Group[] = [
+    {
+      title: "Beneficiario",
+      // Quién recibe la sesión no cambia una vez agendada.
+      showIf: () => !isEdit,
+      questions: [
+        {
+          id: "psFor",
+          label: "¿La sesión es para…?",
+          type: "choice",
+          required: true,
+          wide: true,
+          options: [
+            { value: "patient", label: "El paciente" },
+            { value: "companion", label: "Un acompañante" },
+            { value: NEW_COMPANION, label: "Otro familiar" },
+          ],
+        },
+        { id: "companion", label: "Acompañante", type: "select", required: true, placeholder: "Seleccionar acompañante", options: companionOptions, showIf: is("psFor", "companion") },
+        { id: "name", label: "Nombre completo", type: "text", required: true, placeholder: "Nombre y apellido", showIf: is("psFor", NEW_COMPANION) },
+        { id: "relationship", label: "Parentesco", type: "select", catalog: "companion_relationship", required: true, showIf: is("psFor", NEW_COMPANION) },
+        { id: "phone", label: "Teléfono", type: "text", required: true, placeholder: "987654321", showIf: is("psFor", NEW_COMPANION) },
+      ],
+    },
+    {
+      title: "Sesión",
+      description: additionalSession ? "Se registra como sesión adicional del ciclo." : undefined,
+      questions: [
+        ...(ownVolunteerId ? [] : [{ id: "volunteer", label: "Psicooncólogo", type: "select" as const, required: true, placeholder: "Seleccionar psicooncólogo", options: volunteerOptions }]),
+        {
+          id: "slot",
+          label: "Horario disponible",
+          type: "choice",
+          required: true,
+          wide: true,
+          options: slotOptions,
+          hint: slots.isLoading ? "Cargando horarios…" : slotOptions.length ? "Horarios libres del psicooncólogo." : "No tiene horarios libres. Elige a otro psicooncólogo.",
+          showIf: (v) => Boolean(v.volunteer),
+        },
+        {
+          id: "modality",
+          label: "Modalidad",
+          type: "choice",
+          required: true,
+          wide: true,
+          options: [
+            { value: "CALL", label: "Llamada" },
+            { value: "VIDEO_CALL", label: "Videollamada" },
+          ],
+        },
+        { id: "zoom", label: "Link de Zoom (opcional)", type: "text", placeholder: "https://zoom.us/j/…", wide: true, showIf: is("modality", "VIDEO_CALL") },
+        { id: "reason", label: "Motivo de la derivación", type: "textarea", placeholder: "Motivo de la derivación o contexto para la sesión" },
+      ],
+    },
+    {
+      title: "Recordatorio",
+      questions: [
+        {
+          id: "reminder",
+          label: "¿Cuándo se le avisa?",
+          type: "choice",
+          required: true,
+          wide: true,
+          options: [
+            { value: "ONE_DAY", label: "1 día antes" },
+            { value: "TWO_HOURS", label: "2 horas antes" },
+            { value: "CUSTOM", label: "Otra fecha" },
+            { value: "MANUAL", label: "Le aviso yo" },
+          ],
+        },
+        { id: "remindAt", label: "Fecha y hora del aviso", type: "datetime", required: true, showIf: is("reminder", "CUSTOM") },
+      ],
+    },
+  ]
+  const survey: Group[] = [
+    {
+      title: "Encuesta de satisfacción",
+      questions: [
+        { id: "rating", label: "¿Cómo calificó la sesión?", type: "choice", options: [...ENROLLMENT_RATING_OPTIONS], wide: true },
+        { id: "comment", label: "Comentario", type: "textarea", placeholder: "Lo que dijo el paciente sobre la sesión" },
+      ],
+    },
+  ]
+  const groups = completeIntent ? survey : a?.status === "COMPLETED" ? [...scheduling, ...survey] : scheduling
+  const { missingRequired } = progress(groups, values)
+  const busy = isPending || submitting
+
+  async function resolveCompanion(): Promise<string | null> {
+    if (values.psFor === "patient") return null
+    if (values.psFor === "companion") return values.companion ?? null
+    const companion = await patientsApi.createCompanion(patientId, { fullName: values.name!.trim(), primaryPhone: values.phone!.trim(), relationship: values.relationship! })
+    await queryClient.invalidateQueries({ queryKey: ["patient-companions", patientId] })
+    return companion.id
+  }
+
+  async function submit() {
+    const volunteerId = values.volunteer
+    const slotId = values.slot
+    if (!volunteerId || !slotId) return
+    const reminderMode = values.reminder as ReminderMode
+    const remindAt = reminderMode === "CUSTOM" && values.remindAt ? new Date(values.remindAt).toISOString() : undefined
+    const zoom = values.modality === "VIDEO_CALL" ? values.zoom?.trim() || null : null
+    const notes = values.reason?.trim() || null
+    const modality = values.modality as "CALL" | "VIDEO_CALL"
+
+    setSubmitting(true)
+    try {
+      let companionId: string | null
+      try {
+        companionId = isEdit ? (a!.companionId ?? null) : await resolveCompanion()
+      } catch (error) {
+        toast.error("No se pudo agregar el acompañante", { description: error instanceof Error ? error.message : "Error inesperado" })
+        return
+      }
+
+      if (a) {
+        const slotChanged = !completeIntent && slotId !== a.availabilityId
+        const patch: UpdatePsychooncologyAppointmentInput = {}
+        if (!slotChanged) {
+          patch.modality = modality
+          patch.zoomLink = zoom
+          patch.schedulingNotes = notes
+          patch.reminderMode = reminderMode
+          if (remindAt) patch.remindAt = remindAt
+        }
+        if (completeIntent) {
+          patch.status = "COMPLETED"
+          if (values.rating) patch.satisfactionRating = Number(values.rating)
+          if (values.comment?.trim()) patch.satisfactionComment = values.comment.trim()
+        }
+        if (slotChanged) {
+          await onSubmit({
+            mode: "reschedule",
+            id: a.id,
+            input: { availabilityId: slotId, modality, zoomLink: zoom ?? undefined, schedulingNotes: notes ?? undefined, reminderMode, remindAt },
+            update: Object.keys(patch).length > 0 ? patch : undefined,
+          })
+        } else {
+          await onSubmit({ mode: "update", id: a.id, input: patch })
+        }
+      } else {
+        await onSubmit({
+          mode: "create",
+          input: {
+            patientId,
+            beneficiaryType: companionId ? "COMPANION" : "PATIENT",
+            companionId,
+            availabilityId: slotId,
+            followUpId,
+            modality,
+            reminderMode,
+            remindAt,
+            isAdditionalSession: additionalSession || undefined,
+            zoomLink: zoom ?? undefined,
+            schedulingNotes: notes ?? undefined,
+          },
+        })
+      }
+      onOpenChange(false)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const close = () => !busy && onOpenChange(false)
+  return (
+    <Modal
+      open
+      onClose={close}
+      icon={Brain}
+      title={completeIntent ? "Completar sesión de psicooncología" : isEdit ? "Editar sesión de psicooncología" : "Agendar sesión de psicooncología"}
+      description={completeIntent ? "Registra la encuesta y confirma la sesión" : isEdit ? "Cambia el horario, la modalidad o el aviso" : followUpId ? "Queda vinculada al seguimiento actual" : "Beneficiario, psicooncólogo y horario"}
+      footer={
+        <>
+          <span className="mr-auto self-center text-[13px] text-zinc-500">{missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : null}</span>
+          <Button onClick={close} disabled={busy}>
+            Cancelar
+          </Button>
+          <Button variant="dark" onClick={submit} disabled={missingRequired > 0 || busy}>
+            {busy ? "Guardando…" : completeIntent ? "Completar sesión" : isEdit ? "Guardar cambios" : "Agendar sesión"}
+          </Button>
+        </>
+      }
+    >
+      <QuestionForm
+        framed
+        groups={groups}
+        values={values}
+        onChange={(id, v) => setValues((prev) => ({ ...prev, [id]: v, ...(id === "volunteer" ? { slot: null } : {}) }))}
+      />
+    </Modal>
+  )
 }

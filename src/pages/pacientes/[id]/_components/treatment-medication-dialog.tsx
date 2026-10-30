@@ -1,16 +1,11 @@
-import { useEffect } from "react"
-import { useForm } from "react-hook-form"
-import type { CreateTreatmentMedicationInput, PatientTreatment, TreatmentMedication } from "@/api/patients"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DurationInput } from "@/components/duration-input"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Pill } from "lucide-react"
 import { toast } from "sonner"
-import { toDurationInput, type DurationDraft, type DurationInput as DurationValue } from "@/types/duration"
+import type { CreateTreatmentMedicationInput, PatientTreatment, TreatmentMedication } from "@/api/patients"
+import { FormModal } from "@/components/ds/form-modal"
+import type { Group } from "@/components/ds/questions"
+import { toDurationInput, type DurationInput as DurationValue } from "@/types/duration"
 import type { MedicationDoseUnit, MedicationRoute } from "@/types"
+import { compact, fromBool, fromDuration, fromNumber, text, toDuration } from "../seguimientos/_components/ficha/answers"
 
 const DOSE_UNITS: Array<{ value: MedicationDoseUnit; label: string }> = [
   { value: "MG", label: "mg" }, { value: "G", label: "g" }, { value: "ML", label: "ml" },
@@ -22,7 +17,29 @@ const ROUTES: Array<{ value: MedicationRoute; label: string }> = [
   { value: "SUBCUTANEOUS", label: "Subcutánea" }, { value: "TOPICAL", label: "Tópica" }, { value: "OTHER", label: "Otra" },
 ]
 
-type MedicationFormValues = Omit<CreateTreatmentMedicationInput, "frequency"> & { frequency?: DurationDraft }
+const groups: Group[] = [
+  {
+    title: "Medicamento",
+    questions: [
+      { id: "name", label: "Nombre", type: "text", required: true, placeholder: "Ej: Tamoxifeno" },
+      { id: "doseDescription", label: "Descripción de la dosis", type: "text", placeholder: "Ej: 2 tabletas" },
+      { id: "doseAmount", label: "Cantidad", type: "number" },
+      { id: "doseUnit", label: "Unidad", type: "select", options: DOSE_UNITS },
+      { id: "route", label: "Vía", type: "select", options: ROUTES },
+      { id: "frequency", label: "Frecuencia", type: "duration", units: ["HOUR", "DAY", "WEEK", "MONTH"], hint: "Cada cuánto lo toma." },
+    ],
+  },
+  {
+    title: "Vigencia",
+    questions: [
+      { id: "startDate", label: "Fecha de inicio", type: "date" },
+      { id: "endDate", label: "Fecha de fin", type: "date" },
+      { id: "isActive", label: "¿Lo sigue tomando?", type: "yesno", required: true },
+      { id: "notes", label: "Notas", type: "textarea", placeholder: "Indicaciones adicionales" },
+    ],
+  },
+]
+
 export type TreatmentMedicationInput = Omit<CreateTreatmentMedicationInput, "frequency"> & { frequency?: DurationValue }
 
 interface TreatmentMedicationDialogProps {
@@ -35,76 +52,46 @@ interface TreatmentMedicationDialogProps {
 }
 
 export function TreatmentMedicationDialog({ open, onOpenChange, treatment, medication, isPending, onSubmit }: TreatmentMedicationDialogProps) {
-  const { register, handleSubmit, watch, setValue, reset } = useForm<MedicationFormValues>({
-    defaultValues: { name: "", isActive: true, doseAmount: undefined, doseDescription: "", notes: "" },
-  })
-
-  useEffect(() => {
-    if (!open) return
-    reset(medication ? {
-      name: medication.name,
-      doseAmount: medication.doseAmount ?? undefined,
-      doseUnit: medication.doseUnit ?? undefined,
-      doseDescription: medication.doseDescription ?? "",
-      route: medication.route ?? undefined,
-      frequency: medication.frequency ? {
-        valueMin: medication.frequency.valueMin ?? undefined,
-        ...(medication.frequency.valueMax !== null ? { valueMax: medication.frequency.valueMax } : {}),
-        unit: medication.frequency.unit,
-      } : undefined,
-      startDate: medication.startDate ?? undefined,
-      endDate: medication.endDate ?? undefined,
-      isActive: medication.isActive,
-      notes: medication.notes ?? "",
-    } : { name: "", isActive: true, doseAmount: undefined, doseDescription: "", notes: "" })
-  }, [medication, open, reset])
-
-  const isEditing = Boolean(medication)
-  const doseUnit = watch("doseUnit")
-  const route = watch("route")
-  const frequency = watch("frequency")
-  const isActive = watch("isActive")
-
-  function submit(values: MedicationFormValues) {
-    if (!values.name?.trim()) {
-      toast.error("Indica el nombre del medicamento")
-      return
-    }
-    const normalizedFrequency = toDurationInput(values.frequency)
-    if (values.frequency && !normalizedFrequency) {
-      toast.error("Completa correctamente la frecuencia del medicamento")
-      return
-    }
-    onSubmit({
-      ...values,
-      name: values.name.trim(),
-      doseAmount: values.doseAmount !== undefined && Number.isFinite(values.doseAmount) ? values.doseAmount : undefined,
-      doseDescription: values.doseDescription?.trim() || undefined,
-      notes: values.notes?.trim() || undefined,
-      startDate: values.startDate || undefined,
-      endDate: values.endDate || undefined,
-      frequency: normalizedFrequency,
-    })
-  }
-
+  if (!open) return null
+  const m = medication
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>{isEditing ? "Editar medicamento" : "Nuevo medicamento"}</DialogTitle><DialogDescription>{treatment.treatmentType}. Registra la dosis, frecuencia y vigencia.</DialogDescription></DialogHeader>
-        <form onSubmit={handleSubmit(submit)} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2"><Label>Nombre <span className="text-destructive">*</span></Label><Input {...register("name")} placeholder="Ej: Tamoxifeno" /></div>
-            <div className="space-y-2"><Label>Descripción de dosis</Label><Input {...register("doseDescription")} placeholder="Ej: 2 tabletas" /></div>
-            <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label>Cantidad</Label><Input type="number" min={0} step="any" {...register("doseAmount", { valueAsNumber: true })} /></div><div className="space-y-2"><Label>Unidad</Label><Select items={DOSE_UNITS} value={doseUnit ?? ""} onValueChange={(value) => setValue("doseUnit", value as MedicationDoseUnit)}><SelectTrigger><SelectValue placeholder="Unidad" /></SelectTrigger><SelectContent>{DOSE_UNITS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></div>
-            <div className="space-y-2"><Label>Vía</Label><Select items={ROUTES} value={route ?? ""} onValueChange={(value) => setValue("route", value as MedicationRoute)}><SelectTrigger><SelectValue placeholder="Seleccionar vía" /></SelectTrigger><SelectContent>{ROUTES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
-          </div>
-          <DurationInput label="Frecuencia" units={["HOUR", "DAY", "WEEK", "MONTH"]} value={frequency} onChange={(value) => setValue("frequency", value)} />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2"><div className="space-y-2"><Label>Fecha de inicio</Label><Input type="date" {...register("startDate")} /></div><div className="space-y-2"><Label>Fecha de fin</Label><Input type="date" {...register("endDate")} /></div></div>
-          <div className="space-y-2"><Label>Notas</Label><Input {...register("notes")} placeholder="Indicaciones adicionales" /></div>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={isActive} onCheckedChange={(value) => setValue("isActive", !!value)} />Medicamento activo</label>
-          <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancelar</Button><Button type="submit" disabled={isPending}>{isPending ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear medicamento"}</Button></DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormModal
+      icon={Pill}
+      title={m ? "Editar medicamento" : "Nuevo medicamento"}
+      description={`${treatment.treatmentType}: dosis, frecuencia y vigencia`}
+      groups={groups}
+      initial={compact({
+        name: m?.name,
+        doseDescription: m?.doseDescription,
+        doseAmount: fromNumber(m?.doseAmount),
+        doseUnit: m?.doseUnit,
+        route: m?.route,
+        frequency: fromDuration(m?.frequency),
+        startDate: m?.startDate,
+        endDate: m?.endDate,
+        isActive: fromBool(m ? m.isActive : true),
+        notes: m?.notes,
+      })}
+      submitLabel={m ? "Guardar cambios" : "Agregar medicamento"}
+      pending={isPending}
+      onClose={() => onOpenChange(false)}
+      onSubmit={(v) => {
+        const frequency = toDurationInput(toDuration(v.frequency))
+        if (v.frequency && !frequency) return toast.error("Completa la frecuencia: cantidad y unidad")
+        const amount = v.doseAmount ? Number(v.doseAmount) : undefined
+        onSubmit({
+          name: v.name!.trim(),
+          doseDescription: text(v.doseDescription),
+          doseAmount: amount !== undefined && Number.isFinite(amount) ? amount : undefined,
+          doseUnit: (v.doseUnit as MedicationDoseUnit) ?? undefined,
+          route: (v.route as MedicationRoute) ?? undefined,
+          frequency,
+          startDate: v.startDate ?? undefined,
+          endDate: v.endDate ?? undefined,
+          isActive: v.isActive === "yes",
+          notes: text(v.notes),
+        })
+      }}
+    />
   )
 }
