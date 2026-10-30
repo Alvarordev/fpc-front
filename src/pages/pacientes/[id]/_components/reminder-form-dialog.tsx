@@ -77,8 +77,9 @@ function groups(isEditing: boolean, agents: Agent[] | null): Group[] {
       title: "Aviso",
       questions: [
         { id: "channel", label: "Canal", type: "choice", required: true, options: REMINDER_CHANNEL_ITEMS, wide: true },
-        { id: "lead", label: "¿Con cuánta anticipación?", type: "choice", required: true, options: REMINDER_LEAD_ITEMS, wide: true, showIf: medical },
-        { id: "remindAt", label: "Fecha y hora del aviso", type: "datetime", required: true, showIf: (v) => medical(v) && v.lead === "CUSTOM" },
+        // La anticipación decide cuándo sale el correo automático; con canal Manual no aplica.
+        { id: "lead", label: "¿Con cuánta anticipación?", type: "choice", required: true, options: REMINDER_LEAD_ITEMS, wide: true, showIf: (v) => medical(v) && v.channel === "EMAIL" },
+        { id: "remindAt", label: "Fecha y hora del aviso", type: "datetime", required: true, showIf: (v) => medical(v) && v.channel === "EMAIL" && v.lead === "CUSTOM" },
         ...(agents ? [{ id: "agentId", label: "Agente responsable", type: "select" as const, required: true, options: agents.map((a) => ({ value: a.id, label: a.fullName })) }] : []),
       ],
     },
@@ -131,8 +132,9 @@ export function ReminderFormDialog({
           dueAt: v.dueAt!,
           assignedAgentId: v.agentId ?? r?.assignedAgentId,
           channel: v.channel as ReminderChannel,
-          lead: (v.lead as ReminderLead) ?? "ONE_DAY",
-          remindAt: v.remindAt ?? "",
+          // Manual: la anticipación no se pregunta; va la de por defecto, sin fecha propia.
+          lead: v.channel === "EMAIL" ? ((v.lead as ReminderLead) ?? "ONE_DAY") : "ONE_DAY",
+          remindAt: v.channel === "EMAIL" ? (v.remindAt ?? "") : "",
           medicalAppointment: {
             specialty: v.specialty ?? appointment?.specialty ?? "",
             healthCenterId: v.center ?? "",
