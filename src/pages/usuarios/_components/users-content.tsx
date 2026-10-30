@@ -1,158 +1,156 @@
-import { useCallback, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Plus, ShieldUser } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/data-table"
-import { useAuthStore } from "@/store/auth-store"
-import { VolunteerCommitmentBanner } from "@/components/volunteer-commitment-banner"
 import { agentsApi } from "@/api/agents"
 import { foundationsApi } from "@/api/foundations"
 import type { User } from "@/api/users"
+import { AddButton, Button } from "@/components/ds/button"
+import { DataTable } from "@/components/ds/data-table"
+import { Modal } from "@/components/ds/modal"
+import { VolunteerCommitmentBanner } from "@/components/volunteer-commitment-banner"
 import { useVolunteers } from "@/pages/voluntarios/_hooks/use-volunteers"
+import { useAuthStore } from "@/store/auth-store"
+import { matchesUser, readUserFilters } from "../_lib/user-filters"
 import { useUpdateUser, useUsers } from "../_hooks/use-users"
+import { ResetPasswordModal } from "./reset-password-modal"
+import { UserFormModal } from "./user-form-modal"
+import type { UserProfileMatch } from "./user-profile"
 import { userColumns } from "./users-columns"
-import { CreateUserDialog } from "./create-user-dialog"
-import {
-  EditUserDialog,
-  type UserProfileMatch,
-} from "./edit-user-dialog"
+import { UsersFilters } from "./users-filters"
 
 export function UsersContent() {
-  const user = useAuthStore((s) => s.user)
+  const current = useAuthStore((state) => state.user)
+  const [params] = useSearchParams()
+  const filters = readUserFilters(params)
   const { data: users = [], isLoading } = useUsers()
   const { data: volunteers = [] } = useVolunteers()
-  const { data: agents = [] } = useQuery({
-    queryKey: ["agents"],
-    queryFn: agentsApi.list,
-    staleTime: 60_000,
-    enabled: user?.role === "ADMIN",
-  })
-  const { data: foundations = [] } = useQuery({
-    queryKey: ["foundations"],
-    queryFn: foundationsApi.list,
-    staleTime: 60_000,
-    enabled: user?.role === "ADMIN",
-  })
-
+  const { data: agents = [] } = useQuery({ queryKey: ["agents"], queryFn: agentsApi.list, staleTime: 60_000, enabled: current?.role === "ADMIN" })
+  const { data: foundations = [] } = useQuery({ queryKey: ["foundations"], queryFn: foundationsApi.list, staleTime: 60_000, enabled: current?.role === "ADMIN" })
   const updateUser = useUpdateUser()
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [editOpen, setEditOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<User | null>(null)
+  const [resetting, setResetting] = useState<User | null>(null)
+  const [confirm, setConfirm] = useState<User | null>(null)
+
+  const names = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const agent of agents) map[agent.userId] = agent.fullName
+    for (const volunteer of volunteers) map[volunteer.userId] = `${volunteer.firstName} ${volunteer.lastName}`.trim()
+    for (const foundation of foundations) map[foundation.userId] = `${foundation.firstName} ${foundation.lastName}`.trim()
+    return map
+  }, [agents, volunteers, foundations])
+
+  const visible = useMemo(
+    () => users.filter((user) => matchesUser(user, names[user.id] ?? "", filters)),
+    [users, names, filters],
+  )
 
   const profileMatch = useMemo((): UserProfileMatch | null => {
-    if (!editingUser) return null
-    if (editingUser.role === "ADMIN") {
-      return { role: "ADMIN", profile: null }
-    }
-    if (editingUser.role === "AGENT") {
-      const profile = agents.find((a) => a.userId === editingUser.id)
+    if (!editing) return null
+    if (editing.role === "AGENT") {
+      const profile = agents.find((agent) => agent.userId === editing.id)
       return profile ? { role: "AGENT", profile } : null
     }
-    if (editingUser.role === "FOUNDATION") {
-      const profile = foundations.find((f) => f.userId === editingUser.id)
+    if (editing.role === "FOUNDATION") {
+      const profile = foundations.find((item) => item.userId === editing.id)
       return profile ? { role: "FOUNDATION", profile } : null
     }
-    if (editingUser.role === "VOLUNTEER") {
-      const profile = volunteers.find((v) => v.userId === editingUser.id)
+    if (editing.role === "VOLUNTEER") {
+      const profile = volunteers.find((item) => item.userId === editing.id)
       return profile ? { role: "VOLUNTEER", profile } : null
     }
-    return null
-  }, [editingUser, agents, foundations, volunteers])
-
-  const handleEdit = useCallback((target: User) => {
-    if (target.role === "ADMIN") return
-    setEditingUser(target)
-    setEditOpen(true)
-  }, [])
-
-  const handleToggleActive = useCallback(
-    async (target: User) => {
-      if (target.role === "ADMIN") return
-      try {
-        await updateUser.mutateAsync({
-          id: target.id,
-          input: { isActive: !target.isActive },
-        })
-        toast.success(
-          target.isActive
-            ? `${target.email} desactivado`
-            : `${target.email} reactivado`,
-        )
-      } catch (err) {
-        toast.error(
-          target.isActive ? "Error al desactivar" : "Error al reactivar",
-          {
-            description:
-              err instanceof Error ? err.message : "Error inesperado",
-          },
-        )
-      }
-    },
-    [updateUser],
-  )
+    return { role: "ADMIN", profile: null }
+  }, [editing, agents, foundations, volunteers])
 
   const columns = useMemo(
     () =>
       userColumns({
-        onEdit: handleEdit,
-        onToggleActive: handleToggleActive,
+        names,
+        onEdit: (user) => setEditing(user),
+        onResetPassword: (user) => setResetting(user),
+        onToggleActive: (user) => setConfirm(user),
       }),
-    [handleEdit, handleToggleActive],
+    [names],
   )
 
-  if (user?.role !== "ADMIN") {
+  async function runToggle() {
+    if (!confirm) return
+    try {
+      await updateUser.mutateAsync({ id: confirm.id, input: { isActive: !confirm.isActive } })
+      toast.success(confirm.isActive ? "Usuario desactivado" : "Usuario reactivado", { description: confirm.email })
+      setConfirm(null)
+    } catch (error) {
+      toast.error(confirm.isActive ? "No se pudo desactivar" : "No se pudo reactivar", {
+        description: error instanceof Error ? error.message : "Inténtalo de nuevo.",
+      })
+    }
+  }
+
+  if (current?.role !== "ADMIN") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <ShieldUser className="text-muted-foreground/30 mb-4 size-12" />
-        <p className="text-muted-foreground text-sm">
-          No tienes permisos para ver esta sección.
-        </p>
+      <div className="font-ds flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-sm text-zinc-600">No tienes permisos para ver esta sección.</p>
       </div>
     )
   }
 
+  const pending = updateUser.isPending
+  const empty = users.length === 0
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="font-ds space-y-5">
+      <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-foreground text-xl font-semibold tracking-tight">
-            Usuarios
-          </h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            {users.length} usuario{users.length !== 1 ? "s" : ""} registrado
-            {users.length !== 1 ? "s" : ""}
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Usuarios</h1>
+          <p className="mt-0.5 text-[13px] text-zinc-500">
+            {visible.length === users.length ? `${visible.length} usuarios` : `${visible.length} de ${users.length}`}
           </p>
         </div>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus className="size-4" />
-          Nuevo usuario
-        </Button>
-      </div>
+        <AddButton onClick={() => setCreating(true)}>Nuevo usuario</AddButton>
+      </header>
 
       <VolunteerCommitmentBanner volunteers={volunteers} />
+      <UsersFilters users={users} names={names} />
 
       <DataTable
-        data={users}
+        data={visible}
         columns={columns}
         isLoading={isLoading}
-        emptyMessage="No hay usuarios registrados"
+        emptyTitle={empty ? "Todavía no hay usuarios" : "Ningún usuario coincide"}
+        emptyBody={empty ? "Crea el primero para dar acceso al equipo." : "Prueba con otro nombre, rol o estado."}
+        emptyAction={empty ? "Nuevo usuario" : undefined}
+        onEmptyAction={empty ? () => setCreating(true) : undefined}
       />
 
-      <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
-      <EditUserDialog
-        user={editingUser}
-        profileMatch={profileMatch}
-        open={editOpen}
-        onOpenChange={(next) => {
-          setEditOpen(next)
-          if (!next) setEditingUser(null)
-        }}
-      />
+      <UserFormModal open={creating} onClose={() => setCreating(false)} />
+      <UserFormModal open={Boolean(editing)} user={editing} profileMatch={profileMatch} onClose={() => setEditing(null)} />
+      <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />
+
+      {confirm && (
+        <Modal
+          open
+          onClose={() => !pending && setConfirm(null)}
+          title={confirm.isActive ? "Desactivar usuario" : "Reactivar usuario"}
+          description={confirm.email}
+          footer={
+            <>
+              <Button onClick={() => setConfirm(null)} disabled={pending}>
+                Volver
+              </Button>
+              <Button variant="dark" disabled={pending} onClick={() => void runToggle()}>
+                {pending ? "Guardando…" : confirm.isActive ? "Desactivar" : "Reactivar"}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-zinc-700">
+            {confirm.isActive
+              ? "Deja de poder entrar. Los registros que ya hizo se conservan."
+              : "Vuelve a poder entrar con el mismo correo."}
+          </p>
+        </Modal>
+      )}
     </div>
   )
 }
