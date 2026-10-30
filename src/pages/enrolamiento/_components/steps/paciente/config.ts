@@ -20,7 +20,8 @@ const departmentOptions = DEPARTMENTS.map((item) => ({ value: item.value, label:
 
 export const identityGroups: Group[] = [
   {
-    title: "Identidad",
+    // Sin título: la tarjeta "Identidad" ya lo dice.
+    title: "",
     questions: [
       { id: "fullName", label: "Nombre completo", type: "text", required: true, wide: true, placeholder: "Tal como aparece en el DNI" },
       { id: "birthDate", label: "Fecha de nacimiento", type: "date", required: true },
@@ -66,7 +67,7 @@ export const residenceGroups: Group[] = [
   {
     title: "Dirección actual",
     questions: [
-      { id: "address", label: "Dirección actual", type: "text", wide: true, placeholder: "Av. Principal 123" },
+      { id: "address", label: "Dirección", type: "text", wide: true, placeholder: "Av. Principal 123" },
       { id: "district", label: "Distrito", type: "text", placeholder: "Miraflores" },
       { id: "province", label: "Provincia", type: "text", placeholder: "Lima" },
       { id: "department", label: "Departamento", type: "select", options: departmentOptions },

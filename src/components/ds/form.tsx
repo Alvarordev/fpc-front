@@ -13,22 +13,25 @@ const control =
 export function Field({
   label,
   hint,
+  error,
   className,
   children,
 }: {
   label: string
   hint?: string
+  /** Dato obligatorio sin responder u otro problema: la etiqueta y el aviso van en rojo. */
+  error?: string
   className?: string
   children: (id: string) => React.ReactNode
 }) {
   const id = useId()
   return (
     <div className={cn("min-w-0 space-y-1.5", className)}>
-      <label htmlFor={id} className="block text-[13px] font-medium text-zinc-700">
+      <label htmlFor={id} className={cn("block text-[13px] font-medium transition-colors", error ? "text-red-700" : "text-zinc-700")}>
         {label}
       </label>
       {children(id)}
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {error ? <p className="text-xs text-red-700">{error}</p> : hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
   )
 }

@@ -23,6 +23,7 @@ export function Step3Identificacion({ embedded = false }: { embedded?: boolean }
     >
       {known ? (
         <QuestionForm
+          cards={!embedded}
           groups={identificacionGroups}
           values={values}
           showMissing={gate.showMissing}

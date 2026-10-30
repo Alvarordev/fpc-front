@@ -15,6 +15,8 @@ export function useStepGate(groups: Group[], values: Values, validate?: (values:
     event?.preventDefault()
     if (problem) {
       setArmed(true)
+      // Lleva al primer dato que falta; si el problema es otra regla, el aviso está junto al botón.
+      requestAnimationFrame(() => document.querySelector("[data-missing]")?.scrollIntoView({ behavior: "smooth", block: "center" }))
       return true
     }
     setArmed(false)

@@ -28,6 +28,7 @@ export function Step4Consentimiento({ embedded = false }: { embedded?: boolean }
         </Panel>
       )}
       <QuestionForm
+        cards={!embedded}
         groups={consentimientoGroups}
         values={values}
         showMissing={gate.showMissing}

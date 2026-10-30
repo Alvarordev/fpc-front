@@ -85,11 +85,22 @@ function ScriptBody({ content, hidden, onToggle }: { content: AsideContent; hidd
 }
 
 /**
- * Guion del agente al inicio del paso. `nested` lo deja sin tarjeta, para
- * meterlo dentro de la tarjeta del paso en el modo continuo.
+ * Guion del agente. En pantallas anchas va en el panel lateral fijo (`aside`),
+ * visible mientras se llena el formulario; en las angostas y en el modo continuo
+ * va al inicio del paso y se puede ocultar.
  */
-export function EnrollmentScript({ content, nested = false }: { content: AsideContent; nested?: boolean }) {
+export function EnrollmentScript({ content, nested = false, aside = false }: { content: AsideContent; nested?: boolean; aside?: boolean }) {
   const { hidden, toggle } = useScriptHidden()
+  if (aside) {
+    return (
+      <section aria-label="Qué decirle" className="space-y-3 rounded-[20px] border border-zinc-200 bg-white p-5">
+        <h2 className="text-[15px] font-semibold text-zinc-900">Qué decirle</h2>
+        {content.script ? <ScriptText text={content.script} /> : <p className="text-[13px] text-zinc-500">En este paso no hay guion.</p>}
+        {content.complianceNote && <InlineAlert tone="warning">{content.complianceNote}</InlineAlert>}
+        {content.reference && <ExpandableLine icon={<BookOpen className="size-4 text-zinc-500" />} label="Referencia" text={content.reference} />}
+      </section>
+    )
+  }
   const body = <ScriptBody content={content} hidden={hidden} onToggle={toggle} />
   if (nested) return body
   return <Card title="Qué decirle">{body}</Card>

@@ -22,12 +22,14 @@ export function ProfileSection({
   const insurance = draft.insurance
   const meta = draft.enrollmentMetadata
   const hasInsurance = values.hasInsurance === "yes"
+  const [socio, insuranceGroup] = profileGroups
   return (
     <>
-      <SectionBlock embedded={embedded} title="Perfil socioeducativo y seguro">
-        <QuestionForm groups={profileGroups} values={values} showMissing={showMissing} onChange={onChange} />
+      <QuestionForm cards={!embedded} groups={[socio]} values={values} showMissing={showMissing} onChange={onChange} />
+      <SectionBlock embedded={embedded} title="Seguro de salud">
+        <QuestionForm groups={[{ ...insuranceGroup, title: "", questions: insuranceGroup.questions.filter((q) => q.id === "hasInsurance") }]} values={values} showMissing={showMissing} onChange={onChange} />
         {hasInsurance && (
-          <div className="mt-4 max-w-md">
+          <div className="mt-4 grid gap-x-5 gap-y-4 md:grid-cols-2">
             <Field label="Tipo de seguro *">
               {() => (
                 <CatalogSelect
@@ -35,10 +37,11 @@ export function ProfileSection({
                   excludeCodes={["NONE"]}
                   value={insurance.insuranceType === "NONE" ? null : insurance.insuranceType}
                   onValueChange={(code) => onChange("insuranceType", code)}
-                  placeholder="Seleccionar..."
+                  placeholder="Seleccionar"
                 />
               )}
             </Field>
+            <QuestionForm groups={[{ title: "", questions: insuranceGroup.questions.filter((q) => q.id !== "hasInsurance").map((q) => ({ ...q, wide: true })) }]} values={values} showMissing={showMissing} onChange={onChange} />
           </div>
         )}
       </SectionBlock>
@@ -50,7 +53,7 @@ export function ProfileSection({
                 kind="entry_source"
                 value={meta.programEntryPoint ?? null}
                 onValueChange={(code) => onChange("entry", code)}
-                placeholder="Seleccionar..."
+                placeholder="Seleccionar"
               />
             )}
           </Field>
@@ -61,7 +64,7 @@ export function ProfileSection({
                 parentCode={meta.programEntryPoint ?? null}
                 value={meta.programEntrySubSource ?? null}
                 onValueChange={(code) => onChange("entrySub", code)}
-                placeholder="Seleccionar..."
+                placeholder="Seleccionar"
               />
             )}
           </Field>

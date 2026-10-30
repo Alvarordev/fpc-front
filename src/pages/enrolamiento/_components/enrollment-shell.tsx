@@ -26,16 +26,14 @@ import { Step8Cierre } from "./steps/cierre"
 
 interface CurrentStepProps {
   step: number
-  onOpenNotes: () => void
-  notesCount: number
   historical?: boolean
   embedded?: boolean
 }
 
-function CurrentStep({ step, onOpenNotes, notesCount, historical = false, embedded = false }: CurrentStepProps) {
+function CurrentStep({ step, historical = false, embedded = false }: CurrentStepProps) {
   switch (step) {
     case 1:
-      return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} embedded={embedded} />
+      return <Step1Inicio historical={historical} embedded={embedded} />
     case 2:
       return <Step2Consent embedded={embedded} />
     case 3:
@@ -51,21 +49,11 @@ function CurrentStep({ step, onOpenNotes, notesCount, historical = false, embedd
     case 8:
       return <Step8Cierre historical={historical} embedded={embedded} />
     default:
-      return <Step1Inicio onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} embedded={embedded} />
+      return <Step1Inicio historical={historical} embedded={embedded} />
   }
 }
 
-function ContinuousStep({
-  step,
-  historical,
-  notesCount,
-  onOpenNotes,
-}: {
-  step: number
-  historical: boolean
-  notesCount: number
-  onOpenNotes: () => void
-}) {
+function ContinuousStep({ step, historical }: { step: number; historical: boolean }) {
   const draft = useEnrollmentStore((state) => state.draft)
   const categoriaClinica = useEnrollmentStore((state) => state.categoriaClinica)
   const content = resolveAsideContent(step, draft, categoriaClinica)
@@ -74,7 +62,7 @@ function ContinuousStep({
     <Card title={`${step}. ${STEP_LABELS[step]}`}>
       <div className="space-y-4">
         <EnrollmentScript content={content} nested />
-        <CurrentStep step={step} onOpenNotes={onOpenNotes} notesCount={notesCount} historical={historical} embedded />
+        <CurrentStep step={step} historical={historical} embedded />
       </div>
     </Card>
   )
@@ -134,7 +122,7 @@ export function EnrollmentShell({ historical = false, continuous = false }: Enro
 
   return (
     <div className={cn("font-ds", !continuous && "h-full overflow-y-auto")}>
-      <div className="mx-auto flex max-w-[880px] flex-col gap-5 px-4 py-6 sm:px-6">
+      <div className={cn("mx-auto flex flex-col gap-5 px-4 py-6 sm:px-6", continuous ? "max-w-[880px]" : "max-w-[1240px]")}>
         {continuous ? (
           <>
             <div className="flex justify-end">
@@ -142,13 +130,7 @@ export function EnrollmentShell({ historical = false, continuous = false }: Enro
             </div>
             {rejection ??
               Array.from({ length: TOTAL_STEPS }, (_, index) => index + 1).map((step) => (
-                <ContinuousStep
-                  key={step}
-                  step={step}
-                  historical={historical}
-                  notesCount={notesCount}
-                  onOpenNotes={openNotes}
-                />
+                <ContinuousStep key={step} step={step} historical={historical} />
               ))}
           </>
         ) : (
@@ -169,10 +151,17 @@ export function EnrollmentShell({ historical = false, continuous = false }: Enro
             </header>
             <EnrollmentStepper currentStep={currentStep} onGoTo={handleGoTo} />
             {rejection ?? (
-              <>
-                <EnrollmentScript content={asideContent} />
-                <CurrentStep step={currentStep} onOpenNotes={openNotes} notesCount={notesCount} historical={historical} />
-              </>
+              <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="min-w-0 space-y-4">
+                  <div className="lg:hidden">
+                    <EnrollmentScript content={asideContent} />
+                  </div>
+                  <CurrentStep step={currentStep} historical={historical} />
+                </div>
+                <aside className="sticky top-6 hidden max-h-[calc(100dvh-7rem)] overflow-y-auto lg:block">
+                  <EnrollmentScript content={asideContent} aside />
+                </aside>
+              </div>
             )}
           </>
         )}

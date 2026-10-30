@@ -141,6 +141,7 @@ export function Step8Cierre({ historical = false, embedded = false }: { historic
         </Card>
       )}
       <QuestionForm
+        cards={!embedded}
         groups={groups}
         values={values}
         showMissing={gate.showMissing}

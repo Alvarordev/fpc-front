@@ -20,6 +20,7 @@ export function Step2Consent({ embedded = false }: { embedded?: boolean }) {
       className="flex flex-col gap-6"
     >
       <QuestionForm
+        cards={!embedded}
         groups={datosGroups}
         values={values}
         showMissing={gate.showMissing}

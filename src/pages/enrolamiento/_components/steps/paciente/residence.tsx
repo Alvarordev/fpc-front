@@ -1,6 +1,5 @@
 import { QuestionForm } from "@/components/ds/question-form"
 import type { Values } from "@/components/ds/questions"
-import { SectionBlock } from "../section-block"
 import { residenceGroups } from "./config"
 
 export function ResidenceSection({
@@ -14,9 +13,6 @@ export function ResidenceSection({
   showMissing: boolean
   onChange: (id: string, value: string | null) => void
 }) {
-  return (
-    <SectionBlock embedded={embedded} title="Datos de procedencia y residencia">
-      <QuestionForm groups={residenceGroups} values={values} showMissing={showMissing} onChange={onChange} />
-    </SectionBlock>
-  )
+  // Cada grupo es su propia tarjeta; en el modo continuo, un subtítulo dentro del paso.
+  return <QuestionForm cards={!embedded} groups={residenceGroups} values={values} showMissing={showMissing} onChange={onChange} />
 }

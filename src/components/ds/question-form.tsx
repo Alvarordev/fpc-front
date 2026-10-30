@@ -4,14 +4,17 @@ import { useCatalogSource } from "./catalog-source"
 import { ChoiceGroup, DurationField, Field, ScaleField, SelectField, TextArea, TextInput } from "./form"
 import { cn } from "@/lib/utils"
 import { Chip } from "./badge"
+import { Card } from "./card"
 import { RemoveButton } from "./record-section"
 import { multiValues, type Group, type Question, type Values } from "./questions"
 
 // Dibuja grupos de preguntas (`questions.ts`). Las respuestas cortas son botones
 // de un toque para registrar rápido mientras se conversa. `framed` pone cada
-// grupo en un bloque blanco, para usarlo dentro de un `Modal`.
-// `showMissing` marca con un anillo rojo las preguntas `required` que siguen
-// vacías. No deshabilita el envío: el aviso de cuántas faltan vive fuera.
+// grupo en un bloque blanco, para usarlo dentro de un `Modal`; `cards` pone cada
+// grupo en su `Card`, para usarlo suelto en una pantalla. Sin ninguno de los dos,
+// el título del grupo es un subtítulo pequeño dentro de la tarjeta que lo contiene.
+// `showMissing` marca en rojo las preguntas `required` que siguen vacías. No
+// deshabilita el envío: el aviso de cuántas faltan vive fuera.
 
 const YES_NO = [
   { value: "yes", label: "Sí" },
@@ -24,18 +27,21 @@ export function QuestionForm({
   values,
   onChange,
   framed = false,
+  cards = false,
   showMissing = false,
 }: {
   groups: Group[]
   values: Values
   onChange: (id: string, value: string | null) => void
   framed?: boolean
-  /** Anillo rojo en cada obligatorio visible que sigue vacío. */
+  /** Cada grupo en su propia tarjeta (título 15px). */
+  cards?: boolean
+  /** Marca en rojo cada obligatorio visible que sigue vacío. */
   showMissing?: boolean
 }) {
   const visible = groups.filter((g) => !g.showIf || g.showIf(values))
   return (
-    <div className={cn(framed ? "space-y-3" : "space-y-6")}>
+    <div className={cn(framed ? "space-y-3" : cards ? "space-y-4" : "space-y-6")}>
       {visible.map((g) => {
         const body = (
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
@@ -53,12 +59,18 @@ export function QuestionForm({
               ))}
           </div>
         )
+        if (cards)
+          return (
+            <Card key={g.title || "group"} title={g.title || undefined} description={g.description}>
+              {body}
+            </Card>
+          )
         return (
           <section key={g.title || "group"} className={framed ? "rounded-[18px] bg-white p-4 ring-1 ring-zinc-200/70" : "border-t border-zinc-100 pt-5 first:border-0 first:pt-0"}>
             {g.title && (
               <div className="mb-4">
-                <h4 className="text-sm font-semibold text-zinc-900">{g.title}</h4>
-                {g.description && <p className="mt-0.5 text-[13px] text-zinc-500">{g.description}</p>}
+                <h4 className={framed ? "text-sm font-semibold text-zinc-900" : "text-xs font-semibold tracking-wide text-zinc-500 uppercase"}>{g.title}</h4>
+                {g.description && <p className="mt-1 text-[13px] text-zinc-500">{g.description}</p>}
               </div>
             )}
             {body}
@@ -88,7 +100,7 @@ function QuestionField({
   const options = q.optionsFrom?.(values) ?? q.options ?? []
   const text = (type: string) => (id: string) => <TextInput id={id} type={type} value={value ?? ""} onChange={(e) => set(e.target.value || null)} placeholder={q.placeholder} />
   return (
-    <Field label={q.required ? `${q.label} *` : q.label} hint={q.hint} className={cn("animate-in fade-in-0 duration-200 motion-reduce:animate-none", wide && "md:col-span-2")}>
+    <Field label={q.required ? `${q.label} *` : q.label} hint={q.hint} error={missing ? "Falta responder" : undefined} className={cn("animate-in fade-in-0 duration-200 motion-reduce:animate-none", wide && "md:col-span-2")}>
       {(id) => {
         const control = (() => {
           switch (q.type) {
@@ -122,7 +134,7 @@ function QuestionField({
           }
         })()
         return (
-          <div className={cn(missing && "rounded-[12px] ring-2 ring-red-500")} aria-invalid={missing || undefined}>
+          <div className={cn(missing && "[&_input]:ring-red-300 [&_textarea]:ring-red-300")} data-missing={missing || undefined}>
             {control}
           </div>
         )

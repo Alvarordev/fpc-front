@@ -57,8 +57,6 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
         onReenroll={(patientId) => updateDraft({ patientId })}
       />
       <ContactsSection embedded={embedded} groups={phones} values={values} showMissing={gate.showMissing} onChange={onChange} />
-      <ResidenceSection embedded={embedded} values={values} showMissing={gate.showMissing} onChange={onChange} />
-      <ProfileSection embedded={embedded} draft={draft} values={values} showMissing={gate.showMissing} onChange={onChange} />
       <CompanionsSection
         embedded={embedded}
         draft={draft}
@@ -69,6 +67,8 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
         onChange={onChange}
         onPeople={(partial) => updateDraft(partial)}
       />
+      <ResidenceSection embedded={embedded} values={values} showMissing={gate.showMissing} onChange={onChange} />
+      <ProfileSection embedded={embedded} draft={draft} values={values} showMissing={gate.showMissing} onChange={onChange} />
       {!embedded && <StepNav currentStep={5} onPrev={prevStep} missingCount={gate.missingCount} alert={gate.alert} />}
     </StepContainer>
   )

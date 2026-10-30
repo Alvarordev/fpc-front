@@ -30,7 +30,7 @@ export function IdentitySection({
 }) {
   const pd = draft.patientData
   return (
-    <SectionBlock embedded={embedded} title="Información de identidad" description="Documento, nombre y fecha de nacimiento del paciente.">
+    <SectionBlock embedded={embedded} title="Identidad" description="Documento, nombre y fecha de nacimiento del paciente">
       <div className="mb-4 max-w-md">
         <Field label="Documento de identidad">
           {() => (

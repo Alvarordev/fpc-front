@@ -33,6 +33,7 @@ export function Step6Categoria({ embedded = false }: { embedded?: boolean }) {
         . Esta selección determina los campos del siguiente paso.
       </p>
       <QuestionForm
+        cards={!embedded}
         groups={groups}
         values={values}
         showMissing={gate.showMissing}
