@@ -12,6 +12,7 @@ import { Modal } from "@/components/ds/modal"
 import { QuestionForm } from "@/components/ds/question-form"
 import { is, progress, type Group, type Values } from "@/components/ds/questions"
 import { catalogLabel, useCatalog } from "@/hooks/use-catalog"
+import { alertGroups } from "@/lib/alert-questions"
 import { isAvailabilitySlotInFuture } from "@/lib/calendar-helpers"
 import { followUpPurposeLabels, followUpTypeLabels } from "@/lib/follow-up-labels"
 import { getLocalDateValue, type ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
@@ -24,29 +25,6 @@ import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 
 const FOOTNOTE = "Se creará al completar el seguimiento"
 const options = (labels: Record<string, string>) => Object.entries(labels).map(([value, label]) => ({ value, label }))
-
-const alertGroups: Group[] = [
-  {
-    title: "Incidencia",
-    questions: [
-      { id: "healthCenterId", label: "Establecimiento", type: "select", catalog: HEALTH_CENTER, required: true, wide: true },
-      { id: "category", label: "Categoría", type: "select", catalog: "alert_category", required: true },
-      {
-        id: "severity",
-        label: "Severidad",
-        type: "choice",
-        required: true,
-        options: [
-          { value: "HIGH", label: "Alta" },
-          { value: "MEDIUM", label: "Media" },
-          { value: "LOW", label: "Baja" },
-        ],
-      },
-      { id: "title", label: "Título", type: "text", required: true, placeholder: "Ej: no le entregan la quimioterapia", wide: true },
-      { id: "description", label: "Qué pasó", type: "textarea", required: true, placeholder: "Detalla el problema que reporta" },
-    ],
-  },
-]
 
 function nextGroups(agents: Agent[] | undefined, requiresAgent: boolean): Group[] {
   return [
