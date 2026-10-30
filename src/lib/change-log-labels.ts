@@ -25,6 +25,8 @@ const fieldLabels: Record<string, string> = {
   notes: "Notas",
   status: "Estado",
   scheduled_at: "Fecha programada",
+  completed_at: "Fecha de realización",
+  purpose: "Propósito",
   address: "Dirección",
   district: "Distrito",
   province: "Provincia",
@@ -60,6 +62,12 @@ const hiddenFields = new Set([
   "patient_id",
   "follow_up_id",
   "previous_version_id",
+  // Copias de solo fecha de scheduled_at / completed_at: repetirían el mismo cambio.
+  "scheduled_on",
+  "completed_on",
+  // Identificadores internos: el valor sería un código sin sentido para quien lee.
+  "agent_id",
+  "interlocutor_companion_id",
 ])
 
 export function isVisibleChangeLogEntry(entry: ChangeLogEntry) {
@@ -134,8 +142,20 @@ export function describeChangeLogEntry(entry: ChangeLogEntry) {
   return `${field}: ${changeLogValueLabel(entry.oldValue)} → ${changeLogValueLabel(entry.newValue)}`
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/
+
+/** Fechas legibles: "30 oct. 2026" o "30 oct. 2026, 04:26 p. m." (hora de Lima del navegador). */
+function dateLabel(value: string) {
+  if (DATE_ONLY.test(value)) return new Date(`${value}T00:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })
+  const date = new Date(value)
+  if (Number.isNaN(date.valueOf())) return value
+  return date.toLocaleString("es-PE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+}
+
 export function changeLogValueLabel(value: unknown) {
   if (value == null || value === "") return "—"
+  if (typeof value === "string" && (DATE_ONLY.test(value) || DATE_TIME.test(value))) return dateLabel(value)
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return valueLabels[String(value)] ?? String(value)
   }
