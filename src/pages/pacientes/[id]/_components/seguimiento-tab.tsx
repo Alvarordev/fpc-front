@@ -39,12 +39,14 @@ const isOpen = (f: FollowUp) => f.status === "SCHEDULED" || f.status === "OVERDU
 const dateOf = (f: FollowUp) => f.completedAt ?? f.completedOn ?? f.scheduledAt ?? f.scheduledOn ?? f.createdAt
 /**
  * Cuándo se habló (o se intentó) con el paciente. Un No contestó no tiene fecha de
- * realización: vale su último intento, nunca la fecha agendada, que puede ser futura.
+ * realización: vale su último intento. Uno histórico ocurrió en su fecha
+ * programada (ya pasada); uno operativo sin intentos, cuando se cerró.
  */
 const contactDateOf = (f: FollowUp) => {
   if (f.completedAt ?? f.completedOn) return (f.completedAt ?? f.completedOn)!
+  if (f.status !== "NO_ANSWER") return dateOf(f)
   const lastAttempt = f.attempts?.map((attempt) => attempt.occurredAt).sort().at(-1)
-  return f.status === "NO_ANSWER" ? (lastAttempt ?? f.updatedAt) : dateOf(f)
+  return lastAttempt ?? (f.isHistorical ? (f.scheduledAt ?? f.scheduledOn ?? f.updatedAt) : f.updatedAt)
 }
 
 function matches(f: FollowUp, filter: Filter) {
