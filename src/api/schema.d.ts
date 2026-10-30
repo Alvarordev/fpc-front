@@ -1741,6 +1741,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/psychooncology-appointments/{id}/reminder/message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the reminder text of a session (empty restores the suggested text) */
+        put: operations["PsychooncologyAppointmentsController_setReminderMessage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/psychooncology-appointments/{id}/reminder/sent": {
         parameters: {
             query?: never;
@@ -1819,7 +1836,8 @@ export interface paths {
         };
         /** Get the reminder text ready to copy (manual WhatsApp delivery) */
         get: operations["RemindersController_message"];
-        put?: never;
+        /** Save the email text of a pending reminder (empty restores the suggested text) */
+        put: operations["RemindersController_setMessage"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3344,9 +3362,8 @@ export interface components {
         RefreshResponseDto: {
             accessToken: string;
         };
-        CreatePatientDto: {
+        EnrollmentPatientDto: {
             fullName: string;
-            primaryPhone: string;
             secondaryPhone?: string;
             /** @enum {string} */
             documentType?: "DNI" | "CE" | "CPP";
@@ -3356,6 +3373,7 @@ export interface components {
             hasWhatsapp?: boolean;
             /** Format: email */
             email?: string;
+            primaryPhone?: string;
         };
         EnrollmentContactPersonDto: {
             fullName: string;
@@ -3367,6 +3385,7 @@ export interface components {
             birthDate?: string;
             gender?: string;
             hasWhatsapp?: boolean;
+            isCaregiver?: boolean;
             relationship: string;
         };
         EnrollmentContactInputDto: {
@@ -3728,8 +3747,8 @@ export interface components {
             familyMemberEmail?: string;
         };
         CreateEnrollmentDto: {
-            /** @description New patient, or updated data of patientId when re-enrolling an inactive or cancer-ruled-out patient */
-            patient?: components["schemas"]["CreatePatientDto"];
+            /** @description New patient, or the data registered in the wizard to complete a prospect (patientId) */
+            patient?: components["schemas"]["EnrollmentPatientDto"];
             healthPhase: string;
             contacts: components["schemas"]["EnrollmentContactInputDto"][];
             /** @description Enrollment snapshot only. Current consultation status is owned by patient_medical_appointments, not this flag. */
@@ -4384,6 +4403,19 @@ export interface components {
             note: string;
             /** Format: uuid */
             authorId: string;
+        };
+        CreatePatientDto: {
+            fullName: string;
+            primaryPhone: string;
+            secondaryPhone?: string;
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "CPP";
+            dni?: string;
+            birthDate?: string;
+            gender?: string;
+            hasWhatsapp?: boolean;
+            /** Format: email */
+            email?: string;
         };
         PatientResponseDto: {
             /** Format: uuid */
@@ -5677,12 +5709,20 @@ export interface components {
             appointmentId: string;
             /** @description Ready-to-copy reminder text for the patient */
             message: string;
+            /** @description Texto sugerido por el sistema */
+            defaultMessage: string;
+            /** @description El agente escribió su propio texto */
+            isCustom: boolean;
             /** @enum {string} */
             reminderMode: "TWO_HOURS" | "ONE_DAY" | "CUSTOM" | "MANUAL";
             /** Format: date-time */
             remindAt: string | null;
             /** Format: date-time */
             reminderSentAt: string | null;
+        };
+        SetReminderMessageDto: {
+            /** @description Texto del correo del recordatorio. Vacío o null vuelve al texto sugerido. */
+            text?: string | null;
         };
         UpdateReminderDto: {
             /** @enum {string} */
@@ -5707,6 +5747,10 @@ export interface components {
             subject: string;
             /** @description Plain text ready to copy (e.g. WhatsApp) */
             text: string;
+            /** @description Texto sugerido por el sistema */
+            defaultText: string;
+            /** @description El agente escribió su propio texto */
+            isCustom: boolean;
         };
         CompleteReminderMedicalAppointmentDto: {
             /** @enum {string} */
@@ -12741,6 +12785,45 @@ export interface operations {
             };
         };
     };
+    PsychooncologyAppointmentsController_setReminderMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetReminderMessageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentReminderResponseDto"];
+                };
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session not pending */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PsychooncologyAppointmentsController_markReminderSent: {
         parameters: {
             query?: never;
@@ -12978,6 +13061,45 @@ export interface operations {
             };
             /** @description No se encontró el recordatorio. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RemindersController_setMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetReminderMessageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderMessageResponseDto"];
+                };
+            };
+            /** @description No se puede editar un recordatorio cerrado. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT missing, invalid, or expired */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
