@@ -44,6 +44,7 @@ import { ScheduleFollowUpDialog } from "../../_components/schedule-follow-up-dia
 import type { ScheduleFollowUpFormValues } from "../../_components/schedule-follow-up-schema"
 import { SchedulePsychooncologyDialog } from "../../_components/schedule-psychooncology-dialog"
 import { ClinicalDataTabs } from "./clinical-data-tabs"
+import { saveSocialReferralDrafts } from "./social-referral-drafts"
 import {
   draftDiagnosisIdFromOption,
   hasAnyClinicalDraft,
@@ -306,6 +307,9 @@ export function FollowUpContent() {
         queryKey: ["patient-social-notes", patientId],
       }),
       queryClient.invalidateQueries({
+        queryKey: ["patient-social-referrals", patientId],
+      }),
+      queryClient.invalidateQueries({
         queryKey: ["psychooncology-appointments"],
       }),
       queryClient.invalidateQueries({ queryKey: ["agent-follow-ups"] }),
@@ -531,6 +535,8 @@ export function FollowUpContent() {
           : {}),
       })
     }
+
+    await saveSocialReferralDrafts(patientId!, followUpId!, clinicalDrafts)
 
     for (const note of clinicalDrafts.socialNotes ?? []) {
       await patientsApi.createSocialNote(patientId!, {

@@ -31,3 +31,12 @@ export function usePatientSocialNotes(patientId: string, enabled = true) {
     staleTime: 30 * 1000,
   })
 }
+
+export function usePatientSocialReferrals(patientId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["patient-social-referrals", patientId],
+    queryFn: () => patientsApi.listSocialReferrals(patientId),
+    enabled: Boolean(patientId) && enabled,
+    staleTime: 30 * 1000,
+  })
+}

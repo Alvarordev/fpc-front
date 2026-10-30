@@ -44,7 +44,6 @@ import type {
   PatientHealthBackgroundAssessment,
   PatientInsurance,
   PatientSymptomReport,
-  PatientSocialNote,
   PatientSisAffiliation,
   PatientTreatment,
   PatientDiagnosticStatusEvent,
@@ -61,7 +60,6 @@ import {
 import { DEPARTMENTS } from "@/pages/hospitales/_utils/departments"
 import {
   usePatientAddresses,
-  usePatientSocialNotes,
   useTreatmentMedications,
 } from "../../_hooks/use-patient-records"
 import {
@@ -80,6 +78,7 @@ import {
   Stethoscope,
   UserRound,
   Users,
+  Send,
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -114,9 +113,8 @@ import {
   type NonOncologicalFollowUpDraft,
   type TreatmentDraft,
   type TreatmentDecisionMode,
-  type SocialNoteDraft,
-  type SocialNoteType,
 } from "./clinical-drafts"
+import { SocialReferralsTab } from "./social-referrals-tab"
 import {
   FollowUpContactForm,
   type FollowUpContactValues,
@@ -374,7 +372,6 @@ export function ClinicalDataTabs({
     staleTime: 5 * 60 * 1000,
   })
   const { data: addresses = [] } = usePatientAddresses(patientId)
-  const { data: socialNotes = [] } = usePatientSocialNotes(patientId)
   const { data: companions = [] } = useQuery({
     queryKey: ["patient-companions", patientId],
     queryFn: () => patientsApi.companions(patientId),
@@ -607,8 +604,19 @@ export function ClinicalDataTabs({
             className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
           >
             <Users className="size-3.5 text-orange-600" />
-            Seguimiento social
-            {(drafts.social || drafts.socialNotes?.length) && <DraftDot />}
+            Perfil socioeconómico
+            {drafts.social && <DraftDot />}
+          </TabsTrigger>
+          <TabsTrigger
+            value="derivaciones"
+            className="h-9 flex-none justify-center gap-1 px-2.5 text-[13px] after:bottom-0"
+          >
+            <Send className="size-3.5 text-indigo-600" />
+            Derivaciones
+            {drafts.socialReferrals?.length ||
+            drafts.socialReferralUpdates?.length ? (
+              <DraftDot />
+            ) : null}
           </TabsTrigger>
         </TabsList>
 
@@ -792,15 +800,30 @@ export function ClinicalDataTabs({
           <SeguimientoSocialForm
             draft={drafts.social}
             currentDetails={patient?.details ?? null}
-            existingNotes={socialNotes}
-            noteDrafts={drafts.socialNotes}
-            onSave={(social, notes) =>
-              onDraftsChange((prev) => ({
-                ...prev,
-                social,
-                socialNotes: notes,
-              }))
+            onSave={(social) => onDraftsChange((prev) => ({ ...prev, social }))}
+          />
+        </TabsContent>
+        <TabsContent
+          value="derivaciones"
+          keepMounted
+          className="min-w-0 flex-1 pr-1"
+        >
+          <SocialReferralsTab
+            patientId={patientId}
+            hospitals={hospitals}
+            insuranceType={
+              drafts.insurance?.insuranceType ??
+              patient?.insurance.find((item) => item.isCurrent)
+                ?.insuranceType ??
+              null
             }
+            hasConadisCard={
+              drafts.social?.hasConadisCard ??
+              patient?.details?.hasConadisCard ??
+              null
+            }
+            drafts={drafts}
+            onDraftsChange={onDraftsChange}
           />
         </TabsContent>
       </Tabs>
@@ -5282,45 +5305,14 @@ interface SocialFormValues {
   attendedEducationalTalkAt: string
 }
 
-const SOCIAL_NOTE_SECTIONS: Array<{
-  type: SocialNoteType
-  title: string
-  description: string
-  placeholder: string
-}> = [
-  {
-    type: "SOCIAL_WORKER",
-    title: "Derivación a trabajo social",
-    description:
-      "Registra qué ocurrió con la derivación y si ayudó al paciente.",
-    placeholder: "Ej: Se logró contactar al área social; orientaron sobre...",
-  },
-  {
-    type: "CONADIS",
-    title: "Carnet CONADIS",
-    description: "Registra avances, dificultades o información pendiente.",
-    placeholder: "Ej: Inició el trámite; falta presentar...",
-  },
-  {
-    type: "FISSAL",
-    title: "FISSAL",
-    description: "Registra orientación recibida, trámite o resultado.",
-    placeholder: "Ej: Conoce el beneficio; se le explicó cómo...",
-  },
-]
-
 function SeguimientoSocialForm({
   draft,
   currentDetails,
-  existingNotes,
-  noteDrafts,
   onSave,
 }: {
   draft: PatientDetailsInput | undefined
   currentDetails: PatientDetailsResponse["details"] | null
-  existingNotes: PatientSocialNote[]
-  noteDrafts: SocialNoteDraft[] | undefined
-  onSave: (social: PatientDetailsInput, notes: SocialNoteDraft[]) => void
+  onSave: (social: PatientDetailsInput) => void
 }) {
   const { register, handleSubmit, watch, setValue, reset } =
     useForm<SocialFormValues>({
@@ -5395,12 +5387,6 @@ function SeguimientoSocialForm({
           "",
       },
     })
-  const [notes, setNotes] = useState<Record<SocialNoteType, string>>(() => ({
-    SOCIAL_WORKER:
-      noteDrafts?.find((note) => note.type === "SOCIAL_WORKER")?.note ?? "",
-    CONADIS: noteDrafts?.find((note) => note.type === "CONADIS")?.note ?? "",
-    FISSAL: noteDrafts?.find((note) => note.type === "FISSAL")?.note ?? "",
-  }))
 
   useEffect(() => {
     if (!currentDetails && !draft) return
@@ -5477,12 +5463,7 @@ function SeguimientoSocialForm({
   }, [currentDetails, draft, reset])
 
   function onSubmit(values: SocialFormValues) {
-    const nextNotes = SOCIAL_NOTE_SECTIONS.flatMap(({ type }) => {
-      const note = notes[type].trim()
-      return note ? [{ type, note }] : []
-    })
-    onSave(
-      {
+    onSave({
         zoneType: values.zoneType || undefined,
         nativeLanguage: values.nativeLanguage.trim() || undefined,
         educationLevel: values.educationLevel,
@@ -5527,10 +5508,8 @@ function SeguimientoSocialForm({
           values.attendedEducationalTalk === true
             ? values.attendedEducationalTalkAt || undefined
             : undefined,
-      },
-      nextNotes,
-    )
-    toast.success("Seguimiento social guardado en el borrador")
+    })
+    toast.success("Perfil socioeconómico guardado en el borrador")
   }
 
   return (
@@ -5596,11 +5575,6 @@ function SeguimientoSocialForm({
           label="¿Recibe ayuda económica?"
           value={watch("receivesFinancialSupport")}
           onChange={(v) => setValue("receivesFinancialSupport", v)}
-        />
-        <TriSelect
-          label="Derivado a trabajo social"
-          value={watch("referredToSocialWorker")}
-          onChange={(v) => setValue("referredToSocialWorker", v)}
         />
         <TriSelect
           label="Tiene carnet CONADIS"
@@ -5735,67 +5709,11 @@ function SeguimientoSocialForm({
           />
         </div>
       </div>
-      <div className="space-y-3 border-t pt-4">
-        <div>
-          <p className="text-sm font-medium">Notas de estado</p>
-          <p className="text-muted-foreground text-xs">
-            Las notas se agregan al historial de cada tema al completar este
-            seguimiento.
-          </p>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {SOCIAL_NOTE_SECTIONS.map((section) => {
-            const history = existingNotes.filter(
-              (note) => note.type === section.type,
-            )
-            return (
-              <div
-                key={section.type}
-                className="bg-muted/20 space-y-2 rounded-lg border p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{section.title}</p>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    {section.description}
-                  </p>
-                </div>
-                {history[0] && (
-                  <div className="bg-card rounded-md border p-2 text-xs">
-                    <p className="text-muted-foreground mb-1">
-                      Última nota ·{" "}
-                      {new Date(history[0].createdAt).toLocaleDateString(
-                        "es-PE",
-                      )}
-                    </p>
-                    <p>{history[0].note}</p>
-                  </div>
-                )}
-                <Textarea
-                  value={notes[section.type]}
-                  onChange={(event) =>
-                    setNotes((current) => ({
-                      ...current,
-                      [section.type]: event.target.value,
-                    }))
-                  }
-                  placeholder={section.placeholder}
-                  rows={4}
-                />
-                {history.length > 1 && (
-                  <p className="text-muted-foreground text-xs">
-                    {history.length} notas anteriores en el historial.
-                  </p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm">
-          Guardar seguimiento social
+          Guardar perfil socioeconómico
         </Button>
-        <DraftBadge saved={Boolean(draft || noteDrafts?.length)} />
+        <DraftBadge saved={Boolean(draft)} />
       </div>
     </form>
   )

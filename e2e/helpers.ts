@@ -220,15 +220,11 @@ const HISTORICAL_CATALOGS: Record<string, ReturnType<typeof catalogItem>[]> = {
   medical_specialty: [
     catalogItem("medical_specialty", "ONCOLOGIA", "Oncología"),
   ],
-  education_level: [
-    catalogItem("education_level", "SECONDARY", "Secundaria"),
-  ],
+  education_level: [catalogItem("education_level", "SECONDARY", "Secundaria")],
   zone_type: [catalogItem("zone_type", "URBAN", "Urbana")],
   native_language: [catalogItem("native_language", "CASTELLANO", "Castellano")],
   care_program: [catalogItem("care_program", "ESSALUD", "EsSalud")],
-  access_barrier: [
-    catalogItem("access_barrier", "DISTANCE", "Distancia"),
-  ],
+  access_barrier: [catalogItem("access_barrier", "DISTANCE", "Distancia")],
   treatment_situation: [
     catalogItem("treatment_situation", "IN_TREATMENT", "En tratamiento"),
   ],
@@ -326,6 +322,7 @@ export type HistoricalApiCapture = {
   followUps: Record<string, unknown>[]
   deletedFollowUpIds: string[]
   patientPatches: Record<string, unknown>[]
+  socialReferrals: Record<string, unknown>[]
 }
 
 export type HistoricalApiOptions = {
@@ -343,6 +340,7 @@ export async function mockHistoricalApi(
     followUps: [],
     deletedFollowUpIds: [],
     patientPatches: [],
+    socialReferrals: [],
   }
   const created: ReturnType<typeof followUpResponse>[] = []
   for (const [index, body] of (options.seedFollowUps ?? []).entries()) {
@@ -438,10 +436,37 @@ export async function mockHistoricalApi(
       if (
         (path === `/patients/${HISTORICAL_PATIENT_ID}/companions` ||
           path === `/patients/${HISTORICAL_PATIENT_ID}/addresses` ||
-          path === `/patients/${HISTORICAL_PATIENT_ID}/social-notes`) &&
+          path === `/patients/${HISTORICAL_PATIENT_ID}/social-notes` ||
+          path === `/patients/${HISTORICAL_PATIENT_ID}/social-referrals`) &&
         method === "GET"
       ) {
         await json(route, 200, [])
+        return
+      }
+      if (
+        path === `/patients/${HISTORICAL_PATIENT_ID}/social-referrals` &&
+        method === "POST"
+      ) {
+        const body = JSON.parse(request.postData() ?? "{}") as Record<
+          string,
+          unknown
+        >
+        capture.socialReferrals.push(body)
+        await json(route, 201, {
+          id: `referral-${capture.socialReferrals.length}`,
+          patientId: HISTORICAL_PATIENT_ID,
+          complaintChannel: null,
+          healthCenterId: null,
+          healthCenterName: null,
+          issue: null,
+          note: null,
+          status: "OPEN",
+          closedAt: null,
+          createdById: "agent-user",
+          createdAt: "2024-05-01T00:00:00.000Z",
+          updates: [],
+          ...body,
+        })
         return
       }
       if (path === "/historical-records/follow-ups" && method === "POST") {

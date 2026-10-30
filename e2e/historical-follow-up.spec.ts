@@ -19,11 +19,7 @@ async function openFollowUpDialog(page: Page) {
   await expect(followUpDialog(page)).toBeVisible()
 }
 
-function fieldGroup(
-  page: Page,
-  container: Locator,
-  label: string | RegExp,
-) {
+function fieldGroup(page: Page, container: Locator, label: string | RegExp) {
   return container
     .locator("div.flex.flex-col.gap-2, div.space-y-2")
     .filter({ has: page.getByText(label) })
@@ -98,6 +94,17 @@ async function openTab(page: Page, name: string) {
   await followUpDialog(page).getByRole("tab", { name }).click()
 }
 
+async function addConadisReferral(page: Page) {
+  await openTab(page, "Derivaciones")
+  const dialog = followUpDialog(page)
+  await dialog.getByRole("button", { name: "Nueva derivación" }).click()
+  await dialog.getByRole("button", { name: /^Carnet CONADIS/ }).click()
+  await dialog
+    .getByPlaceholder("Orientación brindada, próximos pasos...")
+    .fill("Trámite CONADIS en curso")
+  await dialog.getByRole("button", { name: "Agregar derivación" }).click()
+}
+
 async function addDiagnosisDraft(page: Page, diseaseEvolution?: string) {
   const dialog = followUpDialog(page)
   await openTab(page, "Diagnóstico")
@@ -154,14 +161,18 @@ test.describe("eliminar seguimiento histórico", () => {
 
     const enrollment = timelineCard(page, "Enrolamiento")
     await expect(enrollment).toBeVisible()
-    await expect(enrollment.getByRole("button", { name: "Eliminar" })).toHaveCount(
-      0,
-    )
-    await expect(enrollment.getByRole("button", { name: "Editar" })).toHaveCount(0)
+    await expect(
+      enrollment.getByRole("button", { name: "Eliminar" }),
+    ).toHaveCount(0)
+    await expect(
+      enrollment.getByRole("button", { name: "Editar" }),
+    ).toHaveCount(0)
 
     const followUp = timelineCard(page, "Seguimiento · Llamada")
     await expect(followUp.getByText(DELETE_NOTES)).toBeVisible()
-    await expect(followUp.getByRole("button", { name: "Eliminar" })).toBeVisible()
+    await expect(
+      followUp.getByRole("button", { name: "Eliminar" }),
+    ).toBeVisible()
   })
 
   test("cancela y confirma la eliminación en la línea de tiempo", async ({
@@ -187,7 +198,9 @@ test.describe("eliminar seguimiento histórico", () => {
     await followUp.getByRole("button", { name: "Eliminar" }).click()
     await expect(confirm).toBeVisible()
     await confirm.getByRole("button", { name: "Eliminar seguimiento" }).click()
-    await expect(page.getByText("Seguimiento histórico eliminado")).toBeVisible()
+    await expect(
+      page.getByText("Seguimiento histórico eliminado"),
+    ).toBeVisible()
     await expect(followUp).toHaveCount(0)
     await expect(enrollment).toBeVisible()
     expect(capture.deletedFollowUpIds).toEqual(["follow-up-1"])
@@ -215,7 +228,9 @@ test.describe("eliminar seguimiento histórico", () => {
 
     await edit.getByRole("button", { name: "Eliminar", exact: true }).click()
     await edit.getByRole("button", { name: "Eliminar seguimiento" }).click()
-    await expect(page.getByText("Seguimiento histórico eliminado")).toBeVisible()
+    await expect(
+      page.getByText("Seguimiento histórico eliminado"),
+    ).toBeVisible()
     await expect(edit).toHaveCount(0)
     await expect(followUp).toHaveCount(0)
     await expect(timelineCard(page, "Enrolamiento")).toBeVisible()
@@ -224,7 +239,6 @@ test.describe("eliminar seguimiento histórico", () => {
 })
 
 test.describe("seguimiento histórico", () => {
-
   test("guarda metadatos sin bloques clínicos", async ({ page }) => {
     const capture = await mockHistoricalApi(page)
     await openHistoricalPatient(page)
@@ -311,14 +325,18 @@ test.describe("seguimiento histórico", () => {
     await followUpDialog(page)
       .getByRole("button", { name: "Guardar dirección" })
       .click()
-    await expect(page.getByText("Dirección guardada en el borrador")).toBeVisible()
+    await expect(
+      page.getByText("Dirección guardada en el borrador"),
+    ).toBeVisible()
     await saveFollowUp(page)
     await expectSaved(page)
 
     const body = lastFollowUp(capture)
     expectBasePayload(body)
     expect(body.addresses).toEqual(
-      expect.arrayContaining([expect.objectContaining({ address: "Jr. Cusco 100" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ address: "Jr. Cusco 100" }),
+      ]),
     )
   })
 
@@ -350,7 +368,9 @@ test.describe("seguimiento histórico", () => {
     await dialog.getByLabel("Período del gasto").click()
     await page.getByRole("option", { name: "Por noche" }).click()
     await dialog.getByRole("button", { name: "Guardar dirección" }).click()
-    await expect(page.getByText("Dirección guardada en el borrador")).toBeVisible()
+    await expect(
+      page.getByText("Dirección guardada en el borrador"),
+    ).toBeVisible()
     await saveFollowUp(page)
     await expectSaved(page)
 
@@ -429,9 +449,7 @@ test.describe("seguimiento histórico", () => {
       mode: "PARALLEL",
     })
     expect(treatments[0].treatmentType).toBe("QUIMIOTERAPIA")
-    expect(
-      treatments[0].diagnosisRef ?? treatments[0].diagnosisId,
-    ).toBeTruthy()
+    expect(treatments[0].diagnosisRef ?? treatments[0].diagnosisId).toBeTruthy()
   })
 
   test("guarda antecedentes", async ({ page }) => {
@@ -482,34 +500,27 @@ test.describe("seguimiento histórico", () => {
     expect(body.sisAffiliation).toMatchObject({ canAffiliate: true })
   })
 
-  test("guarda una nota de seguimiento social", async ({ page }) => {
+  test("guarda una derivación CONADIS", async ({ page }) => {
     const capture = await mockHistoricalApi(page)
     await openHistoricalPatient(page)
     await openFollowUpDialog(page)
     await fillMetadata(page)
-    await openTab(page, "Seguimiento social")
-    await followUpDialog(page)
-      .getByPlaceholder("Ej: Inició el trámite; falta presentar...")
-      .fill("Trámite CONADIS en curso")
-    await followUpDialog(page)
-      .getByRole("button", { name: "Guardar seguimiento social" })
-      .click()
+    await addConadisReferral(page)
     await expect(
-      page.getByText("Seguimiento social guardado en el borrador"),
+      page.getByText("Derivación agregada al borrador"),
     ).toBeVisible()
     await saveFollowUp(page)
     await expectSaved(page)
 
     const body = lastFollowUp(capture)
     expectBasePayload(body)
-    expect(body.socialNotes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: "CONADIS",
-          note: "Trámite CONADIS en curso",
-        }),
-      ]),
-    )
+    expect(capture.socialReferrals).toEqual([
+      expect.objectContaining({
+        type: "CONADIS",
+        note: "Trámite CONADIS en curso",
+        followUpId: "follow-up-1",
+      }),
+    ])
   })
 
   test("guarda seguimiento no oncológico cuando el cáncer está descartado", async ({
@@ -616,13 +627,7 @@ test.describe("seguimiento histórico", () => {
       .getByRole("button", { name: "Guardar seguro" })
       .click()
 
-    await openTab(page, "Seguimiento social")
-    await followUpDialog(page)
-      .getByPlaceholder("Ej: Inició el trámite; falta presentar...")
-      .fill("Trámite CONADIS en curso")
-    await followUpDialog(page)
-      .getByRole("button", { name: "Guardar seguimiento social" })
-      .click()
+    await addConadisReferral(page)
 
     await saveFollowUp(page)
     await expectSaved(page)
@@ -632,7 +637,9 @@ test.describe("seguimiento histórico", () => {
     expect(body.details).toMatchObject({ requiresTranslation: true })
     expect(body.symptomReport).toMatchObject({ hasDiscomfort: true })
     expect(body.addresses).toEqual(
-      expect.arrayContaining([expect.objectContaining({ address: "Jr. Cusco 100" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ address: "Jr. Cusco 100" }),
+      ]),
     )
     expect(body.diagnoses).toEqual(
       expect.arrayContaining([
@@ -648,11 +655,9 @@ test.describe("seguimiento histórico", () => {
       hasPsychiatry: true,
     })
     expect(body.insurance).toMatchObject({ insuranceType: "SIS" })
-    expect(body.socialNotes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: "CONADIS" }),
-      ]),
-    )
+    expect(capture.socialReferrals).toEqual([
+      expect.objectContaining({ type: "CONADIS" }),
+    ])
   })
 
   test("pide el agente en español si falta", async ({ page }) => {
@@ -710,7 +715,9 @@ test.describe("seguimiento histórico", () => {
       page.getByText("No se pudo guardar el seguimiento histórico"),
     ).toBeVisible()
     await expect(
-      page.getByText(/«FakeDx» no está en el catálogo de Diagnóstico oncológico/).first(),
+      page
+        .getByText(/«FakeDx» no está en el catálogo de Diagnóstico oncológico/)
+        .first(),
     ).toBeVisible()
     await expect(page.getByText(/Verificá esa selección/).first()).toBeVisible()
   })

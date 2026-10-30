@@ -6,6 +6,8 @@ import type {
   CreatePatientSisAffiliationInput,
   CreatePatientSymptomReportInput,
   CreatePatientTreatmentInput,
+  CreatePatientSocialReferralInput,
+  CreatePatientSocialReferralUpdateInput,
   PatientDetailsInput,
   TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
@@ -58,6 +60,14 @@ export type SocialNoteDraft = {
   type: SocialNoteType
   note: string
 }
+export type SocialReferralDraft = Omit<
+  CreatePatientSocialReferralInput,
+  "followUpId" | "openedAt"
+> & { clientId: string }
+export type SocialReferralUpdateDraft = Omit<
+  CreatePatientSocialReferralUpdateInput,
+  "followUpId"
+> & { referralId: string }
 export type InsuranceDraft = Omit<CreatePatientInsuranceInput, "followUpId">
 export type SisAffiliationDraft = Omit<
   CreatePatientSisAffiliationInput,
@@ -139,6 +149,8 @@ export interface ClinicalDrafts {
   diagnoses?: DiagnosisDraft[]
   treatments?: TreatmentDraft[]
   socialNotes?: SocialNoteDraft[]
+  socialReferrals?: SocialReferralDraft[]
+  socialReferralUpdates?: SocialReferralUpdateDraft[]
   symptomReport?: SymptomReportDraft
   nonOncologicalFollowUp?: NonOncologicalFollowUpDraft
   diagnosticStatus?: DiagnosticStatusDraft
@@ -156,6 +168,8 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.diagnoses?.length ||
     drafts.treatments?.length ||
     drafts.socialNotes?.length ||
+    drafts.socialReferrals?.length ||
+    drafts.socialReferralUpdates?.length ||
     drafts.symptomReport ||
     drafts.nonOncologicalFollowUp ||
     drafts.diagnosticStatus ||

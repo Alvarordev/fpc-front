@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ClinicalDataTabs } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-data-tabs"
+import { saveSocialReferralDrafts } from "@/pages/pacientes/[id]/seguimientos/_components/social-referral-drafts"
 import type { ClinicalDrafts } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-drafts"
 import { usePatient } from "@/pages/pacientes/[id]/_hooks/use-patient"
 import {
@@ -194,8 +195,9 @@ function HistoricalFollowUpForm({
         recordIds,
       })
 
+      const referralDate = completedOn || scheduledOn || undefined
       if (followUpId) {
-        return historicalRecordsApi.updateFollowUp(followUpId, {
+        const updated = await historicalRecordsApi.updateFollowUp(followUpId, {
           ...clinical,
           agentId,
           type,
@@ -205,9 +207,16 @@ function HistoricalFollowUpForm({
           scheduledOn: scheduledOn || null,
           completedOn: completedOn || null,
         })
+        await saveSocialReferralDrafts(
+          patientId,
+          updated.id,
+          drafts,
+          referralDate,
+        )
+        return updated
       }
 
-      return historicalRecordsApi.createFollowUp({
+      const created = await historicalRecordsApi.createFollowUp({
         ...clinical,
         subjectPatientId: patientId,
         agentId,
@@ -218,6 +227,13 @@ function HistoricalFollowUpForm({
         ...(scheduledOn ? { scheduledOn } : {}),
         ...(completedOn ? { completedOn } : {}),
       })
+      await saveSocialReferralDrafts(
+        patientId,
+        created.id,
+        drafts,
+        referralDate,
+      )
+      return created
     },
     onSuccess: async (followUp) => {
       await Promise.all([
@@ -235,6 +251,9 @@ function HistoricalFollowUpForm({
         }),
         queryClient.invalidateQueries({
           queryKey: ["patient-social-notes", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-social-referrals", patientId],
         }),
         queryClient.invalidateQueries({ queryKey: ["follow-up", followUp.id] }),
       ])

@@ -72,6 +72,15 @@ export type CreateTreatmentMedicationInput =
   components["schemas"]["CreateTreatmentMedicationDto"]
 export type UpdateTreatmentMedicationInput =
   components["schemas"]["UpdateTreatmentMedicationDto"]
+export type PatientSocialReferral =
+  components["schemas"]["PatientSocialReferralResponseDto"]
+export type PatientSocialReferralUpdate =
+  components["schemas"]["PatientSocialReferralUpdateResponseDto"]
+export type SocialReferralType = PatientSocialReferral["type"]
+export type CreatePatientSocialReferralInput =
+  components["schemas"]["CreatePatientSocialReferralDto"]
+export type CreatePatientSocialReferralUpdateInput =
+  components["schemas"]["CreatePatientSocialReferralUpdateDto"]
 export type CreatePatientSocialNoteInput =
   components["schemas"]["CreatePatientSocialNoteDto"]
 export type CreatePatientHealthBackgroundAssessmentInput =
@@ -88,11 +97,19 @@ export type TransitionPatientDiagnosticStatusDto =
 export class PatientsApiError extends Error {
   readonly status: number
 
-  constructor(status: number) {
-    super("No se pudo completar la solicitud de pacientes")
+  constructor(status: number, message?: string) {
+    super(message ?? "No se pudo completar la solicitud de pacientes")
     this.name = "PatientsApiError"
     this.status = status
   }
+}
+
+function apiErrorMessage(error: unknown): string | undefined {
+  const message = (error as { message?: unknown } | undefined)?.message
+  if (typeof message === "string") return message
+  if (Array.isArray(message) && typeof message[0] === "string")
+    return message[0]
+  return undefined
 }
 
 export const patientsApi = {
@@ -256,6 +273,52 @@ export const patientsApi = {
 
     if (!data) {
       throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async listSocialReferrals(patientId: string) {
+    const { data, response } = await api.GET(
+      "/patients/{patientId}/social-referrals",
+      { params: { path: { patientId } } },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status)
+    }
+
+    return data
+  },
+
+  async createSocialReferral(
+    patientId: string,
+    input: CreatePatientSocialReferralInput,
+  ) {
+    const { data, error, response } = await api.POST(
+      "/patients/{patientId}/social-referrals",
+      { params: { path: { patientId } }, body: input },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status, apiErrorMessage(error))
+    }
+
+    return data
+  },
+
+  async addSocialReferralUpdate(
+    patientId: string,
+    referralId: string,
+    input: CreatePatientSocialReferralUpdateInput,
+  ) {
+    const { data, error, response } = await api.POST(
+      "/patients/{patientId}/social-referrals/{referralId}/updates",
+      { params: { path: { patientId, referralId } }, body: input },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status, apiErrorMessage(error))
     }
 
     return data

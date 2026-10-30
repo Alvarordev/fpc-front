@@ -1159,6 +1159,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patients/{patientId}/social-referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List social referrals with their history */
+        get: operations["PatientSocialReferralsController_findAll"];
+        put?: never;
+        /** Open a social referral for a patient */
+        post: operations["PatientSocialReferralsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patients/{patientId}/social-referrals/{referralId}/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the outcome of a social referral */
+        post: operations["PatientSocialReferralsController_addUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patients/{patientId}/health-background-assessments": {
         parameters: {
             query?: never;
@@ -2881,7 +2916,7 @@ export interface components {
         };
         CreateCatalogItemDto: {
             /** @enum {string} */
-            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type";
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "complaint_channel" | "complaint_outcome" | "social_worker_outcome" | "fissal_outcome" | "conadis_outcome";
             code: string;
             label: string;
             parentCode?: string | null;
@@ -4066,6 +4101,73 @@ export interface components {
             authorId: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        CreatePatientSocialReferralDto: {
+            /** Format: uuid */
+            followUpId: string;
+            /** @enum {string} */
+            type: "COMPLAINT" | "SOCIAL_WORKER" | "FISSAL" | "CONADIS";
+            /** @description Catalog `complaint_channel` code. */
+            complaintChannel?: string;
+            /** Format: uuid */
+            healthCenterId?: string;
+            /** @description What the complaint is about. */
+            issue?: string;
+            note?: string;
+            /**
+             * Format: date
+             * @description Defaults to today.
+             */
+            openedAt?: string;
+        };
+        PatientSocialReferralUpdateResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            referralId: string;
+            /** Format: uuid */
+            followUpId: string;
+            outcome: string;
+            note: string | null;
+            /** Format: uuid */
+            authorId: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PatientSocialReferralResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            /** @enum {string} */
+            type: "COMPLAINT" | "SOCIAL_WORKER" | "FISSAL" | "CONADIS";
+            complaintChannel: string | null;
+            /** Format: uuid */
+            healthCenterId: string | null;
+            healthCenterName: string | null;
+            issue: string | null;
+            note: string | null;
+            /** @enum {string} */
+            status: "OPEN" | "CLOSED";
+            /** Format: date */
+            openedAt: string;
+            /** Format: date */
+            closedAt: string | null;
+            /** Format: uuid */
+            followUpId: string;
+            /** Format: uuid */
+            createdById: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Outcome history, newest first. */
+            updates: components["schemas"]["PatientSocialReferralUpdateResponseDto"][];
+        };
+        CreatePatientSocialReferralUpdateDto: {
+            /** Format: uuid */
+            followUpId: string;
+            /** @description Code from the outcome catalog of the referral type. */
+            outcome: string;
+            note?: string;
         };
         CreatePatientHealthBackgroundAssessmentDto: {
             /** Format: uuid */
@@ -7025,7 +7127,7 @@ export interface operations {
         parameters: {
             query?: {
                 includeInactive?: boolean;
-                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type";
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "complaint_channel" | "complaint_outcome" | "social_worker_outcome" | "fissal_outcome" | "conadis_outcome";
             };
             header?: never;
             path?: never;
@@ -9109,6 +9211,149 @@ export interface operations {
                 content?: never;
             };
             /** @description Patient or follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientSocialReferralsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSocialReferralResponseDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientSocialReferralsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientSocialReferralDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSocialReferralResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Patient or follow-up not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientSocialReferralsController_addUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                referralId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientSocialReferralUpdateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSocialReferralResponseDto"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Referral or follow-up not found */
             404: {
                 headers: {
                     [name: string]: unknown;
