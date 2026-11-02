@@ -53,17 +53,12 @@ function CurrentStep({ step, historical = false, embedded = false }: CurrentStep
   }
 }
 
+// Carga histórica: se transcribe desde el archivo, no hay llamada, así que
+// no se muestra el guion.
 function ContinuousStep({ step, historical }: { step: number; historical: boolean }) {
-  const draft = useEnrollmentStore((state) => state.draft)
-  const categoriaClinica = useEnrollmentStore((state) => state.categoriaClinica)
-  const content = resolveAsideContent(step, draft, categoriaClinica)
-
   return (
     <Card title={`${step}. ${STEP_LABELS[step]}`}>
-      <div className="space-y-4">
-        <EnrollmentScript content={content} nested />
-        <CurrentStep step={step} historical={historical} embedded />
-      </div>
+      <CurrentStep step={step} historical={historical} embedded />
     </Card>
   )
 }

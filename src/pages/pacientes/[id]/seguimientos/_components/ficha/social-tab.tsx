@@ -4,12 +4,13 @@ import { is, yes, type Group, type Values } from "@/components/ds/questions"
 import type { PatientDetailsInput, PatientDetailsResponse, PatientSocialNote } from "@/api/patients"
 import type { EducationLevel } from "../../../_lib/clinical-labels"
 import { formatDate } from "../../../_lib/ficha-format"
-import type { SocialNoteDraft, SocialNoteType } from "../clinical-drafts"
+import type { ProgramDropoutDraft, SocialNoteDraft, SocialNoteType } from "../clinical-drafts"
 import { compact, fromBool, fromNumber, text, toBool, toInt, useAnswers } from "./answers"
 import type { SheetTabProps } from "./sheet-types"
 
 // Seguimiento social: situación del hogar, beneficios gestionados por SEPA y
-// notas de trabajo social, CONADIS y FISSAL.
+// notas de trabajo social, CONADIS y FISSAL. En la carga histórica también el
+// abandono del programa, que al guardar da de baja al paciente con esa fecha.
 
 const NOTE_TYPES: { type: SocialNoteType; id: string; label: string; placeholder: string }[] = [
   { type: "SOCIAL_WORKER", id: "noteSocialWorker", label: "Derivación a trabajo social", placeholder: "Qué ocurrió con la derivación y si le ayudó" },
@@ -54,6 +55,29 @@ const groups: Group[] = [
   },
 ]
 
+const DROPOUT_REASONS: { value: ProgramDropoutDraft["reason"]; label: string }[] = [
+  { value: "VOLUNTARY", label: "Voluntaria" },
+  { value: "UNLOCATABLE", label: "Ilocalizable" },
+  { value: "DECEASED", label: "Fallecimiento" },
+  { value: "TRANSFERRED_OUT", label: "Transferido a otro programa" },
+]
+
+const dropoutGroup: Group = {
+  title: "Abandono del programa",
+  description: "Solo si el paciente dejó el programa. Al guardar el seguimiento queda inactivo desde esa fecha; sin fecha, se usa la del seguimiento.",
+  questions: [
+    { id: "dropout", label: "¿Abandonó el programa?", type: "yesno" },
+    { id: "dropoutAt", label: "Fecha de abandono del programa", type: "date", showIf: yes("dropout") },
+    { id: "dropoutReason", label: "Motivo de abandono del programa", type: "select", required: true, options: DROPOUT_REASONS, showIf: yes("dropout") },
+    { id: "dropoutNotes", label: "Notas sobre el abandono", type: "textarea", placeholder: "Opcional", wide: true, showIf: yes("dropout") },
+  ],
+}
+
+function toDropout(v: Values): ProgramDropoutDraft | undefined {
+  if (!yes("dropout")(v) || !v.dropoutReason) return undefined
+  return { reason: v.dropoutReason as ProgramDropoutDraft["reason"], occurredOn: v.dropoutAt ?? undefined, notes: text(v.dropoutNotes) }
+}
+
 type Details = PatientDetailsResponse["details"]
 
 function initialValues(draft: PatientDetailsInput | undefined, details: Details | null, notes: SocialNoteDraft[] | undefined): Values {
@@ -80,6 +104,10 @@ function initialValues(draft: PatientDetailsInput | undefined, details: Details 
     shelterOther: pick("shelterSepaProviderOther"),
     ...Object.fromEntries(NOTE_TYPES.map((n) => [n.id, notes?.find((x) => x.type === n.type)?.note])),
   })
+}
+
+function dropoutValues(draft: ProgramDropoutDraft | undefined): Values {
+  return draft ? compact({ dropout: "yes", dropoutAt: draft.occurredOn, dropoutReason: draft.reason, dropoutNotes: draft.notes }) : {}
 }
 
 function toSocial(v: Values): PatientDetailsInput {
@@ -113,17 +141,28 @@ const toNotes = (v: Values): SocialNoteDraft[] => NOTE_TYPES.flatMap((n) => (tex
 
 const NOTE_LABELS = Object.fromEntries(NOTE_TYPES.map((n) => [n.type, n.label])) as Record<SocialNoteType, string>
 
-type Props = SheetTabProps & { details: Details | null; existingNotes: PatientSocialNote[] }
+type Props = SheetTabProps & {
+  details: Details | null
+  existingNotes: PatientSocialNote[]
+  /** Carga histórica de un paciente activo: se puede registrar su abandono. */
+  allowDropout: boolean
+}
 
-export function SocialTab({ drafts, onDraftsChange, details, existingNotes }: Props) {
+export function SocialTab({ drafts, onDraftsChange, details, existingNotes, allowDropout }: Props) {
   const { values, answer } = useAnswers(
-    () => initialValues(drafts.social, details, drafts.socialNotes),
+    () => ({ ...initialValues(drafts.social, details, drafts.socialNotes), ...dropoutValues(drafts.programDropout) }),
     (v, changed) =>
-      onDraftsChange((prev) => (changed.startsWith("note") ? { ...prev, socialNotes: toNotes(v) } : { ...prev, social: toSocial(v) })),
+      onDraftsChange((prev) =>
+        changed.startsWith("note")
+          ? { ...prev, socialNotes: toNotes(v) }
+          : changed.startsWith("dropout")
+            ? { ...prev, programDropout: toDropout(v) }
+            : { ...prev, social: toSocial(v) },
+      ),
   )
   return (
     <div className="space-y-6">
-      <QuestionForm groups={groups} values={values} onChange={answer} />
+      <QuestionForm groups={allowDropout ? [...groups, dropoutGroup] : groups} values={values} onChange={answer} />
       {existingNotes.length > 0 && (
         <section className="space-y-2 border-t border-zinc-100 pt-5">
           <h4 className="text-sm font-semibold">Notas anteriores</h4>

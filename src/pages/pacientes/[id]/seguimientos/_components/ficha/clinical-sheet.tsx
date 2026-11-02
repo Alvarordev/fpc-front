@@ -53,7 +53,7 @@ export function ClinicalSheet({ patientId, followUpId = "", drafts, onDraftsChan
   const tabProps = { drafts, onDraftsChange }
 
   const panels: Record<SheetTabId, React.ReactNode> = {
-    datos: <DatosTab {...tabProps} details={patient.details} hasDiagnosis={patient.diagnoses.some((d) => d.isCurrent)} />,
+    datos: <DatosTab {...tabProps} details={patient.details} hasDiagnosis={patient.diagnoses.some((d) => d.isCurrent)} historical={historical} />,
     sintomas: (
       <SintomasTab
         {...tabProps}
@@ -70,7 +70,7 @@ export function ClinicalSheet({ patientId, followUpId = "", drafts, onDraftsChan
     contacto: <ContactoTab key={companions.map((l) => l.id).join()} {...tabProps} patient={patient} companions={companions} followUpId={followUpId} historical={historical} />,
     direcciones: <DireccionesTab {...tabProps} addresses={addresses} />,
     seguro: <SeguroTab {...tabProps} currentInsurance={patient.insurance.find((i) => i.isCurrent)} currentSis={patient.sisAffiliations[0]} />,
-    social: <SocialTab {...tabProps} details={patient.details} existingNotes={socialNotes} />,
+    social: <SocialTab {...tabProps} details={patient.details} existingNotes={socialNotes} allowDropout={historical && patient.activityStatus !== "INACTIVE"} />,
   }
 
   return (

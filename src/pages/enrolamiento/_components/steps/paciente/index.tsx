@@ -40,6 +40,10 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
     })
   }
 
+  // La carga histórica transcribe la ficha en papel, que lleva la residencia
+  // justo después de la identidad.
+  const residence = <ResidenceSection embedded={embedded} values={values} showMissing={gate.showMissing} onChange={onChange} />
+
   function submit(event: FormEvent) {
     if (gate.blocked(event)) return
     nextStep()
@@ -57,6 +61,7 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
         onDocument={onDocument}
         onReenroll={(patientId) => updateDraft({ patientId })}
       />
+      {historical && residence}
       <ContactsSection embedded={embedded} groups={phones} values={values} showMissing={gate.showMissing} onChange={onChange} />
       <CompanionsSection
         embedded={embedded}
@@ -70,7 +75,7 @@ export function Step5Datos({ embedded = false, historical = false }: { embedded?
         onChange={onChange}
         onPeople={(partial) => updateDraft(partial)}
       />
-      <ResidenceSection embedded={embedded} values={values} showMissing={gate.showMissing} onChange={onChange} />
+      {!historical && residence}
       <ProfileSection embedded={embedded} draft={draft} values={values} showMissing={gate.showMissing} onChange={onChange} />
       {!embedded && <StepNav currentStep={5} onPrev={prevStep} missingCount={gate.missingCount} alert={gate.alert} />}
     </StepContainer>
