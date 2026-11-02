@@ -6,7 +6,8 @@ import type { InsuranceDraft, SisAffiliationDraft } from "../clinical-drafts"
 import { compact, fromBool, text, toBool, useAnswers } from "./answers"
 import type { SheetTabProps } from "./sheet-types"
 
-// Seguro: el seguro actual y, si es SIS, EsSalud o no tiene, su afiliación.
+// Seguro: el seguro actual y su afiliación, separada por SIS (o sin seguro) y
+// EsSalud: cada una alimenta su propio indicador de atribución SEPA.
 
 const groups: Group[] = [
   {
@@ -20,13 +21,18 @@ const groups: Group[] = [
     ],
   },
   {
-    title: "Afiliación",
-    showIf: is("type", "SIS", "ESSALUD", "NONE"),
+    title: "Afiliación SIS",
+    showIf: is("type", "SIS", "NONE"),
     questions: [
-      { id: "viaSepa", label: "¿Se afilió por gestión de SEPA?", type: "yesno", showIf: is("type", "SIS", "ESSALUD") },
+      { id: "sisViaSepa", label: "¿Afiliación al SIS desde SEPA?", type: "yesno", showIf: is("type", "SIS") },
       { id: "canAffiliate", label: "¿Puede afiliarse al SIS?", type: "yesno", showIf: is("type", "NONE") },
       { id: "expectedDate", label: "Fecha esperada de afiliación", type: "date", showIf: (v) => v.type === "NONE" && yes("canAffiliate")(v) },
     ],
+  },
+  {
+    title: "Afiliación EsSalud",
+    showIf: is("type", "ESSALUD"),
+    questions: [{ id: "essaludViaSepa", label: "¿Afiliación al ESSALUD desde SEPA?", type: "yesno" }],
   },
 ]
 
@@ -38,13 +44,13 @@ type Props = SheetTabProps & {
 function initialValues({ drafts, currentInsurance: ins, currentSis: sis }: Props): Values {
   const draft = drafts.insurance
   const type = draft?.insuranceType ?? ins?.insuranceType
-  const viaSepa = type === "ESSALUD" ? (draft?.affiliatedViaSepa ?? ins?.affiliatedViaSepa) : (drafts.sisAffiliation?.affiliatedViaSepa ?? sis?.affiliatedViaSepa)
   return compact({
     type,
     eps: draft?.epsProvider ?? ins?.epsProvider,
     startDate: draft?.startDate ?? ins?.startDate,
     reason: draft?.changeReason,
-    viaSepa: fromBool(viaSepa ?? undefined),
+    sisViaSepa: fromBool(drafts.sisAffiliation?.affiliatedViaSepa ?? sis?.affiliatedViaSepa ?? undefined),
+    essaludViaSepa: fromBool(draft?.affiliatedViaSepa ?? ins?.affiliatedViaSepa ?? undefined),
     canAffiliate: fromBool(drafts.sisAffiliation?.canAffiliate ?? sis?.canAffiliate),
     expectedDate: drafts.sisAffiliation?.expectedDate ?? sis?.expectedDate,
   })
@@ -58,11 +64,11 @@ function toDrafts(v: Values): { insurance?: InsuranceDraft; sisAffiliation?: Sis
     epsProvider: type === "EPS" ? ((v.eps ?? undefined) as EpsProvider | undefined) : undefined,
     changeReason: text(v.reason),
     startDate: v.startDate ?? undefined,
-    ...(type === "ESSALUD" ? { affiliatedViaSepa: toBool(v.viaSepa) } : {}),
+    ...(type === "ESSALUD" ? { affiliatedViaSepa: toBool(v.essaludViaSepa) } : {}),
   }
   const sisAffiliation: SisAffiliationDraft | undefined =
     type === "SIS"
-      ? { canAffiliate: true, affiliatedViaSepa: toBool(v.viaSepa), affiliatedAt: v.startDate ?? undefined }
+      ? { canAffiliate: true, affiliatedViaSepa: toBool(v.sisViaSepa), affiliatedAt: v.startDate ?? undefined }
       : type === "NONE"
         ? { canAffiliate: toBool(v.canAffiliate) ?? false, expectedDate: v.expectedDate ?? undefined }
         : undefined

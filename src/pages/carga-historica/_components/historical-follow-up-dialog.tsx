@@ -245,6 +245,26 @@ function HistoricalFollowUpForm({
         return event.id
       }
 
+      const dropout = drafts.programDropout
+      const dropoutOn = dropout ? dropout.occurredOn || completedOn || scheduledOn : ""
+      if (dropoutOn && dropoutOn > new Date().toLocaleDateString("en-CA"))
+        throw new Error("La fecha de abandono del programa no puede ser futura")
+
+      // El abandono del programa es la baja del paciente, con la fecha real
+      // del hecho. Va al final: deja al paciente inactivo.
+      const recordDropout = async (id: string) => {
+        if (!dropout) return
+        await patientsApi.deactivate(patientId, {
+          reason: dropout.reason,
+          followUpId: id,
+          occurredAt: `${dropoutOn}T12:00:00.000Z`,
+          reasonDetail: dropout.notes,
+          ...(dropout.reason === "DECEASED" ? { deceasedAt: dropoutOn } : {}),
+        })
+        // Si algo falla después, reintentar no repite la baja.
+        setDrafts((prev) => ({ ...prev, programDropout: undefined }))
+      }
+
       if (followUpId) {
         const eventId = await recordDiagnosticStatus(followUpId)
         const clinical = buildHistoricalClinicalPayload({
@@ -263,7 +283,7 @@ function HistoricalFollowUpForm({
           patientId,
           recordIds,
         })
-        return historicalRecordsApi.updateFollowUp(followUpId, {
+        const updated = await historicalRecordsApi.updateFollowUp(followUpId, {
           ...clinical,
           agentId,
           type,
@@ -273,6 +293,8 @@ function HistoricalFollowUpForm({
           scheduledOn: scheduledOn || null,
           completedOn: completedOn || null,
         })
+        await recordDropout(updated.id)
+        return updated
       }
 
       const created = await historicalRecordsApi.createFollowUp({
@@ -287,6 +309,7 @@ function HistoricalFollowUpForm({
         ...(completedOn ? { completedOn } : {}),
       })
       await recordDiagnosticStatus(created.id)
+      await recordDropout(created.id)
       return created
     },
     onSuccess: async (followUp) => {

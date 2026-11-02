@@ -6,6 +6,7 @@ import type {
   CreatePatientSisAffiliationInput,
   CreatePatientSymptomReportInput,
   CreatePatientTreatmentInput,
+  DeactivatePatientInput,
   PatientDetailsInput,
   TransitionPatientDiagnosticStatusDto,
 } from "@/api/patients"
@@ -127,6 +128,12 @@ export type DiagnosticStatusDraft = {
 }
 
 /** Contact choice kept as draft in historical mode (no immediate PATCH). */
+/** Abandono del programa en la carga histórica: se registra como baja del paciente con su fecha real. */
+export type ProgramDropoutDraft = {
+  reason: DeactivatePatientInput["reason"]
+  occurredOn?: string
+  notes?: string
+}
 export type ContactDraft = {
   interlocutorId: string
   kind: "PATIENT" | "COMPANION" | "NEW_CAREGIVER"
@@ -149,6 +156,7 @@ export interface ClinicalDrafts {
   /** Vivienda provisional nueva, aparte de la dirección permanente (`address`). */
   temporaryAddress?: Omit<CreatePatientAddressInput, "followUpId">
   contact?: ContactDraft
+  programDropout?: ProgramDropoutDraft
 }
 
 export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
@@ -166,6 +174,7 @@ export function hasAnyClinicalDraft(drafts: ClinicalDrafts): boolean {
     drafts.healthBackground ||
     drafts.address ||
     drafts.temporaryAddress ||
-    drafts.contact,
+    drafts.contact ||
+    drafts.programDropout,
   )
 }

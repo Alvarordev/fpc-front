@@ -5049,6 +5049,13 @@ export interface components {
              * @description Follow-up in which the deactivation was decided
              */
             followUpId?: string;
+            /**
+             * Format: date-time
+             * @description When the patient actually left the program (historical loads). Defaults to now.
+             */
+            occurredAt?: string;
+            /** @description Free-text notes about the dropout */
+            reasonDetail?: string;
         };
         CreatePatientDiagnosisDto: {
             diagnosisOther?: string | null;

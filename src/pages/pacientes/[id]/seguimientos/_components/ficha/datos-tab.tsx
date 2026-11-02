@@ -9,29 +9,13 @@ import { TabNote } from "./parts"
 import type { SheetTabProps } from "./sheet-types"
 
 // Datos clínicos: la situación de salud (fase y subcategoría) y los datos
-// generales. Todo va al borrador y se guarda al completar el seguimiento.
+// generales. Todo va al borrador y se guarda al completar el seguimiento. La
+// carga histórica no pide la situación de salud: se transcribe lo del archivo
+// y la fase sigue la del enrolamiento.
 
-function groups(hasDiagnosis: boolean): Group[] {
+function groups(hasDiagnosis: boolean, historical: boolean): Group[] {
   return [
-    {
-      title: "Situación de salud",
-      description: "La fase decide qué subcategorías aplican. La subcategoría se calcula con los tratamientos; cámbiala solo si no coincide con el caso.",
-      questions: [
-        { id: "phase", label: "Fase de salud", type: "select", required: true, options: Object.entries(patientHealthPhaseLabels).map(([value, label]) => ({ value, label })) },
-        {
-          id: "subcategory",
-          label: "Subcategoría del paciente",
-          type: "select",
-          required: true,
-          optionsFrom: (v) =>
-            (patientHealthSubcategoriesByPhase[v.phase as PatientHealthPhase] ?? [])
-              .filter((s) => hasDiagnosis || !requiresActiveDiagnosis(s))
-              .map((s) => ({ value: s, label: patientHealthSubcategoryLabels[s] })),
-          hint: hasDiagnosis ? undefined : "Las subcategorías de diagnóstico de cáncer piden un diagnóstico activo.",
-          showIf: (v) => Boolean(v.phase),
-        },
-      ],
-    },
+    ...(historical ? [] : [healthGroup(hasDiagnosis)]),
     {
       title: "Datos generales",
       questions: [
@@ -42,9 +26,32 @@ function groups(hasDiagnosis: boolean): Group[] {
   ]
 }
 
+function healthGroup(hasDiagnosis: boolean): Group {
+  return {
+    title: "Situación de salud",
+    description: "La fase decide qué subcategorías aplican. La subcategoría se calcula con los tratamientos; cámbiala solo si no coincide con el caso.",
+    questions: [
+      { id: "phase", label: "Fase de salud", type: "select", required: true, options: Object.entries(patientHealthPhaseLabels).map(([value, label]) => ({ value, label })) },
+      {
+        id: "subcategory",
+        label: "Subcategoría del paciente",
+        type: "select",
+        required: true,
+        optionsFrom: (v) =>
+          (patientHealthSubcategoriesByPhase[v.phase as PatientHealthPhase] ?? [])
+            .filter((s) => hasDiagnosis || !requiresActiveDiagnosis(s))
+            .map((s) => ({ value: s, label: patientHealthSubcategoryLabels[s] })),
+        hint: hasDiagnosis ? undefined : "Las subcategorías de diagnóstico de cáncer piden un diagnóstico activo.",
+        showIf: (v) => Boolean(v.phase),
+      },
+    ],
+  }
+}
+
 type Props = SheetTabProps & {
   details: PatientDetailsResponse["details"] | null
   hasDiagnosis: boolean
+  historical: boolean
 }
 
 function initialValues(draft: PatientDetailsInput | undefined, details: Props["details"]): Values {
@@ -56,7 +63,7 @@ function initialValues(draft: PatientDetailsInput | undefined, details: Props["d
   })
 }
 
-export function DatosTab({ drafts, onDraftsChange, details, hasDiagnosis }: Props) {
+export function DatosTab({ drafts, onDraftsChange, details, hasDiagnosis, historical }: Props) {
   const [values, setValues] = useState<Values>(() => initialValues(drafts.details, details))
 
   function answer(id: string, value: string | null) {
@@ -81,7 +88,7 @@ export function DatosTab({ drafts, onDraftsChange, details, hasDiagnosis }: Prop
       {drafts.diagnosticStatus && (
         <TabNote>Registraste un resultado de la búsqueda diagnóstica en Síntomas: al completar, la fase y la subcategoría se actualizan con ese resultado.</TabNote>
       )}
-      <QuestionForm groups={groups(hasDiagnosis)} values={values} onChange={answer} />
+      <QuestionForm groups={groups(hasDiagnosis, historical)} values={values} onChange={answer} />
     </div>
   )
 }
