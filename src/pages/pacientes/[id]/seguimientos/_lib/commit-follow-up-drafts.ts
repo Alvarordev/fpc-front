@@ -7,6 +7,7 @@ import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments
 import { toDurationInput } from "@/types/duration"
 import { fixedWaitTime } from "@/types/wait-time-recall"
 import { draftDiagnosisIdFromOption, isDraftDiagnosisOptionId } from "../_components/clinical-drafts"
+import { saveSocialReferralDrafts } from "../_components/social-referral-drafts"
 import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 
 // Guarda, en orden, todo lo que quedó en borrador durante el seguimiento. Se
@@ -176,6 +177,8 @@ export async function commitFollowUpDrafts({ patientId, followUp, drafts, nextFo
         : {}),
     })
   }
+
+  await saveSocialReferralDrafts(patientId, followUpId, clinicalDrafts)
 
   for (const note of clinicalDrafts.socialNotes ?? []) {
     await patientsApi.createSocialNote(patientId, {

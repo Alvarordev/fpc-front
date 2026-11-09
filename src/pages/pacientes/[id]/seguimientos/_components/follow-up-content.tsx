@@ -133,6 +133,7 @@ export function FollowUpContent() {
       ["patient-diagnostic-status-current", patientId],
       ["patient-addresses", patientId],
       ["patient-social-notes", patientId],
+      ["patient-social-referrals", patientId],
       ["psychooncology-appointments"],
       ["agent-follow-ups"],
       ["patients"],

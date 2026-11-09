@@ -9,6 +9,7 @@ import { usePatientAddresses, usePatientSocialNotes } from "../../../_hooks/use-
 import { AntecedentesTab } from "./antecedentes-tab"
 import { ContactoTab } from "./contacto-tab"
 import { DatosTab } from "./datos-tab"
+import { DerivacionesTab } from "./derivaciones-tab"
 import { DiagnosticoTab } from "./diagnostico-tab"
 import { DireccionesTab } from "./direcciones-tab"
 import { SeguroTab } from "./seguro-tab"
@@ -71,6 +72,14 @@ export function ClinicalSheet({ patientId, followUpId = "", drafts, onDraftsChan
     direcciones: <DireccionesTab {...tabProps} addresses={addresses} />,
     seguro: <SeguroTab {...tabProps} currentInsurance={patient.insurance.find((i) => i.isCurrent)} currentSis={patient.sisAffiliations[0]} />,
     social: <SocialTab {...tabProps} details={patient.details} existingNotes={socialNotes} allowDropout={historical && patient.activityStatus !== "INACTIVE"} />,
+    derivaciones: (
+      <DerivacionesTab
+        {...tabProps}
+        patientId={patientId}
+        insuranceType={drafts.insurance?.insuranceType ?? patient.insurance.find((i) => i.isCurrent)?.insuranceType ?? null}
+        hasConadisCard={drafts.social?.hasConadisCard ?? patient.details?.hasConadisCard ?? null}
+      />
+    ),
   }
 
   return (

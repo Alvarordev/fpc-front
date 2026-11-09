@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { enrollmentsApi } from "@/api/enrollments"
 import { patientsApi } from "@/api/patients"
-import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
+import { useHistoricalEnrollmentStore } from "@/pages/carga-historica/_lib/historical-ui"
 import {
   PATIENT_TIMELINE_PAGE_SIZE,
   patientTimelineApi,
@@ -106,7 +106,7 @@ export function HistoricalRecordsPanel({
   enrollmentFollowUpId?: string | null
 }) {
   const navigate = useNavigate()
-  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
+  const resetEnrollment = useHistoricalEnrollmentStore((state) => state.resetEnrollment)
   /*
    * The target is kept while the dialog animates out, and `token` changes on
    * every open so the next one remounts with fresh state.

@@ -2,12 +2,12 @@ import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Archive, Plus, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
+import { useHistoricalEnrollmentStore } from "@/pages/carga-historica/_lib/historical-ui"
 import { HistoricalPatientPicker } from "./_components/historical-patient-picker"
 
 export default function HistoricalRecordsPage() {
-  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
-  const setEnrollmentMode = useEnrollmentStore(
+  const resetEnrollment = useHistoricalEnrollmentStore((state) => state.resetEnrollment)
+  const setEnrollmentMode = useHistoricalEnrollmentStore(
     (state) => state.setEnrollmentMode,
   )
   const navigate = useNavigate()

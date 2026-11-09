@@ -66,6 +66,7 @@ export function PatientDocumentsTab({
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const { data: cancerDiagnoses = [] } = useCatalog("cancer_diagnosis")
+  const { data: treatmentTypes = [] } = useCatalog("treatment_type", true)
   const canManage =
     user?.role === "ADMIN" ||
     user?.role === "FOUNDATION" ||
@@ -172,7 +173,7 @@ export function PatientDocumentsTab({
               <PatientDocumentRow
                 key={document.id}
                 document={document}
-                association={associationLabel(document, diagnoses, treatments, cancerDiagnoses)}
+                association={associationLabel(document, diagnoses, treatments, cancerDiagnoses, treatmentTypes)}
                 isDownloading={downloadingId === document.id}
                 onPreview={setPreviewDocument}
                 onDownload={downloadDocument}
@@ -297,6 +298,7 @@ function associationLabel(
   diagnoses: PatientDiagnosis[],
   treatments: PatientTreatment[],
   cancerDiagnosisItems: CatalogItem[],
+  treatmentTypeItems: CatalogItem[],
 ): string | null {
   if (document.diagnosisId) {
     const diagnosis = diagnoses.find((item) => item.id === document.diagnosisId)
@@ -309,7 +311,7 @@ function associationLabel(
       (item) => item.id === document.treatmentId,
     )
     return treatment
-      ? `Tratamiento: ${treatment.treatmentType}`
+      ? `Tratamiento: ${catalogLabel(treatmentTypeItems, treatment.treatmentType)}`
       : "Tratamiento relacionado"
   }
   return null

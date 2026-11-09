@@ -59,7 +59,8 @@ export function SelectField<T extends string>({
   id?: string
   value: T | null
   onChange: (value: T) => void
-  options: { value: T; label: string }[]
+  /** `sublabel`: aclaración breve bajo la opción (p. ej. la descripción del ítem de catálogo). */
+  options: { value: T; label: string; sublabel?: string }[]
   placeholder?: string
   disabled?: boolean
 }) {
@@ -75,7 +76,14 @@ export function SelectField<T extends string>({
       >
         {options.map((o) => (
           <SelectItem key={o.value} value={o.value} className="cursor-pointer rounded-[9px] py-2 pr-8 pl-2.5 focus:bg-zinc-100 focus:text-zinc-900">
-            {o.label}
+            {o.sublabel ? (
+              <span className="flex flex-col whitespace-normal">
+                <span>{o.label}</span>
+                <span className="text-xs leading-snug text-zinc-500">{o.sublabel}</span>
+              </span>
+            ) : (
+              o.label
+            )}
           </SelectItem>
         ))}
       </SelectContent>

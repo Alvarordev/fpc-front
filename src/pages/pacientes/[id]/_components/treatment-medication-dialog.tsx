@@ -2,6 +2,7 @@ import { Pill } from "lucide-react"
 import { toast } from "sonner"
 import type { CreateTreatmentMedicationInput, PatientTreatment, TreatmentMedication } from "@/api/patients"
 import { FormModal } from "@/components/ds/form-modal"
+import { catalogLabel, useCatalog } from "@/hooks/use-catalog"
 import type { Group } from "@/components/ds/questions"
 import { toDurationInput, type DurationInput as DurationValue } from "@/types/duration"
 import type { MedicationDoseUnit, MedicationRoute } from "@/types"
@@ -52,13 +53,14 @@ interface TreatmentMedicationDialogProps {
 }
 
 export function TreatmentMedicationDialog({ open, onOpenChange, treatment, medication, isPending, onSubmit }: TreatmentMedicationDialogProps) {
+  const { data: treatmentTypes = [] } = useCatalog("treatment_type", true)
   if (!open) return null
   const m = medication
   return (
     <FormModal
       icon={Pill}
       title={m ? "Editar medicamento" : "Nuevo medicamento"}
-      description={`${treatment.treatmentType}: dosis, frecuencia y vigencia`}
+      description={`${catalogLabel(treatmentTypes, treatment.treatmentType)}: dosis, frecuencia y vigencia`}
       groups={groups}
       initial={compact({
         name: m?.name,

@@ -12,6 +12,10 @@ COPY . .
 ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
 
+# UI de la carga histórica: "legacy" (por defecto) o "new". Ver src/lib/feature-flags.ts.
+ARG VITE_HISTORICAL_UI=legacy
+ENV VITE_HISTORICAL_UI=${VITE_HISTORICAL_UI}
+
 RUN pnpm build
 
 FROM nginx:1.27-alpine AS runtime

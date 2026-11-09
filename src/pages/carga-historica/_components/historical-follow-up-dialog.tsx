@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -25,13 +25,15 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ClinicalSheet } from "@/pages/pacientes/[id]/seguimientos/_components/ficha/clinical-sheet"
+import { isLegacyHistoricalUi } from "@/lib/feature-flags"
+import { saveSocialReferralDrafts } from "@/pages/pacientes/[id]/seguimientos/_components/social-referral-drafts"
 import type { ClinicalDrafts } from "@/pages/pacientes/[id]/seguimientos/_components/clinical-drafts"
 import { usePatient } from "@/pages/pacientes/[id]/_hooks/use-patient"
 import {
   buildHistoricalClinicalPayload,
   historicalClinicalDraftsFromPatient,
 } from "./build-historical-clinical-payload"
+import { HistoricalClinicalSheet } from "../_lib/historical-ui"
 import { useDeleteHistoricalFollowUp } from "./historical-follow-up-delete-dialog"
 import { Field, SelectField } from "./historical-form-fields"
 import {
@@ -187,6 +189,10 @@ function HistoricalFollowUpForm({
     staleTime: 60_000,
   })
 
+  // Seguimiento ya creado en un intento anterior cuyo paso posterior falló
+  // (resultado de búsqueda, derivaciones o baja): reintentar no lo duplica.
+  const createdRef = useRef<HistoricalFollowUp | null>(null)
+
   const saveMutation = useMutation({
     mutationFn: async (): Promise<HistoricalFollowUp> => {
       if (!agentId) throw new Error("Selecciona el agente responsable")
@@ -196,12 +202,16 @@ function HistoricalFollowUpForm({
       // El resultado de la búsqueda se registra con la fecha del seguimiento,
       // no con la de la carga. Al editar va antes del guardado para que el
       // diagnóstico no oncológico quede enlazado al evento de descarte.
-      const recordDiagnosticStatus = async (id: string) => {
-        const draft = drafts.diagnosticStatus
-        if (!draft || draft.eventId) return draft?.eventId
-        if (draft.status === "CONFIRMED" && !draft.diagnosis?.trim())
+      const occurredOn = completedOn || scheduledOn
+      // Se valida antes de guardar nada: si fallara después de crear el
+      // seguimiento, quedaría guardado a medias.
+      const pendingStatus = drafts.diagnosticStatus
+      if (pendingStatus && !pendingStatus.eventId) {
+        if (
+          pendingStatus.status === "CONFIRMED" &&
+          !pendingStatus.diagnosis?.trim()
+        )
           throw new Error("Indica el diagnóstico formal")
-        const occurredOn = completedOn || scheduledOn
         // El estado vigente es el evento más reciente: un resultado fechado
         // antes del último estado registrado quedaría oculto tras él.
         const current =
@@ -213,10 +223,15 @@ function HistoricalFollowUpForm({
           throw new Error(
             `El resultado de la búsqueda no puede ser anterior al ${formatHistoricalDate(current.occurredAt)}, fecha del último estado de la búsqueda`,
           )
+      }
+
+      const recordDiagnosticStatus = async (id: string) => {
+        const draft = drafts.diagnosticStatus
+        if (!draft || draft.eventId) return draft?.eventId
         const event = await patientsApi.transitionDiagnosticStatus(patientId, {
           status: draft.status,
           followUpId: id,
-          occurredAt: `${occurredOn}T12:00:00.000Z`,
+          occurredAt: `${occurredOn}T12:00:00-05:00`,
           ...(draft.status === "CONFIRMED"
             ? {
                 diagnosis: {
@@ -246,7 +261,9 @@ function HistoricalFollowUpForm({
       }
 
       const dropout = drafts.programDropout
-      const dropoutOn = dropout ? dropout.occurredOn || completedOn || scheduledOn : ""
+      const dropoutOn = dropout
+        ? dropout.occurredOn || completedOn || scheduledOn
+        : ""
       if (dropoutOn && dropoutOn > new Date().toLocaleDateString("en-CA"))
         throw new Error("La fecha de abandono del programa no puede ser futura")
 
@@ -257,12 +274,29 @@ function HistoricalFollowUpForm({
         await patientsApi.deactivate(patientId, {
           reason: dropout.reason,
           followUpId: id,
-          occurredAt: `${dropoutOn}T12:00:00.000Z`,
+          occurredAt: `${dropoutOn}T12:00:00-05:00`,
           reasonDetail: dropout.notes,
           ...(dropout.reason === "DECEASED" ? { deceasedAt: dropoutOn } : {}),
         })
         // Si algo falla después, reintentar no repite la baja.
         setDrafts((prev) => ({ ...prev, programDropout: undefined }))
+      }
+
+      // Las derivaciones sociales se abren con la fecha del seguimiento. Van
+      // antes de la baja, que deja al paciente inactivo.
+      const recordReferrals = async (id: string) => {
+        await saveSocialReferralDrafts(
+          patientId,
+          id,
+          drafts,
+          completedOn || scheduledOn || undefined,
+        )
+        // Si algo falla después, reintentar no las duplica.
+        setDrafts((prev) => ({
+          ...prev,
+          socialReferrals: undefined,
+          socialReferralUpdates: undefined,
+        }))
       }
 
       if (followUpId) {
@@ -282,6 +316,7 @@ function HistoricalFollowUpForm({
               : drafts,
           patientId,
           recordIds,
+          currentInterlocutorId: existingFollowUp?.interlocutorId,
         })
         const updated = await historicalRecordsApi.updateFollowUp(followUpId, {
           ...clinical,
@@ -293,22 +328,27 @@ function HistoricalFollowUpForm({
           scheduledOn: scheduledOn || null,
           completedOn: completedOn || null,
         })
+        await recordReferrals(updated.id)
         await recordDropout(updated.id)
         return updated
       }
 
-      const created = await historicalRecordsApi.createFollowUp({
-        ...buildHistoricalClinicalPayload({ drafts, patientId, recordIds }),
-        subjectPatientId: patientId,
-        agentId,
-        type,
-        purpose,
-        status,
-        notes: notes.trim() || undefined,
-        ...(scheduledOn ? { scheduledOn } : {}),
-        ...(completedOn ? { completedOn } : {}),
-      })
+      const created =
+        createdRef.current ??
+        (await historicalRecordsApi.createFollowUp({
+          ...buildHistoricalClinicalPayload({ drafts, patientId, recordIds }),
+          subjectPatientId: patientId,
+          agentId,
+          type,
+          purpose,
+          status,
+          notes: notes.trim() || undefined,
+          ...(scheduledOn ? { scheduledOn } : {}),
+          ...(completedOn ? { completedOn } : {}),
+        }))
+      createdRef.current = created
       await recordDiagnosticStatus(created.id)
+      await recordReferrals(created.id)
       await recordDropout(created.id)
       return created
     },
@@ -328,6 +368,9 @@ function HistoricalFollowUpForm({
         }),
         queryClient.invalidateQueries({
           queryKey: ["patient-social-notes", patientId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["patient-social-referrals", patientId],
         }),
         queryClient.invalidateQueries({ queryKey: ["follow-up", followUp.id] }),
         queryClient.invalidateQueries({
@@ -418,12 +461,24 @@ function HistoricalFollowUpForm({
           </div>
         </div>
 
-        <div className="font-ds rounded-[20px] border border-zinc-200 bg-white p-4 text-zinc-900">
-          <p className="mb-3 text-[13px] text-zinc-500">
+        <div
+          className={
+            isLegacyHistoricalUi
+              ? "rounded-xl border p-3"
+              : "font-ds rounded-[20px] border border-zinc-200 bg-white p-4 text-zinc-900"
+          }
+        >
+          <p
+            className={
+              isLegacyHistoricalUi
+                ? "text-muted-foreground mb-3 text-xs"
+                : "mb-3 text-[13px] text-zinc-500"
+            }
+          >
             Ficha clínica del seguimiento. Cada sección se guarda junto con el
             seguimiento.
           </p>
-          <ClinicalSheet
+          <HistoricalClinicalSheet
             patientId={patientId}
             followUpId={followUpId ?? undefined}
             variant="historical"

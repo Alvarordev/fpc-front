@@ -35,6 +35,8 @@ function symptomGroups(primaryCareQuestions: boolean): Group[] {
         { id: "specialty", label: "¿Con qué especialidad?", type: "select", catalog: "medical_specialty", required: true, showIf: yes("consulted") },
         { id: "firstConsultation", label: "¿Cuándo fue la primera consulta que tuvo?", type: "date", required: true, showIf: yes("consulted") },
         { id: "nextConsultation", label: "¿Cuándo es su siguiente consulta médica?", type: "date", showIf: yes("consulted") },
+        // El backend exige la especialidad cuando hay próxima consulta.
+        { id: "nextSpecialty", label: "Especialidad de la siguiente consulta", type: "select", catalog: "medical_specialty", required: true, showIf: (v) => v.consulted === "yes" && Boolean(v.nextConsultation) },
       ],
     },
     {
@@ -110,6 +112,7 @@ function initialValues(draft: SymptomReportDraft | undefined, enrollment: Patien
     specialty: d.specialty,
     firstConsultation: d.firstConsultationDate,
     nextConsultation: d.nextConsultationDate,
+    nextSpecialty: d.nextConsultationSpecialty,
     awaiting: fromBool(d.isAwaitingDiagnosis),
     searchDuration: fromDuration(d.diagnosisSearchDuration),
     referral: fromBool(d.hasReferral),
@@ -151,6 +154,7 @@ function toDraft(v: Values, previous: SymptomReportDraft | undefined): SymptomRe
     specialty: inConsult ? text(v.specialty) : undefined,
     firstConsultationDate: inConsult ? (v.firstConsultation ?? undefined) : undefined,
     nextConsultationDate: inConsult ? (v.nextConsultation ?? undefined) : undefined,
+    nextConsultationSpecialty: inConsult && v.nextConsultation ? text(v.nextSpecialty) : undefined,
     isAwaitingDiagnosis: inConsult ? toBool(v.awaiting) : undefined,
     diagnosisSearchDuration: inConsult && v.awaiting === "yes" ? toDuration(v.searchDuration) : undefined,
     hasReferral: inConsult ? referral : undefined,

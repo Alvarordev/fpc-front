@@ -75,6 +75,15 @@ export type CreateTreatmentMedicationInput =
   components["schemas"]["CreateTreatmentMedicationDto"]
 export type UpdateTreatmentMedicationInput =
   components["schemas"]["UpdateTreatmentMedicationDto"]
+export type PatientSocialReferral =
+  components["schemas"]["PatientSocialReferralResponseDto"]
+export type PatientSocialReferralUpdate =
+  components["schemas"]["PatientSocialReferralUpdateResponseDto"]
+export type SocialReferralType = PatientSocialReferral["type"]
+export type CreatePatientSocialReferralInput =
+  components["schemas"]["CreatePatientSocialReferralDto"]
+export type CreatePatientSocialReferralUpdateInput =
+  components["schemas"]["CreatePatientSocialReferralUpdateDto"]
 export type CreatePatientSocialNoteInput =
   components["schemas"]["CreatePatientSocialNoteDto"]
 export type CreatePatientHealthBackgroundAssessmentInput =
@@ -262,6 +271,52 @@ export const patientsApi = {
         params: { path: { patientId } },
         body: input,
       },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status, error)
+    }
+
+    return data
+  },
+
+  async listSocialReferrals(patientId: string) {
+    const { data, error, response } = await api.GET(
+      "/patients/{patientId}/social-referrals",
+      { params: { path: { patientId } } },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status, error)
+    }
+
+    return data
+  },
+
+  async createSocialReferral(
+    patientId: string,
+    input: CreatePatientSocialReferralInput,
+  ) {
+    const { data, error, response } = await api.POST(
+      "/patients/{patientId}/social-referrals",
+      { params: { path: { patientId } }, body: input },
+    )
+
+    if (!data) {
+      throw new PatientsApiError(response.status, error)
+    }
+
+    return data
+  },
+
+  async addSocialReferralUpdate(
+    patientId: string,
+    referralId: string,
+    input: CreatePatientSocialReferralUpdateInput,
+  ) {
+    const { data, error, response } = await api.POST(
+      "/patients/{patientId}/social-referrals/{referralId}/updates",
+      { params: { path: { patientId, referralId } }, body: input },
     )
 
     if (!data) {

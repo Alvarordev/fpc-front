@@ -92,14 +92,15 @@ export function ContactoTab({ onDraftsChange, patient, companions, followUpId, h
       const person = { fullName: v.name?.trim() ?? "", ...phones, gender: v.gender ?? undefined }
       let interlocutorId = patient.id
       if (v.person === NEW) {
-        const created = await patientsApi.createCompanion(patient.id, { ...person, relationship: v.relationship ?? undefined, isCaregiver: true })
+        // En la carga histórica no se notifica a n8n.
+        const created = await patientsApi.createCompanion(patient.id, { ...person, relationship: v.relationship ?? undefined, isCaregiver: true, ...(historical ? { historical: true } : {}) })
         if (historical) interlocutorId = created.id
       } else if (v.person === PATIENT) {
         await patientsApi.update(patient.id, phones)
         if (!historical) await Promise.all(companions.filter((l) => l.isPrimaryContact).map((l) => patientsApi.updateCompanionLink(patient.id, l.id, { isPrimaryContact: false })))
       } else {
         const link = companions.find((l) => l.companionId === v.person)!
-        await patientsApi.update(link.companionId, person)
+        await patientsApi.updateCompanionPerson(patient.id, link.companionId, person)
         await patientsApi.updateCompanionLink(patient.id, link.id, { relationship: v.relationship ?? undefined, isPrimaryContact: toBool(v.primary) ?? false, isCaregiver: toBool(v.caregiver) ?? false })
         interlocutorId = link.companionId
       }

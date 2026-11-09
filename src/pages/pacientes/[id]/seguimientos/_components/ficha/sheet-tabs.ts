@@ -11,6 +11,7 @@ export const SHEET_TABS = [
   { id: "direcciones", label: "Direcciones", changed: (d: ClinicalDrafts) => Boolean(d.address || d.temporaryAddress) },
   { id: "seguro", label: "Seguro", changed: (d: ClinicalDrafts) => Boolean(d.insurance) },
   { id: "social", label: "Social", changed: (d: ClinicalDrafts) => Boolean(d.social || d.socialNotes?.length || d.programDropout) },
+  { id: "derivaciones", label: "Derivaciones", changed: (d: ClinicalDrafts) => Boolean(d.socialReferrals?.length || d.socialReferralUpdates?.length) },
 ] as const
 
 export type SheetTabId = (typeof SHEET_TABS)[number]["id"]

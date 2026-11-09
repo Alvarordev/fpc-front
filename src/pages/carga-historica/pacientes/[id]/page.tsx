@@ -1,11 +1,11 @@
 import { useEffect } from "react"
 import { useParams } from "react-router-dom"
-import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
+import { useHistoricalEnrollmentStore } from "@/pages/carga-historica/_lib/historical-ui"
 import { HistoricalRecordsPanel } from "@/pages/carga-historica/_components/historical-records-panel"
 
 export default function HistoricalPatientPage() {
   const { id } = useParams<{ id: string }>()
-  const setEnrollmentMode = useEnrollmentStore((state) => state.setEnrollmentMode)
+  const setEnrollmentMode = useHistoricalEnrollmentStore((state) => state.setEnrollmentMode)
 
   useEffect(() => {
     setEnrollmentMode("HISTORICAL")
