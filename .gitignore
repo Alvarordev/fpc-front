@@ -35,8 +35,5 @@ MIGRACION_NEST_PENDIENTE.md
 *.sln
 *.sw?
 
-# Playwright
-/playwright-report/
-/test-results/
-/blob-report/
-/playwright/.cache/
+# pnpm store local
+.pnpm-store/
