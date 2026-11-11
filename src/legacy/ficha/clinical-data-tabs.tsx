@@ -2794,6 +2794,7 @@ function SintomasForm({
 
 interface DiagnosisFormValues {
   diagnosis: string
+  specificDiagnosis: string
   diagnosisSpecialty: string
   isSepaActiveReferral: boolean | undefined
   cancerStage: CancerStage
@@ -2834,6 +2835,7 @@ function DiagnosticoForm({
     useForm<DiagnosisFormValues>({
       defaultValues: {
         diagnosis: initial?.diagnosis ?? "",
+        specificDiagnosis: initial?.specificDiagnosis ?? "",
         diagnosisSpecialty: initial?.diagnosisSpecialty ?? "",
         isSepaActiveReferral: initial?.isSepaActiveReferral,
         cancerStage: initial?.cancerStage ?? "UNKNOWN",
@@ -2983,6 +2985,7 @@ function DiagnosticoForm({
           : createDraftId(),
       mode: isCorrection ? "EDIT" : (decisionMode as DiagnosisDecisionMode),
       diagnosis: values.diagnosis.trim(),
+      specificDiagnosis: values.specificDiagnosis.trim() || null,
       diagnosisSpecialty: values.diagnosisSpecialty.trim() || undefined,
       isSepaActiveReferral: values.isSepaActiveReferral,
       // The form shows an empty stage as UNKNOWN; don't log that as a correction.
@@ -3030,6 +3033,7 @@ function DiagnosticoForm({
 
   function resetDiagnosisForm() {
     setValue("diagnosis", "")
+    setValue("specificDiagnosis", "")
     setValue("diagnosisSpecialty", "")
     setValue("isSepaActiveReferral", undefined)
     setValue("cancerStage", "UNKNOWN")
@@ -3072,6 +3076,7 @@ function DiagnosticoForm({
     resetDiagnosisForm()
     setCorrectedDiagnosisId(diagnosis.id)
     setValue("diagnosis", diagnosis.diagnosis)
+    setValue("specificDiagnosis", diagnosis.specificDiagnosis ?? "")
     setValue("diagnosisSpecialty", diagnosis.diagnosisSpecialty ?? "")
     setValue("isSepaActiveReferral", diagnosis.isSepaActiveReferral ?? undefined)
     setValue("cancerStage", (diagnosis.cancerStage ?? "UNKNOWN") as CancerStage)
@@ -3108,6 +3113,7 @@ function DiagnosticoForm({
     setCorrectedDiagnosisId(decision.editedDiagnosisId ?? "")
     setChangeReason(decision.changeReason ?? "")
     setValue("diagnosis", decision.diagnosis)
+    setValue("specificDiagnosis", decision.specificDiagnosis ?? "")
     setValue("diagnosisSpecialty", decision.diagnosisSpecialty ?? "")
     setValue("isSepaActiveReferral", decision.isSepaActiveReferral)
     setValue("cancerStage", decision.cancerStage ?? "UNKNOWN")
@@ -3406,12 +3412,21 @@ function DiagnosticoForm({
           )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label>Diagnóstico</Label>
+          <Label>Diagnóstico general *</Label>
           <CatalogSelect
             kind="cancer_diagnosis"
             value={watch("diagnosis") || null}
             onValueChange={(code) => setValue("diagnosis", code ?? "")}
-            disabled={isCorrection}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Diagnóstico específico (opcional)</Label>
+          <CatalogSelect
+            kind="cancer_specific_diagnosis"
+            value={watch("specificDiagnosis") || null}
+            onValueChange={(code) => setValue("specificDiagnosis", code || "")}
+            extraItems={[{ value: "", label: "Sin especificar" }]}
+            placeholder="Sin especificar"
           />
         </div>
         <div className="space-y-2">

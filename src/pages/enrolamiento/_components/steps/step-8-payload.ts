@@ -158,6 +158,7 @@ export function buildEnrollmentPayload({
       clientRef: diagnosis.draftId,
       mode: "PARALLEL" as const,
       diagnosis: diagnosis.diagnosis.trim(),
+      specificDiagnosis: value(diagnosis.specificDiagnosis),
       cancerStage: diagnosis.cancerStage ?? undefined,
       diagnosisDate: value(diagnosis.diagnosisDate),
       firstSymptomsDate: value(diagnosis.firstSymptomsDate),

@@ -176,6 +176,7 @@ export interface AddInsuranceRequest {
 
 export interface AddDiagnosisRequest {
   diagnosis: string
+  specificDiagnosis?: string | null
   cancerStage?: CancerStage | null
   diagnosisDate?: string | null
   firstSymptomsDate?: string | null

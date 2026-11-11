@@ -3554,6 +3554,8 @@ export interface components {
             changeReason?: string;
             /** @description Temporary client reference used to associate treatments; required by enrollments */
             clientRef?: string;
+            /** @description Optional cancer_specific_diagnosis catalog code */
+            specificDiagnosis?: string | null;
         };
         CreateTreatmentMedicationDto: {
             name: string;
@@ -4210,7 +4212,7 @@ export interface components {
         };
         CreateCatalogItemDto: {
             /** @enum {string} */
-            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity" | "reenrollment_reason" | "companion_relationship" | "educational_talk" | "complaint_channel" | "complaint_outcome" | "social_worker_outcome" | "fissal_outcome" | "conadis_outcome";
+            kind: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "cancer_specific_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity" | "reenrollment_reason" | "companion_relationship" | "educational_talk" | "complaint_channel" | "complaint_outcome" | "social_worker_outcome" | "fissal_outcome" | "conadis_outcome";
             code: string;
             label: string;
             parentCode?: string | null;
@@ -4735,6 +4737,7 @@ export interface components {
             changeReason: string | null;
             /** Format: date-time */
             createdAt: string;
+            specificDiagnosis: string | null;
         };
         PatientDiagnosisSummaryDto: {
             /** Format: uuid */
@@ -5138,6 +5141,8 @@ export interface components {
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
+            /** @description Optional cancer_specific_diagnosis catalog code */
+            specificDiagnosis?: string | null;
         };
         UpdatePatientDiagnosisDto: {
             /**
@@ -5169,6 +5174,11 @@ export interface components {
             waitTimeForDiagnosis?: components["schemas"]["DurationDto"] | null;
             isSepaActiveReferral?: boolean | null;
             hasMedicalReport?: boolean;
+            /** @description Optional cancer_specific_diagnosis catalog code; null clears it */
+            specificDiagnosis?: string | null;
+            /** @description Corrected general diagnosis catalog code */
+            diagnosis?: string;
+            diagnosisOther?: string | null;
         };
         CreatePatientInsuranceDto: {
             insuranceType: string;
@@ -5627,6 +5637,8 @@ export interface components {
             hasMedicalReport?: boolean;
             isSepaActiveReferral?: boolean;
             changeReason?: string;
+            /** @description Optional cancer_specific_diagnosis catalog code */
+            specificDiagnosis?: string | null;
         };
         TransitionPatientDiagnosticStatusDto: {
             /** @enum {string} */
@@ -6314,6 +6326,8 @@ export interface components {
             clientRef?: string;
             /** Format: uuid */
             id?: string;
+            /** @description Optional cancer_specific_diagnosis catalog code */
+            specificDiagnosis?: string | null;
         };
         UpdateHistoricalTreatmentDto: {
             /** Format: uuid */
@@ -9796,7 +9810,7 @@ export interface operations {
         parameters: {
             query?: {
                 includeInactive?: boolean;
-                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity" | "reenrollment_reason" | "companion_relationship" | "educational_talk" | "complaint_channel" | "complaint_outcome" | "social_worker_outcome" | "fissal_outcome" | "conadis_outcome";
+                kind?: "cancer_stage" | "education_level" | "insurance_type" | "eps_provider" | "native_language" | "medical_specialty" | "cancer_diagnosis" | "cancer_specific_diagnosis" | "entry_source" | "entry_sub_source" | "zone_type" | "health_center_category" | "care_program" | "access_barrier" | "treatment_situation" | "sepa_shelter" | "sepa_transport" | "program_dropout_reason" | "patient_health_phase" | "patient_health_subcategory" | "treatment_type" | "country" | "chemotherapy_route" | "surgical_procedure" | "location_share_status" | "temporary_housing_type" | "alert_category" | "alert_derivation_entity" | "reenrollment_reason" | "companion_relationship" | "educational_talk" | "complaint_channel" | "complaint_outcome" | "social_worker_outcome" | "fissal_outcome" | "conadis_outcome";
             };
             header?: never;
             path?: never;

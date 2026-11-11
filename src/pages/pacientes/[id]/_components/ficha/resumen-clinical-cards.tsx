@@ -35,6 +35,7 @@ export function DiagnosesCard({ patient }: Props) {
             <Item
               key={d.id}
               title={<CatalogValue kind="cancer_diagnosis" code={d.diagnosis} />}
+              body={d.specificDiagnosis ? <>Diagnóstico específico: <CatalogValue kind="cancer_specific_diagnosis" code={d.specificDiagnosis} /></> : undefined}
               tags={d.cancerStage ? <Chip tone="violet"><CatalogValue kind="cancer_stage" code={d.cancerStage} /></Chip> : undefined}
               meta={[d.healthCenterName, d.diagnosisDate && `desde el ${formatDate(d.diagnosisDate)}`].filter(Boolean).join(", ") || undefined}
               onOpen={() => setOpen(d)}
@@ -48,6 +49,7 @@ export function DiagnosesCard({ patient }: Props) {
                 <Item
                   key={d.id}
                   title={<span className="text-zinc-600"><CatalogValue kind="cancer_diagnosis" code={d.diagnosis} /></span>}
+                  body={d.specificDiagnosis ? <>Diagnóstico específico: <CatalogValue kind="cancer_specific_diagnosis" code={d.specificDiagnosis} /></> : undefined}
                   tags={<Chip>Histórico</Chip>}
                   meta={d.changeReason ?? undefined}
                   onOpen={() => setOpen(d)}

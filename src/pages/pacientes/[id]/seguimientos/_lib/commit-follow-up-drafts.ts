@@ -72,6 +72,8 @@ export async function commitFollowUpDrafts({ patientId, followUp, drafts, nextFo
       await patientsApi.updateDiagnosis(patientId, editedDiagnosisId, {
         followUpId: followUpId,
         changeReason,
+        diagnosis: diagnosisDraft.diagnosis,
+        specificDiagnosis: diagnosisDraft.specificDiagnosis ?? null,
         cancerStage: diagnosisDraft.cancerStage ?? null,
         diagnosisDate: diagnosisDraft.diagnosisDate ?? null,
         firstSymptomsDate: diagnosisDraft.firstSymptomsDate ?? null,

@@ -11,7 +11,8 @@ export function diagnosisGroups(historical: boolean): Group[] {
     {
       title: "Diagnóstico",
       questions: [
-        { id: "diagnosis", label: "¿Cuál es su diagnóstico oncológico?", type: "select", catalog: "cancer_diagnosis", required: true, wide: true },
+        { id: "diagnosis", label: "Diagnóstico general", type: "select", catalog: "cancer_diagnosis", required: true, wide: true },
+        { id: "specificDiagnosis", label: "Diagnóstico específico (opcional)", type: "select", catalog: "cancer_specific_diagnosis", wide: true, placeholder: "Sin especificar", hint: "Selecciona el subtipo si lo conoces. Puedes dejarlo sin especificar." },
         { id: "stage", label: "¿Conoce el estadio del diagnóstico? (1, 2, 3, 4 o desconoce)", type: "select", catalog: "cancer_stage" },
         { id: "evolution", label: "Evolución de la enfermedad", type: "textarea", placeholder: "Ej: Metástasis ósea; otros órganos comprometidos" },
         { id: "symptom", label: "¿Qué síntoma lo llevó a realizarse su chequeo médico?", type: "textarea" },
@@ -41,6 +42,7 @@ export function diagnosisValues(dx: EnrollmentDiagnosisDraft, historical: boolea
   const visible = !remembersWait ? undefined : dx.waitTimeForDiagnosisManuallyEdited ? dx.waitTimeForDiagnosis : (calculated ?? dx.waitTimeForDiagnosis)
   return compact({
     diagnosis: dx.diagnosis,
+    specificDiagnosis: dx.specificDiagnosis,
     stage: dx.cancerStage,
     evolution: dx.diseaseEvolution,
     symptom: dx.symptomLeadingToCheckup,
@@ -68,6 +70,7 @@ export function toDiagnosis(values: Values, base: EnrollmentDiagnosisDraft, hist
   return {
     ...base,
     diagnosis: values.diagnosis?.trim() ?? "",
+    specificDiagnosis: text(values.specificDiagnosis) ?? null,
     cancerStage: (values.stage as CancerStage | null) || null,
     diseaseEvolution: text(values.evolution),
     symptomLeadingToCheckup: text(values.symptom) ?? null,

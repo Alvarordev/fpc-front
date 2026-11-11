@@ -51,17 +51,19 @@ export function FormModal({
       title={title}
       description={description}
       footer={
-        <>
-          <span className="mr-auto self-center text-[13px] text-zinc-500">
-            {missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : footnote}
-          </span>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          {(missingRequired > 0 || footnote) && (
+            <span className="mr-auto w-full self-center text-[13px] text-zinc-500 sm:w-auto">
+              {missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : footnote}
+            </span>
+          )}
           <Button onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
           <Button variant="dark" disabled={missingRequired > 0 || pending} onClick={() => onSubmit(values)}>
             {pending ? "Guardando…" : submitLabel}
           </Button>
-        </>
+        </div>
       }
     >
       <QuestionForm

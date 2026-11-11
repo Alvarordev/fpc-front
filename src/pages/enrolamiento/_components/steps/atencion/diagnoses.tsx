@@ -14,6 +14,7 @@ export function DiagnosesSection({ embedded = false, historical = false }: { emb
   const [editing, setEditing] = useState<EnrollmentDiagnosisDraft | null>(null)
   const [isNew, setIsNew] = useState(false)
   const diagnoses = useCatalog("cancer_diagnosis")
+  const specifics = useCatalog("cancer_specific_diagnosis")
   const stages = useCatalog("cancer_stage")
   const visible = draft.diagnoses.filter((item) => item.diagnosis.trim())
 
@@ -49,6 +50,7 @@ export function DiagnosesSection({ embedded = false, historical = false }: { emb
           <Item
             key={item.draftId}
             title={catalogLabel(diagnoses.data ?? [], item.diagnosis)}
+            body={item.specificDiagnosis ? <>Diagnóstico específico: {catalogLabel(specifics.data ?? [], item.specificDiagnosis)}</> : undefined}
             meta={[item.cancerStage ? catalogLabel(stages.data ?? [], item.cancerStage) : "", item.diagnosisDate ?? ""].filter(Boolean).join(" · ")}
             onOpen={() => {
               setEditing(item)

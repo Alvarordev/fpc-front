@@ -112,6 +112,7 @@ function buildDiagnosis(
       ? { replacementDiagnosisId: draft.replacementDiagnosisId }
       : {}),
     diagnosis: draft.diagnosis,
+    specificDiagnosis: draft.specificDiagnosis,
     cancerStage: draft.cancerStage,
     diagnosisDate: draft.diagnosisDate,
     firstSymptomsDate: draft.firstSymptomsDate,
@@ -430,6 +431,7 @@ export function historicalClinicalDraftsFromPatient(
         draftId: diagnosis.id,
         mode: "PARALLEL",
         diagnosis: diagnosis.diagnosis,
+        specificDiagnosis: diagnosis.specificDiagnosis,
         ...omitNulls({
           cancerStage: diagnosis.cancerStage,
           diagnosisDate: diagnosis.diagnosisDate,

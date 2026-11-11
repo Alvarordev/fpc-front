@@ -12,6 +12,7 @@ export type UpdateCatalogItemInput =
 
 export const OPEN_CATALOG_KINDS = [
   "cancer_diagnosis",
+  "cancer_specific_diagnosis",
   "medical_specialty",
   "treatment_type",
   "native_language",
@@ -35,7 +36,8 @@ export const CATALOG_KIND_LABELS: Record<CatalogKind, string> = {
   eps_provider: "Proveedor EPS",
   native_language: "Lengua nativa",
   medical_specialty: "Especialidad médica",
-  cancer_diagnosis: "Diagnóstico oncológico",
+  cancer_diagnosis: "Diagnóstico general",
+  cancer_specific_diagnosis: "Diagnóstico específico",
   entry_source: "Fuente de ingreso",
   entry_sub_source: "Subfuente de ingreso",
   zone_type: "Tipo de zona",
@@ -76,6 +78,7 @@ export const CATALOG_FORM_FIELD_LABELS: Record<CatalogKind, string> = {
 
 export const PRIORITY_CATALOG_KINDS: CatalogKind[] = [
   "cancer_diagnosis",
+  "cancer_specific_diagnosis",
   "medical_specialty",
   "treatment_type",
 ]

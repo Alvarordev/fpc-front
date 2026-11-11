@@ -43,6 +43,8 @@ export function DiagnosisDetailModal({ diagnosis: d, onClose, hint = CORRECTION_
       <Panel title="Diagnóstico">
         <FieldGrid
           items={[
+            ["Diagnóstico general", <CatalogValue kind="cancer_diagnosis" code={d.diagnosis} />],
+            ["Diagnóstico específico", d.specificDiagnosis ? <CatalogValue kind="cancer_specific_diagnosis" code={d.specificDiagnosis} /> : "Sin especificar"],
             ["Etapa", d.cancerStage ? <CatalogValue kind="cancer_stage" code={d.cancerStage} /> : "Sin estadio"],
             ["Fecha de diagnóstico", formatDate(d.diagnosisDate)],
             ["Centro de salud", d.healthCenterName ?? null],

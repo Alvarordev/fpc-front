@@ -3968,6 +3968,7 @@
                 "native_language",
                 "medical_specialty",
                 "cancer_diagnosis",
+                "cancer_specific_diagnosis",
                 "entry_source",
                 "entry_sub_source",
                 "zone_type",
@@ -14774,6 +14775,12 @@
             "type": "string",
             "maxLength": 100,
             "description": "Temporary client reference used to associate treatments; required by enrollments"
+          },
+          "specificDiagnosis": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100,
+            "description": "Optional cancer_specific_diagnosis catalog code"
           }
         },
         "required": [
@@ -15301,6 +15308,16 @@
             "nullable": true
           },
           "noMedicalConsultationReason": {
+            "type": "string"
+          },
+          "appointmentGranted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "grantedAppointmentDate": {
+            "type": "string"
+          },
+          "appointmentNotGrantedReason": {
             "type": "string"
           },
           "nextConsultationSpecialty": {
@@ -17067,6 +17084,7 @@
               "native_language",
               "medical_specialty",
               "cancer_diagnosis",
+              "cancer_specific_diagnosis",
               "entry_source",
               "entry_sub_source",
               "zone_type",
@@ -18955,6 +18973,10 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "specificDiagnosis": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -18977,7 +18999,8 @@
           "isSepaActiveReferral",
           "isCurrent",
           "changeReason",
-          "createdAt"
+          "createdAt",
+          "specificDiagnosis"
         ]
       },
       "PatientDiagnosisSummaryDto": {
@@ -19563,6 +19586,19 @@
             "type": "string",
             "nullable": true
           },
+          "appointmentGranted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "grantedAppointmentDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "appointmentNotGrantedReason": {
+            "type": "string",
+            "nullable": true
+          },
           "firstConsultationDate": {
             "type": "string",
             "nullable": true,
@@ -19723,7 +19759,10 @@
           "referredViaSepa",
           "attendedPrimaryCareViaSepa",
           "firstPrimaryCareViaSepaAt",
-          "createdAt"
+          "createdAt",
+          "appointmentGranted",
+          "grantedAppointmentDate",
+          "appointmentNotGrantedReason"
         ]
       },
       "PatientActiveComorbidityResponseDto": {
@@ -20389,6 +20428,12 @@
           },
           "changeReason": {
             "type": "string"
+          },
+          "specificDiagnosis": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100,
+            "description": "Optional cancer_specific_diagnosis catalog code"
           }
         },
         "required": [
@@ -20472,6 +20517,21 @@
           },
           "hasMedicalReport": {
             "type": "boolean"
+          },
+          "specificDiagnosis": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100,
+            "description": "Optional cancer_specific_diagnosis catalog code; null clears it"
+          },
+          "diagnosis": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Corrected general diagnosis catalog code"
+          },
+          "diagnosisOther": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -21432,6 +21492,16 @@
           "noMedicalConsultationReason": {
             "type": "string"
           },
+          "appointmentGranted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "grantedAppointmentDate": {
+            "type": "string"
+          },
+          "appointmentNotGrantedReason": {
+            "type": "string"
+          },
           "nextConsultationSpecialty": {
             "type": "string",
             "maxLength": 255
@@ -21921,6 +21991,12 @@
           },
           "changeReason": {
             "type": "string"
+          },
+          "specificDiagnosis": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100,
+            "description": "Optional cancer_specific_diagnosis catalog code"
           }
         },
         "required": [
@@ -24061,6 +24137,12 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "specificDiagnosis": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100,
+            "description": "Optional cancer_specific_diagnosis catalog code"
           }
         },
         "required": [
@@ -24341,6 +24423,16 @@
             "nullable": true
           },
           "noMedicalConsultationReason": {
+            "type": "string"
+          },
+          "appointmentGranted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "grantedAppointmentDate": {
+            "type": "string"
+          },
+          "appointmentNotGrantedReason": {
             "type": "string"
           },
           "nextConsultationSpecialty": {

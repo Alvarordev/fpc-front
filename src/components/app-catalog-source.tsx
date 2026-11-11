@@ -21,7 +21,7 @@ import { useAuthStore } from "@/store/auth-store"
 export const HEALTH_CENTER = "health_center"
 
 /** Listas largas que llevan buscador. */
-const SEARCHABLE = new Set<string>([HEALTH_CENTER, "cancer_diagnosis", "treatment_type", "medical_specialty", "country", "surgical_procedure"])
+const SEARCHABLE = new Set<string>([HEALTH_CENTER, "cancer_diagnosis", "cancer_specific_diagnosis", "treatment_type", "medical_specialty", "country", "surgical_procedure"])
 
 function useDebounced(value: string, ms = 250) {
   const [debounced, setDebounced] = useState(value)
@@ -62,7 +62,7 @@ function useAppOptions(key: string, query: string, selected: string | null): { o
       const description = descriptions.get(option.value)
       return typeof description === "string" && description.trim() ? { ...option, sublabel: description } : option
     })
-    return { options, loading: catalog.isLoading }
+    return { options: key === "cancer_specific_diagnosis" ? [{ value: "", label: "Sin especificar" }, ...options] : options, loading: catalog.isLoading }
   }
   const list = (hospitals.data ?? []).slice(0, 80)
   if (current.data && !list.some((h) => h.id === current.data.id)) list.unshift(current.data)

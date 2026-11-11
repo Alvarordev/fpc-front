@@ -1324,7 +1324,7 @@ export function Step7Atencion({
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <Label className={flGrid}>
-                    ¿Cuál es su diagnóstico oncológico?{" "}
+                    Diagnóstico general{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <CatalogSelect
@@ -1334,6 +1334,17 @@ export function Step7Atencion({
                       updateDiagnosis({ diagnosis: code ?? "" })
                     }
                     placeholder="Seleccionar tipo..."
+                    triggerClassName={sc}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className={flGrid}>Diagnóstico específico (opcional)</Label>
+                  <CatalogSelect
+                    kind="cancer_specific_diagnosis"
+                    value={dx.specificDiagnosis || null}
+                    onValueChange={(code) => updateDiagnosis({ specificDiagnosis: code || null })}
+                    extraItems={[{ value: "", label: "Sin especificar" }]}
+                    placeholder="Sin especificar"
                     triggerClassName={sc}
                   />
                 </div>

@@ -5,7 +5,7 @@ import { Chip } from "@/components/ds/badge"
 import { Button } from "@/components/ds/button"
 import { Item } from "@/components/ds/card"
 import { FormModal } from "@/components/ds/form-modal"
-import { is, type Group, type Values } from "@/components/ds/questions"
+import { is, type Group, type Question, type Values } from "@/components/ds/questions"
 import { RecordSection, type PendingRecord } from "@/components/ds/record-section"
 import type { PatientDiagnosis } from "@/api/patients"
 import { HEALTH_CENTER } from "@/components/app-catalog-source"
@@ -19,6 +19,11 @@ import type { SheetTabProps } from "./sheet-types"
 
 // Diagnóstico: los activos, su corrección (cambia solo lo mal registrado) y los
 // nuevos, en paralelo o reemplazando a uno activo. Todo queda en borrador.
+
+const diagnosisQuestions: Question[] = [
+  { id: "diagnosis", label: "Diagnóstico general", type: "select", catalog: "cancer_diagnosis", required: true, wide: true },
+  { id: "specificDiagnosis", label: "Diagnóstico específico (opcional)", type: "select", catalog: "cancer_specific_diagnosis", wide: true, placeholder: "Sin especificar", hint: "Selecciona el subtipo si lo conoces. Puedes dejarlo sin especificar." },
+]
 
 const detailQuestions: Group = {
   title: "Datos del diagnóstico",
@@ -49,7 +54,7 @@ function newGroups(replaceable: { value: string; label: string }[]): Group[] {
     {
       title: "Diagnóstico",
       questions: [
-        { id: "diagnosis", label: "Diagnóstico", type: "select", catalog: "cancer_diagnosis", required: true, wide: true },
+        ...diagnosisQuestions,
         ...(replaceable.length
           ? [
               {
@@ -78,7 +83,7 @@ const correctionGroups: Group[] = [
     title: "Corrección",
     questions: [{ id: "reason", label: "Motivo de la corrección", type: "textarea", required: true, placeholder: "Ej: la etapa se cargó mal en el enrolamiento", hint: "Queda en el historial junto con los valores anteriores." }],
   },
-  detailQuestions,
+  { ...detailQuestions, questions: [...diagnosisQuestions, ...detailQuestions.questions] },
   waitQuestions,
 ]
 
@@ -86,6 +91,7 @@ function fromDiagnosis(d: PatientDiagnosis): Values {
   const recall = fixedWaitTimeRecallFrom(d.waitTimeForDiagnosis)
   return compact({
     diagnosis: d.diagnosis,
+    specificDiagnosis: d.specificDiagnosis,
     specialty: d.diagnosisSpecialty,
     stage: d.cancerStage,
     firstSymptoms: d.firstSymptomsDate,
@@ -104,6 +110,7 @@ function fromDiagnosis(d: PatientDiagnosis): Values {
 function fromDraft(d: DiagnosisDraft): Values {
   return compact({
     diagnosis: d.diagnosis,
+    specificDiagnosis: d.specificDiagnosis,
     mode: d.mode === "EDIT" ? undefined : d.mode,
     replaces: d.replacementDiagnosisId,
     reason: d.changeReason,
@@ -131,6 +138,7 @@ function toDraft(v: Values, base: { draftId: string; editedDiagnosisId?: string 
     draftId: base.draftId,
     mode,
     diagnosis: v.diagnosis!,
+    specificDiagnosis: text(v.specificDiagnosis) ?? null,
     diagnosisSpecialty: text(v.specialty),
     isSepaActiveReferral: toBool(v.sepaReferral),
     cancerStage: (v.stage ?? undefined) as DiagnosisDraft["cancerStage"],
@@ -162,6 +170,7 @@ type Props = SheetTabProps & {
 export function DiagnosticoTab({ drafts, onDraftsChange, current, allowCorrections, onViewDiagnosis }: Props) {
   const [editing, setEditing] = useState<Editing | null>(null)
   const { data: cancers = [] } = useCatalog("cancer_diagnosis")
+  const { data: specifics = [] } = useCatalog("cancer_specific_diagnosis")
   const { data: stages = [] } = useCatalog("cancer_stage")
   const decisions = drafts.diagnoses ?? []
   const name = (code: string | null | undefined) => catalogLabel(cancers, code)
@@ -184,7 +193,7 @@ export function DiagnosticoTab({ drafts, onDraftsChange, current, allowCorrectio
       id: d.draftId,
       kind: d.mode === "EDIT" ? "Corrección" : "Nuevo",
       title: name(d.diagnosis),
-      detail: d.mode === "EDIT" ? (d.changeReason ?? "") : d.mode === "REPLACE" ? `Reemplaza a ${replaced ? name(replaced.diagnosis).toLowerCase() : "un diagnóstico"}` : "En paralelo a los actuales",
+      detail: [d.specificDiagnosis ? `Específico: ${catalogLabel(specifics, d.specificDiagnosis)}` : null, d.mode === "EDIT" ? (d.changeReason ?? "") : d.mode === "REPLACE" ? `Reemplaza a ${replaced ? name(replaced.diagnosis).toLowerCase() : "un diagnóstico"}` : "En paralelo a los actuales"].filter(Boolean).join(". "),
     }
   })
 
@@ -216,6 +225,7 @@ export function DiagnosticoTab({ drafts, onDraftsChange, current, allowCorrectio
                   {replacing && <Chip tone="amber">Se reemplaza</Chip>}
                 </>
               }
+              body={d.specificDiagnosis ? `Diagnóstico específico: ${catalogLabel(specifics, d.specificDiagnosis)}` : undefined}
               meta={d.diagnosisDate ? `Desde el ${formatDate(d.diagnosisDate)}` : undefined}
               onOpen={onViewDiagnosis ? () => onViewDiagnosis(d) : undefined}
               openLabel={`Ver ${name(d.diagnosis).toLowerCase()}`}
