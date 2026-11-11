@@ -345,6 +345,9 @@ export interface SymptomReportRequest {
   hasMedicalConsultation?: boolean | null
   noMedicalConsultationReason?: string | null
   firstConsultationDate?: string | null
+  appointmentGranted?: boolean | null
+  grantedAppointmentDate?: string | null
+  appointmentNotGrantedReason?: string | null
   isAwaitingDiagnosis?: boolean | null
   hasReferral?: boolean | null
   referredHealthCenterId?: string | null
