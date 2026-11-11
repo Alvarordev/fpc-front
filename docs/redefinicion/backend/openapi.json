@@ -3990,7 +3990,12 @@
                 "alert_derivation_entity",
                 "reenrollment_reason",
                 "companion_relationship",
-                "educational_talk"
+                "educational_talk",
+                "complaint_channel",
+                "complaint_outcome",
+                "social_worker_outcome",
+                "fissal_outcome",
+                "conadis_outcome"
               ],
               "type": "string"
             }
@@ -7111,6 +7116,180 @@
         ]
       }
     },
+    "/patients/{patientId}/social-referrals": {
+      "post": {
+        "operationId": "PatientSocialReferralsController_create",
+        "parameters": [
+          {
+            "name": "patientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePatientSocialReferralDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientSocialReferralResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request payload"
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Patient or follow-up not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a social referral for a patient",
+        "tags": [
+          "Patient social referrals"
+        ]
+      },
+      "get": {
+        "operationId": "PatientSocialReferralsController_findAll",
+        "parameters": [
+          {
+            "name": "patientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PatientSocialReferralResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Patient not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List social referrals with their history",
+        "tags": [
+          "Patient social referrals"
+        ]
+      }
+    },
+    "/patients/{patientId}/social-referrals/{referralId}/updates": {
+      "post": {
+        "operationId": "PatientSocialReferralsController_addUpdate",
+        "parameters": [
+          {
+            "name": "patientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "referralId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePatientSocialReferralUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientSocialReferralResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request payload"
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "Referral or follow-up not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record the outcome of a social referral",
+        "tags": [
+          "Patient social referrals"
+        ]
+      }
+    },
     "/patients/{patientId}/health-background-assessments": {
       "post": {
         "operationId": "PatientHealthBackgroundAssessmentsController_create",
@@ -7425,8 +7604,7 @@
                     "format": "uuid"
                   },
                   "description": {
-                    "type": "string",
-                    "maxLength": 1000
+                    "type": "string"
                   }
                 }
               }
@@ -14170,6 +14348,10 @@
           "isCaregiver": {
             "type": "boolean"
           },
+          "historical": {
+            "type": "boolean",
+            "description": "Carga histórica: el acompañante se registra sin notificar a n8n (no se envía el Registro)."
+          },
           "relationship": {
             "type": "string",
             "maxLength": 50
@@ -14302,6 +14484,10 @@
           "relationship": {
             "type": "string",
             "maxLength": 100
+          },
+          "historical": {
+            "type": "boolean",
+            "description": "Carga histórica: el acompañante se registra sin notificar a n8n (no se envía el Registro)."
           }
         },
         "required": [
@@ -14544,8 +14730,7 @@
             "description": "Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists."
           },
           "diseaseEvolution": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "string"
           },
           "waitTimeForDiagnosis": {
             "nullable": true,
@@ -14600,8 +14785,7 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "doseAmount": {
             "type": "number",
@@ -14958,8 +15142,7 @@
             "type": "string"
           },
           "shelterName": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "averageLodgingCost": {
             "type": "number",
@@ -15185,12 +15368,10 @@
         "type": "object",
         "properties": {
           "relationship": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "cancerType": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           }
         },
         "required": [
@@ -15371,12 +15552,10 @@
           },
           "notAttendingConsultationsNote": {
             "type": "string",
-            "maxLength": 2000,
             "nullable": true
           },
           "notReceivingTreatmentReason": {
             "type": "string",
-            "maxLength": 2000,
             "nullable": true
           },
           "patientId": {
@@ -16910,7 +17089,12 @@
               "alert_derivation_entity",
               "reenrollment_reason",
               "companion_relationship",
-              "educational_talk"
+              "educational_talk",
+              "complaint_channel",
+              "complaint_outcome",
+              "social_worker_outcome",
+              "fissal_outcome",
+              "conadis_outcome"
             ],
             "type": "string"
           },
@@ -20108,6 +20292,15 @@
             "type": "string",
             "format": "uuid",
             "description": "Follow-up in which the deactivation was decided"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the patient actually left the program (historical loads). Defaults to now."
+          },
+          "reasonDetail": {
+            "type": "string",
+            "description": "Free-text notes about the dropout"
           }
         },
         "required": [
@@ -20153,8 +20346,7 @@
             "description": "Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists."
           },
           "diseaseEvolution": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "string"
           },
           "waitTimeForDiagnosis": {
             "nullable": true,
@@ -20262,8 +20454,7 @@
           },
           "diseaseEvolution": {
             "type": "string",
-            "nullable": true,
-            "maxLength": 2000
+            "nullable": true
           },
           "waitTimeForDiagnosis": {
             "nullable": true,
@@ -20681,8 +20872,7 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "doseAmount": {
             "type": "number",
@@ -20825,8 +21015,7 @@
             "type": "string"
           },
           "shelterName": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "averageLodgingCost": {
             "type": "number",
@@ -21077,8 +21266,7 @@
             "type": "string"
           },
           "shelterName": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "averageLodgingCost": {
             "type": "number",
@@ -21340,6 +21528,214 @@
           "createdAt"
         ]
       },
+      "CreatePatientSocialReferralDto": {
+        "type": "object",
+        "properties": {
+          "followUpId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "enum": [
+              "COMPLAINT",
+              "SOCIAL_WORKER",
+              "FISSAL",
+              "CONADIS"
+            ],
+            "type": "string"
+          },
+          "complaintChannel": {
+            "type": "string",
+            "description": "Catalog `complaint_channel` code."
+          },
+          "healthCenterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issue": {
+            "type": "string",
+            "description": "What the complaint is about."
+          },
+          "note": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date",
+            "description": "Defaults to today."
+          }
+        },
+        "required": [
+          "followUpId",
+          "type"
+        ]
+      },
+      "PatientSocialReferralUpdateResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referralId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "followUpId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "referralId",
+          "followUpId",
+          "outcome",
+          "note",
+          "authorId",
+          "occurredOn",
+          "createdAt"
+        ]
+      },
+      "PatientSocialReferralResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "enum": [
+              "COMPLAINT",
+              "SOCIAL_WORKER",
+              "FISSAL",
+              "CONADIS"
+            ],
+            "type": "string"
+          },
+          "complaintChannel": {
+            "type": "string",
+            "nullable": true
+          },
+          "healthCenterId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "healthCenterName": {
+            "type": "string",
+            "nullable": true
+          },
+          "issue": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "closedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "followUpId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updates": {
+            "description": "Outcome history, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PatientSocialReferralUpdateResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "patientId",
+          "type",
+          "complaintChannel",
+          "healthCenterId",
+          "healthCenterName",
+          "issue",
+          "note",
+          "status",
+          "openedAt",
+          "closedAt",
+          "followUpId",
+          "createdById",
+          "createdAt",
+          "updates"
+        ]
+      },
+      "CreatePatientSocialReferralUpdateDto": {
+        "type": "object",
+        "properties": {
+          "followUpId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "Code from the outcome catalog of the referral type."
+          },
+          "note": {
+            "type": "string"
+          },
+          "occurredOn": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha real del resultado. Por defecto, la fecha del seguimiento si es histórico; si no, hoy."
+          }
+        },
+        "required": [
+          "followUpId",
+          "outcome"
+        ]
+      },
       "CreatePatientHealthBackgroundAssessmentDto": {
         "type": "object",
         "properties": {
@@ -21486,8 +21882,7 @@
             "description": "Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists."
           },
           "diseaseEvolution": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "string"
           },
           "waitTimeForDiagnosis": {
             "nullable": true,
@@ -22654,8 +23049,7 @@
             "type": "boolean"
           },
           "additionalComments": {
-            "type": "string",
-            "maxLength": 5000
+            "type": "string"
           },
           "completedSustainabilityModule": {
             "type": "boolean"
@@ -22828,8 +23222,7 @@
           },
           "additionalComments": {
             "type": "string",
-            "nullable": true,
-            "maxLength": 5000
+            "nullable": true
           },
           "completedSustainabilityModule": {
             "type": "boolean"
@@ -23103,12 +23496,10 @@
           },
           "notAttendingConsultationsNote": {
             "type": "string",
-            "maxLength": 2000,
             "nullable": true
           },
           "notReceivingTreatmentReason": {
             "type": "string",
-            "maxLength": 2000,
             "nullable": true
           },
           "patientId": {
@@ -23622,8 +24013,7 @@
             "description": "Legacy snapshot. Prefer patient_symptom_reports when a symptom report exists."
           },
           "diseaseEvolution": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "string"
           },
           "waitTimeForDiagnosis": {
             "nullable": true,
@@ -24159,8 +24549,7 @@
             "type": "string"
           },
           "shelterName": {
-            "type": "string",
-            "maxLength": 255
+            "type": "string"
           },
           "averageLodgingCost": {
             "type": "number",
@@ -24413,8 +24802,7 @@
             "format": "uuid"
           },
           "description": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "string"
           },
           "kind": {
             "enum": [
@@ -24464,8 +24852,7 @@
             "format": "date"
           },
           "description": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "string"
           },
           "status": {
             "enum": [

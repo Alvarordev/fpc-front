@@ -47,6 +47,7 @@ export function PatientDocumentUploadDialog(props: PatientDocumentUploadDialogPr
 
 function UploadModal({ onOpenChange, diagnoses, treatments, isPending, onSubmit, defaultDocumentType = "OTHER", lockedTreatmentId, hideTypeSelect = false }: PatientDocumentUploadDialogProps) {
   const { data: cancers = [] } = useCatalog("cancer_diagnosis")
+  const { data: treatmentTypes = [] } = useCatalog("treatment_type", true)
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [values, setValues] = useState<Values>({ type: defaultDocumentType, treatment: lockedTreatmentId ?? null })
@@ -73,7 +74,7 @@ function UploadModal({ onOpenChange, diagnoses, treatments, isPending, onSubmit,
           type: "select",
           required: true,
           wide: true,
-          options: treatments.map((t) => ({ value: t.id, label: treatmentLabel(t) })),
+          options: treatments.map((t) => ({ value: t.id, label: treatmentLabel(t, treatmentTypes) })),
           hint: treatments.length ? undefined : "Este paciente aún no tiene tratamientos registrados.",
           showIf: (v) => is("type", "PRESCRIPTION")(v) && !lockedTreatmentId,
         },
@@ -119,7 +120,7 @@ function UploadModal({ onOpenChange, diagnoses, treatments, isPending, onSubmit,
       onClose={close}
       icon={FileUp}
       title={hideTypeSelect && defaultDocumentType === "PRESCRIPTION" ? "Adjuntar receta" : "Agregar documento"}
-      description={lockedTreatment ? `Tratamiento: ${treatmentLabel(lockedTreatment)}` : "Queda en la ficha del paciente"}
+      description={lockedTreatment ? `Tratamiento: ${treatmentLabel(lockedTreatment, treatmentTypes)}` : "Queda en la ficha del paciente"}
       footer={
         <>
           <span className="mr-auto self-center text-[13px] text-zinc-500">{missing ? (missing === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missing} datos obligatorios`) : "PDF, Word o imagen, hasta 10 MB"}</span>
@@ -146,6 +147,6 @@ function diagnosisLabel(d: PatientDiagnosis, cancers: CatalogItem[]) {
   return [catalogLabel(cancers, d.diagnosis), d.isCurrent ? "actual" : "histórico", formatDate(d.diagnosisDate)].filter(Boolean).join(", ")
 }
 
-function treatmentLabel(t: PatientTreatment) {
-  return [t.treatmentType, t.isCurrent ? "actual" : "histórico", formatDate(t.startDate)].filter(Boolean).join(", ")
+function treatmentLabel(t: PatientTreatment, types: CatalogItem[]) {
+  return [catalogLabel(types, t.treatmentType), t.isCurrent ? "actual" : "histórico", formatDate(t.startDate)].filter(Boolean).join(", ")
 }

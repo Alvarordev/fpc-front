@@ -55,6 +55,7 @@ jobs:
           push: true
           build-args: |
             VITE_API_URL=${{ vars.VITE_API_URL_PRODUCTION }}
+            VITE_HISTORICAL_UI=${{ vars.VITE_HISTORICAL_UI_PRODUCTION || 'legacy' }}
           tags: |
             ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
             ${{ env.IMAGE_NAME }}:prod-latest

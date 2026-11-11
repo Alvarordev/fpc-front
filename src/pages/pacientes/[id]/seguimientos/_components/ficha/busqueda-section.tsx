@@ -59,7 +59,7 @@ const nonOncologicalGroups: Group[] = [
       { id: "noFrequency", label: "Frecuencia del tratamiento", type: "duration", units: ["DAY", "WEEK", "MONTH", "YEAR"], showIf: yes("noTreated") },
       { id: "noControls", label: "¿Mantiene controles?", type: "tri", options: TRI_MENTION },
       { id: "noControlSpecialty", label: "Especialidad de control", type: "select", catalog: "medical_specialty", required: true, showIf: yes("noControls") },
-      { id: "noPeriodicity", label: "Periodicidad de controles", type: "duration", units: ["WEEK", "MONTH", "YEAR"], showIf: yes("noControls") },
+      { id: "noPeriodicity", label: "Periodicidad de controles", type: "duration", units: ["WEEK", "MONTH", "YEAR"], required: true, showIf: yes("noControls") },
       {
         id: "noStatus",
         label: "Estado",

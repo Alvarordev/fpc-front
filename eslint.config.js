@@ -19,4 +19,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // UI de la carga histórica de antes de la redefinición, congelada tras el
+    // flag VITE_HISTORICAL_UI hasta el pase. Se borra entera; no se refactoriza.
+    files: ['src/legacy/**/*.{ts,tsx}'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
 ])

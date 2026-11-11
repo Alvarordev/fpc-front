@@ -8,13 +8,15 @@ import {
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { EnrollmentShell } from "@/pages/enrolamiento/_components/enrollment-shell"
-import { useEnrollmentStore } from "@/pages/enrolamiento/_store/enrollment-store"
+import {
+  HistoricalEnrollmentShell,
+  useHistoricalEnrollmentStore,
+} from "@/pages/carga-historica/_lib/historical-ui"
 
 export default function HistoricalEnrollmentPage() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
-  const setEnrollmentMode = useEnrollmentStore(
+  const setEnrollmentMode = useHistoricalEnrollmentStore(
     (state) => state.setEnrollmentMode,
   )
 
@@ -23,7 +25,7 @@ export default function HistoricalEnrollmentPage() {
     startTransition(() => setReady(true))
   }, [setEnrollmentMode])
 
-  const resetEnrollment = useEnrollmentStore((state) => state.resetEnrollment)
+  const resetEnrollment = useHistoricalEnrollmentStore((state) => state.resetEnrollment)
 
   function handleReset() {
     if (
@@ -80,7 +82,7 @@ export default function HistoricalEnrollmentPage() {
       </header>
       <div className="min-h-[760px] flex-1">
         {ready ? (
-          <EnrollmentShell historical continuous />
+          <HistoricalEnrollmentShell historical continuous />
         ) : (
           <div className="text-muted-foreground flex min-h-96 items-center justify-center gap-2 text-sm">
             <Loader2 className="size-4 animate-spin" />

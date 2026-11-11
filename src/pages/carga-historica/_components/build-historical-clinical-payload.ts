@@ -216,13 +216,17 @@ export function buildHistoricalClinicalPayload({
   drafts,
   patientId,
   recordIds = {},
+  currentInterlocutorId,
 }: {
   drafts: ClinicalDrafts
   patientId: string
   recordIds?: HistoricalClinicalRecordIds
+  /** Interlocutor ya guardado: al editar sin tocar Contacto se conserva. */
+  currentInterlocutorId?: string | null
 }): HistoricalClinicalPayload {
   const payload: HistoricalClinicalPayload = {
-    interlocutorId: drafts.contact?.interlocutorId ?? patientId,
+    interlocutorId:
+      drafts.contact?.interlocutorId ?? currentInterlocutorId ?? patientId,
   }
 
   const details: PatientDetailsInput = {

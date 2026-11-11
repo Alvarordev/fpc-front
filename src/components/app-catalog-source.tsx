@@ -54,7 +54,16 @@ function useAppOptions(key: string, query: string, selected: string | null): { o
     staleTime: 5 * 60_000,
     enabled: isHospital && Boolean(selected),
   })
-  if (!isHospital) return { options: catalogSelectItems(catalog.data ?? []), loading: catalog.isLoading }
+  if (!isHospital) {
+    // La descripción del ítem (metadata.description) acompaña a la opción, p. ej.
+    // qué significa cada resultado de una derivación.
+    const descriptions = new Map((catalog.data ?? []).map((item) => [item.code, item.metadata?.description]))
+    const options = catalogSelectItems(catalog.data ?? []).map((option) => {
+      const description = descriptions.get(option.value)
+      return typeof description === "string" && description.trim() ? { ...option, sublabel: description } : option
+    })
+    return { options, loading: catalog.isLoading }
+  }
   const list = (hospitals.data ?? []).slice(0, 80)
   if (current.data && !list.some((h) => h.id === current.data.id)) list.unshift(current.data)
   return {
