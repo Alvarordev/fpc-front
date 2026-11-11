@@ -3726,6 +3726,9 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
+            appointmentGranted?: boolean | null;
+            grantedAppointmentDate?: string;
+            appointmentNotGrantedReason?: string;
             nextConsultationSpecialty?: string;
             nextConsultationNote?: string;
             /** @enum {string} */
@@ -4890,6 +4893,10 @@ export interface components {
             hasRequestedMedicalConsultation: boolean | null;
             hasMedicalConsultation: boolean | null;
             noMedicalConsultationReason: string | null;
+            appointmentGranted: boolean | null;
+            /** Format: date */
+            grantedAppointmentDate: string | null;
+            appointmentNotGrantedReason: string | null;
             /**
              * Format: date
              * @deprecated
@@ -5451,6 +5458,9 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
+            appointmentGranted?: boolean | null;
+            grantedAppointmentDate?: string;
+            appointmentNotGrantedReason?: string;
             nextConsultationSpecialty?: string;
             nextConsultationNote?: string;
             /** @enum {string} */
@@ -6414,6 +6424,9 @@ export interface components {
             hasRequestedMedicalConsultation?: boolean | null;
             hasMedicalConsultation?: boolean | null;
             noMedicalConsultationReason?: string;
+            appointmentGranted?: boolean | null;
+            grantedAppointmentDate?: string;
+            appointmentNotGrantedReason?: string;
             nextConsultationSpecialty?: string;
             nextConsultationNote?: string;
             /** @enum {string} */

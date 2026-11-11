@@ -405,8 +405,18 @@ export function buildEnrollmentPayload({
     } else {
       if (!value(symptom.healthCenterId) || !value(symptom.specialty))
         throw new Error("Indica establecimiento y especialidad de la consulta")
-      if (!value(symptom.firstConsultationDate))
-        throw new Error("Indica la fecha de la primera consulta")
+      if (typeof symptom.appointmentGranted !== "boolean")
+        throw new Error("Indica si le dieron la cita")
+      if (
+        symptom.appointmentGranted === true &&
+        !value(symptom.grantedAppointmentDate)
+      )
+        throw new Error("Indica la fecha de la cita")
+      if (
+        symptom.appointmentGranted === false &&
+        !value(symptom.appointmentNotGrantedReason)
+      )
+        throw new Error("Indica el motivo por el que no le dieron la cita")
       if (
         symptom.diagnosisSearchDuration?.valueMin !== undefined &&
         !duration(
@@ -685,7 +695,25 @@ export function buildEnrollmentPayload({
               : {
                   healthCenterId: value(symptom.healthCenterId)!,
                   specialty: value(symptom.specialty)!,
-                  firstConsultationDate: value(symptom.firstConsultationDate)!,
+                  ...(value(symptom.firstConsultationDate)
+                    ? {
+                        firstConsultationDate: value(
+                          symptom.firstConsultationDate,
+                        )!,
+                      }
+                    : {}),
+                  appointmentGranted: symptom.appointmentGranted!,
+                  ...(symptom.appointmentGranted === true
+                    ? {
+                        grantedAppointmentDate: value(
+                          symptom.grantedAppointmentDate,
+                        )!,
+                      }
+                    : {
+                        appointmentNotGrantedReason: value(
+                          symptom.appointmentNotGrantedReason,
+                        )!,
+                      }),
                   ...(symptom.diagnosisSearchDuration?.valueMin !== undefined
                     ? {
                         diagnosisSearchDuration: duration(

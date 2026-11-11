@@ -15,6 +15,9 @@ export function symptomValues(report: SymptomReportRequest, other: boolean): Val
     noConsult: report.noMedicalConsultationReason,
     center: report.healthCenterId,
     specialty: report.specialty,
+    granted: yn(report.appointmentGranted),
+    grantedDate: report.grantedAppointmentDate,
+    notGrantedReason: report.appointmentNotGrantedReason,
     firstDate: report.firstConsultationDate,
     searchDuration: fromDuration(report.diagnosisSearchDuration),
     referral: report.hasReferral === null ? "unknown" : yn(report.hasReferral),
@@ -58,6 +61,9 @@ export function applySymptom(report: SymptomReportRequest, id: string, value: st
                 healthCenterId: null,
                 specialty: null,
                 firstConsultationDate: null,
+                appointmentGranted: null,
+                grantedAppointmentDate: null,
+                appointmentNotGrantedReason: null,
                 hasReferral: null,
                 referredHealthCenterId: null,
                 referralNotProvidedReason: null,
@@ -77,6 +83,23 @@ export function applySymptom(report: SymptomReportRequest, id: string, value: st
       return { healthCenterId: value }
     case "specialty":
       return { specialty: value }
+    case "granted": {
+      const appointmentGranted = toBool(value) ?? null
+      return {
+        appointmentGranted,
+        ...keep(
+          appointmentGranted === true
+            ? { appointmentNotGrantedReason: null }
+            : appointmentGranted === false
+              ? { grantedAppointmentDate: null }
+              : { grantedAppointmentDate: null, appointmentNotGrantedReason: null },
+        ),
+      }
+    }
+    case "grantedDate":
+      return { grantedAppointmentDate: value }
+    case "notGrantedReason":
+      return { appointmentNotGrantedReason: value }
     case "firstDate":
       return { firstConsultationDate: value }
     case "searchDuration":

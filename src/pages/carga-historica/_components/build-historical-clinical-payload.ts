@@ -266,6 +266,7 @@ export function buildHistoricalClinicalPayload({
       diagnosisSearchDuration,
       reportedTreatmentFrequency,
       firstConsultationDate,
+      grantedAppointmentDate,
       nextConsultationDate,
       firstPrimaryCareViaSepaAt,
       ...rest
@@ -295,6 +296,7 @@ export function buildHistoricalClinicalPayload({
 
     const isoFirstConsultationDate = toIsoDateOnly(firstConsultationDate)
     const isoNextConsultationDate = toIsoDateOnly(nextConsultationDate)
+    const isoGrantedAppointmentDate = toIsoDateOnly(grantedAppointmentDate)
     const isoFirstPrimaryCareViaSepaAt = toIsoDateOnly(
       firstPrimaryCareViaSepaAt,
     )
@@ -306,6 +308,9 @@ export function buildHistoricalClinicalPayload({
         : {}),
       ...(isoNextConsultationDate
         ? { nextConsultationDate: isoNextConsultationDate }
+        : {}),
+      ...(isoGrantedAppointmentDate
+        ? { grantedAppointmentDate: isoGrantedAppointmentDate }
         : {}),
       ...(isoFirstPrimaryCareViaSepaAt
         ? { firstPrimaryCareViaSepaAt: isoFirstPrimaryCareViaSepaAt }
@@ -561,6 +566,11 @@ export function historicalClinicalDraftsFromPatient(
         firstConsultationDate: toIsoDateOnly(
           symptomReport.firstConsultationDate,
         ),
+        appointmentGranted: symptomReport.appointmentGranted,
+        grantedAppointmentDate: toIsoDateOnly(
+          symptomReport.grantedAppointmentDate,
+        ),
+        appointmentNotGrantedReason: symptomReport.appointmentNotGrantedReason,
         isAwaitingDiagnosis: symptomReport.isAwaitingDiagnosis,
         hasReferral: symptomReport.hasReferral,
         referredHealthCenterId: symptomReport.referredHealthCenterId,

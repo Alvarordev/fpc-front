@@ -647,6 +647,9 @@ export function Step7Atencion({
                           healthCenterId: null,
                           specialty: null,
                           firstConsultationDate: null,
+                          appointmentGranted: null,
+                          grantedAppointmentDate: null,
+                          appointmentNotGrantedReason: null,
                           isAwaitingDiagnosis: null,
                           hasReferral: null,
                           referredHealthCenterId: null,
@@ -664,6 +667,9 @@ export function Step7Atencion({
                             healthCenterId: null,
                             specialty: null,
                             firstConsultationDate: null,
+                            appointmentGranted: null,
+                            grantedAppointmentDate: null,
+                            appointmentNotGrantedReason: null,
                             isAwaitingDiagnosis: null,
                             hasReferral: null,
                             referredHealthCenterId: null,
@@ -770,8 +776,87 @@ export function Step7Atencion({
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className={fl}>
-                    ¿Cuándo fue la 1ra consulta que tuvo?{" "}
+                    ¿Le dieron la cita?{" "}
                     <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    items={YES_NO_OPTIONS}
+                    value={
+                      sr.appointmentGranted === true
+                        ? "Sí"
+                        : sr.appointmentGranted === false
+                          ? "No"
+                          : ""
+                    }
+                    onValueChange={(value) => {
+                      const appointmentGranted =
+                        value === "Sí" ? true : value === "No" ? false : null
+                      updateSymptomReport({
+                        appointmentGranted,
+                        ...(historical
+                          ? {}
+                          : appointmentGranted === true
+                            ? { appointmentNotGrantedReason: null }
+                            : appointmentGranted === false
+                              ? { grantedAppointmentDate: null }
+                              : {
+                                  grantedAppointmentDate: null,
+                                  appointmentNotGrantedReason: null,
+                                }),
+                      })
+                    }}
+                  >
+                    <SelectTrigger className={sc}>
+                      <SelectValue placeholder="Seleccionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YES_NO_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {sr.appointmentGranted === true && (
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>
+                      Fecha de la cita{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="date"
+                      value={sr.grantedAppointmentDate ?? ""}
+                      onChange={(e) =>
+                        updateSymptomReport({
+                          grantedAppointmentDate: e.target.value || null,
+                        })
+                      }
+                      className="bg-card border"
+                    />
+                  </div>
+                )}
+                {sr.appointmentGranted === false && (
+                  <div className="flex flex-col gap-2">
+                    <Label className={fl}>
+                      ¿Por qué no le dieron la cita?{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      value={sr.appointmentNotGrantedReason ?? ""}
+                      onChange={(e) =>
+                        updateSymptomReport({
+                          appointmentNotGrantedReason: e.target.value || null,
+                        })
+                      }
+                      placeholder="Explique el motivo"
+                      className="bg-card min-h-20 border"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <Label className={fl}>
+                    ¿Cuándo fue la 1ra consulta que tuvo?
                   </Label>
                   <Input
                     type="date"
