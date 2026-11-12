@@ -27,7 +27,7 @@ import {
 } from "@/pages/pacientes/[id]/_components/reminder-form-dialog"
 import { patientTabUrl } from "@/pages/pacientes/[id]/_lib/patient-tabs"
 import { NeedsReassignmentPanel } from "@/pages/voluntarios/_components/needs-reassignment-panel"
-import { AgentSurveysPanel } from "./_components/agent-surveys-panel"
+import { AgentWorklistPanel } from "./_components/agent-worklist-panel"
 import { AgentAgendaCalendar } from "./_components/agent-agenda-calendar"
 import { AgendaSummary } from "./_components/agenda-summary"
 import { FollowUpDetailDialog } from "./_components/follow-up-detail-dialog"
@@ -374,17 +374,9 @@ export default function AgentAgendaPage() {
       </header>
 
       <NeedsReassignmentPanel />
-      <AgentSurveysPanel
-        patients={(followUpsQuery.data ?? []).flatMap((followUp) =>
-          followUp.subjectPatientName
-            ? [
-                {
-                  id: followUp.subjectPatientId,
-                  name: followUp.subjectPatientName,
-                },
-              ]
-            : [],
-        )}
+      <AgentWorklistPanel
+        followUpEvents={followUpEvents}
+        onSelectFollowUp={(event) => setSelectedFollowUp(event.followUp)}
       />
 
       {viewMode === "calendar" ? (

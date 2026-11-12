@@ -30,4 +30,6 @@ export const SURVEY_RATING_ITEMS = [
   { value: "3", label: "3 — Regular" },
   { value: "4", label: "4 — Buena" },
   { value: "5", label: "5 — Muy buena" },
+  // 0 = el paciente no dio calificación; no cuenta en promedios.
+  { value: "0", label: "No indica" },
 ]

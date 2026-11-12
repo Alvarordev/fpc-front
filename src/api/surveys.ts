@@ -7,6 +7,7 @@ export type CreateSurveyInput = components["schemas"]["CreateSurveyDto"]
 export type SurveyScript = components["schemas"]["SurveyScriptResponseDto"]
 export type PendingThreeMonthSurvey =
   components["schemas"]["PendingThreeMonthSurveyDto"]
+export type PendingSurvey = components["schemas"]["PendingSurveyDto"]
 export type SurveyType = CreateSurveyInput["type"]
 export type SurveyChannel = CreateSurveyInput["channel"]
 
@@ -58,6 +59,15 @@ export const surveysApi = {
 
   async pendingThreeMonths(): Promise<PendingThreeMonthSurvey[]> {
     const { data, error, response } = await api.GET("/surveys/pending/three-months")
+
+    if (!data) throw new SurveysApiError(response.status, error)
+    return data
+  },
+
+  async pending(type: SurveyType): Promise<PendingSurvey[]> {
+    const { data, error, response } = await api.GET("/surveys/pending", {
+      params: { query: { type } },
+    })
 
     if (!data) throw new SurveysApiError(response.status, error)
     return data
