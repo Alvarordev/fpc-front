@@ -40,6 +40,8 @@ export function diagnosisCorrectionInput(draft: DiagnosisDraft, followUpId: stri
     diagnosisDate: draft.diagnosisDate ?? null,
     firstSymptomsDate: draft.firstSymptomsDate ?? null,
     healthCenterId: draft.healthCenterId ?? null,
+    referredHealthCenterId: draft.referredHealthCenterId ?? null,
+    hasReferral: draft.hasReferral ?? null,
     diagnosisSpecialty: draft.diagnosisSpecialty ?? null,
     symptomLeadingToCheckup: draft.symptomLeadingToCheckup ?? null,
     diseaseEvolution: draft.diseaseEvolution ?? null,
