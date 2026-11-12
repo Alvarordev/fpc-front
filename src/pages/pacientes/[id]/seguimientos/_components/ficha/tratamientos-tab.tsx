@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { FileUp } from "lucide-react"
 import { toast } from "sonner"
 import { Chip } from "@/components/ds/badge"
@@ -58,24 +58,7 @@ export function TratamientosTab({ drafts, onDraftsChange, patientId, diagnoses, 
   async function update(t: PatientTreatment) {
     const index = decisions.findIndex((d) => d.seriesId === t.seriesId)
     if (index !== -1) return openDecision(index)
-    let medications: Medication[] = []
-    try {
-      const saved = await queryClient.fetchQuery({ queryKey: ["treatment-medications", t.patientId, t.id], queryFn: () => patientsApi.listTreatmentMedications(t.patientId, t.id), staleTime: 30_000 })
-      medications = saved.map((m) => ({
-        name: m.name,
-        doseAmount: m.doseAmount ?? undefined,
-        doseUnit: m.doseUnit ?? undefined,
-        doseDescription: m.doseDescription ?? undefined,
-        route: m.route ?? undefined,
-        frequency: normalizeDuration(m.frequency) as Medication["frequency"],
-        startDate: m.startDate ?? undefined,
-        endDate: m.endDate ?? undefined,
-        isActive: m.isActive,
-        notes: m.notes ?? undefined,
-      }))
-    } catch {
-      toast.error("No se pudieron cargar los medicamentos de este tratamiento")
-    }
+    const medications = await loadMedications(queryClient, t)
     setModal({ index: null, title: `Actualizar ${typeName(t.treatmentType).toLowerCase()}`, base: { mode: "REPLACE", seriesId: t.seriesId }, initial: savedTreatmentValues(t), medications })
   }
 
@@ -148,5 +131,57 @@ export function TratamientosTab({ drafts, onDraftsChange, patientId, diagnoses, 
         onSubmit={(input) => upload.mutate(input)}
       />
     </>
+  )
+}
+
+/** Medicamentos guardados de una versión, para precargar su actualización. */
+async function loadMedications(queryClient: QueryClient, t: PatientTreatment): Promise<Medication[]> {
+  try {
+    const saved = await queryClient.fetchQuery({ queryKey: ["treatment-medications", t.patientId, t.id], queryFn: () => patientsApi.listTreatmentMedications(t.patientId, t.id), staleTime: 30_000 })
+    return saved.map((m) => ({
+      name: m.name,
+      doseAmount: m.doseAmount ?? undefined,
+      doseUnit: m.doseUnit ?? undefined,
+      doseDescription: m.doseDescription ?? undefined,
+      route: m.route ?? undefined,
+      frequency: normalizeDuration(m.frequency) as Medication["frequency"],
+      startDate: m.startDate ?? undefined,
+      endDate: m.endDate ?? undefined,
+      isActive: m.isActive,
+      notes: m.notes ?? undefined,
+    }))
+  } catch {
+    toast.error("No se pudieron cargar los medicamentos de este tratamiento")
+    return []
+  }
+}
+
+/**
+ * Corrección desde un seguimiento ya cerrado: guarda al momento una versión
+ * nueva de la línea, precargada con la actual y ligada a ese seguimiento.
+ */
+export function TreatmentCorrectionModal({ treatment, diagnoses, pending, onClose, onSubmit }: { treatment: PatientTreatment; diagnoses: PatientDiagnosis[]; pending: boolean; onClose: () => void; onSubmit: (draft: TreatmentDraft) => void }) {
+  const queryClient = useQueryClient()
+  const { data: cancers = [] } = useCatalog("cancer_diagnosis")
+  const { data: types = [] } = useCatalog("treatment_type")
+  const [medications, setMedications] = useState<Medication[] | null>(null)
+  useEffect(() => {
+    let alive = true
+    void loadMedications(queryClient, treatment).then((list) => alive && setMedications(list))
+    return () => {
+      alive = false
+    }
+  }, [queryClient, treatment])
+  if (!medications) return null
+  return (
+    <TreatmentModal
+      spec={{ title: `Corregir ${catalogLabel(types, treatment.treatmentType).toLowerCase()}`, base: { mode: "REPLACE", seriesId: treatment.seriesId }, initial: savedTreatmentValues(treatment), medications }}
+      diagnoses={diagnoses.map((d) => ({ value: d.id, label: catalogLabel(cancers, d.diagnosis) }))}
+      footnote="Queda como una versión nueva, registrada en este seguimiento"
+      submitLabel="Guardar corrección"
+      pending={pending}
+      onClose={onClose}
+      onSave={onSubmit}
+    />
   )
 }

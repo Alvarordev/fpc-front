@@ -18,7 +18,18 @@ import { TreatmentMedications, TreatmentVersionHistory } from "./treatment-card"
 
 const CORRECTION_HINT = "Para corregirlo, hazlo desde un seguimiento: así queda registrado quién lo cambió y por qué."
 
-export function DiagnosisDetailModal({ diagnosis: d, onClose, hint = CORRECTION_HINT }: { diagnosis: PatientDiagnosis; onClose: () => void; hint?: string }) {
+export function DiagnosisDetailModal({
+  diagnosis: d,
+  onClose,
+  onCorrect,
+  hint = CORRECTION_HINT,
+}: {
+  diagnosis: PatientDiagnosis
+  onClose: () => void
+  /** Si está, el pie ofrece corregirlo aquí mismo. */
+  onCorrect?: () => void
+  hint?: string
+}) {
   return (
     <Modal
       open
@@ -33,7 +44,17 @@ export function DiagnosisDetailModal({ diagnosis: d, onClose, hint = CORRECTION_
           {d.cancerStage && <Chip tone="violet"><CatalogValue kind="cancer_stage" code={d.cancerStage} /></Chip>}
         </>
       }
-      footer={<><span className="mr-auto self-center text-[13px] text-zinc-500">{hint}</span><Button onClick={onClose}>Cerrar</Button></>}
+      footer={
+        <>
+          <span className="mr-auto self-center text-[13px] text-zinc-500">{hint}</span>
+          <Button onClick={onClose}>Cerrar</Button>
+          {onCorrect && (
+            <Button variant="dark" onClick={onCorrect}>
+              Corregir
+            </Button>
+          )}
+        </>
+      }
     >
       {d.changeReason && (
         <Panel title="Motivo del cambio">
@@ -75,7 +96,20 @@ export function DiagnosisDetailModal({ diagnosis: d, onClose, hint = CORRECTION_
   )
 }
 
-export function TreatmentDetailModal({ patientId, series, onClose, hint = CORRECTION_HINT }: { patientId: string; series: TreatmentSeries; onClose: () => void; hint?: string }) {
+export function TreatmentDetailModal({
+  patientId,
+  series,
+  onClose,
+  onCorrect,
+  hint = CORRECTION_HINT,
+}: {
+  patientId: string
+  series: TreatmentSeries
+  onClose: () => void
+  /** Si está, el pie ofrece corregir la versión actual aquí mismo. */
+  onCorrect?: () => void
+  hint?: string
+}) {
   const t = series.current
   const situation = SITUATION[treatmentStatus(t)]
   return (
@@ -92,7 +126,17 @@ export function TreatmentDetailModal({ patientId, series, onClose, hint = CORREC
           {t.diagnosisSummary?.diagnosis && <Chip><CatalogValue kind="cancer_diagnosis" code={t.diagnosisSummary.diagnosis} /></Chip>}
         </>
       }
-      footer={<><span className="mr-auto self-center text-[13px] text-zinc-500">{hint}</span><Button onClick={onClose}>Cerrar</Button></>}
+      footer={
+        <>
+          <span className="mr-auto self-center text-[13px] text-zinc-500">{hint}</span>
+          <Button onClick={onClose}>Cerrar</Button>
+          {onCorrect && (
+            <Button variant="dark" onClick={onCorrect}>
+              Corregir
+            </Button>
+          )}
+        </>
+      }
     >
       {t.scheduledSessions ? (
         <Panel title="Avance">

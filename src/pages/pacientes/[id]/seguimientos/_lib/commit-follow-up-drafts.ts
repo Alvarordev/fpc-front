@@ -2,16 +2,125 @@ import { toast } from "sonner"
 import { alertsApi } from "@/api/alerts"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
 import { nonOncologicalFollowUpsApi } from "@/api/non-oncological-follow-ups"
-import { patientsApi, type PatientDetailsInput } from "@/api/patients"
+import { patientsApi, type CreatePatientTreatmentInput, type PatientDetailsInput, type UpdatePatientDiagnosisInput } from "@/api/patients"
 import { psychooncologyAppointmentsApi } from "@/api/psychooncology-appointments"
 import { toDurationInput } from "@/types/duration"
 import { fixedWaitTime } from "@/types/wait-time-recall"
-import { draftDiagnosisIdFromOption, isDraftDiagnosisOptionId } from "../_components/clinical-drafts"
+import { draftDiagnosisIdFromOption, isDraftDiagnosisOptionId, type DiagnosisDraft, type TreatmentDraft } from "../_components/clinical-drafts"
 import { saveSocialReferralDrafts } from "../_components/social-referral-drafts"
 import { useFollowUpDraftStore } from "../_store/follow-up-draft-store"
 
 // Guarda, en orden, todo lo que quedó en borrador durante el seguimiento. Se
 // llama al completarlo, antes de marcarlo como completado.
+
+/** Tiempo de espera a enviar: el fijo si no recuerda, el informado o, con ambas fechas, que lo calcule el backend. */
+function diagnosisWaitTime(draft: DiagnosisDraft) {
+  const wait = draft.remembersWaitTimeForDiagnosis === false
+    ? fixedWaitTime(draft.waitTimeRecall)
+    : draft.waitTimeForDiagnosisManuallyEdited
+      ? toDurationInput(draft.waitTimeForDiagnosis)
+      : draft.firstSymptomsDate && draft.diagnosisDate
+        ? undefined
+        : toDurationInput(draft.waitTimeForDiagnosis)
+  if (draft.remembersWaitTimeForDiagnosis !== false && draft.waitTimeForDiagnosis?.valueMin !== undefined && !wait)
+    throw new Error("Completa correctamente el tiempo de espera para el diagnóstico")
+  return wait
+}
+
+/** Corrección en el sitio de un diagnóstico activo, registrada en `followUpId`. */
+export function diagnosisCorrectionInput(draft: DiagnosisDraft, followUpId: string): UpdatePatientDiagnosisInput {
+  if (!draft.changeReason?.trim()) throw new Error("Indica el motivo de la corrección del diagnóstico")
+  // Empty fields are sent as null so a correction can clear them.
+  return {
+    followUpId,
+    changeReason: draft.changeReason,
+    diagnosis: draft.diagnosis,
+    specificDiagnosis: draft.specificDiagnosis ?? null,
+    cancerStage: draft.cancerStage ?? null,
+    diagnosisDate: draft.diagnosisDate ?? null,
+    firstSymptomsDate: draft.firstSymptomsDate ?? null,
+    healthCenterId: draft.healthCenterId ?? null,
+    diagnosisSpecialty: draft.diagnosisSpecialty ?? null,
+    symptomLeadingToCheckup: draft.symptomLeadingToCheckup ?? null,
+    diseaseEvolution: draft.diseaseEvolution ?? null,
+    isSepaActiveReferral: draft.isSepaActiveReferral ?? null,
+    hasMedicalReport: draft.hasMedicalReport,
+    waitTimeForDiagnosis: diagnosisWaitTime(draft),
+  }
+}
+
+/** Línea nueva o versión nueva de una serie (REPLACE), registrada en `followUpId`. */
+export function treatmentCreateInput(treatmentDraft: TreatmentDraft, diagnosisId: string, followUpId: string): CreatePatientTreatmentInput {
+  if (treatmentDraft.mode === "REPLACE" && !treatmentDraft.seriesId) {
+    throw new Error("Selecciona el tratamiento que deseas actualizar")
+  }
+  const normalizedFrequency = toDurationInput(
+    treatmentDraft.treatmentFrequency,
+  )
+  if (treatmentDraft.treatmentFrequency && !normalizedFrequency) {
+    throw new Error("Completa correctamente la frecuencia del tratamiento")
+  }
+
+  const normalizedMedications = treatmentDraft.medications?.map(
+    (medication) => ({
+      ...medication,
+      frequency: toDurationInput(medication.frequency),
+    }),
+  )
+
+  return {
+    diagnosisId,
+    treatmentType: treatmentDraft.treatmentType,
+    followUpId: followUpId,
+    seriesId:
+      treatmentDraft.mode === "REPLACE"
+        ? treatmentDraft.seriesId
+        : undefined,
+    isReferred: treatmentDraft.isReferred,
+    sourceHealthCenterId: treatmentDraft.sourceHealthCenterId,
+    receivingHealthCenterId: treatmentDraft.receivingHealthCenterId,
+    startDate: treatmentDraft.startDate,
+    endDate: treatmentDraft.endDate,
+    changeReason: treatmentDraft.changeReason,
+    notReceivingReason: treatmentDraft.notReceivingReason,
+    ...(treatmentDraft.treatmentType === "CIRUGIA"
+      ? { operationName: treatmentDraft.operationName }
+      : {}),
+    ...(treatmentDraft.treatmentType === "QUIMIOTERAPIA"
+      ? { chemotherapyRoute: treatmentDraft.chemotherapyRoute }
+      : {}),
+    careProgram: treatmentDraft.careProgram,
+    receivesTeleconsultation: treatmentDraft.receivesTeleconsultation,
+    teleconsultationNote:
+      treatmentDraft.receivesTeleconsultation === true
+        ? treatmentDraft.teleconsultationNote
+        : undefined,
+    teleconsultationSpecialties:
+      treatmentDraft.receivesTeleconsultation === true
+        ? treatmentDraft.teleconsultationSpecialties
+        : undefined,
+    treatmentSituation: treatmentDraft.treatmentSituation,
+    treatmentAbandonmentReason:
+      treatmentDraft.treatmentSituation === "ABANDONADO"
+        ? treatmentDraft.treatmentAbandonmentReason
+        : undefined,
+    interruptionReason: treatmentDraft.interruptionReason,
+    interruptionReasonOther: treatmentDraft.interruptionReasonOther,
+    treatmentViaSepa: treatmentDraft.treatmentViaSepa,
+    scheduledSessions: treatmentDraft.scheduledSessions,
+    completedSessions: treatmentDraft.completedSessions,
+    hormonalTreatmentCompleted: treatmentDraft.hormonalTreatmentCompleted,
+    accessBarrierCode: treatmentDraft.accessBarrierCode,
+    accessBarrierOther: treatmentDraft.accessBarrierOther,
+    orientedRegardingBarriers: treatmentDraft.orientedRegardingBarriers,
+    hasLatestPrescription: treatmentDraft.hasLatestPrescription,
+    latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
+    treatmentFrequency: normalizedFrequency,
+    ...(normalizedMedications?.length
+      ? { medications: normalizedMedications }
+      : {}),
+  }
+}
 
 type CommitInput = {
   patientId: string
@@ -38,57 +147,24 @@ export async function commitFollowUpDrafts({ patientId, followUp, drafts, nextFo
     (a, b) => Number(b.mode === "EDIT") - Number(a.mode === "EDIT"),
   )
   for (const diagnosisDecision of diagnosisDecisions) {
+    if (diagnosisDecision.mode === "EDIT") {
+      if (!diagnosisDecision.editedDiagnosisId) throw new Error("Indica el diagnóstico a corregir")
+      await patientsApi.updateDiagnosis(patientId, diagnosisDecision.editedDiagnosisId, diagnosisCorrectionInput(diagnosisDecision, followUpId))
+      continue
+    }
+
+    const waitTimeForDiagnosis = diagnosisWaitTime(diagnosisDecision)
     const {
       draftId,
       mode,
       replacementDiagnosisId,
-      editedDiagnosisId,
-      waitTimeForDiagnosisManuallyEdited,
-      remembersWaitTimeForDiagnosis,
-      waitTimeRecall,
+      editedDiagnosisId, // eslint-disable-line @typescript-eslint/no-unused-vars
+      waitTimeForDiagnosisManuallyEdited, // eslint-disable-line @typescript-eslint/no-unused-vars
+      remembersWaitTimeForDiagnosis, // eslint-disable-line @typescript-eslint/no-unused-vars
+      waitTimeRecall, // eslint-disable-line @typescript-eslint/no-unused-vars
       changeReason,
       ...diagnosisDraft
     } = diagnosisDecision
-    const waitTimeForDiagnosis = remembersWaitTimeForDiagnosis === false
-      ? fixedWaitTime(waitTimeRecall)
-      : waitTimeForDiagnosisManuallyEdited
-        ? toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
-        : diagnosisDraft.firstSymptomsDate && diagnosisDraft.diagnosisDate
-          ? undefined
-          : toDurationInput(diagnosisDraft.waitTimeForDiagnosis)
-    if (
-      remembersWaitTimeForDiagnosis !== false &&
-      diagnosisDraft.waitTimeForDiagnosis?.valueMin !== undefined &&
-      !waitTimeForDiagnosis
-    )
-      throw new Error(
-        "Completa correctamente el tiempo de espera para el diagnóstico",
-      )
-
-    if (mode === "EDIT") {
-      if (!editedDiagnosisId || !changeReason?.trim())
-        throw new Error("Indica el motivo de la corrección del diagnóstico")
-      // Empty fields are sent as null so a correction can clear them.
-      await patientsApi.updateDiagnosis(patientId, editedDiagnosisId, {
-        followUpId: followUpId,
-        changeReason,
-        diagnosis: diagnosisDraft.diagnosis,
-        specificDiagnosis: diagnosisDraft.specificDiagnosis ?? null,
-        cancerStage: diagnosisDraft.cancerStage ?? null,
-        diagnosisDate: diagnosisDraft.diagnosisDate ?? null,
-        firstSymptomsDate: diagnosisDraft.firstSymptomsDate ?? null,
-        healthCenterId: diagnosisDraft.healthCenterId ?? null,
-        diagnosisSpecialty: diagnosisDraft.diagnosisSpecialty ?? null,
-        symptomLeadingToCheckup:
-          diagnosisDraft.symptomLeadingToCheckup ?? null,
-        diseaseEvolution: diagnosisDraft.diseaseEvolution ?? null,
-        isSepaActiveReferral: diagnosisDraft.isSepaActiveReferral ?? null,
-        hasMedicalReport: diagnosisDraft.hasMedicalReport,
-        waitTimeForDiagnosis,
-      })
-      continue
-    }
-
     const created = await patientsApi.createDiagnosis(patientId, {
       ...diagnosisDraft,
       mode,
@@ -108,76 +184,7 @@ export async function commitFollowUpDrafts({ patientId, followUp, drafts, nextFo
       : treatmentDraft.diagnosisId
 
     if (!diagnosisId) continue
-    if (treatmentDraft.mode === "REPLACE" && !treatmentDraft.seriesId) {
-      throw new Error("Selecciona el tratamiento que deseas actualizar")
-    }
-
-    const normalizedFrequency = toDurationInput(
-      treatmentDraft.treatmentFrequency,
-    )
-    if (treatmentDraft.treatmentFrequency && !normalizedFrequency) {
-      throw new Error("Completa correctamente la frecuencia del tratamiento")
-    }
-
-    const normalizedMedications = treatmentDraft.medications?.map(
-      (medication) => ({
-        ...medication,
-        frequency: toDurationInput(medication.frequency),
-      }),
-    )
-
-    await patientsApi.createTreatment(patientId, {
-      diagnosisId,
-      treatmentType: treatmentDraft.treatmentType,
-      followUpId: followUpId,
-      seriesId:
-        treatmentDraft.mode === "REPLACE"
-          ? treatmentDraft.seriesId
-          : undefined,
-      isReferred: treatmentDraft.isReferred,
-      sourceHealthCenterId: treatmentDraft.sourceHealthCenterId,
-      receivingHealthCenterId: treatmentDraft.receivingHealthCenterId,
-      startDate: treatmentDraft.startDate,
-      endDate: treatmentDraft.endDate,
-      changeReason: treatmentDraft.changeReason,
-      notReceivingReason: treatmentDraft.notReceivingReason,
-      ...(treatmentDraft.treatmentType === "CIRUGIA"
-        ? { operationName: treatmentDraft.operationName }
-        : {}),
-      ...(treatmentDraft.treatmentType === "QUIMIOTERAPIA"
-        ? { chemotherapyRoute: treatmentDraft.chemotherapyRoute }
-        : {}),
-      careProgram: treatmentDraft.careProgram,
-      receivesTeleconsultation: treatmentDraft.receivesTeleconsultation,
-      teleconsultationNote:
-        treatmentDraft.receivesTeleconsultation === true
-          ? treatmentDraft.teleconsultationNote
-          : undefined,
-      teleconsultationSpecialties:
-        treatmentDraft.receivesTeleconsultation === true
-          ? treatmentDraft.teleconsultationSpecialties
-          : undefined,
-      treatmentSituation: treatmentDraft.treatmentSituation,
-      treatmentAbandonmentReason:
-        treatmentDraft.treatmentSituation === "ABANDONADO"
-          ? treatmentDraft.treatmentAbandonmentReason
-          : undefined,
-      interruptionReason: treatmentDraft.interruptionReason,
-      interruptionReasonOther: treatmentDraft.interruptionReasonOther,
-      treatmentViaSepa: treatmentDraft.treatmentViaSepa,
-      scheduledSessions: treatmentDraft.scheduledSessions,
-      completedSessions: treatmentDraft.completedSessions,
-      hormonalTreatmentCompleted: treatmentDraft.hormonalTreatmentCompleted,
-      accessBarrierCode: treatmentDraft.accessBarrierCode,
-      accessBarrierOther: treatmentDraft.accessBarrierOther,
-      orientedRegardingBarriers: treatmentDraft.orientedRegardingBarriers,
-      hasLatestPrescription: treatmentDraft.hasLatestPrescription,
-      latestPrescriptionDate: treatmentDraft.latestPrescriptionDate,
-      treatmentFrequency: normalizedFrequency,
-      ...(normalizedMedications?.length
-        ? { medications: normalizedMedications }
-        : {}),
-    })
+    await patientsApi.createTreatment(patientId, treatmentCreateInput(treatmentDraft, diagnosisId, followUpId))
   }
 
   await saveSocialReferralDrafts(patientId, followUpId, clinicalDrafts)

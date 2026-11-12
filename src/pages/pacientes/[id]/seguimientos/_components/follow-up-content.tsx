@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { agentsApi } from "@/api/agents"
 import { followUpsApi, type FollowUp } from "@/api/follow-ups"
 import { patientTimelineApi } from "@/api/patient-timeline"
-import type { PatientDiagnosis, PatientTreatment } from "@/api/patients"
+import { patientsApi, type PatientDiagnosis, type PatientTreatment } from "@/api/patients"
 import { Button } from "@/components/ds/button"
 import { Card } from "@/components/ds/card"
 import { StepSection } from "@/components/ds/step-section"
@@ -19,10 +19,12 @@ import { PatientReferralsSection } from "../../_components/patient-referrals-sec
 import { usePatient } from "../../_hooks/use-patient"
 import { patientTabUrl } from "../../_lib/patient-tabs"
 import { groupTreatmentSeries } from "../../_lib/treatment-series"
-import { commitFollowUpDrafts } from "../_lib/commit-follow-up-drafts"
+import { commitFollowUpDrafts, diagnosisCorrectionInput, treatmentCreateInput } from "../_lib/commit-follow-up-drafts"
 import { pendingSummary } from "../_lib/pending-summary"
 import { followUpNotesKey, useFollowUpDraftStore } from "../_store/follow-up-draft-store"
-import { hasAnyClinicalDraft } from "./clinical-drafts"
+import { hasAnyClinicalDraft, type DiagnosisDraft, type TreatmentDraft } from "./clinical-drafts"
+import { DiagnosisCorrectionModal } from "./ficha/diagnostico-tab"
+import { TreatmentCorrectionModal } from "./ficha/tratamientos-tab"
 import { DerivedActionModal } from "./derived-action-modals"
 import { ClinicalSheet } from "./ficha/clinical-sheet"
 import { DerivedActionsCard, NotesDock, type DerivedAction } from "./follow-up-actions"
@@ -41,6 +43,10 @@ import { ReenrollmentForm } from "./reenrollment-form"
 // corregir el estado y la nota.
 
 const DETAIL_HINT = "Para corregirlo, usa la pestaña de la ficha clínica: queda registrado en este seguimiento."
+const CLOSED_CORRECTION_HINT = "La corrección queda registrada en este seguimiento."
+const CLOSED_HISTORIC_HINT = "Ya fue reemplazado: solo se corrigen los diagnósticos activos."
+const CLOSED_TREATMENT_HINT = "La corrección queda como versión nueva, registrada en este seguimiento."
+const CLOSED_TREATMENT_HISTORIC_HINT = "Esta línea ya no está vigente: solo se corrigen los tratamientos actuales."
 
 const isClosed = (status: FollowUp["status"]): status is ClosedStatus => status === "COMPLETED" || status === "NO_ANSWER" || status === "CANCELLED"
 
@@ -56,6 +62,8 @@ export function FollowUpContent() {
   const [confirmation, setConfirmation] = useState<{ action: FollowUpStatusAction; source: "open" | "edit" } | null>(null)
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<PatientDiagnosis | null>(null)
   const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null)
+  const [correctingDiagnosis, setCorrectingDiagnosis] = useState<PatientDiagnosis | null>(null)
+  const [correctingTreatment, setCorrectingTreatment] = useState<PatientTreatment | null>(null)
   const [reenrollment, setReenrollment] = useState<ReenrollmentDraft>({})
 
   const draftStore = useFollowUpDraftStore()
@@ -119,6 +127,26 @@ export function FollowUpContent() {
         ...(status !== followUpQuery.data?.status ? { completedAt: status === "COMPLETED" ? new Date().toISOString() : undefined } : {}),
       }),
   })
+  const correctDiagnosisMutation = useMutation({
+    mutationFn: (draft: DiagnosisDraft) => patientsApi.updateDiagnosis(patientId!, draft.editedDiagnosisId!, diagnosisCorrectionInput(draft, followUpId!)),
+    onSuccess: async () => {
+      setCorrectingDiagnosis(null)
+      setSelectedDiagnosis(null)
+      toast.success("Diagnóstico corregido")
+      await refreshAfterFollowUpUpdate()
+    },
+    onError: (error) => toast.error("No se pudo corregir el diagnóstico", { description: (error as Error).message }),
+  })
+  const correctTreatmentMutation = useMutation({
+    mutationFn: (draft: TreatmentDraft) => patientsApi.createTreatment(patientId!, treatmentCreateInput(draft, draft.diagnosisId, followUpId!)),
+    onSuccess: async () => {
+      setCorrectingTreatment(null)
+      setSelectedTreatment(null)
+      toast.success("Tratamiento corregido")
+      await refreshAfterFollowUpUpdate()
+    },
+    onError: (error) => toast.error("No se pudo corregir el tratamiento", { description: (error as Error).message }),
+  })
   const isStatusPending = isCompleting || updateMutation.isPending || editMutation.isPending
 
   async function refreshAfterFollowUpUpdate() {
@@ -152,6 +180,8 @@ export function FollowUpContent() {
   const isOpen = followUp.status === "SCHEDULED" || followUp.status === "OVERDUE" || followUp.status === "NO_ANSWER"
   const canAct = canManage && (user?.role !== "AGENT" || (Boolean(ownAgentId) && followUp.agentId === ownAgentId))
   const canEditClosed = canAct && !isOpen && isClosed(followUp.status)
+  // Cerrado, lo registrado se corrige al momento y queda ligado a este seguimiento.
+  const canCorrectClosed = canAct && !isOpen
   const pending = pendingSummary(draftStore, notes)
   // Un seguimiento de reenrolamiento abierto de un paciente inactivo registra el reenrolamiento al completarse.
   // Un prospecto aún no tiene ficha clínica: se registra al enrolarlo, no en un seguimiento.
@@ -363,8 +393,40 @@ export function FollowUpContent() {
       {derived && (
         <DerivedActionModal action={derived} patientId={followUp.subjectPatientId} followUpId={followUp.id} agents={agentsQuery.data} requiresAgentSelection={requiresAgentSelection} onClose={() => setDerived(null)} />
       )}
-      {selectedDiagnosis && <DiagnosisDetailModal diagnosis={selectedDiagnosis} hint={DETAIL_HINT} onClose={() => setSelectedDiagnosis(null)} />}
-      {selectedSeries && <TreatmentDetailModal patientId={patientId!} series={selectedSeries} hint={DETAIL_HINT} onClose={() => setSelectedTreatment(null)} />}
+      {selectedDiagnosis && !correctingDiagnosis && (
+        <DiagnosisDetailModal
+          diagnosis={selectedDiagnosis}
+          hint={canCorrectClosed ? (selectedDiagnosis.isCurrent ? CLOSED_CORRECTION_HINT : CLOSED_HISTORIC_HINT) : DETAIL_HINT}
+          onCorrect={canCorrectClosed && selectedDiagnosis.isCurrent ? () => setCorrectingDiagnosis(selectedDiagnosis) : undefined}
+          onClose={() => setSelectedDiagnosis(null)}
+        />
+      )}
+      {correctingDiagnosis && (
+        <DiagnosisCorrectionModal
+          diagnosis={correctingDiagnosis}
+          pending={correctDiagnosisMutation.isPending}
+          onClose={() => setCorrectingDiagnosis(null)}
+          onSubmit={(draft) => correctDiagnosisMutation.mutate(draft)}
+        />
+      )}
+      {selectedSeries && !correctingTreatment && (
+        <TreatmentDetailModal
+          patientId={patientId!}
+          series={selectedSeries}
+          hint={canCorrectClosed ? (selectedSeries.current.isCurrent ? CLOSED_TREATMENT_HINT : CLOSED_TREATMENT_HISTORIC_HINT) : DETAIL_HINT}
+          onCorrect={canCorrectClosed && selectedSeries.current.isCurrent ? () => setCorrectingTreatment(selectedSeries.current) : undefined}
+          onClose={() => setSelectedTreatment(null)}
+        />
+      )}
+      {correctingTreatment && (
+        <TreatmentCorrectionModal
+          treatment={correctingTreatment}
+          diagnoses={patient?.diagnoses ?? []}
+          pending={correctTreatmentMutation.isPending}
+          onClose={() => setCorrectingTreatment(null)}
+          onSubmit={(draft) => correctTreatmentMutation.mutate(draft)}
+        />
+      )}
       <FollowUpStatusConfirmationDialog action={confirmation?.action ?? null} pending={pending} isPending={isStatusPending} onClose={() => setConfirmation(null)} onConfirm={() => void confirm()} />
     </div>
   )

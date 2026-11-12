@@ -263,3 +263,29 @@ export function DiagnosticoTab({ drafts, onDraftsChange, current, allowCorrectio
     </>
   )
 }
+
+/**
+ * Corrección inmediata de un diagnóstico activo desde un seguimiento ya cerrado:
+ * mismo formulario que en la ficha, pero se guarda al confirmar.
+ */
+export function DiagnosisCorrectionModal({ diagnosis, pending, onClose, onSubmit }: { diagnosis: PatientDiagnosis; pending: boolean; onClose: () => void; onSubmit: (draft: DiagnosisDraft) => void }) {
+  const { data: cancers = [] } = useCatalog("cancer_diagnosis")
+  return (
+    <FormModal
+      icon={Stethoscope}
+      title={`Corregir ${catalogLabel(cancers, diagnosis.diagnosis).toLowerCase()}`}
+      description="Cambia solo lo que se registró mal. Si el diagnóstico cambió, regístralo en un seguimiento nuevo."
+      groups={correctionGroups}
+      initial={fromDiagnosis(diagnosis)}
+      submitLabel="Guardar corrección"
+      footnote="Queda registrada en este seguimiento"
+      pending={pending}
+      onClose={onClose}
+      onSubmit={(v) => {
+        const result = toDraft(v, { draftId: diagnosis.id, editedDiagnosisId: diagnosis.id })
+        if (typeof result === "string") toast.error(result)
+        else onSubmit(result)
+      }}
+    />
+  )
+}

@@ -23,7 +23,24 @@ export type TreatmentModalSpec = {
 
 const doseText = (m: Medication) => [m.doseAmount && `${m.doseAmount} ${DOSE_UNITS.find((u) => u.value === m.doseUnit)?.label ?? ""}`.trim(), m.doseDescription].filter(Boolean).join(", ")
 
-export function TreatmentModal({ spec, diagnoses, onClose, onSave }: { spec: TreatmentModalSpec; diagnoses: Option[]; onClose: () => void; onSave: (draft: TreatmentDraft) => void }) {
+export function TreatmentModal({
+  spec,
+  diagnoses,
+  footnote = "Se guardará al completar el seguimiento",
+  submitLabel,
+  pending = false,
+  onClose,
+  onSave,
+}: {
+  spec: TreatmentModalSpec
+  diagnoses: Option[]
+  footnote?: string
+  submitLabel?: string
+  /** Mientras se guarda: bloquea el envío y el cierre. */
+  pending?: boolean
+  onClose: () => void
+  onSave: (draft: TreatmentDraft) => void
+}) {
   const [values, setValues] = useState<Values>(spec.initial)
   const [medications, setMedications] = useState<Medication[]>(spec.medications)
   const [editing, setEditing] = useState<{ index: number | null; initial: Values } | null>(null)
@@ -40,18 +57,18 @@ export function TreatmentModal({ spec, diagnoses, onClose, onSave }: { spec: Tre
   return (
     <Modal
       open
-      onClose={onClose}
+      onClose={() => !pending && onClose()}
       icon={Syringe}
       title={spec.title}
       description={replacing ? "Actualiza lo que cambió desde el último registro" : "Una línea de tratamiento nueva, en paralelo a las actuales"}
       footer={
         <>
           <span className="mr-auto self-center text-[13px] text-zinc-500">
-            {missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : "Se guardará al completar el seguimiento"}
+            {missingRequired ? (missingRequired === 1 ? "Falta 1 dato obligatorio" : `Faltan ${missingRequired} datos obligatorios`) : footnote}
           </span>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="dark" disabled={missingRequired > 0} onClick={submit}>
-            {replacing ? "Guardar actualización" : "Agregar a la ficha"}
+          <Button onClick={onClose} disabled={pending}>Cancelar</Button>
+          <Button variant="dark" disabled={missingRequired > 0 || pending} onClick={submit}>
+            {pending ? "Guardando…" : (submitLabel ?? (replacing ? "Guardar actualización" : "Agregar a la ficha"))}
           </Button>
         </>
       }
